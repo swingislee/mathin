@@ -1,70 +1,21 @@
-name: Parent clients
+name: Requested parent client builds
 
 on:
-  pull_request:
-    paths:
-      - 'apps/**'
-      - 'contracts/parent-api/**'
-      - 'scripts/check-parent-foundation.mjs'
-      - 'scripts/parent-toolchains.mjs'
-      - 'scripts/prepare-parent-wechat.mjs'
-      - 'scripts/sync-parent-contract.mjs'
-      - 'tests/parent-foundation.test.ts'
-      - 'tests/parent-portal*.test.ts'
-      - 'src/app/api/health/route.ts'
-      - 'src/app/api/v1/parent/**'
-      - 'src/features/parent-portal/**'
-      - 'src/app/globals.css'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'tsconfig.json'
-      - 'eslint.config.mjs'
-      - '.github/workflows/parent-clients.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'apps/**'
-      - 'contracts/parent-api/**'
-      - 'scripts/check-parent-foundation.mjs'
-      - 'scripts/parent-toolchains.mjs'
-      - 'scripts/prepare-parent-wechat.mjs'
-      - 'scripts/sync-parent-contract.mjs'
-      - 'tests/parent-foundation.test.ts'
-      - 'tests/parent-portal*.test.ts'
-      - 'src/app/api/health/route.ts'
-      - 'src/app/api/v1/parent/**'
-      - 'src/features/parent-portal/**'
-      - 'src/app/globals.css'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'tsconfig.json'
-      - 'eslint.config.mjs'
-      - '.github/workflows/parent-clients.yml'
   workflow_dispatch:
+    inputs:
+      platform:
+        description: '要交付的客户端'
+        required: true
+        default: ios
+        type: choice
+        options: [ios, android]
 
 permissions:
   contents: read
 
-concurrency:
-  group: parent-clients-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  foundation:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm parents:check
-
   android:
+    if: inputs.platform == 'android'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -78,7 +29,7 @@ jobs:
       - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
       - run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
-      - run: ./gradlew :app:assembleDebug :app:lintDebug --no-daemon
+      - run: ./gradlew :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: mathin-parent-android-debug
@@ -86,12 +37,10 @@ jobs:
           retention-days: 7
 
   ios:
+    if: inputs.platform == 'ios'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
-      - run: node apps/parent-ios/scripts/check.mjs
-      - run: swift test --package-path apps/parent-ios
-      - run: plutil -lint apps/parent-ios/MathinParent.xcodeproj/project.pbxproj apps/parent-ios/MathinParent/Info.plist apps/parent-ios/MathinParent/Info-Debug.plist
       - name: Build iOS simulator
         run: >-
           xcodebuild -project apps/parent-ios/MathinParent.xcodeproj

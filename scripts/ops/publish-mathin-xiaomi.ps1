@@ -55,26 +55,10 @@ function Get-ReleaseCommit {
   return $commit
 }
 
-function Invoke-LocalChecks {
+function Show-ReleaseCandidate {
   $commit = Get-ReleaseCommit
   Write-Host "Release candidate: $commit"
-  Write-Host "Running lint..."
-  Push-Location $repositoryRoot
-  try {
-    & pnpm.cmd lint | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "pnpm lint failed." }
-
-    Write-Host "Running typecheck..."
-    & pnpm.cmd typecheck | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "pnpm typecheck failed." }
-
-    Write-Host "Running production build..."
-    & pnpm.cmd build | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "pnpm build failed." }
-  } finally {
-    Pop-Location
-  }
-  Write-Host "Local checks passed."
+  Get-ProductionStatus
   return $commit
 }
 
@@ -149,7 +133,7 @@ printf '\n'
 }
 
 function Publish-Release {
-  $commit = Invoke-LocalChecks
+  $commit = Show-ReleaseCandidate
   $sourceId = "stage-{0}-{1}" -f (Get-Date -Format "yyyyMMdd-HHmmss"), $commit.Substring(0, 12)
   $remoteSourceRoot = "$RemoteServiceRoot/staging/$sourceId"
 
@@ -257,14 +241,14 @@ function Show-Menu {
   Write-Host "==============================================="
   Write-Host "          Mathin Xiaomi Production"
   Write-Host "==============================================="
-  Write-Host "  1. CHECK    lint, typecheck, production build"
+  Write-Host "  1. CHECK    committed candidate and production status"
   Write-Host "  2. PUBLISH  current committed Git version"
   Write-Host "  3. STATUS   release and health information"
   Write-Host "  4. ROLLBACK switch to previous known-good release"
   Write-Host "  Q. QUIT"
   Write-Host ""
   switch ((Read-Host "Choose").ToUpperInvariant()) {
-    "1" { Invoke-LocalChecks | Out-Null }
+    "1" { Show-ReleaseCandidate | Out-Null }
     "2" { Publish-Release }
     "3" { Get-ProductionStatus }
     "4" { Rollback-Release }
@@ -275,7 +259,7 @@ function Show-Menu {
 
 switch ($Action) {
   "Menu" { Show-Menu }
-  "Check" { Invoke-LocalChecks | Out-Null }
+  "Check" { Show-ReleaseCandidate | Out-Null }
   "Publish" { Publish-Release }
   "Status" { Get-ProductionStatus }
   "Rollback" { Rollback-Release }

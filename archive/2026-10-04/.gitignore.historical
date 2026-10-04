@@ -1,0 +1,99 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+**/node_modules/
+/.pnpm-store/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+/playwright-report/
+/test-results/
+/blob-report/
+/docs/test_material/
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# Supabase/server backups and secrets
+*.backup
+*.bak
+supabase-project/
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Claude Code personal settings and reference material
+.claude/
+# Versioned project adapter; all other Claude files stay private.
+!/.claude/
+/.claude/*
+!/.claude/skills/
+/.claude/skills/*
+!/.claude/skills/mathin-verify/
+/.claude/skills/mathin-verify/*
+!/.claude/skills/mathin-verify/SKILL.md
+
+# Codex local worktrees and task state
+.codex/
+
+# editor
+.vscode/
+
+.tmp/ 
+
+# local snapshots, temporary analyses, and detached worktrees
+/.prod-backups/
+/.prod-session-data-import-*/
+/.rc-worktrees/
+/.tmp-*
+/.web-push-rc-*/
+/.worktrees/
+
+# 原生家长端的本机配置、签名与构建产物
+/apps/**/.gradle/
+/apps/**/.kotlin/
+/apps/**/.idea/
+/apps/**/build/
+/apps/**/local.properties
+/apps/**/config.local.ts
+/apps/**/project.private.config.json
+/apps/**/Local.xcconfig
+/apps/**/DerivedData/
+/apps/**/xcuserdata/
+/apps/**/gradle.properties.local
+/apps/parent-wechat/miniprogram/**/*.js
+/apps/parent-wechat/miniprogram/**/*.js.map
+*.jks
+*.keystore
+*.p12
+*.mobileprovision

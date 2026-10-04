@@ -1,32 +1,24 @@
 ---
 name: verify
-description: 本仓库的端到端验证配方。用于复用或启动本地 dev server，以仓库 Playwright 和固定开发账号验证 zh/en、角色旅程、Canvas、移动布局、局域网目标与截图；不得创建一次性账号或把本机地址写入共享证据。
+description: 在用户明确要求浏览器或 Playwright 验证，或变更涉及重大安全、生产风险时，复用 Mathin 开发服务与固定开发身份进行定向验证。普通增量由产品负责人使用验收。
 ---
 
-# Mathin 端到端验证配方
+# Mathin 定向验证
 
-## 启动句柄
+先按 [操作规则](../../../docs/agent/operations.md) 明确这次要证明的行为与目标。验证范围来自用户任务或实际重大风险。
 
-- 优先复用 `http://localhost:3130` 上已有的 `pnpm dev`；先用 Windows `Get-NetTCPConnection -LocalPort 3130 -State Listen` 检查。没有监听时再从仓库后台启动 `pnpm dev`，不要打开可见终端窗口。
-- 使用仓库已经锁定的 Playwright 配置和依赖，优先运行 `pnpm e2e` 或对应的定向 spec；不要在仓库或临时目录重复安装 Playwright。
+## 服务与身份
 
-## 账号
+复用已有 3130 开发服务；Windows 可用 `Get-NetTCPConnection -LocalPort 3130 -State Listen` 确认监听。需要启动时用仓库 `pnpm dev`，后台隐藏窗口。局域网验证使用任务指定地址或 `PLAYWRIGHT_BASE_URL`。
 
-- 复用 `.claude/test-accounts.local.md` 中当前登记的 11 个固定开发账号；以该 gitignored manifest 的唯一邮箱集合为准，不在 skill 或测试源码重复维护清单。禁止复制账号、密码、UUID 或 Cookie 到日志、截图、测试源码和提交。
-- 不得为普通 E2E 新建账号。只有验证未认领绑定码、多子女等必须依赖新身份的流程时，先向用户确认，再在隔离开发数据中创建并清理。
-- 登录后的等待条件使用精确 dashboard/目标 URL 或明确错误状态，不要用会立即匹配当前页的宽松 locale 正则。
+账号从已忽略的 `.claude/test-accounts.local.md` 读取，复用登记的固定开发身份。账号、密码、UUID、Cookie 和个人资料不进入日志、截图、源码或提交。确实需要新身份时，先明确授权和隔离数据范围。
 
-## 常用断言技巧
+## 按任务选择方式
 
-- Canvas 类页面：`ctx.getImageData` 统计非透明像素占比，比较操作前后变化（画→增、擦→减、撤销→回升、刷新→不变）。
-- 保存状态：顶栏 `[role="status"]` 文本（保存中…/已保存）。防抖 1.5s，等 2.6s 再断言。
-- shadcn Dialog：用 `page.getByRole("dialog")` + `getByRole("button", { name: … })`，不要 `div[role=dialog] >> text=` 链式。
-- 越权探针：使用固定账号中没有该资源关系的另一角色直访资源 URL，RLS 生效应得到 404 页面；匿名访问应 302 到 `/zh/login?next=…`。
-- 截图四档：亮/暗（`page.emulateMedia({ colorScheme })`）× 桌面 1440×900 / 移动 390×844。移动截图里左下角圆形 “N” 是 Next.js dev 指示器，不是页面 UI。
+复用仓库锁定的 Playwright 与已有适用用例；命令直接指定文件。匿名权限边界可使用 `pnpm e2e -- e2e/auth-boundaries.spec.ts`。需要新场景时围绕当前任务编写定向动作，避免把一次验证扩展为全套回归。
 
-## 陷阱
+登录等待精确目标 URL 或明确错误状态；Dialog 使用语义角色定位。Canvas 验证可以比较操作前后像素或状态；保存和重开核对实际内容。权限验证选择已知无关系主体，并明确期望的拒绝结果。
 
-- 需要验证局域网非安全上下文时，从用户给出的 URL、当前 `PLAYWRIGHT_BASE_URL` 或本机实际监听地址确定目标；不要在共享 skill、测试和证据里硬编码某台机器的 IP。localhost 通过不能代替已明确要求的 LAN 验证。
+明确要求局域网时，以非安全上下文的实际入口验证；浏览器共享代码的 UUID 入口为 `newId()`。截图只覆盖需要确认的视口和状态，敏感内容保持脱敏。临时输出放 `.tmp/` 或受控 artifact。
 
-- PowerShell 读取含 `[locale]` 的路径时使用 `-LiteralPath`；搜索优先使用 `rg`。
-- 一次性脚本、截图和 trace 放系统临时目录或受控 CI artifact，不放仓库；仓库只保留可复用测试和本配方。
+结果写明输入、环境、行为与观察范围。机器检查只能证明所覆盖行为，视觉、教学手感和真实业务仍由产品负责人确认。

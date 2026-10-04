@@ -1,10 +1,9 @@
-# 家长端工程入口
+# 家长端工程
 
-本目录承载微信原生小程序、SwiftUI iOS 和 Kotlin/Compose Android 工程。范围为家长选课查看、错题查看和每日作业；课堂 renderer 留在现有网页。
+微信原生小程序、SwiftUI iOS、Kotlin/Compose Android 各用自己的组件、导航和构建工具。共享账号主体、亲子关系、业务对象与 [版本化 API](../contracts/parent-api/README.md)。
 
-- 各端独立构建。网页的 React、shadcn、Cookie 和 Server Action 约束用于网页实现；原生界面使用对应平台的组件与无障碍能力。
-- 数据、账号主体和权限沿用根目录规则。受保护接口由服务端核验登录身份、亲子关系与 RLS；客户端通过版本化 HTTP 接口接入。
-- 共用接口入口为 `contracts/parent-api/README.md`；只把已实现的接口写入 OpenAPI paths。
-- 微信小程序已接入登记、活动预约、结果和练习提交；iOS 已实现四页签及共享 HTTP 账号、学习、作业和请假接入，Mac 构建与人工验收状态见其 README；Android 暂为离线工程外壳。本机 API 地址使用各端忽略的本地配置；签名材料与服务端密钥不进入客户端或仓库。
-- 文案同时维护 zh/en，颜色集中在各端主题资源，取值沿用 doc 01。基础系统字体用于此轮工程外壳，品牌字体和最终视觉在后续验收增量中落地。
-- 窄检查入口：根目录 `pnpm parents:check`；iOS 单独使用 `node apps/parent-ios/scripts/check.mjs`，Mac 上再执行 Swift 测试和共享 Xcode scheme 构建。Android 使用 Gradle Wrapper。机器静态检查与目标平台构建、人工验收分别记录。
+受保护接口在服务端验证登录、亲子关系与 RLS。真实连接配置、签名和密钥使用忽略的本地文件或私有环境；服务端密钥不进入客户端。
+
+界面同步 zh/en，颜色集中到各端主题资源，风格参考 [设计](../docs/design.md)。当前各端能力与验收见 [当前状态](../docs/current.md) 和各端 README。
+
+需要交付可安装包时运行对应构建；普通增量不附加跨端测试。模拟器或真机操作按明确任务使用相应工具，业务与视觉由产品负责人确认。

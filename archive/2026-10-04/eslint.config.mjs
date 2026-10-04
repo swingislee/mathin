@@ -1,0 +1,50 @@
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/uuid.ts"],
+    rules: {
+      "no-restricted-properties": ["error", {
+        property: "randomUUID",
+        message: "局域网 HTTP 兼容：使用 @/lib/uuid 的 newId()；纯服务端使用 node:crypto 的命名导入（AGENTS.md）。",
+      }],
+    },
+  },
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+    // 原生客户端使用各自的工具链，微信类型和页面不进入网页规则。
+    "apps/**",
+    // 本地生成物、隔离验证环境与大型工具缓存，不属于仓库源码。
+    ".tmp/**",
+    // 参考资料与历史 demo，不参与构建
+    ".claude/**",
+  ]),
+  {
+    // docs/plan/21 §23 阶段 J：防止页面级限宽回流。
+    // Dashboard 的宽度由 DashboardShell 唯一决定；页面里再出现 mx-auto 就意味着
+    // 有人又开始在页面根上重新居中，页面之间的横向跳动会立刻回来。内容需要限宽
+    // 用 DashboardMainColumn / DashboardReadingColumn 在页面内部解决。
+    files: ["src/app/**/dashboard/**/*.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: 'JSXAttribute[name.name="className"] Literal[value=/(^|\\s)mx-auto(\\s|$)/]',
+          message: "Dashboard 页面不得用 mx-auto 重新居中：宽度由 DashboardShell 决定，内容限宽请用 DashboardMainColumn / DashboardReadingColumn（docs/plan/21 §3.2）。",
+        },
+      ],
+    },
+  },
+]);
+
+export default eslintConfig;

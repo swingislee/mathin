@@ -30,4 +30,4 @@
 - `soma-cube-lesson-v2` 每宝接受互斥的 `{id,position,orientation}` 格点姿态或 `{id,position,quaternion}` 自由姿态。前者 position 是规范化格点最小值，后者是源模型刚体原点；没有两份朝向真相。旧场景打开仍用 v1，用户点击“复制到新版”后才进入 v2。
 - 共用 Tools 场景库、备课组件和课堂状态外壳。中间帧本机预览，课堂只保存最终准确姿态；本地末帧保持到回执，失败恢复权威状态，展示端与晚加入读取相同版本快照。撤销、重做、恢复备课起点保留自由姿态。
 
-定向检查入口：`tests/spatial-arcball.test.ts`、`tests/soma-rotation-snap.test.ts`、`tests/soma-free-pose.test.ts`、Soma 领域／工作台／真实 R3F 测试、共用编辑器和课堂同步审计。旧 SQL 保留，v2 由 `20260920160000_soma_free_rotation_scene.sql` 增补，使用 `scripts/prepared-tool-scenes-local.mjs` 的 `soma-free` 增量运行新旧合同及回滚检查。自动吸附复用已有 v2 格点／自由姿态合同，无数据库变更。仅启用于本机隔离开发目标；视觉和手感待人工验收。
+v2 自由姿态由 `20260920160000_soma_free_rotation_scene.sql` 增补，旧冻结版本按原合同读取。自动吸附沿用 v2 格点与自由姿态；人工视觉和手感确认以实际版本为准。

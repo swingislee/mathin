@@ -46,7 +46,7 @@ describe("Dashboard table and divider semantics", () => {
     const commandPanel = read("src/features/school/dashboard-page/DashboardCommandPanel.tsx");
     const tableShell = read("src/features/school/dashboard-page/DashboardCard.tsx");
     const frontendRules = read("docs/agent/frontend.md");
-    const designSystem = read("docs/plan/01-design-system.md");
+    const designSystem = read("archive/2026-10-04/docs/plan/01-design-system.md");
     const pagination = read("src/components/ui/pagination.tsx");
 
     expect(commandPanel).toContain("不得在 DashboardTableShell");

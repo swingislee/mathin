@@ -45,7 +45,7 @@ describe("R1-7 data governance contracts", () => {
 
   it("clears expired row payloads through the durable worker cycle", () => {
     const worker = read("scripts/r1-job-worker.mjs");
-    const plan = read("docs/plan/25-production-1.0-product-completeness.md");
+    const plan = read("archive/2026-10-04/docs/plan/25-production-1.0-product-completeness.md");
     expect(migration).toContain("purge_expired_data_import_payloads");
     expect(worker).toContain('rpc("purge_expired_data_import_payloads"');
     expect(plan).toContain("R1-7A 学生 CSV 导入");

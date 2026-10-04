@@ -71,7 +71,7 @@
 
 ## 0.2.0 · 可备课教具、教学工作台与工作页面提速
 
-版本日期：2026-09-22。版本由 0.1.4 升至 0.2.0，本次集中更新教具备课、教学登记、学服工作、页面性能与家长端业务。[版本基线记录](docs/evidence/r1/version-0.2.0-baseline-20260922.md)。
+版本日期：2026-09-22。版本由 0.1.4 升至 0.2.0，本次集中更新教具备课、教学登记、学服工作、页面性能与家长端业务。[版本基线记录](archive/2026-10-04/docs/evidence/r1/version-0.2.0-baseline-20260922.md)。
 
 ### 本次主要变化
 
@@ -703,7 +703,7 @@
 - 学生协作：参与过业务办理的员工保留对应学生的操作范围；业务分组提供同组查看，主管可维护组别、成员和协作人员。资料提示沿用相同的查看权限。
 - 历史线索：在“补入学生”中选择原线索，核对资料并确认建立档案后，一起保存资料、建档和入班；保存有效首联时，资料完整的线索自动建档，疑似重复身份进入人工核对。历史记录的批量补建按核对清单单独办理。
 
-生产机器检查通过，详情见[发布记录](docs/evidence/r1/version-0.1.4-production-20260914.md)；实际大屏书写、触摸操作与团队业务流程继续由使用者验收。
+生产机器检查通过，详情见[发布记录](archive/2026-10-04/docs/evidence/r1/version-0.1.4-production-20260914.md)；实际大屏书写、触摸操作与团队业务流程继续由使用者验收。
 
 ## 2026-09-13 · 课堂画笔粗细与边缘（已部署，待人工验收）
 
@@ -964,4 +964,4 @@ Base 来源资料进一步统一年级、组别、班序、渠道、日期时间
 - 秋季排课：为 25 个班级追加 350 次课，使本批 26 个已关联课程的班级具备 15 讲。其余 3 个班级等待课程或老师确认。
 - 误开课状态：将 4 节误点首课恢复为未上课，保留备课、课件快照、课堂记录和纠错记录。
 
-发布与检查记录：[0.1.2 发布](docs/evidence/r1/version-0.1.2-production-20260909.md) · [桌面提醒](docs/evidence/r1/employee-web-push-production-activation-20260909.md) · [课堂更新](docs/evidence/r1/classroom-rehearsal-hotfix-production-20260909.md) · [分班更新](docs/evidence/r1/school-placement-production-20260909.md) · [排课更正](docs/evidence/r1/autumn-class-schedule-completion-20260909.md) · [首课更正](docs/evidence/r1/first-session-status-recovery-20260909.md)。
+发布与检查记录：[0.1.2 发布](archive/2026-10-04/docs/evidence/r1/version-0.1.2-production-20260909.md) · [桌面提醒](archive/2026-10-04/docs/evidence/r1/employee-web-push-production-activation-20260909.md) · [课堂更新](archive/2026-10-04/docs/evidence/r1/classroom-rehearsal-hotfix-production-20260909.md) · [分班更新](archive/2026-10-04/docs/evidence/r1/school-placement-production-20260909.md) · [排课更正](archive/2026-10-04/docs/evidence/r1/autumn-class-schedule-completion-20260909.md) · [首课更正](archive/2026-10-04/docs/evidence/r1/first-session-status-recovery-20260909.md)。

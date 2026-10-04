@@ -1,34 +1,22 @@
-# 组合课件页扩展接口
+# 组合课件接入
 
-教师自建课件页统一使用 `courseware-composition-v1`，权威入口如下：
+教师自建页使用 `courseware-composition-v1`，编辑、试讲与课堂共用内容协议和舞台。
 
-- 文档与磁贴 schema：`composition-page-schema.ts`
-- 12×9 排布、碰撞让位与节点坐标同步：`composition-page-layout.ts`、`snap-grid.ts`
-- 编辑画布：`CoursewareCompositionGridEditor.tsx`
-- 备课/试讲/课堂共用渲染：`CoursewareCompositionStage.tsx`
-- 数据库硬门：`supabase/migrations/*_courseware_composition_tiles.sql`
+| 对象 | 入口 |
+| --- | --- |
+| 文档与区块版本 | `composition-page-schema.ts` |
+| 12×9 排布、碰撞与坐标 | `composition-page-layout.ts`、`snap-grid.ts` |
+| 编辑 | `CoursewareCompositionGridEditor.tsx` |
+| 共用渲染 | `CoursewareCompositionStage.tsx` |
+| 工具版本 | `../tools/courseware/registry.ts` |
+| 数据库保存校验 | `supabase/migrations/*_courseware_composition_tiles.sql` |
 
-## 固定规则
+背景色、背景图与已发布来源页构成基底；教师添加的文字、公式、图形与图片各有 node 磁贴。游戏、H5 和工具作为互动区块与普通内容共存，使用稳定区块 ID 保存各自状态。来源游戏沿用保留键 `source`；游戏嵌入移除自身 layout，避免递归组合。
 
-- 背景色、背景图和已发布来源页属于页面基底，不进入磁贴布局；其余教师添加的文字、公式、图形和图片必须各有一个 `node` 磁贴。
-- 游戏、单文件 H5 和工具是组合页内的互动磁贴，不得新增独立教师游戏页、H5 页或工具页入口。嵌入游戏复用注册的 `game-page-v1` 内容协议，但必须移除其 `layout`，禁止递归组合；无保存内容的嵌入工具使用 `tool-embed-v1`，有内容的工具使用 registry 登记的独立版本。
-- 游戏和 H5 可以多实例并与来源页、普通节点共存。每个游戏使用稳定磁贴 ID 作为 `GameMirrorState.instances` 的状态键；来源游戏固定使用保留键 `source`，不得把多个盘面写进同一个无实例镜像。
-- H5 在 `h5-state-v1` 完成前逐块保持课堂只读；工具在各自状态未接入 `tool-state-v1` 前也逐块保持课堂只读。只读组件不得因为同页存在同步游戏就继承游戏的可写状态，也不得阻断同页其他游戏的镜像。
-- 网格固定为 12 列 × 9 行。老师只拖拽/缩放磁贴，不直接填写 `x/y/width/height`；网格线默认隐藏，只在拖拽或缩放手势期间显示。
-- 数独最小区域为 4×4，H5 和工具最小区域为 2×2，普通节点最小区域为 1×1；组件数没有额外产品上限，容量由 12×9 非重叠网格自然限制。
+当前 12×9 网格由拖动和缩放操作，手势期间显示辅助网格。数独最小 4×4，H5/工具 2×2，普通节点 1×1。组件数量由当前非重叠布局自然决定。
 
-## 工具组件注册规范
+新增内容类型时同步 schema、尺寸与排布、编辑入口、共用 renderer 和持久化校验。工具保存 `toolId`、`contentVersion` 及该版本允许的自包含 payload；新版本新增 migration 扩展数据库白名单。已执行迁移和冻结内容保留原语义。
 
-- 工具课件合同的权威入口是 `src/features/tools/courseware/registry.ts`。组合页持久化 `toolId` 与版本化 `contentVersion`；仅独立版本允许携带其 schema 声明的自包含 `payload`。renderer 通过 `src/features/tools/components.tsx` 分发，不保存 React 组件、路由或个人草稿读取指针。`cube-structures-lesson-v1` 保存立方体固定起点和教学步骤，旧 `tool-embed-v1` 保持无 payload。
-- 新增可插入工具时，必须同时登记基础工具 registry、课件合同 registry、编辑器选择入口、共用舞台 renderer、服务端保存白名单、课堂 interaction audit、双语文案和定向测试。
-- 数据库 `cw_courseware_composition_doc_is_valid` 是第二道白名单。增加工具 ID 或内容版本时必须新增 migration 更新该函数；不得只改 TypeScript registry，也不得手改已执行 migration。
-- 当前 `tool-embed-v1` 使用 `tool-state-v1` 只读 provider。只有工具拥有可重放 snapshot/semantic command，并通过 `pnpm classroom:interaction-sync:audit` 后，才能把对应合同改成课堂可写。
+每个互动区块按自己的同步协议决定课堂可写能力。只有具备可重放 snapshot / semantic command 的对象才进入相应 input provider；其他对象明确只读，同页可用对象继续工作。实例镜像通过 `GameMirrorState.instances` 贯穿编辑与课堂。
 
-## 新增组件类型
-
-1. 为 `coursewareCompositionBlockSchema` 增加带版本字段的 block，明确最小尺寸和持久化字段。
-2. 在 `composition-page-layout.ts` 登记可接受尺寸和碰撞优先级，并为交换、整行/整列变化、无重叠补 Vitest。
-3. 在 `CoursewareCompositionStage.tsx` 增加共用 renderer；不得只接 Studio 而漏掉试讲或课堂。
-4. 在舞台顶部图标工具栏增加插入入口，右侧只承载已放置组件与所选组件属性；左侧只创建组合页、从正式课程插入和重命名页签。
-5. 在 `document.ts`、课堂 input provider、`interaction-audit.ts` 和 `pnpm classroom:interaction-sync:audit` 登记同步决策。
-6. 升 docVersion 或 block 持久化结构时新增 migration，更新数据库结构校验、保存边界和 freeze snapshot；不得原地放宽旧合同。
+工具条负责插入，右侧承接已放置对象与属性，左侧承接页管理。产品方向见 [教学](../../../docs/workflows/teaching.md)；普通增量交付人工使用，安全与生产检查按根入口选择。

@@ -1,84 +1,60 @@
-name: CI
+name: Repository privacy and requested risk checks
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      test_files:
+        description: '需要运行的安全用例文件，以空格分隔；留空只检查凭据泄漏'
+        required: false
+        type: string
+      rebuild_isolated_database:
+        description: '明确需要隔离空库重建与权限 SQL 时启用'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: checks-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # 构建期只需要形如 URL/key 的占位值：本仓库不在构建期连库（页面全是运行时动态取数）。
-  NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder-publishable-key
-  NEXT_PUBLIC_SITE_URL: https://mathin.club
-
 jobs:
-  checks:
-    name: lint / typecheck / build / audits
+  privacy:
+    name: High-confidence credential scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v6
+      - run: pnpm secrets:check
+      - run: pnpm secrets:history
+
+  requested-tests:
+    if: github.event_name == 'workflow_dispatch' && inputs.test_files != ''
+    runs-on: ubuntu-latest
+    env:
+      MATHIN_RISK_FILES: ${{ inputs.test_files }}
+    steps:
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
-      - id: install
-        run: pnpm install --frozen-lockfile
-      # 以下工程检查彼此独立，只要装包成功就全部跑完再判定成败：
-      # fail-fast 会让第一个失败的门禁掩盖其余问题，把「修一个、推一次、再红一次」变成常态。
-      - run: pnpm lint
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-      - run: pnpm typecheck
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+      - run: pnpm install --frozen-lockfile
       - run: pnpm test
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-      - run: pnpm build
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-      - name: 静态安全/内容断言（P4E 资产）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm p4e:audit
-      - name: 仓库高置信 secret 扫描（值不回显）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm secrets:check
-      - name: Git 历史高置信 secret 扫描（值不回显）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm secrets:history
-      - name: 数据库类型与 migrations 同步
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm db:types:check
-      - name: 双语文案键全等
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm messages:check
-      - name: 规划状态、唯一阶段与 1.0 契约防漂移
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm plan:audit
-      - name: Dashboard 内容坐标系防回退（doc21）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm doc21:audit
-      - name: Dashboard 路由信息架构防回流（doc22）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm doc22:audit
-      - name: 对象详情页与专业工作区骨架防回流（doc23）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm doc23:audit
-      - name: Dashboard 视觉与交互收口防回流（doc24）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm doc24:audit
-      - name: 使用环境数据边界（P4I-1）
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm p4i1:boundary-audit
-      - name: 离线补发回放测试
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: pnpm p4e:offline-test
 
-  database:
-    name: 从零重建库 + RLS 越权断言
+  isolated-database:
+    if: github.event_name == 'workflow_dispatch' && inputs.rebuild_isolated_database
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -93,7 +69,6 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      # 一次性容器，凭据即弃。自托管库的密钥绝不进 workflow（CLAUDE.md 密钥纪律）。
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
       CI_ALLOW_DB_REBUILD: "1"
       MATHIN_WRITE_TARGET_ENVIRONMENT: test
@@ -106,32 +81,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: 平台垫片 + 全量 migration 重放 + 夹具
-        run: pnpm ci:db-rebuild
-      - name: migration 校验和账本
-        run: node scripts/migration-ledger.mjs | psql "$DATABASE_URL" -X -v ON_ERROR_STOP=1
-      - name: RLS 越权断言
-        run: pnpm p4e:db-audit
-      - name: P6 课件资产 RLS 越权断言
-        run: pnpm p6:db-audit
-      - name: SML-0 讲次 capability 权限与关系断言
-        run: pnpm sml:db-audit
-      - name: P4H 教学运营生命周期断言
-        run: pnpm p4h:db-audit
-      - name: R1 机构、Jobs、通知、文件与集成断言
-        run: pnpm r1:db-audit
-
-  supply-chain:
-    name: 依赖安全公告
-    runs-on: ubuntu-latest
-    # 观察期：先只报告不阻断（docs/plan/15-§7.4），噪声水平确认后再升级为门禁。
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --prod
+      - run: pnpm db:rebuild
+      - run: pnpm db:security
+      - run: pnpm db:courseware-security

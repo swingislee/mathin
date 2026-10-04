@@ -189,7 +189,7 @@
     },
     {
       "key": "operations-runbook",
-      "path": "docs/runbooks/r1-production-deployment-preflight.md",
+      "path": "archive/2026-10-04/docs/runbooks/r1-production-deployment-preflight.md",
       "sha256": "fc099db47c2c15ffeb7c7523745b185278014065bdcfa64819dc18e17f47377b"
     },
     {

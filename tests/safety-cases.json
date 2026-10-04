@@ -1,0 +1,32 @@
+{
+  "description": "仅按用户明确要求或实际重大安全、生产风险选择相关文件，无默认全量执行。",
+  "files": [
+    "tests/auth-response-headers.test.ts",
+    "tests/auth-return-origin.test.ts",
+    "tests/auth-safe-redirect.test.ts",
+    "tests/local-development-security.test.ts",
+    "tests/r1-write-target-policy.test.ts",
+    "tests/r1-repository-secrets.test.ts",
+    "tests/r1-account-security.test.ts",
+    "tests/r1-live-auth-identities.test.ts",
+    "tests/r1-live-object-protection.test.ts",
+    "tests/assessment-list-security-database.test.ts",
+    "tests/cw-h5-shim.test.ts",
+    "tests/supabase-server-transport.test.ts",
+    "tests/parent-assessment.test.ts",
+    "tests/parent-assessment-rls.test.ts",
+    "tests/parent-ios-learning.test.ts",
+    "tests/parent-ios-learning-rls.test.ts",
+    "tests/parent-portal.test.ts",
+    "tests/parent-wechat-auth.test.ts",
+    "tests/parent-wechat-auth-client.test.ts",
+    "tests/wechat-actions.test.ts",
+    "tests/wechat-broker.test.ts",
+    "tests/wechat-callback.test.ts",
+    "tests/wechat-miniapp-provider.test.ts",
+    "tests/wechat-miniapp-session.test.ts",
+    "tests/wechat-oauth-maintenance.test.ts",
+    "tests/wechat-provider.test.ts",
+    "tests/wechat-session.test.ts"
+  ]
+}

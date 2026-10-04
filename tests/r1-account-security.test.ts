@@ -85,7 +85,7 @@ describe("R1-3 account security contracts", () => {
 
   it("ships executable Auth, RLS, Storage negatives and a dual-control production recovery contract", () => {
     const sql = read("supabase/tests/r1_account_security_assertions.sql");
-    const runbook = read("docs/runbooks/production-admin-recovery.md");
+    const runbook = read("archive/2026-10-04/docs/runbooks/production-admin-recovery.md");
     const schema = JSON.parse(read("schemas/production-admin-manifest.schema.json"));
     expect(sql).toContain("registration gate rejects a bypass");
     expect(sql).toContain("R1_CROSS_USER_RIGHTS_REQUEST_WAS_VISIBLE");
