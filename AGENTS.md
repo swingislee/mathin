@@ -1,41 +1,35 @@
 # Mathin Agent 入口
 
-> 本文件只保留每轮都需要的约束。实现细则按任务路由读取，禁止默认展开整个 `docs/plan/` 或全部 Agent 文档。
+本仓库以产品负责人当前任务为施工范围。产品构思读 [产品方向](docs/product-direction.md)，交付事实读 [当前状态](docs/current.md)。历史材料集中在 [archive](archive/README.md)，按明确问题查阅。
 
-## 每轮硬约束
+## 每轮工作
 
-- `docs/plan/04-roadmap.md` 顶部“当前施工阶段”是唯一阶段入口；历史编号、旧正文和未勾选项不能覆盖它。
-- 开始前检查工作树。既有修改和未跟踪文件均视为用户或其他任务所有；不得覆盖、回滚、移动或顺手格式化。
-- 开工时核对 `main` 的 [任务登记](.ai/registry.json) 中已有任务与文件归属（入口见 [.ai/STATUS.md](.ai/STATUS.md)）；并行施工、接手或互审按 [协作协议](docs/agent/collaboration.md) 执行。登记只记录任务执行，不替代 doc 04 的阶段入口。
-- 项目共享技能以 Git 跟踪的 `.agents/skills/` 为唯一源。调用同名本机技能前读取共享版本；`.claude/skills/` 中的历史副本按共享版本执行，运行时权限与私人记忆仍由各工具独立管理。
-- Windows 文本默认按无 BOM UTF-8 处理；PowerShell 读取必须显式 `-Encoding UTF8`。乱码先按解码问题调查，不得据此重写文件。
-- 连接脚本从环境变量或已忽略的私有配置读取凭据；脚本、命令、URL 和日志不写入真实密码、Token、Cookie 或个人数据。临时取证放 `.tmp/`，提交前扫描实际暂存内容；操作按 [`operations.md`](docs/agent/operations.md) 的脚本隐私边界执行。
-- 开发验收使用局域网 HTTP，浏览器代码及其共享模块生成 UUID 统一调用 `@/lib/uuid` 的 `newId()`；不得直接调用 `crypto.randomUUID()` 或假定安全上下文 API 可用。相关交互检查覆盖 `randomUUID` 缺失的环境；纯服务端需要原生 UUID 时从 `node:crypto` 导入。
-- `xiaomi`、`192.168.5.183`、`mathin.club` 和 `supabase.mathin.club` 都是生产。未取得本次明确授权并完成 [`r1-write-target-policy.md`](docs/runbooks/r1-write-target-policy.md) 的只读 preflight，禁止生产迁移、造数、业务写入、服务重载或重启。
-- 本地数据库写入前也要核对执行主机、实际 Supabase origin、监听进程和目标环境；容器名不能证明环境。任一项不明确即停止。
-- 正式身份、班级、课次、学生、考勤、冻结 release/snapshot 和受保护课程资源不得当作测试数据清理；删除、purge、不可逆迁移和生产高风险动作必须走对应授权与 runbook。
-- 机器检查、开发端可验收、已部署待验收、用户已验收和正式 Gate 关闭是不同状态，汇报时不得互相替代。
-- 用户沟通、规则、计划、代码注释和交付说明默认使用正面、可执行的描述，直接说明应采取的动作与预期结果；安全边界、不可逆操作或明确兼容禁区需要硬限制时再使用禁止性表述。
-- 新规则只有每轮都适用时才进入本文件；其余放入对应按需文档。同一规则只保留一个权威位置，根文件保持在 6 KB 以内。
+- 开始时检查工作树，尊重其他任务的修改和未跟踪文件；核对 `main` 的 [任务登记](.ai/registry.json) 中正在进行的文件归属。
+- 先形成可操作版本，交给产品负责人在真实场景中使用，再按反馈继续修改。普通增量直接实现、交付，不默认运行测试、大面积审核、备份、回滚演练或冒烟。
+- 测试仅在用户明确要求，或变更可能造成重大安全、生产事故时按具体风险选择。必要构建用于生成可交付程序。风险操作见 [操作规则](docs/agent/operations.md)。
+- 已实现、开发端可用、生产已部署和用户已验收分别记录；已有可信事实可以复用。
+- Windows 文本按无 BOM UTF-8 读写；PowerShell 使用 `Get-Content -LiteralPath … -Encoding UTF8`。乱码先核对原始字节与解码。
+- 使用正面、具体、可执行的表达。规则讲清动作与目的，硬限制留给真实的数据、权限、密钥和兼容边界。
+- 浏览器及共享代码使用 `@/lib/uuid` 的 `newId()`，支持局域网 HTTP；纯服务端可从 `node:crypto` 导入。
+- 凭据从环境变量或忽略的私有配置读取，临时材料放 `.tmp/`；共享命令、源码、日志和提交不得包含真实密码、Token、Cookie 或个人数据。
+- `xiaomi`、`192.168.5.183`、`mathin.club`、`supabase.mathin.club` 是生产。生产写入、迁移和服务切换需要本次任务的明确授权；操作前按 [数据操作](docs/ops/data-operations.md) 核对实际目标。本地数据库写入同样先识别真实主机、origin、监听进程和环境。
+- 正式身份、学生、班级、课次、考勤、冻结版本与受保护课程资源不得作为测试垃圾清理。删除和不可逆操作先明确对象范围与恢复办法。
 
-## 按任务读取
+## 按任务查阅
 
-先读下表命中的最小集合；跨类型任务取并集。只有规划治理、跨域架构或发布收口才全文读取 active 规划。
-
-| 任务 | 必读 |
+| 当前工作 | 需要的资料 |
 | --- | --- |
-| 任意实现 | `docs/plan/00-overview.md` 的状态头、§5 和与目标直接相关的产品章节；`docs/plan/04-roadmap.md` 的状态头与对应当前 work item；最近目录中的 `AGENTS.md`（若存在） |
-| 规划、阶段或 Gate | [`docs/agent/planning.md`](docs/agent/planning.md)；按其中规则读取 00/04/25 和专题文档 |
-| 多 Agent 协作、任务拆分、交接或互审 | [`docs/agent/collaboration.md`](docs/agent/collaboration.md)；`main` 的 `.ai/registry.json` 与对应任务卡 |
-| UI、路由、视觉、交互、Next.js | [`docs/agent/frontend.md`](docs/agent/frontend.md)；`docs/plan/01-design-system.md`，按需读取 `docs/plan/02-pages.md`、`docs/plan/05-planet-themes.md` 与相关专题 |
-| 数据库、鉴权、RLS、Server Action、测试身份 | [`docs/agent/data-and-classroom.md`](docs/agent/data-and-classroom.md)；`docs/plan/03-data-and-tech.md` 的相关章节 |
-| 游戏、H5、空间/3D、课堂 renderer | [`docs/agent/data-and-classroom.md`](docs/agent/data-and-classroom.md) 的课堂同步章节；最近目录的局部 `AGENTS.md` |
-| 本地验证、Git、证据、部署或生产运维 | [`docs/agent/operations.md`](docs/agent/operations.md)；涉及生产写入时再读目标操作 runbook |
+| 新功能或产品调整 | [产品方向](docs/product-direction.md) 与对应 [教学](docs/workflows/teaching.md)、[学校运营](docs/workflows/school-operations.md)、[内容](docs/workflows/content.md) 场景 |
+| UI、路由、交互 | [设计](docs/design.md)、[前端入口](docs/agent/frontend.md)，以及最近目录的 `AGENTS.md` |
+| 数据、鉴权、课堂同步 | [数据与课堂](docs/agent/data-and-classroom.md) |
+| 并行、接手或交接 | [协作](docs/agent/collaboration.md) 与相关任务卡 |
+| 状态整理或规划 | [规划](docs/agent/planning.md) |
+| 部署、清理、验证 | [操作规则](docs/agent/operations.md)，再按具体动作读取 `docs/ops/` |
 
-## 实现与交付
+每次只展开当前工作需要的资料。项目技能以 Git 跟踪的 `.agents/skills/` 为共享源。规则在所属文档维护，根入口保持简短。
 
-- 默认内循环：确认变更面 → 实现 → 覆盖本次风险的最窄检查 → 尽早交付可操作版本。不要为低风险小改动重复跑全量 Gate。
-- UI/交互由产品负责人在开发页面人工验收。除非明确要求，不用浏览器控制、Playwright 或截图替代验收；交付链接统一使用 `http://192.168.5.213:3130/...`。
-- 视觉未明确通过前，只做页面可启动、类型/版本化合同和本次硬门所需的窄检查，状态写为“开发端已交付，待人工视觉验收”。
-- 每个已验证、可独立验收的增量单独提交 Git，只包含本任务文件；不得夹带当前工作树中的其他改动。
-- 只有阶段确实关闭时才同步专题状态头、doc 04、doc 25、证据索引并运行 `pnpm plan:audit`；普通小改动不伪造阶段收口。
+## 交付
+
+开发验收链接统一使用 `http://192.168.5.213:3130/…`。视觉、教学手感和业务效果由产品负责人实际验收；需要浏览器或自动化验证时按明确任务调用验证技能。
+
+每个可独立使用的增量单独提交，只包含本任务文件。交付说明写明改了什么、可操作入口、实际检查范围和待确认内容。长任务先完成当前安全增量并留下简短交接，再判断是否需要新会话继续。

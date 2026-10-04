@@ -1,6 +1,6 @@
 # 格致未来思维 · 微信原生小程序
 
-> 2026-10-03 状态核对：三栏业务与账号／数据接入已交付开发端，待人工体验；共用后端已随 v0.3.0 发布，真实小程序微信仍待私有配置及平台往返，客户端平台发布未登记。网站扫码已启用的结果不覆盖小程序。当前完整状态见 [doc 25](../../docs/plan/25-production-1.0-product-completeness.md#current-facts)，开发运行依据见[集成记录](../../.ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md)。
+> 2026-10-03 状态核对：三栏业务与账号／数据接入已交付开发端，待人工体验；共用后端已随 v0.3.0 发布，真实小程序微信仍待私有配置及平台往返，客户端平台发布未登记。网站扫码已启用的结果不覆盖小程序。当前完整状态见 [当前状态](../../docs/current.md)，开发运行依据见[集成记录](../../archive/2026-10-04/.ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md)。
 
 使用原生 TypeScript、WXML、WXSS；不依赖 React 或网页运行时。
 

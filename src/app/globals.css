@@ -1,8 +1,9 @@
 @import "../../public/fonts/lxgw-wenkai/lxgwwenkai-regular.css";
 @import "tailwindcss";
 @source not "../../apps";
+@source not "../../archive";
 
-/* 设计 token 来源：docs/plan/01-design-system.md（色值取样自 public/Main.png） */
+/* 设计 token 来源：docs/design.md（色值取样自 public/Main.png） */
 :root {
   color-scheme: light;
   --paper: #fffdf8;

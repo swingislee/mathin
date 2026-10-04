@@ -69,8 +69,8 @@ describe("DEV-TMC-1 teacher microcourse core", () => {
   });
 
   it("keeps the deployed baseline distinct from the development-only collaboration increment", () => {
-    const roadmap = read("docs/plan/04-roadmap.md");
-    const completeness = read("docs/plan/25-production-1.0-product-completeness.md");
+    const roadmap = read("archive/2026-10-04/docs/plan/04-roadmap.md");
+    const completeness = read("archive/2026-10-04/docs/plan/25-production-1.0-product-completeness.md");
     expect(roadmap).toContain("DEV-TMC-1 · 普通教师短期微课孵化与校内共享");
     expect(roadmap).toContain("生产状态为 **DEPLOYED / PENDING USER ACCEPTANCE**");
     expect(roadmap).toContain("DEV-TMC-2 · 课次课件多方案协作与选用");

@@ -10,13 +10,13 @@ Windows 命令行：
 
 ```powershell
 # 未加入 PATH 时，JAVA_HOME 指向 Android Studio 的 jbr；ANDROID_HOME 指向 SDK。
-.\gradlew.bat :app:assembleDebug :app:lintDebug
+.\gradlew.bat :app:assembleDebug
 ```
 
 macOS/Linux：
 
 ```sh
-./gradlew :app:assembleDebug :app:lintDebug
+./gradlew :app:assembleDebug
 ```
 
 本机 SDK 路径由 Android Studio 写入忽略的 `local.properties`，或参照 local.properties.example。Gradle Wrapper 固定 8.13 并校验发行包 SHA-256；首次运行下载 Gradle 和 Maven 依赖。

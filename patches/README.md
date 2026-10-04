@@ -8,7 +8,7 @@
 - 保留 `start/stop/getDelta/getElapsedTime`、自动启动、可写 `elapsedTime` 与 `oldTime`，以及 `setFrameloop` 和手动 `advance` 的现有行为；公开类型仍兼容 `THREE.Clock`。
 - 继续由现有 Fiber 帧循环调用时钟，未新增动画循环、事件监听或浏览器可见性策略。按需渲染后的首帧仍包含空闲时间差；应用已有的动画限步逻辑保持不变。
 - 不覆盖全局 Three 类、不拦截 `console.warn`，也不修改应用里的教学动作、物理结果或持久数据。其他依赖版本保持原锁定值。
-- 阴影布尔默认值、`soft` 别名、旧对象 `type` 均归一为 `PCFShadowMap`，兼容首次配置与后续重配；保留 basic、variance 和关闭阴影的原行为。全仓画布另外共用显式 `THREE_SHADOWS` 配置，覆盖范围见[全仓兼容说明](../docs/runbooks/three-compatibility.md)。
+- 阴影布尔默认值、`soft` 别名、旧对象 `type` 均归一为 `PCFShadowMap`，兼容首次配置与后续重配；保留 basic、variance 和关闭阴影的原行为。全仓画布另外共用显式 `THREE_SHADOWS` 配置，覆盖范围见[全仓兼容说明](../archive/2026-10-04/docs/runbooks/three-compatibility.md)。
 
 `pnpm-workspace.yaml` 登记精确包版本与补丁路径，`pnpm-lock.yaml` 登记补丁 hash；正常锁定安装会应用同一补丁。升级 Fiber 或 Three 前，先检查上游是否已经迁移时钟，再更新或撤除这项兼容层与对应测试；不要把旧补丁直接套用到其他版本。
 

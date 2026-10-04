@@ -130,8 +130,8 @@ describe("R1-16 independent production deployment preflight", () => {
       const runbookEvidence = actualize(source());
       runbookEvidence.evidence.r1_14 = {
         status: "passed",
-        artifactPath: "docs/runbooks/r1-production-deployment-preflight.md",
-        artifactSha256: textFileSha256(path.join(root, "docs/runbooks/r1-production-deployment-preflight.md")),
+        artifactPath: "archive/2026-10-04/docs/runbooks/r1-production-deployment-preflight.md",
+        artifactSha256: textFileSha256(path.join(root, "archive/2026-10-04/docs/runbooks/r1-production-deployment-preflight.md")),
       };
       expect(() => loadProductionDeploymentContext({ root, manifestPath: writeManifest(temp, "runbook-evidence.json", runbookEvidence) })).toThrow(/must be under docs\/evidence\/r1\/artifacts\/r1-16/);
 

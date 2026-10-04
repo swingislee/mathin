@@ -1,35 +1,23 @@
-# 数据、鉴权与课堂同步规则
+# 数据、权限与课堂
 
-> 读取条件：任务涉及数据库、Supabase、鉴权、RLS、Server Action、测试身份、课程发布或课堂互动状态。专题事实以 `../plan/03-data-and-tech.md` 和当前领域规划为准。
+## 数据职责
 
-## 身份与授权
+页面和 Server Action 按当前主体读取和写入；受保护数据在服务端验证登录、角色、资源关系与 RLS。前端隐藏只组织界面。家长数据继续核对亲子关系，跨端复用正式身份。
 
-- 顶层身份只有 `student | parent | staff | admin`；教师、教务、教研、学服、销售等属于 staff 岗位/权限，不得新增平行顶层角色。
-- 受保护页面统一调用 `src/lib/auth.ts` 的 `requireUser(locale)`，内部使用 `supabase.auth.getUser()`；未经专门鉴权迁移不得绕过、复制或替换。
-- 服务端授权禁止信任 `getSession()` 返回的用户。`src/proxy.ts` 只刷新 Cookie 并做乐观跳转，真实授权依赖数据库 RLS。
-- 登录/注册 Action 位于 `src/app/[locale]/(auth)/actions.ts`，其 `next` 参数必须防 open redirect；OAuth/邮箱确认回调位于 `src/app/[locale]/auth/callback/route.ts`。浏览器、服务端和环境校验分别复用 `src/lib/supabase/client.ts`、`server.ts` 和 `config.ts`。
-- 前端隐藏按钮不构成授权；新增读写同时检查 RLS、角色 scope、失败码和审计边界。
+保存现实中的具体事实、时间、来源和适用范围。状态由相应事实派生，未知与未完成保持区别。修订留下必要追溯，同一对象的相关入口沿用结果。
 
-## Server Action 与数据输入
+正式学生、班级、课次、考勤、课程资源与冻结 release 属于业务资料。测试使用明确隔离的开发对象。删除、合并、迁移和清理按 [数据操作](../ops/data-operations.md) 确定范围与恢复方式。
 
-- Server Action 入参必须通过 zod schema；禁止在 Action 体内散落 `String(...)`、`Number(...)`、`Date.parse` 等手写 coercion。
-- schema 与 Action 同文件；共享金额、文本、日期、UUID 原语复用 `src/features/school/actions/schemas.ts`。
-- 校验失败返回 `{ ok: false, code: "VALIDATION" }`；只拒绝畸形输入，不借校验层改变业务规则。搜索串等非持久化输入可截断。
-- 新增受保护数据页同时遵守 `frontend.md` 的异步 Request API 与 Suspense 边界。
+已执行 migration 保持可追溯；schema 变化新增迁移并维护相关类型。版本化载荷、数据库保存边界与读取兼容共同描述同一合同，旧冻结版本按原语义可读。
 
-## 测试身份与正式数据
+## 课堂同步
 
-- 本机隔离 Supabase 复用 `.claude/test-accounts.local.md` 或当前 gitignored manifest 中的固定开发身份；不得为常规验证创建一次性账号，也不得把开发身份同步到 Xiaomi。
-- 需要未认领绑定码、多子女家长、越权等现有身份无法覆盖的场景时，先向产品负责人确认新增测试身份。
-- 正式身份及真实班级、课次、学生、考勤、冻结 release/snapshot 都是受保护业务事实。清理只能在隔离副本演练，或按已授权 manifest 精确处理显式测试根；不得使用“只留一个 auth 用户”的旧假设。
+编辑、试讲、教师端和展示端共用内容协议与舞台表达。课堂发送准确状态或语义命令，动画过程帧留在表现层；回执更新状态时避免重复播放已经执行的动作。
 
-## 自研课堂互动同步门
+快照承接晚加入和恢复，实例使用稳定身份。多游戏、多 H5、多教具同页时各自保存与同步；某个对象的可写能力由自身协议决定。缺少可重放协议的对象保持明确只读，其他对象继续工作。
 
-- 新增或修改 Mathin 自研游戏页、单文件 H5、空间/3D 文档或其他课堂 renderer 时，必须在 `src/features/classroom/sync/interaction-audit.ts` 声明版本化同步 provider；`interactive=true` 或本机可点击不等于课堂同步。
-- 教师控制态只有一个权威写者。可恢复动作使用有 payload 上限的 durable snapshot/semantic command 并进入 session event log；相机逐帧、hover、拖动中间帧等可丢表现不能冒充权威状态。
-- 展示端、学生端和晚加入端必须能从 snapshot/command replay 收敛。未实现协议的自研 H5 与 `spatial-page-v1` 在课堂中保持 read-only/fail-closed。
-- 新增 `CoursewareDoc` 版本、微课 mode 或游戏课件 contract 时更新类型穷尽门，并运行 `pnpm classroom:interaction-sync:audit`。
+教师备课保存固定起点，课堂从该起点操作。个人草稿、当前课堂状态与正式冻结 release 分别承担职责。工具状态入口在 `src/features/tools/courseware/registry.ts` 与 `src/features/tools/scenes/`；组合课件接入见 [局部说明](../../src/features/courseware-doc/AGENTS.md)。
 
-## 数据摘要
+## 风险检查
 
-- 写入仓库或数据库、并要跨环境复核的文本摘要必须使用 `scripts/lib/text-hash.mjs` 的 `textFileSha256` / `normalizeNewlines`；不得直接对 Windows checkout 的原始字节取 hash。
+普通业务增量按 [操作规则](operations.md) 直接交付。若变更可能造成越权、身份串用、正式数据损失、秘密泄漏或生产中断，选择覆盖实际风险的用例和隔离目标；记录检查能够证明的范围。数据库断言中出现事务回滚，也仍按写入操作识别目标。

@@ -1,72 +1,24 @@
-# 数独题型扩展合同
+# 数独扩展入口
 
-本文件适用于 `src/features/games/sudoku/**`。新增或修改数独题型时，必须同时遵守仓库根 `AGENTS.md`。
+数独可用于公开挑战、教师带领、目标格讨论和完整解题，材料与反馈适合当前教学用途。
 
-## 1. 唯一扩展入口
+| 对象 | 入口 |
+| --- | --- |
+| 稳定题型、seed 与可见范围 | `variant.ts` 的 `SUDOKU_VARIANTS` |
+| 规则、生成、求解、验证 | `logic.ts` 的 runtime registry |
+| 棋盘表现 | `SudokuBoard.tsx` 的 renderer registry |
+| 公开与课件选择 | `SudokuVariantSelector.tsx` |
+| 教师自编题 | `courseware-contract.ts` |
+| 编辑、课堂与镜像 | `SudokuGamePageEditor.tsx`、`SudokuGamePageStage.tsx`、`state.ts` |
 
-| 对象 | 权威位置 | 合同 |
-| --- | --- | --- |
-| 题型元数据与 seed | `variant.ts` 的 `SUDOKU_VARIANTS` | 稳定 `variantId`、尺寸、runtime、renderer、出现界面、排行策略和挖空数只在此登记 |
-| 规则、生成、求解、验证 | `logic.ts` 的 `SudokuVariantRuntime` / `SUDOKU_RUNTIME_REGISTRY` | 客户端判定与服务端 `verifySudoku` 必须调用同一 runtime |
-| 棋盘表现 | `SudokuBoard.tsx` 的 `SUDOKU_RENDERER_REGISTRY` | 新 renderer 必须显式登记；不得让未知 renderer 静默套用普通棋盘 |
-| 题型按钮 | `SudokuVariantSelector.tsx` | 公开游戏和课件入口复用同一选择器；可见性来自 `selectableIn` |
-| 教师自编题内容 | `courseware-contract.ts` | `sudoku-authored-v1` 是唯一解历史合同；新页面使用 `sudoku-authored-v2`，显式保存 `teacher-led`、`teaching-target` 或 `full-solution` 目标 |
-| 微课编辑与课堂 | `SudokuGamePageEditor.tsx` / `SudokuGamePageStage.tsx` | 通过通用 `game-page-v1` 适配层接入；不得在微课编辑器、审核或来源选择器中新增数独专用分支 |
-| 课堂轻状态 | `state.ts` / `GameMirrorState` | 题型由课件页 seed 决定；镜像只传操作状态，不重复传规则定义 |
-| 4:3 组合布局 | `../courseware/game-page-layout.ts` | `game-page-grid-v1` 固定 12×9；页面恰有一个游戏块，文字/图片最多 4 个，所有块只沿网格移动且不重叠 |
-| 合同测试 | `tests/sudoku-variants.test.ts` / `tests/game-courseware-contract.test.ts` | 注册表、seed、确定性生成、自编题 payload、runtime、服务端验证和镜像兼容必须覆盖 |
+对外 `gameId=sudoku`，题型使用稳定 `variantId`。无前缀 seed 表示历史 `classic-9x9`；`sudoku-v1:4/6` 保持历史算法；新题型使用 `sudoku-v2:<variantId>:<baseSeed>`。版本和稳定 ID 保持原语义，未知协议明确拒绝。
 
-`SudokuSizeSelector` 只为旧尺寸调用保留。新代码必须使用 `SudokuVariantSelector` 和稳定 `variantId`，否则无法区分同为 9×9 的标准数独与变形数独。
+客户端和服务端使用同一 runtime。新增题型登记规则、renderer、zh/en 文案和可见范围；排行榜启用前具备题型对应的服务端验证。旧尺寸适配仅承接历史调用，新入口使用稳定题型 ID。
 
-## 2. 稳定协议
+`sudoku-authored-v1` 按历史整题唯一解读取。新页面使用 `sudoku-authored-v2`：`full-solution` 整题唯一；`teaching-target` 盘面可解且目标格在所有合法终盘中取值一致；`teacher-led` 盘面可解并关闭任意答案揭示。多解盘面的第一份求解结果不能当作确定答案。
 
-- 对外 `gameId` 永远是 `sudoku`。题型不是新游戏，不得创建 `diagonal-sudoku` 等平行 gameId。
-- 无前缀 seed 永久表示 `classic-9x9`，用于所有历史公开对局和“宫区块摈除”课件。
-- `sudoku-v1:4:<baseSeed>` 与 `sudoku-v1:6:<baseSeed>` 永久表示当前四宫、六宫；不得改写既有题面算法或 RNG 输入。
-- 新变形题型使用 `sudoku-v2:<variantId>:<baseSeed>`。`variantId` 使用小写 kebab-case，发布后不得改名、复用或改变语义。
-- 未知或畸形的 `sudoku-v1/v2` 必须 fail closed，不能降级成 9×9 继续生成或通过服务端验证。
-- 确定性生成的公开对局与历史游戏课件继续复用 `{ gameId, difficulty, seed }` 及现有 `GameMirrorState`。教师手工原型题使用 `game-page-v1` + `sudoku-authored-v1`，payload 必须显式保存稳定 `variantId`，并经服务端 runtime 生成不可变校验凭证；不得把规则对象塞进镜像事件。
-- `microcourse-page-v1 mode=sudoku` 已由版本化 migration 原位升级为 `courseware-composition-v1` 内的 `game-page-v1 + sudoku-authored-v2` 区块；活动数据中旧 envelope 必须为零，应用解析、编辑、审核、冻结和课堂全部 fail closed。新建教师数独页只走通用 composition game 区块；不得恢复微课核心 schema 或页面切换中的数独专用分支。
-- `sudoku-authored-v1` 永久按“整题唯一解”解释，只用于读取历史 revision。新建页面使用 `sudoku-authored-v2`：`full-solution` 必须整题唯一；`teaching-target` 只要求盘面可解且每个目标格在所有合法终盘中取值相同；`teacher-led` 只要求盘面可解，并关闭任意格答案揭示。不得用求解器返回的第一份终盘冒充多解盘面的确定答案。
-- `game-page-v1.layout` 缺省永久表示互动占满 4:3 页面；存在时必须是 `game-page-grid-v1`。老师端只显示模板、网格吸附和拖拽手柄，禁止暴露 `column/row/span` 数字输入。数独块最小为 8×6 网格，避免课堂点击目标过小；布局只影响摆放，不能复制题型、目标或镜像状态。
+教师页面通过 composition 中的通用 `game-page-v1` 区块接入。旧 `microcourse-page-v1 mode=sudoku` 已迁移；新增能力沿用通用区块。镜像传操作状态，规则由固定课件内容决定，稳定实例贯穿 `GameMirrorState` 与课堂 `game_state`。
 
-标准调用：
+历史独立 `game-page-grid-v1` 12×9 布局与当前 composition 的尺寸合同分别读取对应 schema。新增能力保持历史内容可读，并让老师通过拖动、模板与可理解操作设置材料。
 
-```ts
-const variant = getSudokuVariant(variantId);
-const seed = sudokuSeedForVariant(baseSeed, variantId);
-const parsed = parseSudokuVariantSeed(seed);
-const puzzle = sudokuPuzzle(seed, difficulty);
-const solved = solveSudokuGrid(puzzle, variantId);
-```
-
-仅标准 4×4 / 6×6 / 9×9 兼容代码可以调用 `sudokuVariantForSize`、`sudokuSeedForSize` 或按格数推断。任何同尺寸变形题型必须显式传 `variantId`。
-
-## 3. 新增题型步骤
-
-1. 在 `SUDOKU_VARIANTS` 增加定义，选择永久 ID，并默认使用 `seedEncoding: "variant-v2"`。
-2. 判断现有 runtime 是否完整覆盖新规则。若不能，新增 `runtimeId` 和 `SudokuVariantRuntime` 实现，并注册到 `SUDOKU_RUNTIME_REGISTRY`。生成、候选合法性、求解、唯一性分析、逐格验证和最终 proof 验证不得分叉。
-3. 判断 `classic-grid-v1` 是否能准确表达宫边界、附加线索和课堂突出。若不能，新增 renderer 并在 `SUDOKU_RENDERER_REGISTRY` 登记；仅隐藏规则标记不算支持。
-4. 在 `messages/zh.json`、`messages/en.json` 的 `games.sudokuVariants.<variantId>` 添加同名 key。
-5. 通过 `selectableIn` 决定是否出现在公开游戏、确定性课件和教师自编题。不得另建按钮列表或插入弹窗分支。
-6. 新题型默认 `ranked: false`。只有开始会话、seed 发放、服务端验证和排行榜维度都显式包含题型后才可设为 `true`。
-7. 若教师自编题、微课或导入格式需要该题型，在 `sudoku-authored-v1` 中保存版本化 `variantId` 并由服务端 runtime 分析；只要 payload 版本不变，不得为新题型修改通用 `game-page-v1` 或来源导入 SQL。
-
-## 4. 必须验收
-
-- `sudokuVariantRegistryIssues()` 返回空数组，runtime/renderer 注册表覆盖所有已登记 ID。
-- 历史 raw seed 与 v1 seed 生成结果不变；同 seed + 难度 + variant 在服务端和浏览器得到同一题面。
-- 每个新题型至少覆盖：合法终盘、错误终盘、逐格错误、确定性生成、proof 验证、seed round-trip 和未知协议拒绝。
-- 课堂覆盖填数、候选、删除、突出、答案、撤销与镜像恢复；不适用的工具必须由 renderer 明示禁用。
-- `game-page-v1` 与微课 composition game 区块必须把同一 `GameMirrorState` 贯穿到课堂 `game_state`；旧 `microcourse-page-v1 mode=sudoku` 必须由数据库断言证明为零。只传 `interactive` 而遗漏 `mirror/onMirror` 视为合同失败。
-- 公开页和课件入口 zh/en 均可选择；1024×768 的 4:3 工作区无横向滚动。
-- 最窄检查至少运行：
-
-```text
-pnpm test -- tests/sudoku-variants.test.ts tests/sudoku-teaching-board.test.ts tests/game-courseware-contract.test.ts
-pnpm typecheck
-pnpm messages:check
-pnpm classroom:interaction-sync:audit
-```
-
-视觉、输入或课堂能力变化按仓库根 `AGENTS.md` 的产品负责人视觉验收规则执行：默认只做必要的窄机器检查，并提供 `http://192.168.5.213:3130/...` 局域网链接交由产品负责人人工验收；只有产品负责人明确要求时才运行 `verify` skill、浏览器控制、截图或其他视觉自动化。
+普通增量交付开发端人工使用。测试只按用户明确要求或重大安全、生产风险选择，遵循根入口。

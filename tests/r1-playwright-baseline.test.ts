@@ -124,7 +124,7 @@ describe("R1-14 formal Playwright baseline", () => {
     expect(validateReleaseStats({ expected: 9, skipped: 0, unexpected: 0, flaky: 0 }).passed).toBe(true);
     expect(validateReleaseStats({ expected: 8, skipped: 1, unexpected: 0, flaky: 0 }).passed).toBe(false);
     expect(validateReleaseStats({ expected: 8, skipped: 0, unexpected: 1, flaky: 0 }).passed).toBe(false);
-    expect(read("docs/runbooks/r1-playwright-release.md")).toContain("不构成 R1-14 发布证据");
+    expect(read("archive/2026-10-04/docs/runbooks/r1-playwright-release.md")).toContain("不构成 R1-14 发布证据");
   });
 
   it("never creates accounts and only local diagnostic mode may skip missing fixed credentials", () => {
