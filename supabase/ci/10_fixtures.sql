@@ -1,5 +1,5 @@
 -- ============================================================================
--- CI 断言夹具（docs/plan/15-§5）。
+-- CI 断言夹具（历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §5）。
 --
 -- supabase/tests/p4e_security_assertions.sql 依赖一组固定的「测试-*」账号：一个
 -- 管理员、一个教师、一个教务 reviewer、一个学服（岗位角色 sales，作用域
