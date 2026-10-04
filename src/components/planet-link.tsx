@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils";
 export type PlanetAccent = "moon" | "star" | "crater" | "rose" | "leaf" | "cheek";
 
 /**
- * 圆形星球入口（docs/plan/01-6）：圆 + 陨石棕描边 + 内容（图标或迷你星球）+ 下方标签。
- * 传 planetName 时，hover 标签从板块名切换为星球名（docs/plan/05-§4）。
+ * 圆形星球入口（历史设计：archive/2026-10-04/docs/plan/01-design-system.md §6）：圆 + 陨石棕描边 + 内容（图标或迷你星球）+ 下方标签。
+ * 传 planetName 时，hover 标签从板块名切换为星球名（历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md §4）。
  */
 export function PlanetLink({ href, label, planetName, icon: Icon, art, accent, className, style }: {
   href: string;

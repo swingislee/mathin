@@ -14,7 +14,7 @@ const TONE_CLASS: Record<NonNullable<StatusStripItem["tone"]>, string> = {
   critical: "text-rose",
 };
 
-/** 一行 key→value 状态摘要（docs/plan/19-p4i-final.md §12.2 底部状态栏 / §13.5 教学准备）。 */
+/** 一行 key→value 状态摘要（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §12.2 底部状态栏 / §13.5 教学准备）。 */
 export function StatusStrip({ items, className }: { items: readonly StatusStripItem[]; className?: string }) {
   if (items.length === 0) return null;
   return (

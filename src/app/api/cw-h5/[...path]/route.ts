@@ -20,7 +20,7 @@ import {
 } from "@/features/courseware-doc/source-runtime-schema";
 
 /**
- * H5 包垫片(docs/plan/16 §3 D3,proxy matcher 已排除 /api):
+ * H5 包垫片(历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md §3 D3,proxy matcher 已排除 /api):
  * - .html/.htm:服务端取回后以 text/html 直出(storage-api 会把 HTML 降级
  *   text/plain,这是它存在的唯一原因);
  * - `__h5_noop__/*`:打点/日志上报的离线改写目标,直接 204 空转;

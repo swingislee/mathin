@@ -8,7 +8,7 @@ import type { WorkItemRow } from "./stage/types";
 import { currentWorkEntryHref } from "./work-entry-contract";
 
 // ---------------------------------------------------------------------------
-// P4I-8：今日工作只读试用（docs/plan/19-p4i-final.md §6-7）的数据获取与
+// P4I-8：今日工作只读试用（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §6-7）的数据获取与
 // 纯展示派生逻辑。只读——不封装 snooze/pin/acknowledge/watch 等状态 RPC，
 // 那些留给校验通过后的下一阶段。
 // ---------------------------------------------------------------------------

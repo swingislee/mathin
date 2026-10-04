@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /**
- * page-doc-v1 —— mathin 课件页文档的冻结 schema（P6-0 ④，docs/plan/16 §3 D1）。
+ * page-doc-v1 —— mathin 课件页文档的冻结 schema（P6-0 ④，历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md §3 D1）。
  *
  * 由镜像项目的 page-render-v1（mofaxiao_courseware/src/render/model.ts）衍生：
  * - 去掉本地环境字段：resourceRefId（镜像本地自增 id）、libraryPath、availableLocally、

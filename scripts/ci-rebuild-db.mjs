@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { assertNonProductionWriteTarget } from "./lib/r1-write-target-policy.mjs";
 
-/** 在一次性 CI 容器里从零重建整个库：平台垫片 → 全部 migration（文件名序）→ 断言夹具。
- *  顺带每次 CI 都验证「从零重建库」这条路径没断（docs/plan/15-§5）。 */
+/** 在明确要求的隔离空库中重建：平台垫片 → 全部 migration（文件名序）→ 断言夹具。
+ *  手动调用并按 docs/ops/data-operations.md 核对目标与破坏性操作范围。 */
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {

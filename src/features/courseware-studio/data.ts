@@ -845,7 +845,7 @@ async function resolveEditorBindingUrls(
 
 /**
  * 只读预览数据:讲的 current release 快照 → 页 doc(过冻结 schema)+ 全部绑定的 URL。
- * 渲染的是已发布状态,不是草稿——预览即验收视角(docs/plan/16 P6-4)。
+ * 渲染的是已发布状态,不是草稿——预览即验收视角(历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md P6-4)。
  */
 export async function loadLecturePreview(
   lectureId: string,

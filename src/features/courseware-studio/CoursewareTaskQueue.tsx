@@ -54,7 +54,7 @@ async function taskTabLabels() {
   return labels;
 }
 
-/** 讲次任务队列的命令面板：待完善/最近/待发布切换 + 任务搜索（docs/plan/21 §14）。 */
+/** 讲次任务队列的命令面板：待完善/最近/待发布切换 + 任务搜索（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §14）。 */
 export async function CoursewareTaskCommandPanel({ tab, query }: { tab: CoursewareTaskTab; query: string }) {
   const [t, tabLabels] = await Promise.all([getTranslations("coursewareStudio"), taskTabLabels()]);
   return (

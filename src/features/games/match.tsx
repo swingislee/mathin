@@ -29,7 +29,7 @@ function nowMs() {
   return Date.now();
 }
 
-/** 对局页统一框架（docs/plan/02-3.2）：卷轴计时条 + 难度/重开 + 面板 + 结果条。 */
+/** 对局页统一框架（历史设计：archive/2026-10-04/docs/plan/02-pages.md §3.2）：卷轴计时条 + 难度/重开 + 面板 + 结果条。 */
 export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: boolean }) {
   const game = getGame(gameId);
   const t = useTranslations("games");
@@ -97,7 +97,7 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* 卷轴横条：计时器居中，庄重衬线数字（docs/plan/05-3.2） */}
+      {/* 卷轴横条：计时器居中，庄重衬线数字（历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md §3.2） */}
       <div className="flex items-center justify-between gap-3 rounded-xl border-y-2 border-x border-(--p-line) bg-(--p-wash) px-4 py-2.5">
         <div className="flex items-center gap-1.5" role="radiogroup" aria-label={t("difficultyLabel")}>
           {game.difficulties.map((d, i) => (

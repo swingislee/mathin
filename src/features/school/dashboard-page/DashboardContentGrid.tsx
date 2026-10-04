@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * 页面内部的 12 列容器网格（docs/plan/21 §16）。
+ * 页面内部的 12 列容器网格（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §16）。
  *
  * 取消页面根级限宽后，"内容多宽"从页面外层下沉到这里：表格铺满，表单走 8+4，
  * 长文本自己收窄。断点一律用 page 容器查询，因为固定侧栏下浏览器宽度并不等于

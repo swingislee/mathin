@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { MINDS_READ_KEY, markRead, readSet, subscribeStorage } from "@/lib/read-store";
 
-/** 路灯：读过灯亮（点灯人星球的核心意象，docs/plan/05-3.3）。状态存 localStorage。 */
+/** 路灯：读过灯亮（点灯人星球的核心意象，历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md §3.3）。状态存 localStorage。 */
 export function Lamp({ slug, litLabel, unlitLabel }: { slug: string; litLabel: string; unlitLabel: string }) {
   const lit = useSyncExternalStore(
     subscribeStorage,

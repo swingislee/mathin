@@ -1,7 +1,7 @@
 import type { DocInteraction } from "./schema";
 
 /**
- * WAAPI 交互调度器——镜像 viewer-app.ts 的行为基准逐条移植(docs/plan/16 §3 D5):
+ * WAAPI 交互调度器——镜像 viewer-app.ts 的行为基准逐条移植(历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md §3 D5):
  * - 步骤流:auto 从首个 auto 步连播,遇 click 步停;click 按步循环推进;
  *   same 与上一步并行,follow 等上一步完成;
  * - enter/emphasize/path 执行前先显示节点(enter 目标初始 visible=false,

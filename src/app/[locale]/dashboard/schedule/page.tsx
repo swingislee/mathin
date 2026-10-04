@@ -37,7 +37,7 @@ export default async function SchedulePage({
   return (
     <>
       {/* 页壳由 ScheduleWeekView 自己渲染：周次切换与筛选是它的客户端状态，
-          必须住在命令面板里（docs/plan/21 §14）。 */}
+          必须住在命令面板里（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §14）。 */}
       <ScheduleWeekView
         refreshKey={quickRow ? [quickRow.id, quickRow.scheduledAt, quickRow.durationMin, quickRow.roomId, quickRow.state].join(":") : ""}
         title={t("title")}

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * 星轨虚线：全站视觉母题（docs/plan/01-3）。
+ * 星轨虚线：全站视觉母题（历史设计：archive/2026-10-04/docs/plan/01-design-system.md §3）。
  * 圆点虚线，默认陨石棕；传 SVG path 的 d 与 viewBox 使用。
  */
 export function StarPath({ d, viewBox, className, strokeWidth = 2 }: { d: string; viewBox: string; className?: string; strokeWidth?: number }) {

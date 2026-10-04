@@ -1,7 +1,7 @@
 import type { Json } from "@/lib/database.types";
 
 /**
- * 统一工作项契约（docs/plan/19-p4i-final.md §7.2）。数据来自
+ * 统一工作项契约（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §7.2）。数据来自
  * `public.list_my_work_items` RPC（P4I-6，snake_case 列），本文件是
  * TS 侧的 camelCase 镜像；snake→camel 的实际映射留给 P4I-8 的数据获取层。
  */

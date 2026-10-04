@@ -1,7 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
 /*
- * 骨架的列数必须与真实页面同源（docs/plan/27 §5.3）。真实页面用 @container/page，
+ * 骨架的列数必须与真实页面同源（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §5.3）。真实页面用 @container/page，
  * 骨架原先用 md:/lg: 视口断点，两者在 1024–1280 之间给出不同列数，加载完成的那一帧
  * 会看到卡片列数跳变。这里自建同名容器，判据与 DashboardContentGrid 对齐。
  */

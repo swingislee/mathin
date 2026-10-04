@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 /**
- * 按容器自身宽度决定分栏方向（docs/plan/27 §3 D4）。
+ * 按容器自身宽度决定分栏方向（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D4）。
  *
  * 容器查询解决不了这件事：`react-resizable-panels` 的方向是 JS 属性而不是 CSS
  * 声明，CSS 改不了它。所以这里用 ResizeObserver 测容器实宽——判据仍然是"这块工作区

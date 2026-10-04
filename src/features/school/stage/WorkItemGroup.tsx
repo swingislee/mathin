@@ -18,7 +18,7 @@ function defaultItemTitle(item: WorkItemRow): string {
 }
 
 /**
- * 单个 groupKey 簇（docs/plan/19-p4i-final.md §7.4）：同一对象下多个事项
+ * 单个 groupKey 簇（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §7.4）：同一对象下多个事项
  * 合并展示，组头点击进入该对象的 canonical 工作区，组内逐条列出事项。
  * 本组件不认识应用的路由表，`routeTarget` 只是稳定对象引用
  * （如 `session:<id>`，P4I-6 迁移已约定），需要调用方通过 `getGroupHref`

@@ -30,7 +30,7 @@ const SheetOverlay = React.forwardRef<
 ))
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
-// docs/plan/24 §5.3：抽屉默认可滚动、且上下抽屉有高度上限。
+// 历史设计：archive/2026-10-04/docs/plan/24-dashboard-visual-interaction-closeout.md §5.3：抽屉默认可滚动、且上下抽屉有高度上限。
 // 左右抽屉原本只有 `h-full`，内容超过一屏时超出部分既不滚动也够不着——课次快速管理、
 // 班级设置这类抽屉底部恰好是保存按钮。上下抽屉更糟：连 `h-full` 都没有，长内容会把
 // 抽屉顶出视口。overscroll-contain 防止滚到底之后继续带动身后的页面。

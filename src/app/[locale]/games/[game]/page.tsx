@@ -61,7 +61,7 @@ export default async function GamePage({ params }: { params: Promise<{ locale: s
       </div>
       <div className="mt-4 flex-1">
         <GameMatch gameId={game} loggedIn={Boolean(user)} />
-        {/* 底部说明折叠区（教学功能，docs/plan/02-3.2） */}
+        {/* 底部说明折叠区（教学功能，历史设计：archive/2026-10-04/docs/plan/02-pages.md §3.2） */}
         <details className="mx-auto mt-8 max-w-2xl rounded-xl border border-(--p-line) bg-(--p-wash) px-4 py-3 text-sm">
           <summary className="cursor-pointer font-medium">{t("rules")}</summary>
           <p className="mt-2 leading-6 text-muted">{t(`items.${game}.rules`)}</p>

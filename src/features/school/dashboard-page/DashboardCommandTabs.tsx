@@ -3,7 +3,7 @@ import { RouteTabs, type RouteTab } from "@/features/school/navigation/RouteTabs
 export type DashboardCommandTab = RouteTab;
 
 /**
- * 命令面板里的多状态互斥切换（docs/plan/21 §15.2）：当前 / 回收站、我的 / 全部、
+ * 命令面板里的多状态互斥切换（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §15.2）：当前 / 回收站、我的 / 全部、
  * 待处理 / 已完成。
  *
  * doc 23 §4.3B 之后这里只剩一层命名：实现在 navigation/RouteTabs，与对象工作区的

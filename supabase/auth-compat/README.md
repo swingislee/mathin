@@ -54,4 +54,4 @@ node scripts/wechat-auth-compat-local.mjs --patched
 
 在选定部署环境接通 Next.js、实际 REST 数据库、候选 Auth 镜像及 provider 配置，验证代理／日志设置与定期清理运行。网站应用审核通过并配置服务端私有凭据后，完成真实扫码、原账号绑定及微信再次登录验收。完成这些条件前保持 `WECHAT_AUTH_COMPATIBILITY_VERIFIED`、`WECHAT_PHONE_LINKING_VERIFIED` 和 `WECHAT_OAUTH_ENABLED` 关闭。
 
-生产 Auth 升级与数据库迁移另按[写入目标规则](../../archive/2026-10-04/docs/runbooks/r1-write-target-policy.md)完成只读 preflight 和本次授权。本目录的检查脚本只接受既定的本机隔离目标。
+生产 Auth 升级与数据库迁移按[数据操作](../../docs/ops/data-operations.md)完成只读 preflight 和本次授权；接入参数与启用方法见[微信登录配置](../../docs/ops/wechat-oauth.md)。本目录的检查脚本只接受既定的本机隔离目标。

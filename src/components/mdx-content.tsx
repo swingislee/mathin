@@ -4,7 +4,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 
-/** MDX 正文渲染：KaTeX 公式 + 设计系统排印（docs/plan/03-§5 选型已批准） */
+/** MDX 正文渲染：KaTeX 公式 + 设计系统排印（历史设计：archive/2026-10-04/docs/plan/03-data-and-tech.md §5 选型已批准） */
 const components = {
   h2: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h2 className="mt-8 font-display text-xl text-ink" {...props} />,
   h3: (props: React.HTMLAttributes<HTMLHeadingElement>) => <h3 className="mt-6 font-medium text-ink" {...props} />,

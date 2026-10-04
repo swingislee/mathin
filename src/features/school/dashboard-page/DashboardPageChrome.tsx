@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * 页头与命令面板共用的滚动栈（docs/plan/21 §13）。
+ * 页头与命令面板共用的滚动栈（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §13）。
  *
  * 窄屏与矮屏随正文滚动，宽屏的固定条件由 globals.css 与列表内滚动共用。
  * 宽屏将两者一起固定，标题或筛选换行后仍共用自然高度，保持滚动时的对齐。

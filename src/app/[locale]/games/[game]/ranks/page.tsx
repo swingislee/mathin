@@ -74,7 +74,7 @@ export default async function RanksPage({ params, searchParams }: {
         <span className="text-sm font-medium">{t("ranks")}</span>
       </div>
 
-      {/* 难度 tab（docs/plan/02-3.2） */}
+      {/* 难度 tab（历史设计：archive/2026-10-04/docs/plan/02-pages.md §3.2） */}
       <div className="mt-4 flex items-center gap-1.5">
         {def.difficulties.map((d, i) => (
           <Link
@@ -93,7 +93,7 @@ export default async function RanksPage({ params, searchParams }: {
         ))}
       </div>
 
-      {/* 御前名册：前三名金/银/铜星徽（docs/plan/05-3.2） */}
+      {/* 御前名册：前三名金/银/铜星徽（历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md §3.2） */}
       <div className="mt-6 overflow-x-auto rounded-2xl border">
         <Table className="w-full text-sm">
           <TableHeader>

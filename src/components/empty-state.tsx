@@ -1,6 +1,6 @@
 import { Star4 } from "./star4";
 
-/** 空状态：一颗星 + 一句话（docs/plan/01-6）。 */
+/** 空状态：一颗星 + 一句话（历史设计：archive/2026-10-04/docs/plan/01-design-system.md §6）。 */
 export function EmptyState({ message }: { message: string }) {
   return (
     <div className="flex flex-col items-center gap-4 py-20 text-center">

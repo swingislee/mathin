@@ -28,7 +28,7 @@ import {
 
 /**
  * page-doc-v1 舞台渲染器——镜像 viewer renderedNodeHtmlV2 的 React 移植,
- * 行为基准逐项对齐(docs/plan/16 §3 D5):节点仿射、crop 百分比图、adapter 分发、
+ * 行为基准逐项对齐(历史设计：archive/2026-10-04/docs/plan/16-p6-courseware-platform.md §3 D5):节点仿射、crop 百分比图、adapter 分发、
  * visible=false 即 display:none(enter 目标初始隐藏)、节点级 click 触发器标记。
  *
  * 舞台模式(§6.1 轨道一,纯渲染变换、doc 零改动):

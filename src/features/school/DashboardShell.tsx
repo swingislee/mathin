@@ -304,7 +304,7 @@ export function DashboardShell({
       </MainFloatingControl>
 
       {/*
-        Dashboard 唯一水平边界（docs/plan/21 §6）：--dashboard-gutter 是 A→B / C→D 的
+        Dashboard 唯一水平边界（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §6）：--dashboard-gutter 是 A→B / C→D 的
         单一来源，页头安全占位和 chrome 出血都从它推导。左右必须对称——原先为了避让右上
         悬浮控件加的 lg:pr-24 会让整页正文从头到尾右边多缺一块，那份避让已经改由页头内部
         的透明占位承担。

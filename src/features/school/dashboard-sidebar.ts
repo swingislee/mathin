@@ -1,5 +1,5 @@
 /**
- * Dashboard 侧栏的三态合同（docs/plan/27 §3 D1）。
+ * Dashboard 侧栏的三态合同（历史设计：archive/2026-10-04/docs/plan/27-small-screen-workspace-adaptation.md §3 D1）。
  *
  * 三态而不是开关：`icons` 保住导航可达性、`hidden` 把 240px 全部还给正文，
  * 两种诉求在 1024–1280 上同时存在——图标态适合"我还要来回跳"，隐藏态适合

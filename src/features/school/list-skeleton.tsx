@@ -1,7 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * 后台列表/报表子页的通用加载骨架（P4G-7 §6.4，形状按 docs/plan/21 更新）。
+ * 后台列表/报表子页的通用加载骨架（P4G-7 §6.4，形状按 历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md 更新）。
  *
  * 这些页面（students / finance / followups / classes / courses …）现在共用
  * `DashboardPage`：出血到 canvas 两侧的 sticky chrome（页头 + 命令面板）+ 正文。

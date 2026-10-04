@@ -9,7 +9,7 @@ import { Star4 } from "./star4";
 export type Section = "story" | "games" | "minds" | "terms" | "tools" | "dashboard" | "classroom" | "notebook" | "whiteboard";
 export type Planet = "earth" | "king" | "lamplighter" | "geographer" | "businessman";
 
-// 公开板块 → 星球映射（docs/plan/05-§1）；功能板块不绑星球（05-§5 工作台基调）
+// 公开板块 → 星球映射（历史设计：archive/2026-10-04/docs/plan/05-planet-themes.md §1）；功能板块不绑星球（05-§5 工作台基调）
 export const sectionPlanets: Partial<Record<Section, Planet>> = {
   story: "earth",
   games: "king",
@@ -18,7 +18,7 @@ export const sectionPlanets: Partial<Record<Section, Planet>> = {
   tools: "businessman",
 };
 
-// 功能板块 accent（docs/plan/01-1.3，仅对无星球板块生效）
+// 功能板块 accent（历史设计：archive/2026-10-04/docs/plan/01-design-system.md §1.3，仅对无星球板块生效）
 export const sectionAccents: Record<Section, PlanetAccent> = {
   story: "rose",
   games: "moon",
@@ -31,7 +31,7 @@ export const sectionAccents: Record<Section, PlanetAccent> = {
   whiteboard: "crater",
 };
 
-/** 子页面统一骨架（docs/plan/02-2）：header + 面包屑 + 标题 accent 短横 + 内容槽 + 页脚。 */
+/** 子页面统一骨架（历史设计：archive/2026-10-04/docs/plan/02-pages.md §2）：header + 面包屑 + 标题 accent 短横 + 内容槽 + 页脚。 */
 export async function SectionShell({ section, intro, wide = false, children }: {
   section: Section;
   intro?: string;

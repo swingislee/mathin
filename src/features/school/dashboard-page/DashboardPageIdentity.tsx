@@ -6,7 +6,7 @@ import { DashboardBackLink } from "./DashboardBackLink";
 import type { DashboardPageBreadcrumb } from "./dashboard-page.types";
 
 /**
- * 页面身份（docs/plan/21 §11.1）：返回、面包屑、eyebrow、标题、描述、元信息。
+ * 页面身份（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §11.1）：返回、面包屑、eyebrow、标题、描述、元信息。
  * 不接受业务 actions——那些统一进 DashboardCommandPanel，页头只回答"我在哪"。
  *
  * 保持同步（非 async）：TileWorkspace 一类 Client Component 也要能直接渲染它。

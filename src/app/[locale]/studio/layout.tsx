@@ -1,7 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 
 /**
- * Studio 是脱离 Dashboard 的专用工具壳（docs/plan/19-p4i-final.md §12）：
+ * Studio 是脱离 Dashboard 的专用工具壳（历史设计：archive/2026-10-04/docs/plan/19-p4i-final.md §12）：
  * 不带 SiteHeader/左导航，页面自己就是唯一工具栏，故不复用 dashboard/layout.tsx。
  * h-dvh + overflow-hidden 锁死 window 滚动，交给 FullScreenToolShell 内部分区滚动。
  */

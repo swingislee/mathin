@@ -7,7 +7,7 @@ import { getGame } from "./registry";
 import type { Difficulty } from "./types";
 import { getVerifier } from "./verify";
 
-// 客户端计时与服务端 started_at 的允许偏差（docs/plan/03-3.2）
+// 客户端计时与服务端 started_at 的允许偏差（历史设计：archive/2026-10-04/docs/plan/03-data-and-tech.md §3.2）
 const DURATION_TOLERANCE_MS = 10_000;
 
 export type StartGameResult =
