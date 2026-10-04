@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlanarWorkbench } from "@/features/tools/planar-kit/PlanarWorkbench";
 import { ALL_PLANAR_TOOLS, PLANAR_TOOLS, planarSnapshot, planarSnapshotForTool, type PlanarSnapshot, type PlanarState } from "@/features/tools/planar-kit/contract";
@@ -22,7 +23,14 @@ const shown = () => toggleCoverCells(setCoverCount(createCoverageState(), 8));
 
 describe("cell coverage version and classroom contracts", () => {
   it("inserts v5, retains all historical scenes and keeps cross-version states isolated", () => {
-    expect(planarScene("18-coverage")).toBe(definition);
+    const registered = planarScene("18-coverage"), initial = registered.create();
+    expect(registered.id).toBe(definition.id); expect(registered.toolId).toBe("plane-area-relations");
+    expect(initial).toEqual(definition.create());
+    expect(registered.actions?.map((action) => action.id)).toEqual(definition.actions?.map((action) => action.id));
+    expect(registered.operations?.map((operation) => operation.id)).toEqual(definition.operations?.map((operation) => operation.id));
+    const api = { locale: "en", selected: null, editable: false,
+      bind: () => ({ role: "button" as const, tabIndex: 0, "aria-label": "", "aria-pressed": false, "aria-disabled": false }) };
+    expect(renderToStaticMarkup(registered.draw(shown(), api))).toContain("data-cell-coverage-object");
     expect(PLANAR_TOOLS.find((tool) => tool.id === "plane-area-relations")!.version).toBe(version);
     for (const surface of ["microcourse", "formal-courseware"] as const) expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === "plane-area-relations").map((entry) => entry.contentVersion)).toEqual([version]);
     for (const legacy of ALL_PLANAR_TOOLS.filter((tool) => tool.id === "plane-area-relations" && tool.version !== version)) for (const scene of scenesForPlanarTool(legacy.id, legacy.version)) {
