@@ -36,10 +36,21 @@ function vertexLocus(object: ConstructionObject, index: number, invariant: Perim
   if (!span) return null;
   const u = { x: diagonal.x / span, y: diagonal.y / span };
   if (invariant === "area") return { kind: "line", origin: point, u };
-  const major = (length(minus(point, a)) + length(minus(point, b))) / 2, focal = span / 2;
-  const minorSquared = (major - focal) * (major + focal);
+  const offset = minus(point, a), along = dot(offset, u), determinant = cross(diagonal, offset);
+  const determinantError = 8 * Number.EPSILON * (Math.abs(diagonal.x * offset.y) + Math.abs(diagonal.y * offset.x));
   // 共线编辑点的两邻边长度和已达到最小值，只能在两邻点之间移动。
-  if (minorSquared <= 0) return Math.abs(cross(diagonal, minus(point, a))) <= CONTACT_EPS ? { kind: "line", origin: point, u } : null;
+  // 倾斜直线上的 hypot 舍入可能令两边之和略大于邻点距离，先用叉积的舍入界判定。
+  if (along > 0 && along < span && Math.abs(determinant) <= determinantError) return { kind: "line", origin: point, u };
+  const focal = span / 2;
+  let major = (length(offset) + length(minus(point, b))) / 2, minorSquared = (major - focal) * (major + focal);
+  if (along >= 0 && along <= span) {
+    // 真正近共线的窄椭圆仍有高度。用有理化的距离余量求短轴，避免 a-c 消去成零。
+    const height = determinant / span, squaredHeight = height * height;
+    const excess = squaredHeight / (Math.hypot(along, height) + along)
+      + squaredHeight / (Math.hypot(span - along, height) + span - along);
+    major = (span + excess) / 2; minorSquared = excess / 2 * (span + excess / 2);
+  }
+  if (!(minorSquared > 0)) return null;
   return { kind: "ellipse", origin: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, u, v: { x: -u.y, y: u.x }, major, minor: Math.sqrt(minorSquared), focal };
 }
 
