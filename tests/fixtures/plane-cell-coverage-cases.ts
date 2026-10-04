@@ -1,0 +1,48 @@
+import type { PlanarState } from "../../src/features/tools/planar-kit/contract";
+import { removeConstruction } from "../../src/features/tools/plane-construction/model";
+import { addRelationMaterial, syncRelations } from "../../src/features/tools/plane-relations/model";
+import { applyInteriorBase, createInteriorState, setInteriorField, toggleInterior } from "../../src/features/tools/plane-relations/interior-model";
+import { applyStripsBase, createStripsState, setStripCount, toggleStrips } from "../../src/features/tools/plane-relations/strips-model";
+import { applyCoverageBase, createCoverageState, refineCoverCells, setCoverCount, toggleCoverCells } from "../../src/features/tools/plane-relations/coverage-model";
+
+export function planeCellCoverageCases() {
+  const initial = createCoverageState(), id = initial.params.active;
+  const cases: { label: string; accepted: boolean; scene: { toolId: string; contentVersion: string; payload: { title: string; initial: PlanarState } } }[] = [];
+  const add = (label: string, state: PlanarState, accepted = true, version = "plane-area-relations-lesson-v5") => cases.push({ label, accepted, scene: { toolId: "plane-area-relations", contentVersion: version, payload: { title: "Full and boundary cell exploration", initial: state } } });
+  const invalid = (label: string, change: (state: PlanarState) => void) => { const state = structuredClone(initial); change(state); add(label, state, false); };
+  add("default", initial);
+  const shown = toggleCoverCells(initial); add("visible", shown);
+  for (const count of [4, 8, 16, 32, 48]) add(`density-${count}`, setCoverCount(shown, count));
+  add("refined", refineCoverCells(shown));
+  add("strips-and-coverage", applyCoverageBase(shown, (base) => toggleStrips(setStripCount(base, 8))));
+  add("rotated", applyCoverageBase(shown, (base) => applyStripsBase(base, (inner) => setInteriorField(inner, "angle", 43))));
+  add("reflected", { ...shown, params: { ...shown.params, [`flip.${id}`]: -1 } });
+  add("interior", applyCoverageBase(shown, (base) => applyStripsBase(base, (inner) => setInteriorField(toggleInterior(inner), "innerConstraint", 1))));
+  const append = (state: PlanarState, material: string) => applyCoverageBase(state, (base) => applyStripsBase(base, (inner) => applyInteriorBase(inner, (relation) => addRelationMaterial(relation, material))));
+  const quad = append(shown, "quadrilateral"); add("quad", quad);
+  add("quad-coverage", { ...quad, flags: { ...quad.flags, [`coverCells.${quad.params.active}`]: true } }, false);
+  let full = setCoverCount(shown, 48);
+  for (let i = 1; i < 16; i++) full = toggleCoverCells(setCoverCount(append(full, "triangle"), 48));
+  add("capacity", full);
+  add("empty", applyCoverageBase(initial, (base) => applyStripsBase(base, (inner) => applyInteriorBase(inner, (relation) => syncRelations(relation, removeConstruction(relation))))));
+  for (const count of [0, 3, 49, 4.5, Number.NaN, Number.POSITIVE_INFINITY]) invalid(`count-${count}`, (state) => { state.params[`coverCount.${id}`] = count; });
+  invalid("count-string", (state) => { state.params[`coverCount.${id}`] = "16" as unknown as number; });
+  invalid("count-null", (state) => { state.params[`coverCount.${id}`] = null as unknown as number; });
+  invalid("missing-count", (state) => { delete state.params[`coverCount.${id}`]; });
+  invalid("orphan-count", (state) => { state.params["coverCount.999"] = 16; });
+  invalid("noncanonical-count", (state) => { state.params["coverCount.01"] = 16; });
+  invalid("missing-flag", (state) => { delete state.flags[`coverCells.${id}`]; });
+  invalid("orphan-flag", (state) => { state.flags["coverCells.999"] = true; });
+  invalid("noncanonical-flag", (state) => { state.flags["coverCells.01"] = true; });
+  invalid("flag-number", (state) => { state.flags[`coverCells.${id}`] = 1 as unknown as boolean; });
+  invalid("flag-string", (state) => { state.flags[`coverCells.${id}`] = "true" as unknown as boolean; });
+  invalid("unknown-parameter", (state) => { state.params.extra = 1; });
+  invalid("unknown-flag", (state) => { state.flags.extra = true; });
+  invalid("derived-cell-point", (state) => { state.points.coverage = { x: 10, y: 10 }; });
+  invalid("v3-collinearity", (state) => { state.flags[`collinear.${id}`] = true; state.params[`innerBase.${id}`] = 0.6; });
+  invalid("v4-density", (state) => { state.params[`stripCount.${id}`] = 3; });
+  invalid("animated-basis", (state) => { state.params[`frameA.${id}`] = 1; });
+  add("v3-as-v5", createInteriorState(), false); add("v4-as-v5", createStripsState(), false);
+  add("v5-as-v4", initial, false, "plane-area-relations-lesson-v4");
+  return cases;
+}
