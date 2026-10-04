@@ -302,12 +302,12 @@ describe("perimeter descriptor, rendering and helper contract", () => {
     expect(setPerimeterField(state, "straight", 200).params["straight.0"]).toBe(1);
   });
 
-  it("shows actual side/perimeter values without copying the base pixel-scale area labels", () => {
+  it("shows actual side, perimeter and area values with one consistent unit scale", () => {
     const state = run("construction-measures", createPerimeterState());
     for (const locale of ["zh", "en"]) {
       const svg = draw(state, { locale });
       expect(svg.textContent).toContain("P = 20 u"); expect(svg.textContent).toContain("6 u"); expect(svg.textContent).toContain("4 u");
-      expect(svg.textContent).not.toMatch(/u²|600 u|面积|Area/);
+      expect(svg.textContent).toContain("S = 24 u²"); expect(svg.textContent).not.toMatch(/600 u|21600 u²/);
       const comparing = draw(completed(state), { locale });
       expect(comparing.textContent).toContain(locale === "en" ? "Boundary copies · one shared scale" : "边界副本 · 共同比例尺");
       expect(comparing.querySelectorAll("[data-perimeter-copy-edge]")).toHaveLength(4);
@@ -401,7 +401,7 @@ describe("rectangle reshaping at a fixed quantity", () => {
       expect(constructionMeasurements(constructionObject(next)!)[invariant]).toBeCloseTo(constructionMeasurements(constructionObject(state)!)[invariant], 7);
       expect(perimeterRectangle(next)!.width).toBeGreaterThanOrEqual(1); expect(perimeterRectangle(next)!.height).toBeGreaterThanOrEqual(1);
     }
-    expect(setPerimeterField(other, "area-width", 7)).toBe(other);
+    expect(deformPerimeterRectangle(other, "area", "width", 210)).toBe(other);
     expect(setPerimeterField(state, "area-width", NaN)).toBe(state);
     expect(setPerimeterField(state, "perimeter-height", Infinity)).toBe(state);
     expect(dragPerimeterInvariant(state, "invariant.area.width.999", { x: 30, y: 0 })).toBe(state);

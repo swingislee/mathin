@@ -11,7 +11,7 @@ import { toolCoursewareContractsForSurface } from "@/features/tools/scenes/regis
 import { createClassroomToolState, parseClassroomToolState, type ClassroomToolUpdate } from "@/features/tools/courseware/tool-classroom";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
 import { constructionArea, constructionMeasurements, constructionObject, constructionObjects } from "@/features/tools/plane-construction/model";
-import { createPerimeterState, perimeterInvariantHandle, perimeterRectangle } from "@/features/tools/plane-perimeter/model";
+import { createPerimeterGeometry, createPerimeterState, perimeterInvariantHandle, perimeterRectangle, perimeterStretchFrame } from "@/features/tools/plane-perimeter/model";
 import { createRelationsState, relationModel, setRelationFlag } from "@/features/tools/plane-relations/model";
 import { createInteriorState, interiorModel, toggleInterior } from "@/features/tools/plane-relations/interior-model";
 import { angleComparison, angleTriangle, copyAngleTriangle, setAngleLength } from "@/features/tools/plane-relations/angle-model";
@@ -310,9 +310,9 @@ describe("new material actions in the shared planar workbench", () => {
   it("shares accurate inputs and direct deformation, cancels without saving and exits on close or Escape", async () => {
     await render(); await select(0); const initial = current()!;
     expect(container.querySelector("[data-perimeter-invariant-handle]")).toBeNull();
-    await act(async () => button("定周长变形（矩形）").click());
+    await act(async () => button("定周长拉伸").click());
     expect(container.querySelectorAll("[data-perimeter-invariant-handle]")).toHaveLength(2);
-    const width = container.querySelector<HTMLInputElement>('input[aria-label="矩形宽（u）"]')!;
+    const width = container.querySelector<HTMLInputElement>('input[aria-label="整体宽（u）"]')!;
     await act(async () => { width.value = "8"; width.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
     expect(perimeterRectangle(current()!)!.width).toBe(240); expect(perimeterRectangle(current()!)!.height).toBe(60);
     const beforeDrag = current()!, at = perimeterInvariantHandle(beforeDrag, "width")!.at;
@@ -324,15 +324,70 @@ describe("new material actions in the shared planar workbench", () => {
     expect(perimeterRectangle(current()!)!.width).toBe(180); expect(perimeterRectangle(current()!)!.height).toBe(120);
     await act(async () => button("撤销").click()); expect(current()).toEqual(beforeDrag);
     await act(async () => button("关闭面板").click()); expect(container.querySelector("[data-perimeter-invariant-handle]")).toBeNull();
-    await act(async () => button("定面积变形（矩形）").click());
+    await act(async () => button("定面积拉伸").click());
     await act(async () => stage().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
     expect(container.querySelector("[data-perimeter-invariant-handle]")).toBeNull(); expect(current()).toEqual(beforeDrag);
     await act(async () => button("恢复备好的起点").click()); expect(current()).toEqual(initial);
   });
 
+  it.each(["perimeter", "area"] as const)("stretches a rotated concave polygon at fixed %s through the shared fields and direct handles", async (quantity: "perimeter" | "area") => {
+    const polygon = createPerimeterGeometry(createPerimeterState(), "polygon", [{ x: 100, y: 100 }, { x: 330, y: 130 }, { x: 350, y: 330 }, { x: 215, y: 240 }, { x: 95, y: 300 }])!;
+    const initial = { ...polygon, params: { ...polygon.params, "angle.1": 32, "flip.1": -1 }, flags: { ...polygon.flags, edit: true } };
+    await render({ initial }); await select(1);
+    const label = quantity === "area" ? "定面积拉伸" : "定周长拉伸";
+    await act(async () => button(label).click());
+    expect(container.querySelectorAll("[data-perimeter-invariant-handle]")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-construction-edit-handle]")).toHaveLength(0);
+    expect(button(quantity === "area" ? "同面积变为正方形" : "同周长变为正方形").disabled).toBe(true);
+    await act(async () => button("显示边长、周长与面积").click());
+    const target = constructionMeasurements(constructionObject(current()!)!)[quantity], oldWidth = perimeterStretchFrame(current()!)!.width;
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="整体宽（u）"]')!;
+    await act(async () => { input.value = String(oldWidth * 1.2 / 30); input.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
+    expect(perimeterStretchFrame(current()!)!.width).toBeCloseTo(oldWidth * 1.2, 7);
+    expect(constructionMeasurements(constructionObject(current()!)!)[quantity]).toBeCloseTo(target, 7);
+    expect(constructionObject(current()!, 0)).toEqual(constructionObject(initial, 0));
+    const before = current()!, { at, direction } = perimeterInvariantHandle(before, "height")!;
+    const end = { x: at.x + direction.x * 10 - direction.y * 30, y: at.y + direction.y * 10 + direction.x * 30 };
+    await pointer(container.querySelector('[data-perimeter-invariant-handle="height"]')!, "pointerdown", at.x, at.y);
+    await pointer(stage(), "pointermove", end.x, end.y); expect(current()).toBeNull();
+    await pointer(stage(), "pointercancel", end.x, end.y); expect(current()).toEqual(before);
+    await pointer(container.querySelector('[data-perimeter-invariant-handle="height"]')!, "pointerdown", at.x, at.y);
+    await pointer(stage(), "pointermove", end.x, end.y); await pointer(stage(), "pointerup", end.x, end.y);
+    expect(perimeterStretchFrame(current()!)!.height).toBeCloseTo(perimeterStretchFrame(before)!.height + 20, 7);
+    expect(constructionMeasurements(constructionObject(current()!)!)[quantity]).toBeCloseTo(target, 7);
+    const completed = current()!;
+    expect(planarSnapshotForTool("plane-perimeter", "plane-perimeter-lesson-v2").safeParse(planarSnapshot(completed)).success).toBe(true);
+    await act(async () => button("关闭面板").click());
+    expect(container.querySelector("[data-perimeter-invariant-handle]")).toBeNull();
+    expect(container.querySelectorAll("[data-construction-edit-handle]")).toHaveLength(5);
+    expect(container.textContent).toContain("u²");
+    await act(async () => button("撤销").click()); expect(current()).toEqual(before);
+    await render({ initial: completed, readOnly: true });
+    expect(button(label).disabled).toBe(true); expect(container.querySelector("[data-perimeter-invariant-handle]")).toBeNull();
+    expect(current()).toEqual(completed); expect(container.textContent).not.toContain("当前几何无法保存");
+  });
+
+  it("publishes one concave-polygon classroom endpoint and restores it without replaying the drag", async () => {
+    const initial = createPerimeterGeometry(createPerimeterState(), "polygon", [{ x: 100, y: 100 }, { x: 340, y: 100 }, { x: 340, y: 250 }, { x: 220, y: 190 }, { x: 100, y: 250 }])!;
+    const snapshot = planarSnapshot(initial), expectedArea = constructionMeasurements(constructionObject(initial)!).area;
+    let acknowledge: (() => void) | undefined;
+    const changed = vi.fn<(_: PlanarSnapshot) => Promise<void>>(() => new Promise<void>((resolve) => { acknowledge = resolve; }));
+    await render({ initial, classroom: { state: snapshot, onChange: changed } }); await select(1);
+    await act(async () => button("定面积拉伸").click());
+    const { at } = perimeterInvariantHandle(initial, "width")!;
+    await pointer(container.querySelector('[data-perimeter-invariant-handle="width"]')!, "pointerdown", at.x, at.y);
+    await pointer(stage(), "pointermove", at.x + 25, at.y); expect(changed).not.toHaveBeenCalled();
+    await pointer(stage(), "pointerup", at.x + 25, at.y); expect(changed).toHaveBeenCalledTimes(1);
+    const endpoint = changed.mock.calls[0][0]; expect(endpoint.motion).toBeNull(); expect(endpoint.past).toEqual([initial]);
+    expect(constructionMeasurements(constructionObject(endpoint.current)!).area).toBeCloseTo(expectedArea, 7);
+    expect(constructionObject(endpoint.current, 0)).toEqual(constructionObject(initial, 0));
+    await act(async () => { acknowledge!(); }); await render({ initial, classroom: { state: endpoint, onChange: changed } });
+    expect(current()).toEqual(endpoint.current); await tick(2500); expect(current()).toEqual(endpoint.current); expect(changed).toHaveBeenCalledTimes(1);
+  });
+
   it("pauses a same-area square animation at an exact frame and keeps a read-only display inert", async () => {
     await render(); await select(0); const initial = current()!, area = constructionMeasurements(constructionObject(initial)!).area;
-    await act(async () => button("定面积变形（矩形）").click());
+    await act(async () => button("定面积拉伸").click());
     await act(async () => button("同面积变为正方形").click()); expect(current()).toBeNull();
     await tick(800); await act(async () => button("暂停过程").click());
     expect(constructionMeasurements(constructionObject(current()!)!).area).toBeCloseTo(area, 7);
@@ -342,7 +397,7 @@ describe("new material actions in the shared planar workbench", () => {
     const completed = current()!;
     await render({ initial: completed, readOnly: true });
     expect(container.querySelector("[data-perimeter-invariant-handle]")).toBeNull();
-    expect(button("定面积变形（矩形）").disabled).toBe(true);
+    expect(button("定面积拉伸").disabled).toBe(true);
     await pointer(shape(0), "pointerdown", 380, 270); await pointer(stage(), "pointerup", 420, 300);
     expect(current()).toEqual(completed); expect(container.textContent).not.toContain("当前几何无法保存");
   });
@@ -369,7 +424,7 @@ describe("new material actions in the shared planar workbench", () => {
     let acknowledge: (() => void) | undefined;
     const changed = vi.fn<(_: PlanarSnapshot) => Promise<void>>(() => new Promise((resolve) => { acknowledge = resolve; }));
     await render({ classroom: { state: snapshot, onChange: changed } }); await select(0);
-    await act(async () => button("定面积变形（矩形）").click());
+    await act(async () => button("定面积拉伸").click());
     const at = perimeterInvariantHandle(initial, "width")!.at;
     await pointer(container.querySelector('[data-perimeter-invariant-handle="width"]')!, "pointerdown", at.x, at.y);
     await pointer(stage(), "pointermove", at.x + 30, at.y); expect(changed).not.toHaveBeenCalled();

@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
 import type { PlanarPoint, PlanarState } from "../planar-kit/contract";
 import { textFor, type PlanarAction, type PlanarDrawingApi, type PlanarOperation, type PlanarSceneDefinition, type PlanarText } from "../planar-kit/types";
-import { constructionBounds, constructionObject, constructionObjects, parseConstructionTarget } from "../plane-construction/model";
+import { constructionBounds, constructionMeasurements, constructionObject, constructionObjects, parseConstructionTarget } from "../plane-construction/model";
 import { createConstructionDefinition } from "../plane-construction/scenes";
 import { distance, polygonSegments } from "../plane-geometry/model";
 import {
   PERIMETER_SCENE_ID, PERIMETER_UNIT, createPerimeterGeometry, createPerimeterState, dragPerimeterInvariant, interpolatePerimeterInvariant,
-  parsePerimeterHandle, perimeterInvariantHandle, perimeterRectangle, squarePerimeterRectangle,
+  parsePerimeterHandle, perimeterInvariantHandle, perimeterStretchFrame, squarePerimeterRectangle,
   perimeterComparison, perimeterLength, perimeterVertices, setPerimeterField, setPerimeterProgress,
   syncPerimeterGeometry, walkPerimeter, type PerimeterInvariant, type PerimeterProgress,
 } from "./model";
@@ -40,12 +40,12 @@ function invariantOperation(invariant: PerimeterInvariant): PlanarOperation {
   const preservingPerimeter = invariant === "perimeter";
   return {
     id: `perimeter-fixed-${invariant}`, icon: "dimensions",
-    label: preservingPerimeter ? t("定周长变形（矩形）", "Reshape at fixed perimeter (rectangle)") : t("定面积变形（矩形）", "Reshape at fixed area (rectangle)"),
+    label: preservingPerimeter ? t("定周长拉伸", "Stretch at fixed perimeter") : t("定面积拉伸", "Stretch at fixed area"),
     fields: (["width", "height"] as const).map((dimension) => ({
       key: `${invariant}-${dimension}`, min: 1 / PERIMETER_UNIT, max: 1600 / PERIMETER_UNIT,
-      label: dimension === "width" ? t("矩形宽（u）", "Rectangle width (u)") : t("矩形高（u）", "Rectangle height (u)"),
-      read: (state: PlanarState) => (perimeterRectangle(state)?.[dimension] ?? 0) / PERIMETER_UNIT,
-      disabled: (state: PlanarState) => !perimeterRectangle(state),
+      label: dimension === "width" ? t("整体宽（u）", "Overall width (u)") : t("整体高（u）", "Overall height (u)"),
+      read: (state: PlanarState) => (perimeterStretchFrame(state)?.[dimension] ?? 0) / PERIMETER_UNIT,
+      disabled: (state: PlanarState) => !perimeterStretchFrame(state),
     })),
     actions: [{
       id: `perimeter-square-${invariant}`, icon: "dimensions", duration: 1600,
@@ -60,12 +60,12 @@ function invariantOperation(invariant: PerimeterInvariant): PlanarOperation {
 function InvariantHandles({ state, api }: { state: PlanarState; api: PlanarDrawingApi }) {
   const invariant = operationInvariant(api.operation), selected = objectTarget(api.selected);
   const id = selected ? parseConstructionTarget(selected)?.id : undefined;
-  const rectangle = id === undefined ? null : perimeterRectangle(state, id);
-  if (!invariant || !rectangle || !api.editable) return null;
+  const frame = id === undefined ? null : perimeterStretchFrame(state, id);
+  if (!invariant || !frame || !api.editable) return null;
   return <g data-perimeter-invariant={invariant}>
     {(["width", "height"] as const).map((dimension) => {
       const handle = perimeterInvariantHandle(state, dimension, id)!;
-      const label = dimension === "width" ? t("沿矩形宽方向变形", "Reshape along the rectangle width") : t("沿矩形高方向变形", "Reshape along the rectangle height");
+      const label = dimension === "width" ? t("沿图形宽方向拉伸", "Stretch along the shape width") : t("沿图形高方向拉伸", "Stretch along the shape height");
       return <g key={dimension} {...api.bind(`invariant.${invariant}.${dimension}.${id}`, textFor(label, api.locale))} data-perimeter-invariant-handle={dimension} style={{ cursor: "grab" }}>
         <circle cx={handle.at.x} cy={handle.at.y} r="18" fill="transparent" />
         <rect x={handle.at.x - 6} y={handle.at.y - 6} width="12" height="12" rx="2" fill="var(--paper)" stroke="var(--rose)" strokeWidth="2" pointerEvents="none" />
@@ -102,11 +102,11 @@ function BoundaryComparison({ state, api }: { state: PlanarState; api: PlanarDra
 }
 
 const actions = base.actions!.filter((action) => !["construction-life-outline", "construction-counts", "construction-names"].includes(action.id)).map((action) => withProgress(action.id === "construction-measures"
-  ? { ...action, label: t("显示边长与周长", "Show side lengths and perimeter") } : action));
+  ? { ...action, label: t("显示边长、周长与面积", "Show side lengths, perimeter and area") } : action));
 
 export const planePerimeterScene: PlanarSceneDefinition = {
   ...base,
-  description: t("画出或添加图形，沿真实边界绕一周、保长拉直并同尺比较。矩形可定周长或定面积变形；专用操作关闭后继续普通编辑。", "Draw or add shapes, trace and straighten their real boundaries, and compare at one shared scale. Reshape rectangles at fixed perimeter or area; close the operation to resume ordinary editing."),
+  description: t("画出或添加凹凸多边形，沿真实边界绕一周、保长拉直并同尺比较。宽高可定周长或定面积联动拉伸；关闭操作后继续普通编辑，矩形还可变为同量正方形。", "Draw or add convex or concave polygons, trace and straighten real boundaries, and compare at one shared scale. Stretch linked dimensions at fixed perimeter or area; close the operation to resume ordinary editing. Rectangles can also become equal-quantity squares."),
   create: createPerimeterState,
   fields: base.fields!.filter((field) => field.key !== "detail").map((field) => field.key === "width" || field.key === "height" ? {
     ...field, label: field.key === "width" ? t("当前图形宽（u）", "Current shape width (u)") : t("当前图形高（u）", "Current shape height (u)"),
@@ -139,7 +139,7 @@ export const planePerimeterScene: PlanarSceneDefinition = {
     const object = target?.id === undefined ? null : constructionObject(state, target.id);
     return object ? { bounds: constructionBounds(object), items: [
       { kind: "operation", id: "perimeter" }, { kind: "action", id: "construction-edit" }, { kind: "action", id: "construction-duplicate" },
-      ...(perimeterRectangle(state, object.id) ? [{ kind: "operation" as const, id: "perimeter-fixed-perimeter" }] : []),
+      ...(perimeterStretchFrame(state, object.id) ? [{ kind: "operation" as const, id: "perimeter-fixed-perimeter" }] : []),
     ] } : null;
   },
   draw: (state, api) => <>
@@ -158,13 +158,12 @@ export const planePerimeterScene: PlanarSceneDefinition = {
         </g>}
         {state.flags.measures && <>
           {polygonSegments(vertices).map((edge, index) => <Caption key={index} at={{ x: (edge.a.x + edge.b.x) / 2, y: (edge.a.y + edge.b.y) / 2 - 10 }}>{fmt(distance(edge.a, edge.b) / PERIMETER_UNIT)} u</Caption>)}
-          <Caption at={{ x: object.center.x, y: bounds.maxY + 23 }}>P = {fmt(perimeterLength(object) / PERIMETER_UNIT)} u{operationInvariant(api.operation) && state.params.active === object.id && perimeterRectangle(state, object.id)
-            ? ` · S = ${fmt(perimeterRectangle(state, object.id)!.width * perimeterRectangle(state, object.id)!.height / PERIMETER_UNIT ** 2)} u²` : ""}</Caption>
+          <Caption at={{ x: object.center.x, y: bounds.maxY + 23 }}>P = {fmt(perimeterLength(object) / PERIMETER_UNIT)} u · S = {fmt(constructionMeasurements(object).area / PERIMETER_UNIT ** 2)} u²</Caption>
         </>}
         {(straight > 0 || api.operation === "perimeter" && state.params.active === object.id) && <Caption at={{ x: object.center.x, y: bounds.minY - 22 }}>{textFor(t(`材料 ${object.id + 1}`, `Shape ${object.id + 1}`), api.locale)}</Caption>}
-        {operationInvariant(api.operation) && state.params.active === object.id && <Caption at={{ x: object.center.x, y: bounds.minY - 43 }} size={13}>{textFor(perimeterRectangle(state, object.id)
+        {operationInvariant(api.operation) && state.params.active === object.id && <Caption at={{ x: object.center.x, y: bounds.minY - 43 }} size={13}>{textFor(perimeterStretchFrame(state, object.id)
           ? api.operation === "perimeter-fixed-perimeter" ? t("拖动方柄 · 周长保持不变", "Drag a square handle · perimeter stays fixed") : t("拖动方柄 · 面积保持不变", "Drag a square handle · area stays fixed")
-          : t("选择长方形进行定量变形", "Select a rectangle for fixed-quantity reshaping"), api.locale)}</Caption>}
+          : t("选择直边图形进行定量拉伸", "Select a polygon for fixed-quantity stretching"), api.locale)}</Caption>}
       </g>;
     })}
     <BoundaryComparison state={state} api={api} />

@@ -13,7 +13,7 @@ export const SPATIAL_WORKBENCH_INVENTORY = [
     features: "教学现场 06、07、08；直接操作、准确参数、动画、撤销与复原；备课保存和课堂固定副本。",
     shared: "唯一 PlanarWorkbench 宿主；与 3D 复用语义按钮、图标、面板、指针保护与 Tools 场景接入，领域提供数学模型" },
   { id: "plane-perimeter", dimension: "2d", name: "周长探究", files: ["planar-kit/PlanarWorkbench.tsx", "plane-construction/scenes.tsx", "plane-perimeter/scenes.tsx"],
-    features: "自绘凹凸多边形、绕边和保长拉直；矩形可定周长／定面积变形，准确参数、沿边手柄和变为正方形动画共用不变量；边界副本同尺比较、对象旁操作、撤销、备课与课堂副本。",
+    features: "自绘凹凸多边形、绕边和保长拉直；多边形可定周长／定面积整体拉伸，准确参数与方向手柄共用真实不变量，矩形保留变为正方形动画；边长／周长／面积观察、边界同尺比较、对象旁操作、撤销、备课与课堂副本。",
     shared: "唯一 PlanarWorkbench 宿主；与 3D 复用语义按钮、图标、面板、指针保护与 Tools 场景接入，领域提供数学模型" },
   { id: "plane-measurement", dimension: "2d", name: "面积单位", files: ["planar-kit/PlanarWorkbench.tsx", "plane-grid-measure/scenes.tsx"],
     features: "自绘目标区域、添加并逐块移动单位方片；允许重叠与越界，按实际相交并集显示有效覆盖；面积单位换算保留几何；共用就近动作、撤销、备课与课堂副本。",
