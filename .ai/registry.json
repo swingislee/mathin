@@ -11,8 +11,16 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
-      "writePaths": [".ai/tasks/DEV-PLANE-STRIPS-20261004.md", "docs/evidence/tools-plane-strips-20261004.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "src/features/tools/planar-kit/README.md", "src/lib/database.types.ts"],
+      "writePaths": [
+        ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
+        "docs/evidence/tools-plane-strips-20261004.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md",
+        "src/features/tools/planar-kit/README.md",
+        "src/lib/database.types.ts"
+      ],
       "checkpoint": null,
       "next": "串行登记、复核及集成面积关系 v4；只在确认的本机隔离目标安装新增保存校验，复用 3130 服务交付人工验收。"
     },
@@ -25,7 +33,23 @@
       "checkout": "worktree",
       "branch": "codex/plane-strips-codex",
       "card": ".ai/tasks/DEV-PLANE-STRIPS-20261004.md",
-      "writePaths": ["src/features/tools/plane-relations/strips-model.ts", "src/features/tools/plane-relations/strips-scene.tsx", "src/features/tools/plane-relations/strips-validation.ts", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-strips.test.ts", "tests/plane-strips-integration.test.ts", "tests/fixtures/plane-strips-cases.ts", "tests/plane-invariants-integration.test.ts", "supabase/migrations/20261004010000_tool_plane_strips.sql", "scripts/plane-strips-local.mjs", ".ai/handoffs/DEV-PLANE-STRIPS-20261004-codex-01.md"],
+      "writePaths": [
+        "src/features/tools/plane-relations/strips-model.ts",
+        "src/features/tools/plane-relations/strips-scene.tsx",
+        "src/features/tools/plane-relations/strips-validation.ts",
+        "src/features/tools/plane-relations/README.md",
+        "src/features/tools/planar-kit/catalog.ts",
+        "src/features/tools/planar-kit/contract.ts",
+        "src/features/tools/planar-kit/scene-registry.ts",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "tests/plane-strips.test.ts",
+        "tests/plane-strips-integration.test.ts",
+        "tests/fixtures/plane-strips-cases.ts",
+        "tests/plane-invariants-integration.test.ts",
+        "supabase/migrations/20261004010000_tool_plane_strips.sql",
+        "scripts/plane-strips-local.mjs",
+        ".ai/handoffs/DEV-PLANE-STRIPS-20261004-codex-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": null,
       "next": "沿 v3 描述符包裹新增方格条状态；补定向几何、版本、保存与课堂检查，旧版本保持可读。"
@@ -39,8 +63,15 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-ANGLE-20261004.md",
-      "writePaths": [".ai/tasks/DEV-PLANE-ANGLE-20261004.md", "docs/evidence/tools-plane-angle-20261004.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "src/features/tools/planar-kit/README.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-PLANE-ANGLE-20261004.md",
+        "docs/evidence/tools-plane-angle-20261004.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md",
+        "src/features/tools/planar-kit/README.md"
+      ],
       "checkpoint": "cddbe797ee83454901fb0937d0aaf89b48142ee3",
       "next": "共角调边、等比伸缩和两类副本已精确集成 main；定向测试、领域类型／lint 和中英文局域网入口检查通过。开发端已交付，待人工视觉与教学手感验收；生产和 Gate 保持。"
     },
@@ -53,7 +84,16 @@
       "checkout": "worktree",
       "branch": "codex/plane-angle-codex",
       "card": ".ai/tasks/DEV-PLANE-ANGLE-20261004.md",
-      "writePaths": ["src/features/tools/plane-relations/angle-model.ts", "src/features/tools/plane-relations/angle-scene.tsx", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "tests/plane-angle.test.ts", "tests/plane-invariants-integration.test.ts", "src/features/tools/spatial-interaction/control-inventory.ts", ".ai/handoffs/DEV-PLANE-ANGLE-20261004-codex-01.md"],
+      "writePaths": [
+        "src/features/tools/plane-relations/angle-model.ts",
+        "src/features/tools/plane-relations/angle-scene.tsx",
+        "src/features/tools/plane-relations/interior-scene.tsx",
+        "src/features/tools/plane-relations/README.md",
+        "tests/plane-angle.test.ts",
+        "tests/plane-invariants-integration.test.ts",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        ".ai/handoffs/DEV-PLANE-ANGLE-20261004-codex-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "03d6e40f2607e33d57ecf605a098f293387be07c",
       "next": "main 已接收实现与交接，源文件与已检 head 一致；当前三角形两端可独立调节或联动伸缩，参照按真实几何比较。既有集成类型诊断已登记，未新增字段、迁移或跨材料绑定。"
@@ -81,7 +121,9 @@
         "apps/parent-wechat/README.md",
         "contracts/parent-api/README.md"
       ],
-      "sharedPaths": [".ai/registry.json"],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
       "checkpoint": null,
       "next": "当前事实账本、下一批候选及客户端／接口摘要已对齐；文档检查通过。教材管理与顺延先人工验收，Gate 2 按真实教师闭环独立推进。"
     },
@@ -109,7 +151,14 @@
       "branch": "main",
       "card": ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
       "writePaths": [],
-      "sharedPaths": [".ai/registry.json", ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md", "messages/zh.json", "messages/en.json", "src/lib/database.types.ts", "CHANGELOG.md"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
+        "messages/zh.json",
+        "messages/en.json",
+        "src/lib/database.types.ts",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "b395a95232c7d31da257281ce76934c693d9bea7",
       "next": "功能已集成 main，本机迁移及双语开发入口检查通过；待人工验收，生产与 Gate 保持。"
     },
@@ -122,8 +171,26 @@
       "checkout": "worktree",
       "branch": "codex/session-postpone-codex",
       "card": ".ai/tasks/DEV-SESSION-POSTPONE-20261003.md",
-      "writePaths": ["src/features/school/session-postpone-contract.ts", "src/features/school/actions/session-postpone.ts", "src/features/school/SessionPostponeDialog.tsx", "src/features/school/SessionManagementDrawer.tsx", "supabase/migrations/20261003020000_session_schedule_postpone.sql", "scripts/session-postpone-local.mjs", "scripts/sql/session-postpone-assertions.sql", "tests/session-postpone-actions.test.ts", "tests/session-postpone-dialog.test.ts", "src/features/school/ScheduleWeekView.tsx", "src/app/[locale]/dashboard/schedule/page.tsx", ".ai/handoffs/DEV-SESSION-POSTPONE-20261003-codex-01.md"],
-      "sharedPaths": ["messages/zh.json", "messages/en.json", "src/lib/database.types.ts", "CHANGELOG.md"],
+      "writePaths": [
+        "src/features/school/session-postpone-contract.ts",
+        "src/features/school/actions/session-postpone.ts",
+        "src/features/school/SessionPostponeDialog.tsx",
+        "src/features/school/SessionManagementDrawer.tsx",
+        "supabase/migrations/20261003020000_session_schedule_postpone.sql",
+        "scripts/session-postpone-local.mjs",
+        "scripts/sql/session-postpone-assertions.sql",
+        "tests/session-postpone-actions.test.ts",
+        "tests/session-postpone-dialog.test.ts",
+        "src/features/school/ScheduleWeekView.tsx",
+        "src/app/[locale]/dashboard/schedule/page.tsx",
+        ".ai/handoffs/DEV-SESSION-POSTPONE-20261003-codex-01.md"
+      ],
+      "sharedPaths": [
+        "messages/zh.json",
+        "messages/en.json",
+        "src/lib/database.types.ts",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "501be8910fb4827b518b2d7a634b2028253f3c7b",
       "next": "实现、定向检查和独立复核完成；交接单已集成，按班级/课表入口验收连续顺延。"
     },
@@ -221,7 +288,11 @@
       "branch": "main",
       "card": ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
       "writePaths": [],
-      "sharedPaths": [".ai/registry.json", ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md", "docs/evidence/r1/README.md"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        ".ai/tasks/OPS-CLASS-MATERIAL-20261003.md",
+        "docs/evidence/r1/README.md"
+      ],
       "checkpoint": "e4510d1990ff858abba1f80cbe1c0e17c8b19828",
       "next": "生产3班/45课次已更正为A教材；回滚零残留、45组关联保留及教师RLS只读复核通过。待页面与备课验收；管理员教材配置入口尚未实现。"
     },
@@ -255,7 +326,11 @@
       "branch": "main",
       "card": ".ai/tasks/OPS-RELEASE-V030-20261002.md",
       "writePaths": [],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "docs/evidence/r1/README.md"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md",
+        "docs/evidence/r1/README.md"
+      ],
       "checkpoint": "4ea559922bfff101458c33c2495e24dbe57aeb01",
       "next": "v0.3.0 已部署 20261002-161234；26 项迁移、备份、回滚零残留与上线检查通过，团队版本说明已精简。待用户业务与视觉验收，Gate 2 保持。"
     },
@@ -268,8 +343,22 @@
       "checkout": "worktree",
       "branch": "codex/release-v030-codex",
       "card": ".ai/tasks/OPS-RELEASE-V030-20261002.md",
-      "writePaths": ["package.json", "scripts/agent-context.mjs", "tests/spatial-lab-tool.test.ts", "tests/school-ops-lead-contact-workbench.test.ts", "tests/enrollment-placement-drag-confirmation.test.ts", "tests/parent-assessment-fixtures.test.ts", "tests/table-stacked-layout.test.ts", ".ai/tasks/OPS-RELEASE-V030-20261002.md", "docs/evidence/r1/release-v030-20261002.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md", "docs/evidence/r1/README.md"],
+      "writePaths": [
+        "package.json",
+        "scripts/agent-context.mjs",
+        "tests/spatial-lab-tool.test.ts",
+        "tests/school-ops-lead-contact-workbench.test.ts",
+        "tests/enrollment-placement-drag-confirmation.test.ts",
+        "tests/parent-assessment-fixtures.test.ts",
+        "tests/table-stacked-layout.test.ts",
+        ".ai/tasks/OPS-RELEASE-V030-20261002.md",
+        "docs/evidence/r1/release-v030-20261002.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md",
+        "docs/evidence/r1/README.md"
+      ],
       "checkpoint": "4ea559922bfff101458c33c2495e24dbe57aeb01",
       "next": "v0.3.0 已部署 20261002-161234；26 项迁移、备份、回滚零残留与上线检查通过，团队版本说明已精简。待用户业务与视觉验收，Gate 2 保持。"
     },
@@ -293,7 +382,13 @@
         "docs/runbooks/wechat-website-oauth.md",
         ".ai/tasks/DEV-WECHAT-INAPP-20261002.md"
       ],
-      "sharedPaths": [".ai/registry.json", ".env.example", "messages/zh.json", "messages/en.json", "CHANGELOG.md"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        ".env.example",
+        "messages/zh.json",
+        "messages/en.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "e0b7aa8ba4d0e8d14c604b953f31714cc75a9db6",
       "next": "公众号直接授权与网站扫码分流已实现；132 项相关检查、定向类型/lint/双语及 7 场景 Next HTTPS 协议检查通过。用户尚未确认已有公众号，待权限、同平台绑定、域名与私有凭据完成后部署并验收真实授权。生产保持既有扫码版本。"
     },
@@ -328,8 +423,13 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-REMAINDERS-20261002-INTEGRATION.md",
-      "writePaths": [".ai/tasks/DEV-PLANE-REMAINDERS-20261002-INTEGRATION.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-PLANE-REMAINDERS-20261002-INTEGRATION.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "81d681b23f6747db395695219bade1c0341e89c1",
       "next": "共同片拆分、移开过程及保留两翼已集成；定向机器检查和中英文工具路由 HTTP 检查通过。开发端已交付，待人工视觉与教学手感验收；数据库、生产和正式 Gate 未改。"
     },
@@ -342,7 +442,18 @@
       "checkout": "worktree",
       "branch": "codex/plane-remainders-codex",
       "card": ".ai/tasks/DEV-PLANE-REMAINDERS-20261002.md",
-      "writePaths": ["src/features/tools/plane-relations/interior-model.ts", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-remainders.test.ts", "tests/plane-invariants-integration.test.ts", "docs/evidence/tools-plane-remainders-20261002.md", ".ai/tasks/DEV-PLANE-REMAINDERS-20261002.md", ".ai/handoffs/DEV-PLANE-REMAINDERS-20261002-codex-01.md"],
+      "writePaths": [
+        "src/features/tools/plane-relations/interior-model.ts",
+        "src/features/tools/plane-relations/interior-scene.tsx",
+        "src/features/tools/plane-relations/README.md",
+        "src/features/tools/planar-kit/README.md",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "tests/plane-remainders.test.ts",
+        "tests/plane-invariants-integration.test.ts",
+        "docs/evidence/tools-plane-remainders-20261002.md",
+        ".ai/tasks/DEV-PLANE-REMAINDERS-20261002.md",
+        ".ai/handoffs/DEV-PLANE-REMAINDERS-20261002-codex-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "cfdf24293a413a49c1e7b268980a7095d46ef00a",
       "next": "main 已接收三片拆分、共同片刚体外移和两翼余片；面积守恒、容量、选中归属、历史与课堂回放检查通过。沿用 v3 几何，无持久合同或数据库变更，待人工验收。"
@@ -356,8 +467,13 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-INTERIOR-20261002-INTEGRATION.md",
-      "writePaths": [".ai/tasks/DEV-PLANE-INTERIOR-20261002-INTEGRATION.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-PLANE-INTERIOR-20261002-INTEGRATION.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "fff5205f5615df10c201b1078527316806087b8e",
       "next": "内点 v3、精确生成类型和交接已集成；独立复核、定向机器检查、本机保存校验与中英文开发页启动通过。开发端已交付，待人工视觉与教学手感验收；生产与正式 Gate 未改。"
     },
@@ -370,7 +486,29 @@
       "checkout": "worktree",
       "branch": "codex/plane-interior-codex",
       "card": ".ai/tasks/DEV-PLANE-INTERIOR-20261002.md",
-      "writePaths": ["src/features/tools/plane-relations/interior-model.ts", "src/features/tools/plane-relations/interior-validation.ts", "src/features/tools/plane-relations/interior-scene.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "src/lib/database.types.ts", "supabase/migrations/20261002170000_tool_plane_interior.sql", "supabase/tests/tool_plane_interior.sql", "tests/plane-interior.test.ts", "tests/fixtures/plane-interior-cases.ts", "tests/plane-invariants-integration.test.ts", "tests/planar-deep-integration.test.ts", "tests/planar-tool-contract.test.ts", "docs/evidence/tools-plane-interior-20261002.md", ".ai/tasks/DEV-PLANE-INTERIOR-20261002.md", ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-review-01.md"],
+      "writePaths": [
+        "src/features/tools/plane-relations/interior-model.ts",
+        "src/features/tools/plane-relations/interior-validation.ts",
+        "src/features/tools/plane-relations/interior-scene.tsx",
+        "src/features/tools/plane-relations/README.md",
+        "src/features/tools/planar-kit/catalog.ts",
+        "src/features/tools/planar-kit/contract.ts",
+        "src/features/tools/planar-kit/scene-registry.ts",
+        "src/features/tools/planar-kit/README.md",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "src/lib/database.types.ts",
+        "supabase/migrations/20261002170000_tool_plane_interior.sql",
+        "supabase/tests/tool_plane_interior.sql",
+        "tests/plane-interior.test.ts",
+        "tests/fixtures/plane-interior-cases.ts",
+        "tests/plane-invariants-integration.test.ts",
+        "tests/planar-deep-integration.test.ts",
+        "tests/planar-tool-contract.test.ts",
+        "docs/evidence/tools-plane-interior-20261002.md",
+        ".ai/tasks/DEV-PLANE-INTERIOR-20261002.md",
+        ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-codex-01.md",
+        ".ai/handoffs/DEV-PLANE-INTERIOR-20261002-review-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "445bedeb191c634608ff9f2f9f89d12115c203b6",
       "next": "main 已接收内点、四区、两翼、共线及四片复制；换底保点与跨材料归属复核问题已关闭。本机校验与匹配 ledger 已安装，旧版合同保留；开发端待人工验收。"
@@ -384,8 +522,13 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-INVARIANTS-20261002-INTEGRATION.md",
-      "writePaths": [".ai/tasks/DEV-PLANE-INVARIANTS-20261002-INTEGRATION.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-PLANE-INVARIANTS-20261002-INTEGRATION.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "9bcb566666961ca627fe5a01fc3ea815063bf467",
       "next": "矩形定量变形与真实面积材料已集成；定向机器检查和两个工具的四个中英文开发页 HTTP 检查通过。开发端已交付，待人工视觉与教学手感验收；数据库、生产和正式 Gate 未改。"
     },
@@ -398,7 +541,21 @@
       "checkout": "worktree",
       "branch": "codex/plane-invariants-codex",
       "card": ".ai/tasks/DEV-PLANE-INVARIANTS-20261002.md",
-      "writePaths": ["src/features/tools/plane-perimeter/model.ts", "src/features/tools/plane-perimeter/scenes.tsx", "src/features/tools/plane-relations/model.ts", "src/features/tools/plane-relations/scenes.tsx", "src/features/tools/plane-relations/README.md", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "tests/plane-perimeter.test.ts", "tests/plane-relations.test.ts", "tests/plane-invariants-integration.test.ts", "docs/evidence/tools-plane-invariants-20261002.md", ".ai/tasks/DEV-PLANE-INVARIANTS-20261002.md", ".ai/handoffs/DEV-PLANE-INVARIANTS-20261002-codex-01.md"],
+      "writePaths": [
+        "src/features/tools/plane-perimeter/model.ts",
+        "src/features/tools/plane-perimeter/scenes.tsx",
+        "src/features/tools/plane-relations/model.ts",
+        "src/features/tools/plane-relations/scenes.tsx",
+        "src/features/tools/plane-relations/README.md",
+        "src/features/tools/planar-kit/README.md",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "tests/plane-perimeter.test.ts",
+        "tests/plane-relations.test.ts",
+        "tests/plane-invariants-integration.test.ts",
+        "docs/evidence/tools-plane-invariants-20261002.md",
+        ".ai/tasks/DEV-PLANE-INVARIANTS-20261002.md",
+        ".ai/handoffs/DEV-PLANE-INVARIANTS-20261002-codex-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "4ada8f42a743cc4532a43d52782b26cf364342e2",
       "next": "main 已接收现有 v2 合同内的定量输入／手柄／正方形过程、分区复制和逐层中点材料，开发入口检查通过。开发端已交付，待人工验收；本批无数据库、共享宿主或生产变更。"
@@ -412,8 +569,13 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md",
-      "writePaths": [".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-TEACHING-MATRIX-20261002-INTEGRATION.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "96b395fcc4c819516f0a4a903a87f969682bdd4c",
       "next": "紧凑行高、统一讲次表头、单个底部滚动条及悬浮说明已集成；定向交互、类型与中英文页面启动检查通过。开发端已交付，待人工视觉验收。"
     },
@@ -426,7 +588,14 @@
       "checkout": "worktree",
       "branch": "codex/teaching-matrix-codex",
       "card": ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
-      "writePaths": ["src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/class-roster-layout.module.css", "src/features/school/teaching-workbench/TeachingProgressCells.tsx", "tests/enrollment-placement-drag-confirmation.test.ts", ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md", ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-03.md"],
+      "writePaths": [
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "src/features/school/class-roster-layout.module.css",
+        "src/features/school/teaching-workbench/TeachingProgressCells.tsx",
+        "tests/enrollment-placement-drag-confirmation.test.ts",
+        ".ai/tasks/DEV-TEACHING-MATRIX-20261002.md",
+        ".ai/handoffs/DEV-TEACHING-MATRIX-20261002-codex-03.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "97570b889a8ce4598eba4661a388c87ef06e88ca",
       "next": "本轮紧凑布局及交接 03 已被 main 接收，原表节点和行高保留、讲次与滚动统一；机器检查通过，待用户刷新开发页面验收。仅调整既有 UI，数据和权限合同保持。"
@@ -440,8 +609,13 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002-INTEGRATION.md",
-      "writePaths": [".ai/tasks/DEV-PLANE-COVER-MATCH-20261002-INTEGRATION.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002-INTEGRATION.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "5d54da14beb120c386a61508c07da9f8efea2a38",
       "next": "两个工具 v2、生成类型和交接已精确集成；本机保存校验、独立复核及四个中英文页面 HTTP 检查通过。开发端已交付，待人工视觉与手感验收；生产与正式 Gate 未改。"
     },
@@ -454,8 +628,30 @@
       "checkout": "worktree",
       "branch": "codex/plane-cover-match-codex",
       "card": ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002.md",
-      "writePaths": ["src/features/tools/plane-covering/", "src/features/tools/plane-matchsticks/", "src/features/tools/planar-kit/catalog.ts", "src/features/tools/planar-kit/contract.ts", "src/features/tools/planar-kit/scene-registry.ts", "src/features/tools/planar-kit/README.md", "src/features/tools/spatial-interaction/control-inventory.ts", "supabase/migrations/20261002130000_tool_plane_cover_match.sql", "supabase/tests/tool_plane_cover_match.sql", "src/lib/database.types.ts", "tests/plane-covering.test.ts", "tests/plane-matchsticks.test.ts", "tests/plane-cover-match-integration.test.ts", "tests/fixtures/plane-cover-match-cases.ts", "docs/evidence/tools-plane-cover-match-20261002.md", ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002.md", ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-review-01.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        "src/features/tools/plane-covering/",
+        "src/features/tools/plane-matchsticks/",
+        "src/features/tools/planar-kit/catalog.ts",
+        "src/features/tools/planar-kit/contract.ts",
+        "src/features/tools/planar-kit/scene-registry.ts",
+        "src/features/tools/planar-kit/README.md",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "supabase/migrations/20261002130000_tool_plane_cover_match.sql",
+        "supabase/tests/tool_plane_cover_match.sql",
+        "src/lib/database.types.ts",
+        "tests/plane-covering.test.ts",
+        "tests/plane-matchsticks.test.ts",
+        "tests/plane-cover-match-integration.test.ts",
+        "tests/fixtures/plane-cover-match-cases.ts",
+        "docs/evidence/tools-plane-cover-match-20261002.md",
+        ".ai/tasks/DEV-PLANE-COVER-MATCH-20261002.md",
+        ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-codex-01.md",
+        ".ai/handoffs/DEV-PLANE-COVER-MATCH-20261002-review-01.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "3e88e3c3aa9aaa605bee545aae0a1c8feea57afa",
       "next": "独立复核无 P1/P2，main 已接收实现、生成类型和交接；本机校验迁移已安装，开发端交付待人工验收。覆盖保持双格骨牌范围，火柴棒保持等长材料与手动留影；其他能力按后续批次推进。"
     },
@@ -468,8 +664,13 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION.md",
-      "writePaths": [".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002-INTEGRATION.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "ed3951440dafb51fc96251782fea264fc01aec9f",
       "next": "共用工具条避让已集成；定向检查、独立复核和六个中英文开发入口 HTTP 检查通过，待人工视觉／手感验收。覆盖、火柴棒等仍为后续业务批次；未操作数据库、生产或 Gate。"
     },
@@ -482,8 +683,27 @@
       "checkout": "worktree",
       "branch": "codex/toolbar-clearance-codex",
       "card": ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002.md",
-      "writePaths": ["src/features/tools/spatial-interaction/toolbar-placement.ts", "src/features/tools/spatial-interaction/toolbar-obstacles.ts", "src/features/tools/spatial-interaction/SpatialObjectToolbar.tsx", "src/features/tools/spatial-interaction/SpatialSurfaceLabel.tsx", "src/features/tools/spatial-interaction/README.md", "src/features/tools/planar-kit/PlanarObjectToolbar.tsx", "src/features/tools/planar-kit/PlanarWorkbench.tsx", "src/features/tools/place-value/PlaceValueBoxScene.tsx", "src/features/spatial-math/renderer-r3f/VoxelCanvas.tsx", "tests/spatial-toolbar-placement.test.ts", "tests/spatial-toolbar-obstacles.test.ts", "tests/planar-context-actions.test.ts", ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002.md", ".ai/handoffs/DEV-TOOLBAR-CLEARANCE-20261002-codex-01.md", ".ai/handoffs/DEV-TOOLBAR-CLEARANCE-20261002-review-01.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        "src/features/tools/spatial-interaction/toolbar-placement.ts",
+        "src/features/tools/spatial-interaction/toolbar-obstacles.ts",
+        "src/features/tools/spatial-interaction/SpatialObjectToolbar.tsx",
+        "src/features/tools/spatial-interaction/SpatialSurfaceLabel.tsx",
+        "src/features/tools/spatial-interaction/README.md",
+        "src/features/tools/planar-kit/PlanarObjectToolbar.tsx",
+        "src/features/tools/planar-kit/PlanarWorkbench.tsx",
+        "src/features/tools/place-value/PlaceValueBoxScene.tsx",
+        "src/features/spatial-math/renderer-r3f/VoxelCanvas.tsx",
+        "tests/spatial-toolbar-placement.test.ts",
+        "tests/spatial-toolbar-obstacles.test.ts",
+        "tests/planar-context-actions.test.ts",
+        ".ai/tasks/DEV-TOOLBAR-CLEARANCE-20261002.md",
+        ".ai/handoffs/DEV-TOOLBAR-CLEARANCE-20261002-codex-01.md",
+        ".ai/handoffs/DEV-TOOLBAR-CLEARANCE-20261002-review-01.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "9e5e1dc6d9c46e8662184438d2c5cd006fed3448",
       "next": "共享定位与标签／面板避让已集成 main；多行注解和静止帧循环复核问题均关闭。开发端已交付，待用户验收；右侧原操作、数学状态与保存合同保留。"
     },
@@ -522,7 +742,10 @@
         ".ai/tasks/DEV-SCHOOL-OPS-MOBILE-20261002.md",
         ".ai/handoffs/DEV-SCHOOL-OPS-MOBILE-20261002-codex-01.md"
       ],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "dfbd310009f7e7ccf034aa20d87afef85c02a1c1",
       "next": "手机连续记录排列已集成 main；布局与原交互定向检查通过，既有源码断言和全库测试类型错误已记入交接。开发端待人工视觉验收，无数据库或生产操作。"
     },
@@ -535,8 +758,27 @@
       "checkout": "integration",
       "branch": "main",
       "card": ".ai/tasks/DEV-PLANE-DEEP-20261002-INTEGRATION.md",
-      "writePaths": ["src/features/tools/planar-kit/", "src/features/tools/spatial-interaction/control-inventory.ts", "src/lib/database.types.ts", "tests/planar-context-actions.test.ts", "tests/planar-workbench.test.ts", "tests/planar-tool-contract.test.ts", "tests/planar-deep-integration.test.ts", "supabase/migrations/20261002000400_tool_plane_deep_catalog.sql", "supabase/tests/tool_plane_deep.sql", "docs/evidence/tools-plane-deep-20261002.md", "docs/plan/prepared-teaching-tools.md", ".ai/tasks/DEV-PLANE-DEEP-20261002-INTEGRATION.md", ".ai/tasks/DEV-PLANE-PERIMETER-20261002.md", ".ai/tasks/DEV-PLANE-GRID-MEASURE-20261002.md", ".ai/tasks/DEV-PLANE-RELATIONS-20261002.md"],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "writePaths": [
+        "src/features/tools/planar-kit/",
+        "src/features/tools/spatial-interaction/control-inventory.ts",
+        "src/lib/database.types.ts",
+        "tests/planar-context-actions.test.ts",
+        "tests/planar-workbench.test.ts",
+        "tests/planar-tool-contract.test.ts",
+        "tests/planar-deep-integration.test.ts",
+        "supabase/migrations/20261002000400_tool_plane_deep_catalog.sql",
+        "supabase/tests/tool_plane_deep.sql",
+        "docs/evidence/tools-plane-deep-20261002.md",
+        "docs/plan/prepared-teaching-tools.md",
+        ".ai/tasks/DEV-PLANE-DEEP-20261002-INTEGRATION.md",
+        ".ai/tasks/DEV-PLANE-PERIMETER-20261002.md",
+        ".ai/tasks/DEV-PLANE-GRID-MEASURE-20261002.md",
+        ".ai/tasks/DEV-PLANE-RELATIONS-20261002.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "5eb1b594874261615cedf89841e6448d6fb72392",
       "next": "五工具 v2 与共用宿主已集成，本机 SQL 和定向检查通过；开发端交付待人工验收。继续点与局限见 tools-plane-deep-20261002 交付记录，生产和 Gate 未改。"
     },
@@ -549,7 +791,12 @@
       "checkout": "worktree",
       "branch": "codex/plane-perimeter-deep-codex",
       "card": ".ai/tasks/DEV-PLANE-PERIMETER-20261002.md",
-      "writePaths": ["src/features/tools/plane-perimeter/", "tests/plane-perimeter.test.ts", "supabase/migrations/20261002000100_tool_plane_perimeter.sql", ".ai/handoffs/DEV-PLANE-PERIMETER-20261002-codex-01.md"],
+      "writePaths": [
+        "src/features/tools/plane-perimeter/",
+        "tests/plane-perimeter.test.ts",
+        "supabase/migrations/20261002000100_tool_plane_perimeter.sql",
+        ".ai/handoffs/DEV-PLANE-PERIMETER-20261002-codex-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "558f38fdbffd6ba9ed7d10f283d074ca1412804c",
       "next": "root 已复核接收实现和交接，10-create 已接总合同；开发端待周长绕边、拉直同尺比较与编辑手感验收。"
@@ -563,7 +810,12 @@
       "checkout": "worktree",
       "branch": "codex/plane-grid-measure-deep-codex",
       "card": ".ai/tasks/DEV-PLANE-GRID-MEASURE-20261002.md",
-      "writePaths": ["src/features/tools/plane-grid-measure/", "tests/plane-grid-measure.test.ts", "supabase/migrations/20261002000200_tool_plane_grid_measure.sql", ".ai/handoffs/DEV-PLANE-GRID-MEASURE-20261002-codex-01.md"],
+      "writePaths": [
+        "src/features/tools/plane-grid-measure/",
+        "tests/plane-grid-measure.test.ts",
+        "supabase/migrations/20261002000200_tool_plane_grid_measure.sql",
+        ".ai/handoffs/DEV-PLANE-GRID-MEASURE-20261002-codex-01.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "c341f01299ea9b66155e1a3a2ac9cbc1ec10778a",
       "next": "root 已复核接收；34-create／11-create、草稿投影及本机保存合同接通，待钉点闭合、编辑分片与单位覆盖人工验收。"
@@ -577,7 +829,15 @@
       "checkout": "worktree",
       "branch": "codex/plane-relations-deep-codex",
       "card": ".ai/tasks/DEV-PLANE-RELATIONS-20261002.md",
-      "writePaths": ["src/features/tools/plane-relations/", "src/features/tools/plane-overlap/", "tests/plane-relations.test.ts", "tests/plane-overlap.test.ts", "supabase/migrations/20261002000300_tool_plane_relations_overlap.sql", ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-01.md", ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-02.md"],
+      "writePaths": [
+        "src/features/tools/plane-relations/",
+        "src/features/tools/plane-overlap/",
+        "tests/plane-relations.test.ts",
+        "tests/plane-overlap.test.ts",
+        "supabase/migrations/20261002000300_tool_plane_relations_overlap.sql",
+        ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-01.md",
+        ".ai/handoffs/DEV-PLANE-RELATIONS-20261002-codex-02.md"
+      ],
       "sharedPaths": [],
       "checkpoint": "db643571352e081e82bdac3e5eb19b33057b1d45",
       "next": "root 已复核接收领域及 A/B 面板补丁，18-create／33-create 已接总合同；旧未迁移动作和圆弧范围已说明，待人工验收。"
@@ -595,7 +855,10 @@
         ".ai/tasks/DEV-DASHBOARD-MOBILE-20261002-INTEGRATION.md",
         ".ai/tasks/DEV-CLASS-LIST-20261001.md"
       ],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "2a2074e8e403973eb5332c320d4102d04f0c6804",
       "next": "共用滚动修复已集成；修复损坏的本机生成清单后，健康接口及总览/沟通/学生/班级中英文页面均正常。开发端已交付，待人工手机滚动与视觉验收。"
     },
@@ -615,7 +878,10 @@
         ".ai/tasks/DEV-PARENT-WECHAT-AUTH-UI-20261002.md",
         ".ai/tasks/DEV-PARENT-IOS-DETAILS-20261002.md"
       ],
-      "sharedPaths": [".ai/registry.json", "CHANGELOG.md"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md"
+      ],
       "checkpoint": "ba9e8bd3e62a4292ba929036bd8949f5aeeeee59",
       "next": "开发数据已核验并装载，真实HTTP与原生测评申请页读取通过；源码及交接已集成。待人工体验申请/确认、活动、登记和课表；真实微信待私有配置及平台往返验证，生产与正式Gate未执行。"
     },
@@ -1023,6 +1289,40 @@
       "sharedPaths": [],
       "checkpoint": "5dab892d4e2471d858c24e82f80f62c0508c3631",
       "next": "底栏图标与家长页布局修复已集成main a5f46e60/fa49b1e8；四文件与已检head一致，复用29项及微信原生检查。原会话重开主项目家长页供人工验收；API与真实业务条件保持。"
+    },
+    {
+      "id": "REPO-DIRECTION-CLEANUP-20261004",
+      "title": "产品方向与仓库入口整理",
+      "agent": "codex",
+      "threadId": "01a0ffb9-c74e-7c80-ac23-13b52f30e52a",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/product-direction-cleanup",
+      "card": ".ai/tasks/REPO-DIRECTION-CLEANUP-20261004.md",
+      "writePaths": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "README.md",
+        "MEMORY.md",
+        "docs/agent/",
+        "docs/plan/",
+        "docs/runbooks/",
+        "docs/workflows/",
+        "docs/ops/",
+        "archive/",
+        ".github/workflows/",
+        "package.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "eslint.config.mjs",
+        ".ai/tasks/REPO-DIRECTION-CLEANUP-20261004.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "在独立工作区精简阅读与执行入口；归档映射避开 main 的在途教具文件，合并时同步最新登记。"
     }
   ]
 }
