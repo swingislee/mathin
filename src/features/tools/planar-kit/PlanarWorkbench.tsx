@@ -19,7 +19,7 @@ import { SpatialCanvasPanel } from "../spatial-interaction/SpatialWorkbenchContr
 import { useSpatialDirectCommit } from "../spatial-interaction/useSpatialDirectCommit";
 import { useSpatialToolState } from "../spatial-interaction/useSpatialToolState";
 import workbenchStyles from "../spatial-lab/CubeStructuresWorkbench.module.css";
-import { ALL_PLANAR_TOOLS, planarSnapshot, planarSnapshotForTool, planarStateSchema, type PlanarPoint, type PlanarSnapshot, type PlanarState, type PlanarToolId, type PlanarVersion } from "./contract";
+import { ALL_PLANAR_TOOLS, planarMotionSchema, planarSnapshot, planarSnapshotForTool, planarStateSchema, type PlanarPoint, type PlanarSnapshot, type PlanarState, type PlanarToolId, type PlanarVersion } from "./contract";
 import { planarCommit, planarEventTime, planarFrame, planarHistory, planarPause, planarProgress } from "./presentation";
 import { planarScene, scenesForPlanarTool } from "./scene-registry";
 import { PlanarObjectToolbar } from "./PlanarObjectToolbar";
@@ -165,7 +165,9 @@ function PlanarWorkbenchStage({ toolId, version, locale: suppliedLocale, initial
       const snapped = data.moved ? definition.snap?.(next, data.data.target) : null;
       // 手动过程已经展示；只有吸附的最后一小段播放，回执不会从起点重播拖动。
       const changed = planarCommit(authority, data.data.start, snapped ?? next);
-      const settled = snapped && !same(snapped, next) ? { ...changed, motion: planarCommit(authority, next, snapped, { id: "snap", duration: 180, now: planarEventTime() }).motion } : changed;
+      const snapMotion = snapped && !same(snapped, next) ? planarCommit(authority, next, snapped, { id: "snap", duration: 180, now: planarEventTime() }).motion : null;
+      // 投影过程直接交付准确落点；合同允许的离散格点吸附仍保留短动画。
+      const settled = snapMotion && definition.isExact?.(next) !== false && planarMotionSchema.safeParse(snapMotion).success ? { ...changed, motion: snapMotion } : changed;
       if (!same(next, data.data.start) || snapped) publish(settled);
       clearDrag();
     },
