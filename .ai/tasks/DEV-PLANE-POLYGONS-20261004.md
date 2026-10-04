@@ -9,3 +9,5 @@
 - SQL `20261004030400_tool_plane_polygon_workbench.sql` 只新增 `tool_plane_polygon_workbench_state_is_valid` / `tool_plane_polygon_workbench_scene_is_valid` 及私有 ACL。状态严格字段、数量与TS一致；提供 `planePolygonWorkbenchCases` fixtures。root 负责 0305 总分发和本机安装。
 - 旧版06/07/08继续按v1读取，不修改巨大 legacy scenes.tsx 或共享构造。必要检查按本次几何与持久边界选取，不跑全量、不连接DB、不启动服务、不用浏览器替代人工验收。
 - 复用 `.worktrees/plane-relations-deep-codex` 新分支。小切片可各自提交，完成后留简短交接与真实剩余项。
+
+2026-10-04 已集成代码 `55faa354` 与共享接线 `f8133e68`。本地 0304/0305 保存合同已安装，63 个夹具与真实宿主新建、只读及课堂事件接线通过。开发端可操作，教学手感待人工确认。

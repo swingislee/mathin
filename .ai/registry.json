@@ -135,28 +135,28 @@
       "title": "三角形四边形与活动框架同台建构",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-polygons-open-codex",
       "card": ".ai/tasks/DEV-PLANE-POLYGONS-20261004.md",
       "writePaths": ["src/features/tools/plane-polygons/", "tests/plane-polygons-open.test.ts", "tests/plane-polygons-open-integration.test.ts", "tests/fixtures/plane-polygons-open-cases.ts", "supabase/migrations/20261004030400_tool_plane_polygon_workbench.sql", ".ai/handoffs/DEV-PLANE-POLYGONS-20261004-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": "188df59634b10c8c6d6c790dbfd3d972c1aa39a9",
-      "next": "线角只读复核完成后启动；复用已干净的关系工作树，从新登记提交建分支，迁入06/07/08所有获批教学能力并保留原版。"
+      "next": "代码55faa354及共享接线f8133e68已完成；本地新版本保存、63边界夹具和真实宿主接线通过，开发端待人工教学确认。"
     },
     {
       "id": "DEV-PLANE-NETWORK-20261004",
       "title": "图形计数与线网路径的精确操作",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-network-precision-codex",
       "card": ".ai/tasks/DEV-PLANE-NETWORK-20261004.md",
       "writePaths": ["src/features/tools/plane-network/model.ts", "src/features/tools/plane-network/scenes.tsx", "src/features/tools/plane-network/README.md", "tests/plane-network-model.test.ts", "tests/plane-network-integration.test.ts", "tests/fixtures/plane-network-cases.ts", ".ai/handoffs/DEV-PLANE-NETWORK-20261004-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": "77bbfaf6ee6a55d652f361c2b3bf1f8ca7f8f4ce",
-      "next": "路线批次已提交后复用干净工作树新分支；沿用 v2 准确点线、连通分量变换、单条观察与笔迹操作，无新 SQL。"
+      "next": "代码07012f67已集成，真实宿主及新增端点TS/SQL一致性通过；保持v2，开发端待人工教学确认。"
     },
     {
       "id": "DEV-PLANE-FOLD-LAYERS-20261004",
