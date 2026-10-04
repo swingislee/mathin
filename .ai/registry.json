@@ -20,6 +20,7 @@
         ".ai/tasks/DEV-PLANE-NETWORK-20261004.md",
         ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
         ".ai/tasks/DEV-PLANE-MOTION-20261004.md",
+        ".ai/tasks/DEV-PLANE-OVERLAP-CURVES-20261004.md",
         "src/features/tools/plane-lines/",
         "src/features/tools/plane-circle-dissection/",
         "src/features/tools/plane-tiling/model.ts",
@@ -40,6 +41,7 @@
         "supabase/migrations/20261004030700_tool_plane_circle_dissection.sql",
         "supabase/migrations/20261004030800_tool_plane_circle_dissection_catalog.sql",
         "supabase/migrations/20261004031100_tool_plane_paper_layers_catalog.sql",
+        "supabase/migrations/20261004031300_tool_plane_overlap_curves_catalog.sql",
         "scripts/plane-foundation-local.mjs",
         "tests/plane-lines.test.ts",
         "tests/plane-circle-dissection.test.ts",
@@ -183,6 +185,20 @@
       "sharedPaths": [],
       "checkpoint": "5c6b58cc716b264b166cbc8736258bd6bfd13589",
       "next": "从 main 新分支实现按份数绕点重复、真实对应点与操作手势；保持既有 v2 与形状修复，独立副本不缓存组关系。"
+    },
+    {
+      "id": "DEV-PLANE-OVERLAP-CURVES-20261004",
+      "title": "圆弧交叠与圆方补集的真实拆片",
+      "agent": "codex",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/plane-overlap-curves-codex",
+      "card": ".ai/tasks/DEV-PLANE-OVERLAP-CURVES-20261004.md",
+      "writePaths": ["src/features/tools/plane-overlap-curves/", "tests/plane-overlap-curves.test.ts", "tests/plane-overlap-curves-integration.test.ts", "tests/fixtures/plane-overlap-curves-cases.ts", "supabase/migrations/20261004031200_tool_plane_overlap_curves.sql", ".ai/handoffs/DEV-PLANE-OVERLAP-CURVES-20261004-codex-01.md"],
+      "sharedPaths": [],
+      "checkpoint": "637962668970d57c5f2d17098ec4535e956d622f",
+      "next": "基于真实有向线段/圆弧闭环实现 33/44/45 同台建构、布尔运算和独立拆片；旧版本保持。"
     },
     {
       "id": "REPO-DIRECTION-CLEANUP-20261004",
