@@ -65,7 +65,7 @@ async function tick(ms: number) {
   time += ms; const callbacks = [...frames.values()]; frames.clear(); await act(async () => callbacks.forEach((frame) => frame(time)));
 }
 const render = async (props: Partial<ComponentProps<typeof PlanarWorkbench>> = {}) => {
-  await act(async () => root.render(createElement(PlanarWorkbench, { toolId: "plane-perimeter", locale: "zh", onSnapshot: capture, ...props })));
+  await act(async () => root.render(createElement(PlanarWorkbench, { toolId: "plane-perimeter", locale: "zh", onSnapshot: capture, ...(props.toolId === "plane-area-relations" && !props.initial ? { version: "plane-area-relations-lesson-v3" as const } : {}), ...props })));
 };
 async function select(id: number) {
   const at = constructionObject(current()!, id)!.center;
@@ -91,7 +91,7 @@ describe("new material actions in the shared planar workbench", () => {
     const definition = planarScene("18-interior"), initial = toggleInterior(definition.create());
     const scene = parseToolScene({ toolId: "plane-area-relations", contentVersion: "plane-area-relations-lesson-v3", payload: { title: "Interior", initial } });
     const frozen = freezeToolScene(scene), saved = JSON.stringify(frozen);
-    for (const surface of ["microcourse", "formal-courseware"] as const) expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === "plane-area-relations").map((entry) => entry.contentVersion)).toEqual(["plane-area-relations-lesson-v3"]);
+    for (const surface of ["microcourse", "formal-courseware"] as const) expect(toolCoursewareContractsForSurface(surface).filter((entry) => entry.catalogId === "plane-area-relations").map((entry) => entry.contentVersion)).toEqual([PLANAR_TOOLS.find((tool) => tool.id === "plane-area-relations")!.version]);
     vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
     const rotate = definition.operations!.flatMap((operation) => operation.actions ?? []).find((action) => action.id === "construction-rotate")!;
     const endpoint = rotate.run(initial, { selected: `object.${initial.params.active}` });
