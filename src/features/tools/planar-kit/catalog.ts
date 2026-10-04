@@ -10,7 +10,7 @@ export const PLANAR_TOOLS = [
   { id: "plane-circle-area", version: "plane-circle-area-lesson-v2", scenes: ["27-sectors"], zh: "圆面积割补", en: "Dissecting a circle" },
   { id: "plane-overlap", version: "plane-overlap-lesson-v3", scenes: ["33-concave"], zh: "重叠与区域", en: "Overlap and regions" },
   { id: "plane-motion", version: "plane-motion-lesson-v2", scenes: ["20-create"], zh: "平面图形运动", en: "Plane transformations" },
-  { id: "plane-folding", version: "plane-folding-lesson-v2", scenes: ["32-create"], zh: "折纸与剪纸", en: "Paper folding and cutting" },
+  { id: "plane-folding", version: "plane-folding-lesson-v3", scenes: ["32-layers"], zh: "折纸与剪纸", en: "Paper folding and cutting" },
   { id: "plane-tiling", version: "plane-tiling-lesson-v2", scenes: ["36-create"], zh: "镶嵌与空隙", en: "Tiling and gaps" },
   { id: "plane-patterns", version: "plane-patterns-lesson-v2", scenes: ["47-create"], zh: "图形计数", en: "Counting shapes" },
   { id: "plane-matchsticks", version: "plane-matchsticks-lesson-v2", scenes: ["51-create"], zh: "火柴棒拼摆", en: "Matchstick arrangements" },
@@ -24,6 +24,7 @@ export const PLANAR_TOOLS = [
 ] as const;
 /** 历史备课和发布副本继续按原身份打开，新建入口不再提供合并工具。 */
 export const LEGACY_PLANAR_TOOLS = [
+  { id: "plane-folding", version: "plane-folding-lesson-v2", scenes: ["32-create"], zh: "折纸与剪纸（单折旧版）", en: "Paper folding and cutting (previous single fold)" },
   { id: "plane-polygons", version: "plane-polygons-lesson-v1", scenes: ["06", "07", "08"], zh: "三角形与四边形（旧版）", en: "Triangles and quadrilaterals (legacy)" },
   { id: "plane-circle-area", version: "plane-circle-area-lesson-v1", scenes: ["27"], zh: "圆面积割补（旧版）", en: "Dissecting a circle (legacy)" },
   { id: "plane-area", version: "plane-area-lesson-v2", scenes: ["14-create"], zh: "剪拼与面积转化（自由纸片旧版）", en: "Dissection and area (previous free papers)" },

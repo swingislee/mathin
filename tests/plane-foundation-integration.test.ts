@@ -7,8 +7,10 @@ import { planarSnapshot, type PlanarState } from "@/features/tools/planar-kit/co
 import { addLineMaterial, lineMaterial, lineMetrics } from "@/features/tools/plane-lines/model";
 import { emptyLinesState } from "@/features/tools/plane-lines/model";
 import { createClassroomToolState, parseClassroomToolState, type ClassroomToolUpdate } from "@/features/tools/courseware/tool-classroom";
-import { parseToolScene } from "@/features/tools/scenes/contract";
+import { parseToolScene, toolSceneSchema } from "@/features/tools/scenes/contract";
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
+import { constructPaperLayers, foldStep, paperCuts } from "@/features/tools/plane-paper-layers/model";
+import { firstFoldState, planePaperLayersCases, twoFoldState } from "./fixtures/plane-paper-layers-cases";
 
 vi.mock("next-intl", () => ({ useLocale: () => "zh" }));
 let container: HTMLDivElement, root: Root;
@@ -93,5 +95,59 @@ describe("open line and angle host", () => {
     const arm = container.querySelector<HTMLInputElement>('input[aria-label="第二臂长（u）"]')!;
     await act(async () => { arm.value = "3.25"; arm.dispatchEvent(new FocusEvent("focusout", { bubbles: true })); });
     expect(lineMetrics(lineMaterial(current()!)!).secondLength).toBeCloseTo(130, 9);
+  });
+});
+
+describe("two-fold paper through the shared host", () => {
+  it("preserves every strict versioned fixture through the actual scene contract", () => {
+    for (const entry of planePaperLayersCases()) expect(toolSceneSchema.safeParse(entry.scene).success, entry.label).toBe(entry.accepted);
+  });
+  it("commits a directly dragged semantic fold angle once and cancels the next gesture", async () => {
+    const initial = foldStep(firstFoldState(), true); await render({ toolId: "plane-folding", initial });
+    const paper = () => container.querySelector('[data-paper-layer="1"] g[role="button"]')!;
+    await pointer(paper(), "pointerdown", 360, 300); await pointer(svg(), "pointermove", 490, 300); expect(current()).toBeNull();
+    await pointer(svg(), "pointerup", 490, 300); const folded = current()!;
+    expect(folded.params["foldAngle.0"]).toBeCloseTo(90); expect(folded.params.layerFrame).toBeUndefined();
+    expect(folded.points).toEqual(initial.points);
+    await pointer(paper(), "pointerdown", 490, 300); await pointer(svg(), "pointermove", 425, 300);
+    await pointer(svg(), "pointercancel", 425, 300); expect(current()).toEqual(folded);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial); expect(button("撤销").disabled).toBe(true);
+    await act(async () => button("重做").click()); expect(current()).toEqual(folded);
+  });
+  it("moves one cut from its doubly reflected unfolded copy without changing another cut", async () => {
+    const circle = constructPaperLayers(twoFoldState(), "cut-circle", [{ x: 590, y: 450 }, { x: 610, y: 450 }])!;
+    const twoCuts = constructPaperLayers(circle, "cut-polygon", [{ x: 640, y: 540 }, { x: 720, y: 540 }, { x: 680, y: 585 }])!;
+    const initial = foldStep(foldStep(twoCuts, true), true); await render({ toolId: "plane-folding", initial });
+    const copy = container.querySelector('[data-paper-handle="cut-body.1.0.3"]')!; expect(copy).not.toBeNull();
+    await pointer(copy, "pointerdown", 370, 290); await pointer(svg(), "pointermove", 380, 295); expect(current()).toBeNull();
+    await pointer(svg(), "pointerup", 380, 295);
+    expect(current()!.points["cut.1.0"]).toEqual({ x: 580, y: 445 });
+    expect(paperCuts(current()!)[1]).toEqual(paperCuts(initial)[1]); expect(current()!.params.activeCut).toBe(1);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial); expect(button("撤销").disabled).toBe(true);
+  });
+  it("keeps animated projection out of saved state and resumes the same layer after pausing", async () => {
+    let time = 1000, nextFrame = 0; const frames = new Map<number, FrameRequestCallback>();
+    vi.spyOn(Date, "now").mockImplementation(() => time);
+    vi.stubGlobal("requestAnimationFrame", (frame: FrameRequestCallback) => { frames.set(++nextFrame, frame); return nextFrame; });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+    const tick = async (ms: number) => { time += ms; const pending = [...frames.values()]; frames.clear(); await act(async () => pending.forEach((frame) => frame(time))); };
+    const initial = twoFoldState(); await render({ toolId: "plane-folding", initial });
+    await act(async () => button("慢慢展开一层").click()); await tick(450); expect(current()).toBeNull();
+    await act(async () => button("停在当前位置").click()); expect(current()).toBeNull(); expect(button("继续过程").disabled).toBe(false);
+    await act(async () => button("继续过程").click()); await tick(1350);
+    expect(current()).toEqual(foldStep(initial, true)); expect(current()!.params["foldAngle.0"]).toBe(180);
+    await act(async () => button("撤销").click()); expect(current()).toEqual(initial);
+  });
+  it("retains exact v3 and previous v2 classroom scenes with no readonly edit handles", async () => {
+    for (const label of ["four-layer-circle", "v2-readable"]) {
+      const entry = planePaperLayersCases().find((item) => item.label === label)!;
+      const saved = parseToolScene(entry.scene), initial = entry.scene.payload.initial;
+      const update = { toolId: "plane-folding", contentVersion: entry.scene.contentVersion, state: planarSnapshot(initial) } as ClassroomToolUpdate;
+      const event = createClassroomToolState("page", "doc", "instance", update, toolSceneOriginHash(saved.payload));
+      expect(parseClassroomToolState(event)).toEqual(event);
+      await render({ toolId: "plane-folding", initial, readOnly: true, classroom: { state: planarSnapshot(initial) } });
+      expect(current()).toEqual(initial); expect(container.querySelector("[data-paper-handle]")).toBeNull();
+      if (label === "four-layer-circle") expect(button("慢慢展开一层").disabled).toBe(true);
+    }
   });
 });

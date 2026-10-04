@@ -8,8 +8,9 @@ import { textFileSha256 } from './lib/text-hash.mjs';
 import { assertNonProductionWriteTarget } from './lib/r1-write-target-policy.mjs';
 
 // 从持有3130及私有配置的主checkout调用，源码读取本脚本所属的集成工作树。
-const mode = process.argv[2], polygons = process.argv.includes('--with-polygons'), circle = process.argv.includes('--with-circle');
-if (!['--preflight', '--check', '--apply'].includes(mode) || process.argv.slice(3).some(arg => !['--with-polygons', '--with-circle'].includes(arg))) throw new Error('Use --preflight, --check or --apply [--with-polygons] [--with-circle]');
+const mode = process.argv[2], polygons = process.argv.includes('--with-polygons'), circle = process.argv.includes('--with-circle'), folding = process.argv.includes('--with-folding');
+if (!['--preflight', '--check', '--apply'].includes(mode) || process.argv.slice(3).some(arg => !['--with-polygons', '--with-circle', '--with-folding'].includes(arg))) throw new Error('Use --preflight, --check or --apply [--with-polygons] [--with-circle] [--with-folding]');
+if (folding && !circle) throw new Error('Folding dispatch requires --with-circle');
 const sourceRoot = fileURLToPath(new URL('../', import.meta.url)), output = path.resolve('.tmp/plane-foundation-local');
 fs.mkdirSync(output, { recursive: true });
 const { sql, observed } = openHistoryLocalTarget({ attestationPath: path.join(output, 'target.json'), refresh: mode === '--preflight', errorFile: path.join(output, 'database-error.txt') });
@@ -19,7 +20,8 @@ if (mode === '--preflight') { console.log('Confirmed isolated local host, actual
 const literal = value => `'${String(value).replaceAll("'", "''")}'`;
 const versions = ['20261004030000_tool_plane_lines', '20261004030100_tool_plane_area_lessons', '20261004030200_tool_plane_routes', '20261004030300_tool_plane_foundation_catalog',
   ...(polygons ? ['20261004030400_tool_plane_polygon_workbench', '20261004030500_tool_plane_polygon_catalog'] : []), '20261004030600_tool_plane_foundation_titles',
-  ...(circle ? ['20261004030700_tool_plane_circle_dissection', '20261004030800_tool_plane_circle_dissection_catalog'] : [])];
+  ...(circle ? ['20261004030700_tool_plane_circle_dissection', '20261004030800_tool_plane_circle_dissection_catalog'] : []),
+  ...(folding ? ['20261004031000_tool_plane_paper_layers', '20261004031100_tool_plane_paper_layers_catalog'] : [])];
 const migrations = versions.map(version => {
   const file = path.join(sourceRoot, 'supabase/migrations', `${version}.sql`), digest = textFileSha256(file);
   const recorded = sql(`begin read only; select checksum from public.schema_migrations where version=${literal(version)}; commit;`);
@@ -58,7 +60,8 @@ try {
   ]) { const bad = structuredClone(initial); change(bad); cases.push(wrap(label, bad, false)); }
   for (const [file, factory] of [['plane-area-lessons-cases', 'planeAreaLessonCases'], ['plane-routes-cases', 'planeRoutesCases'],
     ...(polygons ? [['plane-polygons-open-cases', 'planePolygonWorkbenchCases']] : []),
-    ...(circle ? [['plane-circle-dissection-cases', 'planeCircleDissectionCases'], ['plane-network-cases', 'planeNetworkCases']] : [])]) {
+    ...(circle ? [['plane-circle-dissection-cases', 'planeCircleDissectionCases'], ['plane-network-cases', 'planeNetworkCases']] : []),
+    ...(folding ? [['plane-paper-layers-cases', 'planePaperLayersCases'], ['plane-construction-motion-cases', 'planeConstructionMotionCases']] : [])]) {
     cases.push(...(await runner.ssrLoadModule(`/tests/fixtures/${file}.ts`))[factory]());
   }
   for (const version of ['plane-geometry-lesson-v2', 'plane-area-lesson-v3']) {
@@ -71,9 +74,9 @@ try {
   for (const entry of cases) if (toolSceneSchema.safeParse(entry.scene).success !== entry.accepted) throw new Error(`PLANE_FOUNDATION_TS_CASE_${entry.label}`);
 } finally { await runner.close(); }
 const fixtureText = JSON.stringify(cases), fixtureDigest = createHash('sha256').update(fixtureText).digest('hex');
-const checkedMigrations = migrations.map(({ version, digest }) => ({ version, digest })), checkedPath = path.join(output, `checked${polygons ? '-polygons' : ''}${circle ? '-circle' : ''}.json`);
+const checkedMigrations = migrations.map(({ version, digest }) => ({ version, digest })), checkedPath = path.join(output, `checked${polygons ? '-polygons' : ''}${circle ? '-circle' : ''}${folding ? '-folding' : ''}.json`);
 if (mode === '--check') {
-  const newVersions = ['plane-geometry-lesson-v2', 'plane-area-lesson-v3', 'plane-grid-path-lesson-v2', 'plane-reflection-path-lesson-v2', ...(polygons ? ['plane-polygons-lesson-v2'] : []), ...(circle ? ['plane-circle-area-lesson-v2'] : [])];
+  const newVersions = ['plane-geometry-lesson-v2', 'plane-area-lesson-v3', 'plane-grid-path-lesson-v2', 'plane-reflection-path-lesson-v2', ...(polygons ? ['plane-polygons-lesson-v2'] : []), ...(circle ? ['plane-circle-area-lesson-v2'] : []), ...(folding ? ['plane-folding-lesson-v3', 'plane-motion-lesson-v2'] : [])];
   const scenes = newVersions.map(version => {
     const entry = cases.find(item => item.accepted && item.scene.contentVersion === version); if (!entry) throw new Error('PLANE_FOUNDATION_SAVE_CASE_MISSING'); return entry.scene;
   });
@@ -89,7 +92,8 @@ if (mode === '--check') {
   }
   if (!owner) throw new Error('FIXED_DEVELOPMENT_ACCOUNT_REQUIRED');
   const legacy = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'supabase/tests/planar_tool_scene_assertions.sql'), 'utf8').split('$fixtures$')[1]);
-  const helpers = ['tool_plane_lines', 'tool_plane_area_lessons', 'tool_plane_routes', ...(polygons ? ['tool_plane_polygon_workbench'] : []), ...(circle ? ['tool_plane_circle_dissection'] : [])].flatMap(name => ['state', 'scene'].map(suffix => `public.${name}_${suffix}_is_valid(jsonb)`));
+  const helpers = ['tool_plane_lines', 'tool_plane_area_lessons', 'tool_plane_routes', ...(polygons ? ['tool_plane_polygon_workbench'] : []), ...(circle ? ['tool_plane_circle_dissection'] : []), ...(folding ? ['tool_plane_paper_layers'] : [])].flatMap(name => ['state', 'scene'].map(suffix => `public.${name}_${suffix}_is_valid(jsonb)`));
+  if (folding) helpers.push('public.tool_plane_paper_layers_polygon_is_valid(jsonb)', 'public.tool_plane_paper_layers_fold(jsonb,jsonb,jsonb,integer)');
   helpers.push('public.tool_plane_area_lessons_point(double precision,double precision)',
     'public.tool_plane_area_lessons_rectangle(double precision,double precision,double precision,double precision)',
     'public.tool_plane_area_lessons_clip_x(jsonb,double precision,integer)',

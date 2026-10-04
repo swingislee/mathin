@@ -26,6 +26,7 @@ describe("two-fold scene and private save contract", () => {
     expect(draw(initial).querySelectorAll("[data-paper-layer]")).toHaveLength(1); expect(draw(initial).querySelectorAll("text,[data-paper-handle]")).toHaveLength(0);
     const edit = action("paper-edit").run(initial, { selected: null }); expect(draw(edit).querySelectorAll("[data-paper-handle]")).toHaveLength(4);
     const prepared = foldStep(firstFoldState(), true); expect(draw(prepared, { operation: "fold" }).querySelectorAll("[data-paper-handle]")).toHaveLength(2);
+    expect(draw(prepared, { operation: "fold", editable: false }).querySelectorAll("[data-paper-handle]")).toHaveLength(0);
     expect(draw(prepared).querySelectorAll("[data-paper-handle]")).toHaveLength(0);
     expect(draw(cutPaper()).querySelectorAll("[data-cut-editor]")).toHaveLength(4);
     expect(draw(cutPaper(), { editable: false }).querySelectorAll("[data-cut-editor]")).toHaveLength(0);
