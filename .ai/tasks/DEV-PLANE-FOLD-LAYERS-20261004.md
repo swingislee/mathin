@@ -7,3 +7,5 @@
 - SQL `20261004031000_tool_plane_paper_layers.sql` 仅增加私有 helper，前缀 `tool_plane_paper_layers_`；至少导出 state/scene 两个严格入口。root 的 0311 负责总分发，不在 worker 修改。title 采用 JS trim／UTF-16 范围；ACL 全部回收，fixtures 覆盖边界。
 - 复用干净 `.worktrees/plane-invariants-codex`，保留面积分支，从本登记提交创建 `codex/plane-fold-layers-codex`。共享宿主、目录、控制清单、生成类型及 DB 操作归 root。
 - 定向验证真实层叠、跨边剪口、独立编辑、准确终点及旧版读取；不运行全量、服务或浏览器。人工视觉和教学手感由产品负责人确认。
+
+- 交付：领域 `cdec2322`、共享接线 `9373f1bd`。真实宿主验证直接折角一次提交、展开剪口的逆映射、逐层动画暂停／继续、v3/v2课堂及只读；0310/0311 已安装隔离开发库，旧版保持。人工教学验收待确认。

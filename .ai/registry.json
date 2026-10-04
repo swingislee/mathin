@@ -66,8 +66,8 @@
         ".ai/registry.json",
         "CHANGELOG.md"
       ],
-      "checkpoint": "819a6061b0831e3f83c2403d5948b32b52056d0b",
-      "next": "main 74d602e0 已交付线角/面积/路线、形状辨识/镶嵌修复，开发库保存合同与 zh/en 页面已接通。继续多边形、线网、双折及剩余领域；待人工教学验收，尚未全部完成。"
+      "checkpoint": "9373f1bd08e82eabec6d7fb3381d3e9647e0e8f6",
+      "next": "基础、圆片/多边形/线网及双折/连续运动已交付开发代码与本地保存合同。继续真实组合边界、圆弧布尔、开放滚动和精确输入；人工教学验收待确认，尚未全部完成。"
     },
     {
       "id": "DEV-PLANE-EXACT-MOTION-20261004",
@@ -167,28 +167,28 @@
       "title": "双折逐层展开与独立剪口编辑",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-fold-layers-codex",
       "card": ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
       "writePaths": ["src/features/tools/plane-paper-layers/", "tests/plane-paper-layers.test.ts", "tests/plane-paper-layers-integration.test.ts", "tests/fixtures/plane-paper-layers-cases.ts", "supabase/migrations/20261004031000_tool_plane_paper_layers.sql", ".ai/handoffs/DEV-PLANE-FOLD-LAYERS-20261004-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": "74d602e091b017f4fa148510767b07a2f6d46ca5",
-      "next": "沿用面积工作树的新分支，新增32-layers/v3，按实际叠层及来源映射补双折与独立剪口，旧版保持。"
+      "next": "领域 cdec2322 与接线9373f1bd 已完成；真实宿主剪口反向映射、逐层动画、只读与本地v3保存通过，开发端待人工确认。"
     },
     {
       "id": "DEV-PLANE-MOTION-20261004",
       "title": "绕点重复与对应点连续操作",
       "agent": "codex",
       "threadId": null,
-      "status": "in_progress",
+      "status": "integrated",
       "checkout": "worktree",
       "branch": "codex/plane-motion-repeat-codex",
       "card": ".ai/tasks/DEV-PLANE-MOTION-20261004.md",
       "writePaths": ["src/features/tools/plane-construction/model.ts", "src/features/tools/plane-construction/scenes.tsx", "src/features/tools/plane-construction/motion.ts", "src/features/tools/plane-construction/README.md", "tests/plane-construction-motion.test.ts", "tests/plane-construction-motion-integration.test.ts", "tests/fixtures/plane-construction-motion-cases.ts", ".ai/handoffs/DEV-PLANE-MOTION-20261004-codex-01.md"],
       "sharedPaths": [],
       "checkpoint": "5c6b58cc716b264b166cbc8736258bd6bfd13589",
-      "next": "从 main 新分支实现按份数绕点重复、真实对应点与操作手势；保持既有 v2 与形状修复，独立副本不缓存组关系。"
+      "next": "领域5f6eb32f已集成，按份数重复、真实对应点与连续操作保持v2；实际保存边界检查通过，开发端待人工教学确认。"
     },
     {
       "id": "DEV-PLANE-OVERLAP-CURVES-20261004",
