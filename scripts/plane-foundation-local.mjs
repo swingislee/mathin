@@ -15,7 +15,7 @@ const { sql } = openHistoryLocalTarget({ attestationPath: path.join(output, 'tar
 if (mode === '--preflight') { console.log('Confirmed isolated local host, actual origin, listener ownership, Docker network and database identity.'); process.exit(0); }
 const literal = value => `'${String(value).replaceAll("'", "''")}'`;
 const versions = ['20261004030000_tool_plane_lines', '20261004030100_tool_plane_area_lessons', '20261004030200_tool_plane_routes', '20261004030300_tool_plane_foundation_catalog',
-  ...(polygons ? ['20261004030400_tool_plane_polygon_workbench', '20261004030500_tool_plane_polygon_catalog'] : [])];
+  ...(polygons ? ['20261004030400_tool_plane_polygon_workbench', '20261004030500_tool_plane_polygon_catalog'] : []), '20261004030600_tool_plane_foundation_titles'];
 const migrations = versions.map(version => {
   const file = path.join(sourceRoot, 'supabase/migrations', `${version}.sql`), digest = textFileSha256(file);
   const recorded = sql(`begin read only; select checksum from public.schema_migrations where version=${literal(version)}; commit;`);
@@ -56,6 +56,12 @@ try {
     ...(polygons ? [['plane-polygons-open-cases', 'planePolygonWorkbenchCases']] : [])]) {
     cases.push(...(await runner.ssrLoadModule(`/tests/fixtures/${file}.ts`))[factory]());
   }
+  for (const version of ['plane-geometry-lesson-v2', 'plane-area-lesson-v3']) {
+    const original = cases.find(entry => entry.accepted && entry.scene.contentVersion === version);
+    for (const [title, accepted, suffix] of [['\t　\n', false, 'whitespace'], ['😀'.repeat(40), true, '80-units'], ['😀'.repeat(41), false, '82-units'], ['\uFEFF　Prepared\t\n', true, 'trim']]) {
+      const entry = structuredClone(original); entry.label = `${version}-title-${suffix}`; entry.accepted = accepted; entry.scene.payload.title = title; cases.push(entry);
+    }
+  }
   const { toolSceneSchema } = await runner.ssrLoadModule('/src/features/tools/scenes/contract.ts');
   for (const entry of cases) if (toolSceneSchema.safeParse(entry.scene).success !== entry.accepted) throw new Error(`PLANE_FOUNDATION_TS_CASE_${entry.label}`);
 } finally { await runner.close(); }
@@ -79,6 +85,10 @@ if (mode === '--check') {
   if (!owner) throw new Error('FIXED_DEVELOPMENT_ACCOUNT_REQUIRED');
   const legacy = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'supabase/tests/planar_tool_scene_assertions.sql'), 'utf8').split('$fixtures$')[1]);
   const helpers = ['tool_plane_lines', 'tool_plane_area_lessons', 'tool_plane_routes', ...(polygons ? ['tool_plane_polygon_workbench'] : [])].flatMap(name => ['state', 'scene'].map(suffix => `public.${name}_${suffix}_is_valid(jsonb)`));
+  helpers.push('public.tool_plane_area_lessons_point(double precision,double precision)',
+    'public.tool_plane_area_lessons_rectangle(double precision,double precision,double precision,double precision)',
+    'public.tool_plane_area_lessons_clip_x(jsonb,double precision,integer)',
+    'public.tool_plane_area_lessons_polygons(integer,double precision,double precision,double precision,double precision,double precision,double precision,integer,integer,integer)');
   const assertions = `do $test$ declare entry jsonb; scene jsonb; saved public.tool_scene_drafts; draft_id uuid; proc regprocedure; begin
     for entry in select value from jsonb_array_elements(${literal(fixtureText)}::jsonb) loop
       if public.tool_scene_is_valid(entry->'scene') is distinct from (entry->>'accepted')::boolean then raise exception 'PLANE_FOUNDATION_PARITY_%',entry->>'label'; end if;
