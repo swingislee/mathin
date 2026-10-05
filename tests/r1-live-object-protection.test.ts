@@ -73,11 +73,6 @@ describe("R1-Live protected-object manifest and purge fail-closed contract", () 
     expect(migration).toMatch(/join public\.r1_object_protection_entries entry_row[\s\S]*entry_row\.classification = 'purge_allowed'/);
   });
 
-  it("registers the transaction-rollback SQL assertions in the R1 database audit", () => {
-    const runner = read("scripts", "run-r1-db-audit.mjs");
-    expect(runner).toContain('"r1_live_object_protection_assertions.sql"');
-  });
-
   it("returns manifest-specific failures through the existing purge actions", () => {
     const actions = read("src", "features", "school", "actions", "testdata.ts");
     expect(actions).toContain("PROTECTION_MANIFEST_REQUIRED");

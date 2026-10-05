@@ -1,0 +1,100 @@
+import fs from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+
+const root = process.cwd();
+const read = (file: string) => fs.readFileSync(path.join(root, file), "utf8");
+
+function filesUnder(directory: string): string[] {
+  const absoluteDirectory = path.join(root, directory);
+  return fs.readdirSync(absoluteDirectory, { withFileTypes: true }).flatMap((entry) => {
+    const relative = path.join(directory, entry.name);
+    return entry.isDirectory() ? filesUnder(relative) : [relative];
+  });
+}
+
+describe("Dashboard table and divider semantics", () => {
+  it("routes every Dashboard shadcn table through the shared table shell", () => {
+    const files = [
+      ...filesUnder("src/app/[locale]/dashboard"),
+      ...filesUnder("src/features/school"),
+      ...filesUnder("src/features/courseware-studio"),
+      ...filesUnder("src/features/teacher-microcourses"),
+    ].filter((file) => file.endsWith(".tsx") && /<Table(?:\s|>)/.test(read(file)));
+
+    expect(files.length).toBeGreaterThan(10);
+    for (const file of files) {
+      const source = read(file);
+      expect(source, file).toContain("DashboardTableShell");
+      expect(source, file).not.toMatch(/<TableBody[^>]*divide-y/);
+    }
+  });
+
+  it("keeps the full table boundary and row separators in their shared primitives", () => {
+    const shell = read("src/features/school/dashboard-page/DashboardCard.tsx");
+    const table = read("src/components/ui/table.tsx");
+
+    expect(shell).toContain("data-dashboard-table-shell");
+    expect(shell).toContain("overflow-hidden rounded-xl border border-line/80");
+    expect(table).toContain('TableHeader({ className,...props }');
+    expect(table).toContain('cn("border-b border-line",className)');
+    expect(table).toContain('cn("divide-y divide-line",className)');
+    expect(table).toContain("containerClassName");
+  });
+
+  it("keeps page and batch actions in the command panel and table controls in the header", () => {
+    const commandPanel = read("src/features/school/dashboard-page/DashboardCommandPanel.tsx");
+    const tableShell = read("src/features/school/dashboard-page/DashboardCard.tsx");
+    const frontendRules = read("docs/agent/frontend.md");
+    const designSystem = read("archive/2026-10-04/docs/plan/01-design-system.md");
+    const pagination = read("src/components/ui/pagination.tsx");
+
+    expect(commandPanel).toContain("不得在 DashboardTableShell");
+    expect(tableShell).toContain("外壳正文必须直接从 Table 开始");
+    expect(frontendRules).toContain("页面级与批量业务按钮只放");
+    expect(frontendRules).toContain("服务端分页表在表格下方使用 shadcn `Pagination`");
+    expect(designSystem).toContain("页面级与批量业务按钮只进入");
+    expect(designSystem).toContain("数据区纵向滚动时表头固定");
+    expect(designSystem).toContain("服务端分页统一位于表格下方并使用 shadcn `Pagination`");
+    expect(pagination).toContain('data-slot="pagination-content"');
+  });
+
+  it("uses borderless Dashboard sections and reserves borders for table or persistent panel boundaries", () => {
+    const section = read("src/features/school/dashboard-page/DashboardSection.tsx");
+    const browser = read("src/features/school/teaching-operations/TeacherMicrocourseBrowser.tsx");
+    const review = read("src/features/teacher-microcourses/MicrocourseReviewPanel.tsx");
+
+    expect(section).toContain("data-dashboard-section");
+    expect(section).not.toContain("border-y");
+    expect(section).not.toContain("bg-card");
+    expect(browser).not.toContain("border-y");
+    expect(review).not.toContain("border-y");
+    expect(review).toContain("xl:border-r xl:border-line/80");
+  });
+
+  it("uses one page-header divider and keeps horizontal navigation attached to its content", () => {
+    const header = read("src/features/school/dashboard-page/DashboardPageHeader.tsx");
+    const commandPanel = read("src/features/school/dashboard-page/DashboardCommandPanel.tsx");
+    const routeTabs = read("src/features/school/navigation/RouteTabs.tsx");
+
+    expect(header).toContain("border-b border-line/60");
+    expect(commandPanel).not.toMatch(/\bborder-[tb]\b/);
+    expect(routeTabs).not.toMatch(/\bborder-[tb]\b/);
+  });
+
+  it("does not draw separators between settings fields or activity items", () => {
+    const organization = read("src/features/school/OrganizationProfileForm.tsx");
+    const scheduleDefaults = read("src/features/school/ScheduleDefaultsForm.tsx");
+    const academicYears = read("src/app/[locale]/dashboard/academic-years/page.tsx");
+    const activities = read("src/features/school/ActivitiesManager.tsx");
+    const classroomList = read("src/features/school/ClassroomList.tsx");
+
+    for (const source of [organization, scheduleDefaults, academicYears, activities]) {
+      expect(source).not.toContain("border-y");
+      expect(source).not.toContain("divide-y");
+    }
+    expect(organization).not.toContain("border-t");
+    expect(classroomList).not.toContain("divide-x divide-line");
+    expect(classroomList).not.toContain("border-y border-line");
+  });
+});

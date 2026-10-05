@@ -1,41 +1,54 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { assertNonProductionWriteTarget } from "./r1-write-target-policy.mjs";
 
-/** 断言文件的两种执行通道：
- *  - `DATABASE_URL`：CI 的一次性库，本机 psql 直接 `-f` 读文件。
- *  - `SUPABASE_DB_SSH`：开发机没有本机 psql，把文件从 stdin 透传给宿主机容器里的 psql
- *    （与 db:types 的 `SUPABASE_META_SSH` 同构）。psql 的非零退出码经 ssh 原样返回，
- *    失败不会被吞掉。
- *  断言文件自带 begin/rollback，两种通道都不留写入。 */
-const CONTAINER = "supabase-db";
+const assertionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../supabase/tests");
 
-export function runAssertionFiles(label, fileNames) {
-  const databaseUrl = process.env.DATABASE_URL;
-  const dbSsh = process.env.SUPABASE_DB_SSH;
-  if (!databaseUrl && !dbSsh) {
-    console.error(`DATABASE_URL or SUPABASE_DB_SSH is required for ${label}`);
-    process.exit(2);
+// SQL 断言包含造数；即使最后 rollback，也必须先识别隔离目标。
+// environment / execute 可注入，使目标拒绝与执行范围能在不连接数据库时验证。
+export function runAssertionFiles(label, fileNames, { environment = process.env, execute = spawnSync } = {}) {
+  if (!Array.isArray(fileNames) || fileNames.length === 0) {
+    throw new Error("SQL_CHECK:FILES_REQUIRED: select explicit files from supabase/tests");
   }
-  for (const name of fileNames) {
-    const file = path.join(process.cwd(), "supabase", "tests", name);
-    const result = dbSsh
-      ? spawnSync(
-          process.platform === "win32" ? "ssh.exe" : "ssh",
-          [dbSsh, `docker exec -i ${CONTAINER} psql -U postgres -d postgres -X -v ON_ERROR_STOP=1`],
-          { input: fs.readFileSync(file), stdio: ["pipe", "inherit", "inherit"], shell: false },
-        )
-      : spawnSync("psql", [databaseUrl, "-X", "-v", "ON_ERROR_STOP=1", "-f", file], {
-          stdio: "inherit",
-          shell: process.platform === "win32",
-        });
+  const files = [...new Set(fileNames)].map((name) => {
+    if (typeof name !== "string" || !/^(?:supabase\/tests\/)?[a-zA-Z0-9_-]+\.sql$/.test(name)) {
+      throw new Error("SQL_CHECK:INVALID_FILE: select explicit SQL files without traversal, globs or options");
+    }
+    const file = path.join(assertionRoot, path.basename(name));
+    if (!fs.statSync(file, { throwIfNoEntry: false })?.isFile()
+      || path.dirname(fs.realpathSync(file)) !== fs.realpathSync(assertionRoot)) {
+      throw new Error("SQL_CHECK:INVALID_FILE: the selected SQL file must exist inside supabase/tests");
+    }
+    return file;
+  });
+  const databaseUrl = environment.DATABASE_URL;
+  assertNonProductionWriteTarget({
+    operation: label,
+    databaseUrl,
+    sshHost: environment.SUPABASE_DB_SSH,
+    environment,
+  });
+  const childEnvironment = { ...environment };
+  // libpq 的 hostaddr/service 可绕过连接串中的主机；执行只采用已核对的 URL。
+  for (const key of Object.keys(childEnvironment)) {
+    if (/^(PGHOSTADDR|PGSERVICE|PGSERVICEFILE|PGSYSCONFDIR)$/i.test(key)) delete childEnvironment[key];
+  }
+  // 当前目标策略只接受明确声明的 loopback 数据库，SSH 远端尚未登记。
+  for (const file of new Set(files)) {
+    const result = execute("psql", [databaseUrl, "-X", "-v", "ON_ERROR_STOP=1", "-f", file], {
+      env: childEnvironment,
+      stdio: "inherit",
+      windowsHide: true,
+      shell: false,
+    });
     if (result.error) {
-      console.error(`Unable to run ${dbSsh ? "ssh" : "psql"}: ${result.error.message}`);
-      process.exit(2);
+      throw new Error("SQL_CHECK:START_FAILED: unable to start psql");
     }
     if (result.status !== 0) {
-      console.error(`Assertion file failed: ${name} (status=${result.status})`);
-      process.exit(result.status ?? 1);
+      return result.status ?? 1;
     }
   }
+  return 0;
 }

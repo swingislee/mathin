@@ -1,0 +1,433 @@
+{
+  "date": "2026-10-05",
+  "baseCommit": "143bffeeec9ac12f0edc8d895cb893776317bf97",
+  "entries": [
+    {
+      "source": "tests/r1-initialization-manifest.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-initialization-manifest.test.ts",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "0c10fb63df8adeffe227167ac7078571e2c9cd539ac1d503f4517858d077517b"
+    },
+    {
+      "source": "tests/r1-production-baseline.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-production-baseline.test.ts",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "76bf9209e33e50bcb22cfc45ee90a2e19b2395adc2c2e87dd981a5b89152dbb7"
+    },
+    {
+      "source": "tests/r1-production-deployment.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-production-deployment.test.ts",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "c2c37dce27b3c04d1e7a5662b80e268b3bd8097bd4bae741f7347ef24781c432"
+    },
+    {
+      "source": "scripts/plan-r1-initialization.mjs",
+      "destination": "archive/2026-10-05/scripts/plan-r1-initialization.mjs",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "472284b4f3be7e5a33a34672636eab03a444a98851ce2127c67b9425e7ec8328"
+    },
+    {
+      "source": "scripts/plan-r1-production-baseline.mjs",
+      "destination": "archive/2026-10-05/scripts/plan-r1-production-baseline.mjs",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "701f892fffdc9dac3828acbeafdf00c30a59f4c5c524ae04b72d21e46b154259"
+    },
+    {
+      "source": "scripts/plan-r1-production-deployment.mjs",
+      "destination": "archive/2026-10-05/scripts/plan-r1-production-deployment.mjs",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "72dbd4916d2465e12da7648523bdbbf9908465cbe166e2a671052a0f2b5a4c3e"
+    },
+    {
+      "source": "schemas/r1-initialization-manifest.schema.json",
+      "destination": "archive/2026-10-05/schemas/r1-initialization-manifest.schema.json",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "125b0aa7268f64036f41c9e26126ddb3df87157ee89089072ec4063b6e731e04"
+    },
+    {
+      "source": "schemas/r1-production-baseline-manifest.schema.json",
+      "destination": "archive/2026-10-05/schemas/r1-production-baseline-manifest.schema.json",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "be791933bc4c0be1f92ead9c5a9f50feee02c1ca695a57e87f4886c5d89e9ccf"
+    },
+    {
+      "source": "schemas/r1-production-deployment-manifest.schema.json",
+      "destination": "archive/2026-10-05/schemas/r1-production-deployment-manifest.schema.json",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "58dd75a75bd0423a8f69cf793c1bdf4fe2408dc51bf287a7f471656affcec90d"
+    },
+    {
+      "source": "docs/manifests/r1-initialization.example.json",
+      "destination": "archive/2026-10-05/docs/manifests/r1-initialization.example.json",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "b173184d42c11c4c09b559cded816a3bf0ed92ffa2207834acfacb39fd5598f8"
+    },
+    {
+      "source": "docs/manifests/r1-production-baseline.example.json",
+      "destination": "archive/2026-10-05/docs/manifests/r1-production-baseline.example.json",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "4db1733df6959ec95b899e158f5f8daa74e74e3bab738b0a073048b66ba93eb5"
+    },
+    {
+      "source": "docs/manifests/r1-production-deployment.example.json",
+      "destination": "archive/2026-10-05/docs/manifests/r1-production-deployment.example.json",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "8447a482afc2a0641938342c22df80d866b216e00bfdd68d74513cd58d9aad3a"
+    },
+    {
+      "source": "docs/manifests/production-admin.example.json",
+      "destination": "archive/2026-10-05/docs/manifests/production-admin.example.json",
+      "action": "move",
+      "reason": "旧 R1 阶段投产数字、证据清单与一次性初始化合同；当前交付按具体业务与实际风险决定",
+      "sha256": "c0e41ffa51222f7ffbe1866727d9ac8b85a1f9838fd4b335acacbbb37f83c9fa"
+    },
+    {
+      "source": "tests/courseware-workspace-rollout.test.ts",
+      "destination": "archive/2026-10-05/tests/courseware-workspace-rollout.test.ts",
+      "action": "move",
+      "reason": "已完成的固定六迁移发布批次及其专用审计",
+      "sha256": "b773f4fe33da77c4d5d14d854452335824edbc86db460d4f8092fdc0a70000bc"
+    },
+    {
+      "source": "scripts/courseware-workspace-rollout-audit.mjs",
+      "destination": "archive/2026-10-05/scripts/courseware-workspace-rollout-audit.mjs",
+      "action": "move",
+      "reason": "已完成的固定六迁移发布批次及其专用审计",
+      "sha256": "ef7664a0dfc7b16808da1c5d12f819a4599d552ff80372de8461892fbb008957"
+    },
+    {
+      "source": "scripts/lib/courseware-workspace-candidate.mjs",
+      "destination": "archive/2026-10-05/scripts/lib/courseware-workspace-candidate.mjs",
+      "action": "move",
+      "reason": "已完成的固定六迁移发布批次及其专用审计",
+      "sha256": "26806ed61a3f83bc0f9d012ecb356d25f2ea8f036edf182213a4174549d640b2"
+    },
+    {
+      "source": "scripts/lib/courseware-workspace-rollout.mjs",
+      "destination": "archive/2026-10-05/scripts/lib/courseware-workspace-rollout.mjs",
+      "action": "move",
+      "reason": "已完成的固定六迁移发布批次及其专用审计",
+      "sha256": "03f46812d57554cb179e695fc35df162c9db8ac6e0183ac3f9201c053be1954c"
+    },
+    {
+      "source": "tests/p4i-17-today-work-home.test.ts",
+      "destination": "archive/2026-10-05/tests/p4i-17-today-work-home.test.ts",
+      "action": "move",
+      "reason": "旧首页与阶段路由布局约束；当前工作现场由现行产品方向和用户验收决定",
+      "sha256": "48d253d694307c6d144dd6e74d84fd1826e0909f9f1255fc9ce2c2d211dbc36e"
+    },
+    {
+      "source": "scripts/verify-doc22-routes.mjs",
+      "destination": "archive/2026-10-05/scripts/verify-doc22-routes.mjs",
+      "action": "move",
+      "reason": "旧首页与阶段路由布局约束；当前工作现场由现行产品方向和用户验收决定",
+      "sha256": "54e9d53151cdd197756cc3d552dbf4a814fba2764e972c7480415fc58b530d61"
+    },
+    {
+      "source": "tests/r1-playwright-baseline.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-playwright-baseline.test.ts",
+      "action": "move",
+      "reason": "固定 R1 发布测试清单与数量门；账号和目标保护抽取到 e2e-target-policy.test.ts",
+      "sha256": "93e9ab6615d15b28dc5ad8b07535e7524f6746cc951cf0c43519f7aec5d834a4"
+    },
+    {
+      "source": "scripts/run-r1-playwright-release.mjs",
+      "destination": "archive/2026-10-05/scripts/run-r1-playwright-release.mjs",
+      "action": "move",
+      "reason": "固定 R1 发布测试清单与数量门；账号和目标保护抽取到 e2e-target-policy.test.ts",
+      "sha256": "864cc8f0c1778332d89ce22c287d6b2089565e126ec4364f6a870ff201e24000"
+    },
+    {
+      "source": "scripts/run-p4e-db-audit.mjs",
+      "destination": "archive/2026-10-05/scripts/run-p4e-db-audit.mjs",
+      "action": "move",
+      "reason": "阶段 SQL 批处理入口改为显式选择文件；SQL 权限与数据保护断言继续可调用",
+      "sha256": "d558adca49fb25cf044934ffe3d92e9d096e4cb6708332e2594efd9d35bf7723"
+    },
+    {
+      "source": "scripts/run-p6-db-audit.mjs",
+      "destination": "archive/2026-10-05/scripts/run-p6-db-audit.mjs",
+      "action": "move",
+      "reason": "阶段 SQL 批处理入口改为显式选择文件；SQL 权限与数据保护断言继续可调用",
+      "sha256": "6aa24f2847687592d41b780d173254e492ed8d49e2e5726ae861428f4f18165e"
+    },
+    {
+      "source": "scripts/run-r1-db-audit.mjs",
+      "destination": "archive/2026-10-05/scripts/run-r1-db-audit.mjs",
+      "action": "move",
+      "reason": "阶段 SQL 批处理入口改为显式选择文件；SQL 权限与数据保护断言继续可调用",
+      "sha256": "c5447dd3a8ef2ee6f0915e50b79321d6baf3220a772c721b59ecb09a8a420ccd"
+    },
+    {
+      "source": "scripts/run-courseware-security.mjs",
+      "destination": "archive/2026-10-05/scripts/run-courseware-security.mjs",
+      "action": "move",
+      "reason": "阶段 SQL 批处理入口改为显式选择文件；SQL 权限与数据保护断言继续可调用",
+      "sha256": "37adddf6e565c91a0e4e19a25333c7ec1d28e1f13c0d8731d8cdfa0b3687926f"
+    },
+    {
+      "source": "supabase/fixtures/followup_ui_activities.sql",
+      "destination": "archive/2026-10-05/supabase/fixtures/followup_ui_activities.sql",
+      "action": "move",
+      "reason": "无当前执行依赖的一次性演示与旧手工验收造数；不作为真实学生、班级或家庭记录使用",
+      "sha256": "f628503a69794245f9b0e25f1543522127d5c3b1064229531c2e9f7a65218b74"
+    },
+    {
+      "source": "supabase/fixtures/roster_acceptance.sql",
+      "destination": "archive/2026-10-05/supabase/fixtures/roster_acceptance.sql",
+      "action": "move",
+      "reason": "无当前执行依赖的一次性演示与旧手工验收造数；不作为真实学生、班级或家庭记录使用",
+      "sha256": "19aa741586c20774741c29de6e93812c3110803dbb5ba33ae686e5d14e50fb61"
+    },
+    {
+      "source": "supabase/fixtures/school_ops_phase5_demo.sql",
+      "destination": "archive/2026-10-05/supabase/fixtures/school_ops_phase5_demo.sql",
+      "action": "move",
+      "reason": "无当前执行依赖的一次性演示与旧手工验收造数；不作为真实学生、班级或家庭记录使用",
+      "sha256": "41d013d17c5f440fc87c977ec0995ace004456a3c6c8907e34bceb29b3111858"
+    },
+    {
+      "source": "supabase/fixtures/parent-miniapp-identities.sql",
+      "destination": "archive/2026-10-05/supabase/fixtures/parent-miniapp-identities.sql",
+      "action": "move",
+      "reason": "无当前执行依赖的一次性演示与旧手工验收造数；不作为真实学生、班级或家庭记录使用",
+      "sha256": "cb74268e9fe0007a2bd970e1ebc63d86b4adb74839366bd3b0e7f8b4a3df7dc4"
+    },
+    {
+      "source": "supabase/fixtures/parent-miniapp-local.sql",
+      "destination": "archive/2026-10-05/supabase/fixtures/parent-miniapp-local.sql",
+      "action": "move",
+      "reason": "无当前执行依赖的一次性演示与旧手工验收造数；不作为真实学生、班级或家庭记录使用",
+      "sha256": "38981088e73b9405b81bad1e3b6de03448087daf1678a4997b138686ca795958"
+    },
+    {
+      "source": "supabase/pending/README.md",
+      "destination": "archive/2026-10-05/supabase/pending/README.md",
+      "action": "move",
+      "reason": "旧待部署目录仅余失效微信状态说明；现行状态由 docs/current.md 维护",
+      "sha256": "eabbb27cddbde1d62e8ce7454a7e6475e7785e72dbacc17496d4c7f663b69c3c"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-ALL-20261004-review-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-ALL-20261004-review-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "063d7de96f65b7ae70decc92779a941c49017f1ea8233d984cd952be2a4e14ad"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-AREA-LESSONS-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-AREA-LESSONS-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "bbfa68bfbe974bc83f752301f342a0276ac4409d8d632d1d1b2966f4613a8208"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-EXACT-MOTION-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-EXACT-MOTION-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "7111a9b5dba4de011854e70d0dded3a395baa92705d6e8d86b66dca998f19997"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-FOLD-LAYERS-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-FOLD-LAYERS-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "d190e0a35ccc763fe6beb9f48b53e7566cb02b4a84189e21c22d6b4f0afd2ae2"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-MOTION-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-MOTION-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "86324f0650d6f75099ef547efcfe5c7f30614ee5d9555c158613a41c5ce02cdd"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-NETWORK-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-NETWORK-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "1566a99c0a78a28d7d99afb753a5bc93bc01e8903710a5c0c087dbc18f610ad8"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-OVERLAP-CURVES-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-OVERLAP-CURVES-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "e2b9db30a2c1275fc6af3720f706d4027e684fe16807145b09249e1d6c1a66cd"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-PERIMETER-BOUNDARY-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-PERIMETER-BOUNDARY-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "11ef04583960c4f050db04b0857280b89ebfeae210e265d4796a006d4932ff6e"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-POLYGONS-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-POLYGONS-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "2e5ba307a4fc367027c2181c2901bd5331bb4efc62eaedaacdba6897f04ebad1"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-ROLLING-20261005-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-ROLLING-20261005-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "67d546997557219c102d3a80cc3eb00f6d3abf389e685e3c15e37ce7dd212fd7"
+    },
+    {
+      "source": ".ai/handoffs/DEV-PLANE-ROUTES-20261004-codex-01.md",
+      "destination": "archive/2026-10-05/.ai/handoffs/DEV-PLANE-ROUTES-20261004-codex-01.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "880c39962c34e663091bdbd8e7b072efa7c79af33a3dc070130753402857cbca"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-ALL-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-ALL-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "918da98cfb09edcaff353a2c664e19d4eb401bb9f36bd703b7c1d177d43b1069"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-AREA-LESSONS-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-AREA-LESSONS-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "510e21d07bbc291d0b1f5536df7a41346c5b7ab5ce0643628ce1fb539f858eaf"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-EXACT-MOTION-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-EXACT-MOTION-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "4d17534c967dd7ca66d5d70e76ab08a1d7a9741c9174a268b083fa1a97e69d86"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-FOLD-LAYERS-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "eaa4d6f970f8c2791ef43f559059ec251cc214544bbba0da408b2434ddf9fce4"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-MOTION-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-MOTION-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "77c758ff99e34fc05cc90b4280e99ccccd6b0d7151a387ee33160d7221c7e514"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-NETWORK-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-NETWORK-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "3142a9621a0f9fdf71068a5f97bdf1a590492891b8c8e0fa1abf5dc71ccd2a75"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-OVERLAP-CURVES-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-OVERLAP-CURVES-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "2bfca9459b5a3cd2bc4301fcb1d2845e9e9807eed69d64e1724a7a3634b56bc6"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-PERIMETER-BOUNDARY-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-PERIMETER-BOUNDARY-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "762f4d765fd0d0770946d1240b8a67b11343bbd28f139e8b26c21df394af93e0"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-POLYGONS-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-POLYGONS-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "d6bb0cee76316bc4e97d49f39455f3d91258a4706ceb52fe1407b0bcfec6e8fb"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-ROLLING-20261005.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-ROLLING-20261005.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "b838d314e2b3024b9b40b956a597597dc0f4d37762734bef58f4b30a086af444"
+    },
+    {
+      "source": ".ai/tasks/DEV-PLANE-ROUTES-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/DEV-PLANE-ROUTES-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "109634b4bb38014888008bea80247d17abe0f5aaf36c84501d30416901d685ae"
+    },
+    {
+      "source": ".ai/tasks/REPO-DIRECTION-CLEANUP-20261004.md",
+      "destination": "archive/2026-10-05/.ai/tasks/REPO-DIRECTION-CLEANUP-20261004.md",
+      "action": "move",
+      "reason": "已结束任务和交接；人工教学验收仍由当前状态与现有交付清单承接",
+      "sha256": "4c56af5cf2bea83f81645967a458013a17f734ce03231f57e317d04389525f8e"
+    },
+    {
+      "source": ".ai/registry.json",
+      "destination": "archive/2026-10-05/.ai/registry.json",
+      "action": "copy",
+      "reason": "归档本轮开始前的全部已结束任务登记",
+      "sha256": "e332b9d47028d27338f2a7a306b5f52411bf64ef69029d8e8216b386a7d5a1dd"
+    },
+    {
+      "source": "tests/teacher-microcourses-core.test.ts",
+      "destination": "archive/2026-10-05/tests/teacher-microcourses-core.test.ts",
+      "action": "copy",
+      "reason": "混合测试原稿；现行文件去除历史文档及阶段执行清单断言，保留真实功能与安全边界",
+      "sha256": "9d76c91b9204bc8675495174aa95122ced5ffe473027c4b0c461674b4acc65b7"
+    },
+    {
+      "source": "tests/r1-data-governance.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-data-governance.test.ts",
+      "action": "copy",
+      "reason": "混合测试原稿；现行文件去除历史文档及阶段执行清单断言，保留真实功能与安全边界",
+      "sha256": "5e4f02b5d56729802ad1df3d365a71f215f4dfd6e436dd44295731670d9ec411"
+    },
+    {
+      "source": "tests/dashboard-table-divider-semantics.test.ts",
+      "destination": "archive/2026-10-05/tests/dashboard-table-divider-semantics.test.ts",
+      "action": "copy",
+      "reason": "混合测试原稿；现行文件去除历史文档及阶段执行清单断言，保留真实功能与安全边界",
+      "sha256": "70952426de2034442169c222e0d940b05b88baed0751dfd79450d6db394c764c"
+    },
+    {
+      "source": "tests/r1-account-security.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-account-security.test.ts",
+      "action": "copy",
+      "reason": "混合测试原稿；现行文件去除历史文档及阶段执行清单断言，保留真实功能与安全边界",
+      "sha256": "b60c22f7dcf964ba539b34dcc5c0639f7ee646d0a8d44c17d6821a42eb9cdea6"
+    },
+    {
+      "source": "tests/r1-live-object-protection.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-live-object-protection.test.ts",
+      "action": "copy",
+      "reason": "混合测试原稿；现行文件去除历史文档及阶段执行清单断言，保留真实功能与安全边界",
+      "sha256": "82d1b9ca6134130f0041ed3db46a3381d810c37c6e1f494bf96bd31ec818ff7f"
+    },
+    {
+      "source": "tests/r1-organization-settings.test.ts",
+      "destination": "archive/2026-10-05/tests/r1-organization-settings.test.ts",
+      "action": "copy",
+      "reason": "混合测试原稿；现行文件去除历史文档及阶段执行清单断言，保留真实功能与安全边界",
+      "sha256": "71e6dd90afd7a1301dc9ccb69a8abb31a98bf09ad3fb5c500850576798c23a91"
+    }
+  ]
+}

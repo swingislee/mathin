@@ -68,7 +68,6 @@ describe("R1-1 organization settings contracts", () => {
     const notebookFeed = read("src/app/[locale]/notebook/page.tsx");
     const notebookPost = read("src/app/[locale]/notebook/[postId]/page.tsx");
     const notebookHtml = read("src/features/notebook/html.ts");
-    const dbAudit = read("scripts/run-r1-db-audit.mjs");
     expect(notebookPrivacy).toContain('revoke select on public.post_likes from anon');
     expect(notebookPrivacy).toContain('create policy "post_likes_select_own"');
     expect(notebookPrivacy).toMatch(/post_likes_insert_own[\s\S]*not p\.hidden[\s\S]*p\.review_status = 'approved'/);
@@ -108,7 +107,6 @@ describe("R1-1 organization settings contracts", () => {
     expect(notebookFeed).toMatch(/\.eq\("lifecycle_status", "published"\)[\s\S]*\.eq\("moderation_status", "active"\)/);
     expect(notebookPost).toContain("sanitizeNotebookHtml(post.content_html)");
     expect(notebookHtml).toContain('allowedSchemes: ["http", "https"]');
-    expect(dbAudit).toContain('"r1_notebook_assertions.sql"');
     expect(notebookAssertions).toContain('R1_HIDDEN_POST_LIKE_WAS_ACCEPTED');
     expect(notebookAssertions).toContain('R1_DIRECT_POST_INSERT_WAS_ACCEPTED');
     expect(notebookAssertions).toContain('R1_ARCHIVED_NOTE_SUBMIT_WAS_ACCEPTED');

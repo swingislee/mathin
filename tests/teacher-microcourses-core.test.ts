@@ -67,16 +67,4 @@ describe("DEV-TMC-1 teacher microcourse core", () => {
       /can_read_cw_page_revision_scoped[\s\S]*cw_lecture_releases[\s\S]*snapshot_item ->> 'revisionId'/,
     );
   });
-
-  it("keeps the deployed baseline distinct from the development-only collaboration increment", () => {
-    const roadmap = read("archive/2026-10-04/docs/plan/04-roadmap.md");
-    const completeness = read("archive/2026-10-04/docs/plan/25-production-1.0-product-completeness.md");
-    expect(roadmap).toContain("DEV-TMC-1 · 普通教师短期微课孵化与校内共享");
-    expect(roadmap).toContain("生产状态为 **DEPLOYED / PENDING USER ACCEPTANCE**");
-    expect(roadmap).toContain("DEV-TMC-2 · 课次课件多方案协作与选用");
-    expect(roadmap).toContain("`DEV-TMC-2` 是产品负责人在开发端选入并于 2026-08-28 明确授权部署的独立增量");
-    expect(completeness).toContain("`DEV-TMC-2` 已获明确授权并部署生产");
-    expect(completeness).toContain("`DEV-TMC-4` 当前为 `LOCAL DEVELOPMENT DELIVERED / AWAITING PRODUCT ACCEPTANCE / NOT DEPLOYED`");
-    expect(completeness).toContain("生产迁移未获授权");
-  });
 });

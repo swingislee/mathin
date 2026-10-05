@@ -1,26 +1,16 @@
-name: Repository privacy and requested risk checks
+name: Repository privacy
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      test_files:
-        description: '需要运行的安全用例文件，以空格分隔；留空只检查凭据泄漏'
-        required: false
-        type: string
-      rebuild_isolated_database:
-        description: '明确需要隔离空库重建与权限 SQL 时启用'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: checks-${{ github.ref }}
+  group: privacy-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -34,53 +24,5 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - uses: pnpm/action-setup@v6
-      - run: pnpm secrets:check
-      - run: pnpm secrets:history
-
-  requested-tests:
-    if: github.event_name == 'workflow_dispatch' && inputs.test_files != ''
-    runs-on: ubuntu-latest
-    env:
-      MATHIN_RISK_FILES: ${{ inputs.test_files }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test
-
-  isolated-database:
-    if: github.event_name == 'workflow_dispatch' && inputs.rebuild_isolated_database
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: postgres
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-      CI_ALLOW_DB_REBUILD: "1"
-      MATHIN_WRITE_TARGET_ENVIRONMENT: test
-      MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "127.0.0.1:5432/postgres"
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm db:rebuild
-      - run: pnpm db:security
-      - run: pnpm db:courseware-security
+      - run: node scripts/check-repository-secrets.mjs
+      - run: node scripts/check-repository-secret-history.mjs

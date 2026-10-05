@@ -1,0 +1,70 @@
+name: Requested checks
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_files:
+        description: '明确需要检查的 tests/*.test.ts 文件，以空格分隔'
+        required: false
+        type: string
+      sql_files:
+        description: '明确需要检查的 supabase/tests/*.sql 文件；在本次 CI 的临时数据库中执行'
+        required: false
+        type: string
+      rebuild_isolated_database:
+        description: '仅核对隔离空库重建时启用；选择 SQL 文件也会先建立临时库'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  requested-tests:
+    if: inputs.test_files != ''
+    runs-on: ubuntu-latest
+    env:
+      MATHIN_RISK_FILES: ${{ inputs.test_files }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  isolated-database:
+    if: inputs.rebuild_isolated_database || inputs.sql_files != ''
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      CI_ALLOW_DB_REBUILD: "1"
+      MATHIN_WRITE_TARGET_ENVIRONMENT: test
+      MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "127.0.0.1:5432/postgres"
+      MATHIN_SQL_FILES: ${{ inputs.sql_files }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:rebuild
+      - if: inputs.sql_files != ''
+        run: pnpm db:test

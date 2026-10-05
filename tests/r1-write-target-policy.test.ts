@@ -297,7 +297,7 @@ describe("R1-Live production write target policy", () => {
     expect(example).toContain("MATHIN_WRITE_ALLOWED_SUPABASE_ORIGIN=http://127.0.0.1:54321");
     expect(example).not.toContain("MATHIN_PRODUCTION_WRITE_CONFIRMATION=");
 
-    const workflow = read(".github/workflows/ci.yml");
+    const workflow = read(".github/workflows/manual-risk-checks.yml");
     expect(workflow).toContain("MATHIN_WRITE_TARGET_ENVIRONMENT: test");
     expect(workflow).toContain('MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "127.0.0.1:5432/postgres"');
   });

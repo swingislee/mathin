@@ -6,6 +6,8 @@
     "tests/auth-safe-redirect.test.ts",
     "tests/local-development-security.test.ts",
     "tests/r1-write-target-policy.test.ts",
+    "tests/db-audit-target-policy.test.ts",
+    "tests/e2e-target-policy.test.ts",
     "tests/r1-repository-secrets.test.ts",
     "tests/r1-account-security.test.ts",
     "tests/r1-live-auth-identities.test.ts",

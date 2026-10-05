@@ -28,8 +28,7 @@
     "db:types": "node scripts/generate-database-types.mjs",
     "db:types:check": "node scripts/verify-database-types.mjs",
     "db:rebuild": "node scripts/ci-rebuild-db.mjs",
-    "db:security": "node scripts/run-p4e-db-audit.mjs",
-    "db:courseware-security": "node scripts/run-courseware-security.mjs",
+    "db:test": "node scripts/run-sql-checks.mjs",
     "migrations:ledger": "node scripts/migration-ledger.mjs",
     "migrations:ledger:snapshot": "node scripts/migration-ledger.mjs --write-snapshot",
     "bundle:report": "node scripts/bundle-report.mjs"

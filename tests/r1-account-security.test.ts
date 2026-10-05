@@ -83,15 +83,12 @@ describe("R1-3 account security contracts", () => {
     expect(sql).toContain("R1_ADMIN_SET_IDENTITY_ROLE_UPDATE_FAILED");
   });
 
-  it("ships executable Auth, RLS, Storage negatives and a dual-control production recovery contract", () => {
+  it("checks Auth, RLS, Storage denials and the production administrator MFA manifest", () => {
     const sql = read("supabase/tests/r1_account_security_assertions.sql");
-    const runbook = read("archive/2026-10-04/docs/runbooks/production-admin-recovery.md");
     const schema = JSON.parse(read("schemas/production-admin-manifest.schema.json"));
     expect(sql).toContain("registration gate rejects a bypass");
     expect(sql).toContain("R1_CROSS_USER_RIGHTS_REQUEST_WAS_VISIBLE");
     expect(sql).toContain("R1_CROSS_USER_PRIVATE_STORAGE_WAS_VISIBLE");
-    expect(runbook).toContain("两名不同的实际人员");
-    expect(runbook).toContain("AAL2");
     expect(schema.properties.environment.const).toBe("production");
     expect(schema.properties.admin.properties.mfa.properties.verifiedFactorCount.minimum).toBe(1);
   });

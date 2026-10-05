@@ -50,4 +50,6 @@ $env:MATHIN_PRODUCTION_WRITE_CONFIRMATION = 'cw:import:<目标指纹前16位>'
 
 `pnpm db:rebuild` 只用于明确要求的隔离空库重建，包含破坏性动作；其环境声明与目标白名单由 `scripts/ci-rebuild-db.mjs` 验证。重建历史使用的 seed 保留为迁移依赖。
 
-安全 SQL 位于 `supabase/tests/`，按实际风险选择文件。运行方式与目标设置读取 `scripts/lib/db-audit-runner.mjs`；调用前完成上面的识别。普通开发与发布不会自动触发这些操作。
+安全 SQL 位于 `supabase/tests/`，按实际风险使用 `pnpm db:test -- supabase/tests/文件.sql` 指定文件；不带文件只显示用法。调用前完成上面的识别，在当前 Shell 设置 `DATABASE_URL`、`MATHIN_WRITE_TARGET_ENVIRONMENT` 和精确匹配主机、端口、库名的 `MATHIN_WRITE_ALLOWED_DATABASE_TARGET`。连接凭据只从私有环境读取。
+
+当前目标策略允许已识别的 loopback 隔离数据库，拒绝生产和未登记远端，包括旧 `SUPABASE_DB_SSH` 通道。入口在启动任何进程前验证全部所选文件与目标，单个文件失败后停止。GitHub 的 Requested checks 仅在手动选择 SQL 或重建时创建当次临时数据库；SQL 只运行所选文件。普通开发与发布不会自动触发这些操作。

@@ -5,7 +5,7 @@
   "labels": ["dependencies"],
   "packageRules": [
     {
-      "description": "常规升级仍走人工：Next.js 锁定 16.2.10（AGENTS.md），其余依赖也由人决定何时动。Renovate 只负责安全公告。",
+      "description": "依赖升级按具体任务决定；Renovate 提供安全公告，由负责人选择升级范围与时机。",
       "matchPackageNames": ["*"],
       "enabled": false
     }

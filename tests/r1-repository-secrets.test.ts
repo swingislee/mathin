@@ -254,8 +254,8 @@ describe("R1 repository secret scan", () => {
   it("keeps full Git history available to CI and runs both redacted scan modes", () => {
     const workflow = readFileSync(path.join(process.cwd(), ".github", "workflows", "ci.yml"), "utf8");
     expect(workflow).toContain("fetch-depth: 0");
-    expect(workflow).toContain("pnpm secrets:check");
-    expect(workflow).toContain("pnpm secrets:history");
+    expect(workflow).toContain("node scripts/check-repository-secrets.mjs");
+    expect(workflow).toContain("node scripts/check-repository-secret-history.mjs");
     expect(readFileSync(path.join(process.cwd(), ".githooks", "pre-push"), "utf8")).toContain("--pre-push");
   });
 
