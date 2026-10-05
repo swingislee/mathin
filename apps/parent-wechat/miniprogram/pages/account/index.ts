@@ -1,16 +1,18 @@
 import { ApiError, bindWechat, get, login, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
 import type { Account, ParentWechatAuthStatus } from "../../lib/api-types";
 import { clearNavigation, hasReturn, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
-import { pageData, syncPage, errorText } from "../../lib/page";
+import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
+import { courseCopy } from "../../lib/course-catalog";
 
 Page({
-  data: { ...pageData("account"), authenticated: false, identifier: "", password: "", busy: false,
+  data: { ...pageData("account"), courseCopy: courseCopy.zh, authenticated: false, identifier: "", password: "", busy: false,
     account: null as Account | null, sheet: "", info: "", wantsWechatBinding: false,
     wechat: null as ParentWechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
   loadVersion: 0,
   statusVersion: 0,
   onShow() {
     syncPage(this, "account");
+    this.setData({ courseCopy: courseCopy[currentLocale()] });
     const authenticated = Boolean(session());
     this.setData({ authenticated: Boolean(session()), account: null, error: "", password: "", loading: false,
       sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && hasReturn() ? "login" : "" });

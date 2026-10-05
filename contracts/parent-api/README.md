@@ -1,6 +1,6 @@
 # 家长端接口规范
 
-当前接口版本为 `0.5.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
+当前接口版本为 `0.6.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
 
 ## 接入方式
 
@@ -25,6 +25,9 @@
 | `GET /api/v1/parent/portal?resource=reports` | 已发送测评及已发布课后反馈 | 必须 |
 | `GET /api/v1/parent/portal?resource=practices` | 当前参与人可提交的练习 | 必须 |
 | `GET /api/v1/parent/portal?resource=submission&id=...&participant=...` | 最新一次提交；未提交为 `null` | 必须 |
+| `GET /api/v1/parent/courses` | 主动上架的长期课程、真实班级类型／校区／教师／排课及报价 | 免登录 |
+| `GET /api/v1/parent/courses?resource=applications` | 当前账号提交且仍有孩子权限的报名申请 | 必须 |
+| `POST /api/v1/parent/courses` | `apply` 提交选班申请；`cancel` 撤回本人待处理申请 | 必须 |
 | `GET /api/v1/parent/learning?participant=...` | 一个孩子的课表、考勤、学习摘要、请假进度、报告及当前账号通知 | 必须 |
 | `POST /api/v1/parent/learning` | `leave` 提交请假申请；`readNotification` 标记本人通知已读 | 必须 |
 | `GET /api/v1/parent/assessments?participant=...` | 一个孩子的 1 对 1 测评申请、资格和有限范围教师 | 必须 |
@@ -38,6 +41,8 @@
 账号登录使用已有手机号或邮箱及密码。微信小程序登录与绑定遵循下节合同；配置与真实平台往返单独验收。微信 AppSecret、Supabase service role 等服务端密钥保留在服务端，客户端只持有自己的会话令牌。
 
 登记按后端字段 ID 和选项 ID 校验，保存配置快照及同意时间。`requestId` / 提交 `id` 用于重试去重，相同请求号更换内容会返回 `CONFLICT`。预约在数据库内锁定活动并检查实时名额，使用原有 `activity_registrations`。
+
+课程目录由 `/dashboard/courses/admissions` 主动发布：同一课程系列、年级、学期下的真实长期正式班级组成一个公开报价。科目来自课程系列，类型来自课程版本，校区、老师与课次来自班级实际安排。报价以人民币分表示，`null` 是待工作人员确认，`0` 是零报价。课程申请保存所选班级和报价版本，提交不占位、不写入缴费。工作人员核对报名条件及缴费依据后，通过既有报名与分班函数在一个事务中确认；申请状态与正式报名、财务记录分别保留。家长可撤回待处理申请，已确认后的退班继续走正式业务流程。
 
 照片上限 12 MiB、视频 64 MiB，每次提交 1～9 个附件，单账号预留空间上限 1 GiB。根据文件签名识别 JPEG/PNG/WebP/HEIC/MP4/MOV，视频额外核验 `video` 权限。附件只存入私有 `miniapp-practice` bucket；签名 URL 经同一 API origin 代理，手机无需访问 Supabase 内网地址。失败重试会复用客户端已完成的上传；未确认上传响应时可能留下预留文件，目前保留供后台核对，没有新增自动清理任务。
 

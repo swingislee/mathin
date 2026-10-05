@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "格致未来思维 · 家长端接口",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "原生客户端通过版本化 HTTP 接入现有 Supabase 身份和业务数据。登记与活动浏览免登录；预约、结果及练习须核验账号和参与人权限。"
   },
   "servers": [
@@ -1381,6 +1381,239 @@
           },
           "503": {
             "description": "RPC 尚未安装、查询失败或响应不符合合同；不以空数据掩盖失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent/courses": {
+      "get": {
+        "operationId": "getParentCourseCatalogOrApplications",
+        "summary": "公开课程目录或本人的报名申请",
+        "description": "resource=catalog（默认）免登录，只包含主动上架、未截止且有有效正式班级的课程；resource=applications 必须登录，只返回当前账号提交且仍有孩子权限的记录。课次数量来自实际排课，不推算固定周期。",
+        "security": [
+          {},
+          {
+            "parentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "resource",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "catalog",
+                "applications"
+              ],
+              "default": "catalog"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "由 resource 决定返回目录或申请数组。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CourseOffer"
+                      }
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CourseApplication"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "报价变更、已满、已截止或申请状态冲突。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "submitOrCancelCourseApplication",
+        "summary": "提交或撤回报名申请",
+        "description": "apply 保存稳定 UUID、已查看的报价版本及所选孩子和班级。重复重试复用原记录，更改原请求内容返回 CONFLICT。申请不保留名额，不记录缴费。cancel 只撤回本人待处理申请；正式报名由工作人员核对后在受权限保护的后台完成。",
+        "security": [
+          {
+            "parentBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseApplicationCommand"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "撤回成功。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "ok"
+                  ],
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "申请已提交或原申请已找到。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "请求未完成。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "报价变更、已满、已截止或申请状态冲突。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "请求未完成。",
             "content": {
               "application/json": {
                 "schema": {
@@ -3408,6 +3641,341 @@
             }
           }
         }
+      },
+      "CatalogClass": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "courseId",
+          "familyId",
+          "familyTitle",
+          "grade",
+          "subject",
+          "level",
+          "termId",
+          "termName",
+          "campusId",
+          "campusName",
+          "roomName",
+          "remaining",
+          "teachers",
+          "sessions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "courseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "familyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "familyTitle": {
+            "type": "string"
+          },
+          "grade": {
+            "type": "integer"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "termId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "termName": {
+            "type": "string"
+          },
+          "campusId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campusName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "roomName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remaining": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "teachers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "at",
+                "duration"
+              ],
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "duration": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "CourseOffer": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "priceCents",
+          "bookingClosesAt",
+          "revision",
+          "classes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "priceCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "description": "人民币分；null 表示报价待确认，0 是真实零报价。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bookingClosesAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "classes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogClass"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "CourseApplication": {
+        "type": "object",
+        "required": [
+          "id",
+          "participantId",
+          "participantName",
+          "publicationId",
+          "classroomId",
+          "title",
+          "className",
+          "priceCents",
+          "status",
+          "createdAt",
+          "resolvedAt",
+          "reply"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantName": {
+            "type": "string"
+          },
+          "publicationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "classroomId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "priceCents": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "description": "人民币分；null 表示报价待确认，0 是真实零报价。"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "confirmed",
+              "declined",
+              "cancelled"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reply": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CourseApplicationCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "id",
+              "publicationId",
+              "revision",
+              "classroomId",
+              "participantId"
+            ],
+            "properties": {
+              "action": {
+                "const": "apply"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "publicationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "classroomId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "participantId": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "action",
+              "id"
+            ],
+            "properties": {
+              "action": {
+                "const": "cancel"
+              },
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       }
     }
   }

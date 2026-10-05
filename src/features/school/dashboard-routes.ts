@@ -399,6 +399,14 @@ export const DASHBOARD_ROUTES = {
     createSurface: "none",
     parent: "courses",
   },
+  courseAdmissions: {
+    href: "/dashboard/courses/admissions",
+    kind: "workflow",
+    environments: STAFF_ONLY,
+    permissionAny: ["course.manage", "enrollment.manage"],
+    createSurface: "none",
+    parent: "courses",
+  },
   courseMaterialRules: {
     href: "/dashboard/courses/material-rules",
     kind: "singleton",

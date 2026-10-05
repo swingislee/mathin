@@ -55,8 +55,9 @@ async function CourseFamilyCommandPanel({ locale, searchParams }: { locale: stri
         <CourseFamilyFilters filters={parseCourseFamilyFilters(rawSearchParams)} versionOptions={versionOptions} />
       </DashboardCommandFilters>
       {/* doc22 §13.5：只有 course.product.create 才看得到新建入口。 */}
-      {(perms.has("course.product.create") || perms.has("course.manage")) && (
+      {(perms.has("course.product.create") || perms.has("course.manage") || perms.has("enrollment.manage")) && (
         <DashboardCommandActions>
+          {(perms.has("course.manage") || perms.has("enrollment.manage")) && <Link href="/dashboard/courses/admissions" className={buttonVariants({ variant: "secondary", size: "sm" })}>{locale === "en" ? "Mini Program admissions" : "小程序课程报名"}</Link>}
           {perms.has("course.manage") && <Link href="/dashboard/courses/material-rules" className={buttonVariants({ variant: "secondary", size: "sm" })}>{materialT("rulesTitle")}</Link>}
           {perms.has("course.product.create") && <Link href="/dashboard/courses/new" className={buttonVariants({ size: "sm" })}>
             <Plus className="size-4" />

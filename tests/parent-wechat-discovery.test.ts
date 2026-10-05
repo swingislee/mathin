@@ -36,7 +36,7 @@ type RuntimePage = {
   chooseSlot: (event: { currentTarget: { dataset: { id: string } } }) => void;
   chooseParticipant: (event: { currentTarget: { dataset: { index: number } } }) => void;
   chooseActivity: (event: Touch) => void;
-  openActivity: (event: Touch) => void; chooseTeacher: (event: Touch) => void; chooseTime: (event: Touch) => void;
+  openActivity: (event: Touch) => void; openCourse: (event: Touch) => void; chooseTeacher: (event: Touch) => void; chooseTime: (event: Touch) => void;
   submit: () => Promise<void>; retryPending: () => Promise<void>; loadParticipant: () => Promise<void>; startOver: () => void;
   renderRequests: () => void; selectConfirmation: (event: Touch) => void; confirm: (event: Touch) => Promise<void>;
   chooseCampus: (event: Touch) => void; chooseGrade: (event: Touch) => void; chooseMode: () => void;
@@ -274,10 +274,10 @@ describe("小程序发现与参与合同", () => {
     expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/reservations/index?filter=cancelled" }], [{ url: "/pages/agenda/index" }]]);
   });
 
-  it("测评为独立入口，普通活动仍使用其实际活动详情", () => {
+  it("发现页的课程进入课程详情，测评继续使用独立入口", () => {
     const run = runtime(); run.load("pages/discover/index.ts"); const page = run.page();
-    void page.book(); page.openActivity({ currentTarget: { dataset: { id: "event" } } });
-    expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/assessment/index" }], [{ url: "/pages/activity/index?id=event" }]]);
+    void page.book(); page.openCourse({ currentTarget: { dataset: { id: "course-offer" } } });
+    expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/assessment/index" }], [{ url: "/pages/course-detail/index?id=course-offer" }]]);
     const navigation = run.load("lib/navigation.ts");
     navigation.rememberReturn("/pages/assessment/index?view=history"); navigation.resumeAfterLogin();
     expect(run.wx.navigateTo).toHaveBeenLastCalledWith({ url: "/pages/assessment/index?view=history" });

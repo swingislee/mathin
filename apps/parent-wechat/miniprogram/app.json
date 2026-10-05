@@ -9,6 +9,10 @@
     "pages/homework/index",
     "pages/register/index",
     "pages/activity/index",
+    "pages/course-catalog/index",
+    "pages/course-detail/index",
+    "pages/course-select/index",
+    "pages/course-applications/index",
     "pages/assessment/index",
     "pages/practice/index"
   ],

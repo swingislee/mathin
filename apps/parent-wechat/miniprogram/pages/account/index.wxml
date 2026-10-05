@@ -21,7 +21,7 @@
         <button class="service-entry" data-url="/pages/homework/index" bindtap="open"><image class="line-icon" src="/assets/icons/practice.png" aria-hidden="true" /><text>{{copy.practiceEntry}}</text></button>
         <button class="service-entry" data-url="/pages/assessment/index" bindtap="open"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button>
         <button class="service-entry" data-url="/pages/activity/index" bindtap="open"><image class="line-icon" src="/assets/icons/activity.png" aria-hidden="true" /><text>{{copy.activityBooking}}</text></button>
-        <button class="service-entry" data-url="/pages/reservations/index" bindtap="open"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{copy.myBookings}}</text></button>
+        <button class="service-entry" data-url="/pages/course-applications/index" bindtap="open"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{courseCopy.applications}}</text></button>
         <button class="service-entry" bindtap="showChildren"><image class="line-icon" src="/assets/icons/family.png" aria-hidden="true" /><text>{{copy.familyProfiles}}</text></button>
       </view>
       <text class="section-title tools-heading">{{copy.commonTools}}</text>

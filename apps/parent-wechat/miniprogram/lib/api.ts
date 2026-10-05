@@ -1,4 +1,5 @@
 import { config } from "../config.local";
+import type { CourseOffer, CourseApplication, CourseApplicationCommand } from "./api-types";
 import type { Session, Media, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest, AssessmentAvailability, AssessmentSubject, AssessmentCommand, ParentWechatAuthStatus, ParentWechatAuthResult } from "./api-types";
 
 const sessionKey="gezhi.session.v1";
@@ -38,6 +39,15 @@ export async function get<T>(resource:string,query="",authenticated=true):Promis
 }
 export async function post<T>(data:object,authenticated=true):Promise<T>{
   return send<T>("portal","POST",data,authenticated?await accessToken():undefined);
+}
+export async function courseCatalog(): Promise<CourseOffer[]> {
+  return send<CourseOffer[]>("courses", "GET");
+}
+export async function courseApplications(): Promise<CourseApplication[]> {
+  return send<CourseApplication[]>("courses?resource=applications", "GET", undefined, await accessToken());
+}
+export async function courseCommand(data: CourseApplicationCommand): Promise<{ id?: string; ok?: boolean }> {
+  return send("courses", "POST", data, await accessToken());
 }
 export async function learning(participant:string,range:{from:string;to:string}):Promise<ParentLearning>{
   const query=`participant=${encodeURIComponent(participant)}&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;

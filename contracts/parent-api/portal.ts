@@ -150,3 +150,24 @@ export type AssessmentCommand = AssessmentRequestCommand | AssessmentConfirmComm
 export type ApiErrorCode = "VALIDATION" | "UNAUTHENTICATED" | "FORBIDDEN" | "ACCOUNT_SECURITY"
   | "NOT_FOUND" | "FORM_CHANGED" | "ACTIVITY_FULL" | "BOOKING_CLOSED" | "CONFLICT"
   | "TOO_LARGE" | "FILE_TYPE" | "RATE_LIMIT" | "UNAVAILABLE";
+
+/** Explicitly published teaching classes; sessions are actual scheduled lessons. */
+export type CatalogClass = {
+  id: string; name: string; courseId: string; familyId: string; familyTitle: string;
+  grade: number; subject: string; level: string; termId: string; termName: string;
+  campusId: string | null; campusName: string | null; roomName: string | null;
+  remaining: number | null; teachers: { id: string; name: string }[];
+  sessions: { at: string; duration: number }[];
+};
+export type CourseOffer = {
+  id: string; title: string; description: string; priceCents: number | null;
+  bookingClosesAt: string; revision: number; classes: CatalogClass[];
+};
+export type CourseApplication = {
+  id: string; participantId: string; participantName: string; publicationId: string;
+  classroomId: string; title: string; className: string; priceCents: number | null;
+  status: "pending" | "confirmed" | "declined" | "cancelled";
+  createdAt: string; resolvedAt: string | null; reply: string;
+};
+export type CourseApplicationCommand = { action: "apply"; id: string; publicationId: string;
+  revision: number; classroomId: string; participantId: string } | { action: "cancel"; id: string };
