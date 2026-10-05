@@ -1,7 +1,7 @@
 import { ApiError, get, courseCatalog, courseApplications, courseCommand, requestId, session } from "../../lib/api";
 import type { Account, Participant, CourseOffer, CourseApplicationCommand } from "../../lib/api-types";
 import { courseCopy, coursePrice, classTimes, matchingClasses, classTimeGrid } from "../../lib/course-catalog";
-import { pageData, syncPage, currentLocale, errorText, loginPage } from "../../lib/page";
+import { pageData, syncPage, currentLocale, errorText, loginPage, date } from "../../lib/page";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 
 type ApplyCommand = Extract<CourseApplicationCommand, { action: "apply" }>;
@@ -9,9 +9,10 @@ const pendingKey = (account: string, offer: string) => `gezhi.course-application
 Page({
   data: { ...pageData("discover"), t: courseCopy.zh, id: "", authenticated: false, accountId: "", offer: null as CourseOffer | null,
     participants: [] as Participant[], selected: 0, level: "", campus: "", teacher: "", classId: "", classLabel: "", price: "",
-    levels: [] as { id: string; name: string }[], campuses: [] as { id: string; name: string }[], teachers: [] as { id: string; name: string }[],
+      levels: [] as { id: string; name: string }[], campuses: [] as { id: string; name: string }[], teachers: [] as { id: string; name: string }[],
     grid: classTimeGrid([], "zh"), unscheduled: [] as { id: string; name: string; full: boolean }[], matched: 0,
-    busy: false, pending: null as ApplyCommand | null, sent: false },
+    busy: false, pending: null as ApplyCommand | null, sent: false, activityWhen: "",
+    classViews: [] as { id: string; name: string; level: string; campusName: string | null; roomName: string | null; teacherNames: string; times: string }[] },
   version: 0,
   visible: false,
   onLoad(query: Record<string, string>) { this.setData({ id: query.id || "" }); },
@@ -30,11 +31,11 @@ Page({
       if (version !== this.version) return;
       const offer = offers.find(o => o.id === this.data.id) || null;
       const stored = wx.getStorageSync(pendingKey(account.id, this.data.id)) as ApplyCommand | null;
-      const pending = stored?.action === "apply" && stored.publicationId === this.data.id ? stored : null;
+      const pending = stored?.action === "apply" && ["class", "activity"].includes(stored.kind) && stored.publicationId === this.data.id ? stored : null;
       const sent = Boolean(pending && applications.some(a => a.id === pending.id));
       if (sent) wx.removeStorageSync(pendingKey(account.id, this.data.id));
       this.setData({ accountId: account.id, offer, participants: account.participants,
-        selected: Math.max(0, account.participants.findIndex(p => p.id === selectedParticipant())),
+        selected: Math.max(0, account.participants.findIndex(p => p.id === (pending && !sent ? pending.participantId : selectedParticipant()))),
         price: offer ? coursePrice(offer.priceCents, currentLocale()) : "", pending: sent ? null : pending, sent,
         error: pending && !sent ? this.data.t.unknown : !offer && !sent ? this.data.t.closed : "" });
       this.renderChoices();
@@ -48,6 +49,10 @@ Page({
     const rows = matchingClasses(all, this.data);
     const uniq = (list: { id: string; name: string }[]) => list.filter((x, i) => list.findIndex(y => y.id === x.id) === i);
     this.setData({ levels: uniq(all.map(c => ({ id: c.level, name: c.level }))),
+      activityWhen: this.data.offer?.activity ? date(this.data.offer.activity.startsAt) : "",
+      classViews: all.map(c => ({ id: c.id, name: c.name, level: c.level, campusName: c.campusName, roomName: c.roomName,
+        teacherNames: c.teachers.map(t => t.name).join("、"), times: classTimes(c, currentLocale()) })),
+      ...(all.length === 1 ? { classId: all[0].id, classLabel: all[0].name } : {}),
       campuses: uniq(levelRows.map(c => ({ id: c.campusId || "pending", name: c.campusName || this.data.t.pendingCampus }))),
       teachers: uniq(campusRows.reduce((list, c) => list.concat(c.teachers), [] as { id: string; name: string }[])),
       grid: classTimeGrid(rows, currentLocale()), matched: rows.length,
@@ -64,7 +69,7 @@ Page({
   chooseClass(e: WechatMiniprogram.TouchEvent) {
     if (this.data.busy || this.data.pending) return;
     const row = matchingClasses(this.data.offer?.classes || [], this.data).find(c => c.id === e.currentTarget.dataset.id);
-    if (!row || row.remaining === 0) return;
+    if (!row) return;
     this.setData({ classId: row.id, classLabel: [row.name, row.campusName || this.data.t.pendingCampus, row.teachers.map(t => t.name).join("、") || this.data.t.pendingTeacher, classTimes(row, currentLocale()), `${row.sessions.length} ${this.data.t.lessons}`].join(" · ") });
   },
   participant(e: WechatMiniprogram.PickerChange) {
@@ -88,10 +93,10 @@ Page({
     this.setData({ busy: true, error: "" });
     try {
       if (!command) {
-        if (!offer || !classroomId || !participant) { this.setData({ error: this.data.t.chooseHint }); return; }
+        if (!offer || (offer.kind === "class" && !classroomId) || !participant) { this.setData({ error: this.data.t.chooseHint }); return; }
         const approval = await wx.showModal({ title: this.data.t.applicationPrompt, content: this.data.t.submitNote });
         if (!approval.confirm || version !== this.version || accountId !== this.data.accountId || !session()) return;
-        command = { action: "apply", id: requestId(), publicationId: offerId, revision: offer.revision, classroomId, participantId: participant.id };
+        command = { action: "apply", kind: offer.kind, id: requestId(), publicationId: offerId, revision: offer.revision, classroomId: offer.kind === "class" ? classroomId : null, participantId: participant.id };
       }
       wx.setStorageSync(key, command);
       this.setData({ pending: command });

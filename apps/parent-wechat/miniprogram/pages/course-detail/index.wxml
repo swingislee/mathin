@@ -3,9 +3,10 @@
     <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
     <block wx:if="{{offer}}"><view class="course-hero"><image src="/assets/appointment.png" mode="aspectFit" /><text>{{offer.meta}}</text></view>
-      <view class="surface course-summary"><text class="course-heading">{{offer.title}}</text><text class="muted block">{{offer.startLabel}} · {{counts}}</text><text class="course-price block">{{offer.priceLabel}}</text></view>
+      <view class="surface course-summary"><text class="course-heading">{{offer.title}}</text><text class="muted block">{{offer.startLabel}}{{counts ? ' · ' + counts : ''}}</text><text class="small muted block">{{offer.priceLabel}}</text></view>
       <view wx:if="{{offer.description}}" class="surface course-summary"><text class="course-description">{{offer.description}}</text></view>
       <text class="small muted block">{{t.submitNote}}</text>
+      <button class="text-link" bindtap="advisor">{{t.advisor}}</button>
     </block>
   </view>
   <view class="course-footer"><button class="text-button" bindtap="applications">{{t.applications}}</button><button class="primary" disabled="{{!offer || !offer.open}}" bindtap="choose">{{offer && !offer.open ? t.full : t.choose}}</button></view>

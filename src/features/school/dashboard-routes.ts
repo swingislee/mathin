@@ -289,7 +289,7 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/activities",
     kind: "collection",
     environments: STAFF_ONLY,
-    permissionAny: ["activity.register", "review.write", "followup.view"],
+    permissionAny: ["activity.manage", "activity.register", "review.write", "followup.view"],
     // 活动字段仍属轻量范围 → ActivitiesManager Dialog（§5.9）。
     createSurface: "dialog",
     nav: { labelKey: "activities", group: "subjectOperations" },
@@ -403,9 +403,21 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/courses/admissions",
     kind: "workflow",
     environments: STAFF_ONLY,
-    permissionAny: ["course.manage", "enrollment.manage"],
+    permissionAny: ["class.manage", "enrollment.manage"],
     createSurface: "none",
-    parent: "courses",
+    parent: "classes",
+  },
+  classRegistration: {
+    hrefPattern: "/dashboard/classes/[classId]/registration", kind: "workflow", environments: STAFF_ONLY,
+    permissionAny: ["class.manage", "enrollment.manage"], createSurface: "none", parent: "classes",
+  },
+  activityRegistration: {
+    hrefPattern: "/dashboard/activities/[activityId]/registration", kind: "workflow", environments: STAFF_ONLY,
+    permissionAny: ["activity.manage", "activity.register"], createSurface: "none", parent: "activities",
+  },
+  advisorSettings: {
+    href: "/dashboard/organization/advisors", kind: "singleton", environments: STAFF_ONLY,
+    permission: "organization.profile.manage", createSurface: "none", parent: "organization",
   },
   courseMaterialRules: {
     href: "/dashboard/courses/material-rules",

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadPublicClassRegistration } from "@/features/school/public-class-registration-data";
 import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
 
-const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.register", "review.write", "followup.view"] as const;
+const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.manage", "activity.register", "review.write", "followup.view"] as const;
 
 export default async function ActivitiesPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ activity?: string; view?: string; q?: string; state?:string }> }) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);

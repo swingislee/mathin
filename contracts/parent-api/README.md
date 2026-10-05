@@ -1,6 +1,6 @@
 # 家长端接口规范
 
-当前接口版本为 `0.6.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
+当前接口版本为 `0.7.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
 
 ## 接入方式
 
@@ -25,24 +25,30 @@
 | `GET /api/v1/parent/portal?resource=reports` | 已发送测评及已发布课后反馈 | 必须 |
 | `GET /api/v1/parent/portal?resource=practices` | 当前参与人可提交的练习 | 必须 |
 | `GET /api/v1/parent/portal?resource=submission&id=...&participant=...` | 最新一次提交；未提交为 `null` | 必须 |
-| `GET /api/v1/parent/courses` | 主动上架的长期课程、真实班级类型／校区／教师／排课及报价 | 免登录 |
-| `GET /api/v1/parent/courses?resource=applications` | 当前账号提交且仍有孩子权限的报名申请 | 必须 |
-| `POST /api/v1/parent/courses` | `apply` 提交选班申请；`cancel` 撤回本人待处理申请 | 必须 |
+| `GET /api/v1/parent/courses` | 主动展示的长期班、短期班及活动，沿用既有 HTTP 路径 | 免登录 |
+| `GET /api/v1/parent/courses?resource=applications` | 当前账号提交且仍有孩子权限的预报名及历史申请 | 必须 |
+| `POST /api/v1/parent/courses` | `apply` 提交班级／活动预报名；`cancel` 撤回本人待联系预报名 | 必须 |
+| `GET /api/v1/parent/advisors` | 按年级公开已启用的学辅二维码及手机号 | 免登录 |
+| `GET /api/v1/parent/advisors/qr?path=...` | 同源读取公开的学辅二维码图片 | 免登录 |
 | `GET /api/v1/parent/learning?participant=...` | 一个孩子的课表、考勤、学习摘要、请假进度、报告及当前账号通知 | 必须 |
 | `POST /api/v1/parent/learning` | `leave` 提交请假申请；`readNotification` 标记本人通知已读 | 必须 |
 | `GET /api/v1/parent/assessments?participant=...` | 一个孩子的 1 对 1 测评申请、资格和有限范围教师 | 必须 |
 | `GET /api/v1/parent/assessment-slots?participant=...&subjects=math,english&grade=3` | 按孩子、科目、年级读取未来两周已发布测评时段 | 必须 |
 | `POST /api/v1/parent/assessments` | `book` 预约发布时段；`request` / `confirm` 保留旧协调流程 | 必须 |
-| `POST /api/v1/parent/portal` | `intake` / `book` / `cancel` / `submit` | `intake` 免登录，其余必须 |
+| `POST /api/v1/parent/portal` | `intake` / `cancel` 既有预约 / `submit`；旧活动 `book` 已停用 | `intake` 免登录，其余必须 |
 | `POST /api/v1/parent/media` | multipart `file` 上传，附练习与参与人两个请求头 | 必须 |
 | `GET /api/v1/parent/media?id=...` | 获取 5 分钟有效的私有预览地址 | 必须 |
 | `GET /api/v1/parent/media?download=...&token=...` | 流式读取签名附件，支持 Range | 临时签名 |
 
 账号登录使用已有手机号或邮箱及密码。微信小程序登录与绑定遵循下节合同；配置与真实平台往返单独验收。微信 AppSecret、Supabase service role 等服务端密钥保留在服务端，客户端只持有自己的会话令牌。
 
-登记按后端字段 ID 和选项 ID 校验，保存配置快照及同意时间。`requestId` / 提交 `id` 用于重试去重，相同请求号更换内容会返回 `CONFLICT`。预约在数据库内锁定活动并检查实时名额，使用原有 `activity_registrations`。
+登记按后端字段 ID 和选项 ID 校验，保存配置快照及同意时间。`requestId` / 提交 `id` 用于重试去重，相同请求号更换内容会返回 `CONFLICT`。既有活动预约保持可读与按原规则取消，新的公开报名统一使用预报名接口。
 
-课程目录由 `/dashboard/courses/admissions` 主动发布：同一课程系列、年级、学期下的真实长期正式班级组成一个公开报价。科目来自课程系列，类型来自课程版本，校区、老师与课次来自班级实际安排。报价以人民币分表示，`null` 是待工作人员确认，`0` 是零报价。课程申请保存所选班级和报价版本，提交不占位、不写入缴费。工作人员核对报名条件及缴费依据后，通过既有报名与分班函数在一个事务中确认；申请状态与正式报名、财务记录分别保留。家长可撤回待处理申请，已确认后的退班继续走正式业务流程。
+公开目录由具体班级或活动的“对外展示 / 预报名”设置控制；课程产品用于教研。`CourseOffer.kind=class` 时 `id` 是班级 ID，`classes` 提供该班的真实资料，短期班的课程或学期关联可以为空；`kind=activity` 时 `id` 是活动 ID、`classes=[]`，`activity` 提供年级范围、地点和时间。未分类的活动不推断科目。新公开对象 `priceCents=null`，家长线下缴费。
+
+申请命令为 `{action:"apply",id,kind,publicationId,revision,classroomId,participantId}`；班级的 `classroomId=publicationId`，活动的 `classroomId=null`。请求保存对象快照，检查真实展示版本、亲子关系及重复请求。状态为 `pending/contacted/declined/cancelled`；旧 `confirmed` 只表示既有正式报名历史。工作人员联系处理不会创建正式报名、分班、活动参与名单或缴费。家长可撤回待联系预报名，正式业务由线下办理。
+
+学辅联系人按精确年级配置，公开接口只返回已启用记录；没有设置的年级为空。二维码 URL 使用当前 API origin，手机号用于平台拨号。二维码上传和设置需要 `organization.profile.manage`，家长端没有聊天、支付或退款入口。
 
 照片上限 12 MiB、视频 64 MiB，每次提交 1～9 个附件，单账号预留空间上限 1 GiB。根据文件签名识别 JPEG/PNG/WebP/HEIC/MP4/MOV，视频额外核验 `video` 权限。附件只存入私有 `miniapp-practice` bucket；签名 URL 经同一 API origin 代理，手机无需访问 Supabase 内网地址。失败重试会复用客户端已完成的上传；未确认上传响应时可能留下预留文件，目前保留供后台核对，没有新增自动清理任务。
 

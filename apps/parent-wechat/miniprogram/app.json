@@ -13,6 +13,7 @@
     "pages/course-detail/index",
     "pages/course-select/index",
     "pages/course-applications/index",
+    "pages/advisor/index",
     "pages/assessment/index",
     "pages/practice/index"
   ],

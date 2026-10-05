@@ -172,7 +172,8 @@ export async function portalPost(request:Request) {
     return response({id},201);
   }
   const input=commandSchema.parse(raw),{db}=await authorize(request);
-  if(input.action==="book")return response({id:requireResult(await db.rpc("miniapp_book_activity",{p_activity:input.activityId,p_student:input.participantId}))});
+  // New activity participation starts with pre-registration via /parent/courses.
+  if(input.action==="book")throw new PortalError("VALIDATION");
   if(input.action==="cancel"){requireResult(await db.rpc("miniapp_cancel_booking",{p_id:input.id}));return response({ok:true});}
   return response({id:requireResult(await db.rpc("miniapp_submit_practice",{p_id:input.id,p_assignment:input.assignmentId,p_student:input.participantId,p_note:input.note,p_uploads:input.uploadIds}))},201);
 }

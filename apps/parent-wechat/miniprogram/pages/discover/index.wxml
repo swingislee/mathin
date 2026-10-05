@@ -6,7 +6,7 @@
       <button class="filter-pill" data-sheet="subject" bindtap="showFilter"><text>{{subjectLabel || copy.allSubjects}}</text><view class="chevron down"></view></button>
       <button wx:if="{{full}}" class="filter-pill" data-sheet="term" bindtap="showFilter"><text>{{termLabel || courseCopy.allTerms}}</text><view class="chevron down"></view></button>
     </view>
-    <view class="catalog-recommendation"><text class="recommendation-star">★</text><text>{{stageLabel ? copy.catalogHintBefore + stageLabel + copy.catalogHintAfter : copy.catalogDefaultHint}}</text></view>
+    <view class="option-grid catalog-kinds"><button class="option-pill {{!kind ? 'selected' : ''}}" data-kind="" bindtap="chooseKind">{{courseCopy.allKinds}}</button><button class="option-pill {{kind === 'long' ? 'selected' : ''}}" data-kind="long" bindtap="chooseKind">{{courseCopy.longClass}}</button><button class="option-pill {{kind === 'short' ? 'selected' : ''}}" data-kind="short" bindtap="chooseKind">{{courseCopy.shortClass}}</button><button class="option-pill {{kind === 'activity' ? 'selected' : ''}}" data-kind="activity" bindtap="chooseKind">{{courseCopy.activity}}</button></view>
     <button wx:if="{{!full}}" class="feature-entry surface" bindtap="book" hover-class="pressed">
       <image class="feature-art" src="/assets/appointment.png" mode="aspectFit" aria-hidden="true" />
       <view class="feature-copy"><text class="feature-title">{{copy.discoverAssessment}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
@@ -27,7 +27,7 @@
       </block>
     </view>
   </view>
-  <view wx:if="{{!full}}" class="floating-services surface"><button bindtap="register"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.intakeTitle}}</text></button><button bindtap="book"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button><button bindtap="reservations"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{copy.myBookings}}</text></button></view>
+  <view wx:if="{{!full}}" class="floating-services surface"><button bindtap="advisor"><image class="line-icon" src="/assets/icons/family.png" aria-hidden="true" /><text>{{courseCopy.advisor}}</text></button><button bindtap="book"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button><button bindtap="applications"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{courseCopy.applications}}</text></button></view>
   <tab-overlay wx:if="{{sheet && !full}}" />
   <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop">
     <view class="bottom-sheet catalog-sheet" catchtap="noop">

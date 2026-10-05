@@ -11,7 +11,7 @@ import type { CourseApplicationCommand } from "../contracts/parent-api/portal";
 const room: CatalogClass = { id: "class-a", name: "A class", familyId: "family", familyTitle: "Logic", courseId: "course", grade: 4, subject: "逻辑思维", level: "A", termId: "fall", termName: "秋季",
   campusId: "campus-a", campusName: "东校区", roomName: "101", remaining: 3, teachers: [{ id: "teacher-a", name: "Teacher A" }],
   sessions: [{ at: "2030-10-03T00:30:00Z", duration: 150 }, { at: "2030-10-10T00:30:00Z", duration: 150 }] };
-const offer: CourseOffer = { id: "offer", title: "真实课程", description: "", priceCents: 315000, bookingClosesAt: "2030-12-01T00:00:00Z", revision: 1, classes: [room] };
+const offer: CourseOffer = { id: room.id, kind: "class", activity: null, title: "真实班级", description: "", priceCents: null, bookingClosesAt: "2030-12-01T00:00:00Z", revision: 1, classes: [room] };
 describe("published course selection", () => {
   it("filters actual grades, subjects and terms without an activity-kind alias", () => {
     expect(filterCourseOffers([offer], "g4", "逻辑思维", "fall", 0)).toEqual([offer]);
@@ -33,8 +33,8 @@ describe("published course selection", () => {
     expect(matchingClasses([pending], { level: "A", campus: "pending", teacher: "" })).toEqual([pending]);
     expect(matchingClasses([pending], { level: "A", campus: "pending", teacher: "teacher-a" })).toEqual([]);
     expect(classTimeGrid([pending], "zh").rows).toEqual([]);
-    expect(courseCard({ ...offer, priceCents: null, classes: [pending] }, "zh")).toMatchObject({ priceLabel: "报价待确认", startLabel: "开课时间待定" });
-    expect(courseCard({ ...offer, priceCents: 0 }, "zh").priceLabel).toBe("¥0.00");
+    expect(courseCard({ ...offer, classes: [pending] }, "zh")).toMatchObject({ priceLabel: "线下缴费", startLabel: "开课时间待定" });
+    expect(courseCard({ ...offer, priceCents: 0 }, "zh").priceLabel).toBe("线下缴费");
   });
 });
 
@@ -77,7 +77,7 @@ describe("course application submission", () => {
     expect(post).not.toHaveBeenCalled();
     modal.resolve({ confirm: true });
     await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(1));
-    expect(post).toHaveBeenCalledWith({ action: "apply", id: "stable-request", publicationId: offer.id, revision: offer.revision, classroomId: room.id, participantId: "child-a" });
+    expect(post).toHaveBeenCalledWith({ action: "apply", kind: "class", id: "stable-request", publicationId: offer.id, revision: offer.revision, classroomId: room.id, participantId: "child-a" });
     result.resolve({ id: "stable-request" }); await first;
     expect(run.page.data.sent).toBe(true); expect(run.storage.size).toBe(0);
   });

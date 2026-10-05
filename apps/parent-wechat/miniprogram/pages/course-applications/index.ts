@@ -8,7 +8,7 @@ Page({
     rows: [] as (CourseApplication & { price: string; dateLabel: string; statusLabel: string })[], filter: "", busy: false,
     statuses: [] as { id: string; label: string }[] },
   version: 0,
-  onShow() { syncPage(this, "account"); const t = courseCopy[currentLocale()]; this.setData({ t, authenticated: Boolean(session()), statuses: (["pending", "confirmed", "declined", "cancelled"] as const).map(id => ({ id, label: t[id] })) }); void this.load(); },
+  onShow() { syncPage(this, "account"); const t = courseCopy[currentLocale()]; this.setData({ t, authenticated: Boolean(session()), statuses: (["pending", "contacted", "confirmed", "declined", "cancelled"] as const).map(id => ({ id, label: t[id] })) }); void this.load(); },
   onHide() { this.version++; },
   async load() {
     if (this.data.busy) return;

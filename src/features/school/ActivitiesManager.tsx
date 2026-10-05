@@ -254,9 +254,11 @@ export function ActivitiesManager({
                     {current && canManage ? <>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>
                       <Button size="sm" variant="ghost" onClick={() => setGradeTarget(activity)}>{gradeT("title")}</Button>
+                      <Link href={`/dashboard/activities/${activity.id}/registration`} className={buttonVariants({ variant: "ghost", size: "sm" })}>{locale === "en" ? "Public listing / pre-registration" : "对外展示 / 预报名"}</Link>
                       <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
                     </> : null}
                     {canRegister ? <Button size="sm" variant="secondary" onClick={() => toggleActivity(activity.id)}>{t("inlineRegistration")}</Button> : null}
+                    {current && canRegister && !canManage ? <Link href={`/dashboard/activities/${activity.id}/registration`} className={buttonVariants({ variant: "ghost", size: "sm" })}>{locale === "en" ? "Pre-registrations" : "预报名"}</Link> : null}
                     {!current ? activity.registrations.map(row => <BusinessRecordRevisionButton key={row.id} kind="activity" recordId={row.id} subject={row.studentName} label={activity.registrations.length > 1 ? `${row.studentName} · ${locale==='zh'?'修订':'Revise'}` : undefined}/>) : null}
                     {current && (!publicClass || teachingActivityIds.includes(activity.id)) ? <Link href={`/dashboard/activities/${activity.id}${publicClass ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
                       {t(publicClass ? "teacherWorkspace" : "openWorkspace")}<ArrowRight size={15} />

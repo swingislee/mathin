@@ -3,6 +3,9 @@ import { DashboardPage } from "@/features/school/dashboard-page";
 import { getOrganizationProfileV2 } from "@/features/school/organization-locations";
 import { OrganizationProfileForm } from "@/features/school/OrganizationProfileForm";
 import { requirePerm } from "@/lib/auth";
+import { Link } from "@/i18n/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { DashboardCommandPanel, DashboardCommandActions } from "@/features/school/dashboard-page";
 
 export default async function OrganizationPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -14,7 +17,7 @@ export default async function OrganizationPage({ params }: { params: Promise<{ l
   ]);
 
   return (
-    <DashboardPage title={t("title")} description={t("intro")}>
+    <DashboardPage title={t("title")} description={t("intro")} commandPanel={<DashboardCommandPanel><DashboardCommandActions><Link href="/dashboard/organization/advisors" className={buttonVariants({ variant: "secondary", size: "sm" })}>{locale === "en" ? "Grade advisors" : "年级学辅设置"}</Link></DashboardCommandActions></DashboardCommandPanel>}>
       <OrganizationProfileForm profile={profile} />
     </DashboardPage>
   );

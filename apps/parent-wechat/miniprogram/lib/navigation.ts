@@ -2,7 +2,7 @@
 let returnPath = "";
 let participantId = "";
 const tabs = ["discover", "courses", "account"];
-const destinations = /^(?:\/pages\/(?:activity|assessment|register|mistakes|homework|practice|reservations|agenda|course-catalog|course-detail|course-select|course-applications)\/index(?:\?[^#]*)?|\/pages\/(?:discover|courses|account)\/index)$/;
+const destinations = /^(?:\/pages\/(?:activity|assessment|register|mistakes|homework|practice|reservations|agenda|course-catalog|course-detail|course-select|course-applications|advisor)\/index(?:\?[^#]*)?|\/pages\/(?:discover|courses|account)\/index)$/;
 
 export function openPage(url: string) {
   if (tabs.some(tab => url === `/pages/${tab}/index`)) wx.switchTab({ url });

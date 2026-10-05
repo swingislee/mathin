@@ -152,23 +152,27 @@ export type ApiErrorCode = "VALIDATION" | "UNAUTHENTICATED" | "FORBIDDEN" | "ACC
   | "NOT_FOUND" | "FORM_CHANGED" | "ACTIVITY_FULL" | "BOOKING_CLOSED" | "CONFLICT"
   | "TOO_LARGE" | "FILE_TYPE" | "RATE_LIMIT" | "UNAVAILABLE";
 
-/** Explicitly published teaching classes; sessions are actual scheduled lessons. */
+/** Explicitly published classes; teaching course links may be absent for short classes. */
 export type CatalogClass = {
-  id: string; name: string; courseId: string; familyId: string; familyTitle: string;
-  grade: number; subject: string; level: string; termId: string; termName: string;
+  id: string; name: string; offeringType?: "long_term_formal" | "short_term_topic";
+  courseId: string | null; familyId: string | null; familyTitle: string;
+  grade: number | null; subject: string; level: string; termId: string | null; termName: string;
   campusId: string | null; campusName: string | null; roomName: string | null;
   remaining: number | null; teachers: { id: string; name: string }[];
   sessions: { at: string; duration: number }[];
 };
 export type CourseOffer = {
-  id: string; title: string; description: string; priceCents: number | null;
+  id: string; kind: "class" | "activity"; title: string; description: string; priceCents: number | null;
   bookingClosesAt: string; revision: number; classes: CatalogClass[];
+  activity: { id: string; targetGrades: number[] | null; location: string; startsAt: string;
+    durationMinutes: number | null; remaining: number | null } | null;
 };
 export type CourseApplication = {
-  id: string; participantId: string; participantName: string; publicationId: string;
-  classroomId: string; title: string; className: string; priceCents: number | null;
-  status: "pending" | "confirmed" | "declined" | "cancelled";
+  id: string; kind: "class" | "activity"; participantId: string; participantName: string; publicationId: string;
+  classroomId: string | null; activityId: string | null; title: string; className: string; priceCents: number | null;
+  status: "pending" | "contacted" | "confirmed" | "declined" | "cancelled";
   createdAt: string; resolvedAt: string | null; reply: string;
 };
 export type CourseApplicationCommand = { action: "apply"; id: string; publicationId: string;
-  revision: number; classroomId: string; participantId: string } | { action: "cancel"; id: string };
+  kind: "class" | "activity"; revision: number; classroomId: string | null; participantId: string } | { action: "cancel"; id: string };
+export type AdvisorContact = { grade: number; teacherName: string; phone: string; qrCodeUrl: string };

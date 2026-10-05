@@ -380,3 +380,6 @@ button.slot-option.selected[disabled] { background: var(--primary); color: #fff;
   .line-icon { filter: brightness(0) invert(.85); }
   .primary, .small-pill, .switch-child, .parent-header .parent-header-action, .week-day.selected, .step-number.active, .slot-option.selected { color: #1d2816; }
 }
+
+.catalog-kinds{margin:20rpx 0}.advisor-card{text-align:center;display:flex;flex-direction:column;align-items:center;gap:20rpx}.advisor-qr{width:400rpx;height:400rpx;background:#fff;border-radius:16rpx}.advisor-phone{font-size:36rpx;letter-spacing:2rpx}.advisor-card .primary{width:100%}
+.catalog-kinds{margin:20rpx 0}.advisor-card{text-align:center;display:flex;flex-direction:column;align-items:center;gap:20rpx}.advisor-qr{width:400rpx;height:400rpx;background:#fff;border-radius:16rpx}.advisor-phone{font-size:36rpx;letter-spacing:2rpx}.advisor-card .primary{width:100%}

@@ -40,6 +40,9 @@ export async function get<T>(resource:string,query="",authenticated=true):Promis
 export async function post<T>(data:object,authenticated=true):Promise<T>{
   return send<T>("portal","POST",data,authenticated?await accessToken():undefined);
 }
+export async function advisorContacts(): Promise<import("./api-types").AdvisorContact[]> {
+  return send("advisors", "GET");
+}
 export async function courseCatalog(): Promise<CourseOffer[]> {
   return send<CourseOffer[]>("courses", "GET");
 }

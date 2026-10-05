@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "格致未来思维 · 家长端接口",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "description": "原生客户端通过版本化 HTTP 接入现有 Supabase 身份和业务数据。登记与活动浏览免登录；预约、结果及练习须核验账号和参与人权限。"
   },
   "servers": [
@@ -1395,7 +1395,7 @@
     "/api/v1/parent/courses": {
       "get": {
         "operationId": "getParentCourseCatalogOrApplications",
-        "summary": "公开课程目录或本人的报名申请",
+        "summary": "Explicit class and activity listings, or own pre-registration history",
         "description": "resource=catalog（默认）免登录，只包含主动上架、未截止且有有效正式班级的课程；resource=applications 必须登录，只返回当前账号提交且仍有孩子权限的记录。课次数量来自实际排课，不推算固定周期。",
         "security": [
           {},
@@ -1505,7 +1505,7 @@
       },
       "post": {
         "operationId": "submitOrCancelCourseApplication",
-        "summary": "提交或撤回报名申请",
+        "summary": "Submit or withdraw pre-registration; never enrolls or records payment",
         "description": "apply 保存稳定 UUID、已查看的报价版本及所选孩子和班级。重复重试复用原记录，更改原请求内容返回 CONFLICT。申请不保留名额，不记录缴费。cancel 只撤回本人待处理申请；正式报名由工作人员核对后在受权限保护的后台完成。",
         "security": [
           {
@@ -1618,6 +1618,70 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent/advisors": {
+      "get": {
+        "operationId": "publicGradeAdvisors",
+        "security": [],
+        "summary": "Public QR code and phone number for each configured grade",
+        "responses": {
+          "200": {
+            "description": "Enabled advisor contacts only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdvisorContact"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent/advisors/qr": {
+      "get": {
+        "operationId": "publicAdvisorQrImage",
+        "security": [],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?[0-9]{1,2}/[0-9a-f-]{36}\\.(png|jpg|webp)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public QR image",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -3671,18 +3735,27 @@
             "type": "string"
           },
           "courseId": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "familyId": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "familyTitle": {
             "type": "string"
           },
           "grade": {
-            "type": "integer"
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "subject": {
             "type": "string"
@@ -3691,7 +3764,10 @@
             "type": "string"
           },
           "termId": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "termName": {
@@ -3779,6 +3855,13 @@
               },
               "additionalProperties": false
             }
+          },
+          "offeringType": {
+            "type": "string",
+            "enum": [
+              "long_term_formal",
+              "short_term_topic"
+            ]
           }
         },
         "additionalProperties": false
@@ -3792,7 +3875,9 @@
           "priceCents",
           "bookingClosesAt",
           "revision",
-          "classes"
+          "classes",
+          "kind",
+          "activity"
         ],
         "properties": {
           "id": {
@@ -3829,8 +3914,66 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/CatalogClass"
-            },
-            "minItems": 1
+            }
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "class",
+              "activity"
+            ]
+          },
+          "activity": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "targetGrades",
+              "location",
+              "startsAt",
+              "durationMinutes",
+              "remaining"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "targetGrades": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "items": {
+                  "type": "integer",
+                  "minimum": -1,
+                  "maximum": 12
+                }
+              },
+              "location": {
+                "type": "string"
+              },
+              "startsAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "durationMinutes": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "remaining": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            }
           }
         },
         "additionalProperties": false
@@ -3849,7 +3992,9 @@
           "status",
           "createdAt",
           "resolvedAt",
-          "reply"
+          "reply",
+          "kind",
+          "activityId"
         ],
         "properties": {
           "id": {
@@ -3868,7 +4013,10 @@
             "format": "uuid"
           },
           "classroomId": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "uuid"
           },
           "title": {
@@ -3893,6 +4041,7 @@
             "type": "string",
             "enum": [
               "pending",
+              "contacted",
               "confirmed",
               "declined",
               "cancelled"
@@ -3915,6 +4064,20 @@
           },
           "reply": {
             "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "class",
+              "activity"
+            ]
+          },
+          "activityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
           }
         },
         "additionalProperties": false
@@ -3929,7 +4092,8 @@
               "publicationId",
               "revision",
               "classroomId",
-              "participantId"
+              "participantId",
+              "kind"
             ],
             "properties": {
               "action": {
@@ -3948,15 +4112,26 @@
                 "minimum": 1
               },
               "classroomId": {
-                "type": "string",
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "format": "uuid"
               },
               "participantId": {
                 "type": "string",
                 "format": "uuid"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "class",
+                  "activity"
+                ]
               }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "Pre-registration for one class or activity. For a class, classroomId equals publicationId; for an activity, classroomId is null. Does not create enrollment, roster participation or payment."
           },
           {
             "type": "object",
@@ -3976,6 +4151,33 @@
             "additionalProperties": false
           }
         ]
+      },
+      "AdvisorContact": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "grade",
+          "teacherName",
+          "phone",
+          "qrCodeUrl"
+        ],
+        "properties": {
+          "grade": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 12
+          },
+          "teacherName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "qrCodeUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
       }
     }
   }

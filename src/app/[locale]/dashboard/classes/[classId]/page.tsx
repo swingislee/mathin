@@ -260,6 +260,7 @@ async function ClassDetailBody({
               <DashboardCommandActions>
                 {perms.has("review.write") && <HomeworkDocumentEditor scope="classroom" targetId={classroom.id} />}
                 {primaryAction}
+                {(perms.has("class.manage") || perms.has("enrollment.manage")) && classroom.capabilities.canManageClassroom && <Link href={`/dashboard/classes/${classId}/registration`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{locale === "en" ? "Public listing / pre-registration" : "对外展示 / 预报名"}</Link>}
                 {isManagementView ? (
                   <Suspense fallback={<span aria-label={t("settings")} className="size-8 animate-pulse rounded-md bg-muted/10" />}>
                     <ClassroomSettings classroom={classroom} setupHref={tabHref("setup")} canManageMaterials={perms.has("class.manage")} />
