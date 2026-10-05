@@ -3,6 +3,34 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ADMIN-MATERIAL-SUPPLEMENT-20261005",
+      "title": "管理代老师补交课次资料",
+      "agent": "codex",
+      "threadId": "01a0dd69-e287-7773-b4f5-3489276ea15e",
+      "status": "done",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/ADMIN-MATERIAL-SUPPLEMENT-20261005.md",
+      "writePaths": [
+        "src/features/school/ClassRosterSessionDetail.tsx",
+        "src/features/school/SessionMaterialsReader.tsx",
+        "src/features/school/session-materials-contract.ts",
+        "src/features/school/session-materials-read.ts",
+        "src/features/school/SessionMaterialSupplement.tsx",
+        "src/features/school/session-material-supplement-actions.ts",
+        "src/features/school/session-material-supplement-contract.ts",
+        "supabase/migrations/20261005180000_session_material_supplement.sql",
+        "supabase/tests/session_material_supplement.sql",
+        ".ai/tasks/ADMIN-MATERIAL-SUPPLEMENT-20261005.md",
+        ".ai/handoffs/ADMIN-MATERIAL-SUPPLEMENT-20261005.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "ac6d886d44dfb551dc120ad5559aa8a53f82a670",
+      "next": "补交入口、窄权限事务与本地迁移已交付，3130 中英文班级页及管理/教师能力读取正常；资料补交和审核手感待产品负责人实际验收。"
+    },
+    {
       "id": "REPO-AUX-CLEANUP-20261005",
       "title": "按产品方向清理规划、阶段检查与辅助流程",
       "agent": "codex",
