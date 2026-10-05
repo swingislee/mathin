@@ -121,36 +121,15 @@
 - 会话令牌仅存在小程序本地存储，密码在成功登录后清空；退出清除本地会话。服务端密钥只用于受限的服务端操作。
 - 上传失败可重试，成功返回的附件会复用。未返回确认的上传可能留下预留文件，目前没有新增后台清理任务；核对时保留已提交业务附件。
 
-## 本机初始化与复核
+## 本机开发与按需核对
 
-本机使用 Windows 隔离 Supabase 和 Next.js，API origin 写在已忽略的 `miniprogram/config.local.ts`。客户端只连接 Next.js API；由服务端连接本机 Supabase。固定账号沿用仓库私有清单，不创建一次性 Auth 身份。
+本机使用已识别的隔离 Supabase 和 Next.js，API origin 写在已忽略的 `miniprogram/config.local.ts`。客户端只连接 Next.js API；由服务端连接对应 Supabase。开发身份沿用仓库私有清单。
 
-本次两条迁移已在本机应用。全新开发库可以按以下顺序执行；脚本会核对主机、loopback origin、Docker 实际目标、端口监听和迁移摘要：
+迁移状态按实际目标与迁移账本核对。新环境初始化、迁移和任何造数先按 [数据操作](../../../docs/ops/data-operations.md) 确定目标及范围；历史 `parent-portal-local.mjs` 和 HTTP 联调脚本保存在 [归档](../../../archive/2026-10-04/scripts/)，用于追溯当时的开发批次。
 
-```sh
-node scripts/parent-portal-local.mjs --preflight
-node scripts/parent-portal-local.mjs --check
-node scripts/parent-portal-local.mjs --apply
-node scripts/parent-portal-local.mjs --configure
-corepack pnpm parents:check
-```
+普通客户端增量交付开发者工具或手机使用。需要生成交付程序时执行对应构建；明确需要类型检查时使用 `corepack pnpm parents:wechat:typecheck`。接口、权限或数据风险的检查按 [用例入口](../../../tests/README.md) 选择具体文件，SQL 通过 `pnpm db:test -- supabase/tests/文件.sql` 指定执行，先核对隔离目标。
 
-`--check` 在事务中检查并回滚。`--apply` 只接受匹配检查结果的待应用迁移，全部已应用时提示 `ALREADY_APPLIED`。`--configure` 仅向核实的本机库补充明确标为“开发联调”的表单、活动、结果与练习，复用固定身份并保留现有同 ID 数据。迁移命令不用于生产。
-
-真实 HTTP 验证脚本会留下标记清楚的本机登记、附件及提交记录：
-
-```sh
-node scripts/parent-portal-http-local.mjs
-```
-
-可使用 FFmpeg 生成无个人信息的短视频，增加真实视频、Range 和签名失败验证：
-
-```sh
-ffmpeg -hide_banner -loglevel error -f lavfi -i color=c=black:s=32x32:r=10 -t 0.5 -c:v libx264 -pix_fmt yuv420p -movflags +faststart -y .tmp/parent-portal/local-check.mp4
-node scripts/parent-portal-http-local.mjs --video .tmp/parent-portal/local-check.mp4
-```
-
-工具输出和验收回执在已忽略的 `.tmp/parent-portal/`。共享 `project.config.json` 保持 `urlCheck=true`；按 2026-09-22 的授权，本机 `project.private.config.json` 使用 `urlCheck=false` 连接局域网 HTTP。正式网络接入配置 HTTPS 合法域名。
+共享 `project.config.json` 保持 `urlCheck=true`；按 2026-09-22 的本机授权，`project.private.config.json` 可使用 `urlCheck=false` 连接局域网 HTTP。正式网络接入配置 HTTPS 合法域名。临时媒体与核对材料使用无个人信息的样例，输出保存在已忽略的 `.tmp/`。
 
 ## 人工验收顺序
 

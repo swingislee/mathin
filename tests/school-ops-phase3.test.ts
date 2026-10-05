@@ -123,15 +123,13 @@ describe("school operations Phase 3 enrollment handoff", () => {
     const opportunityData = read("src", "features", "school", "phase3-enrollment-data.ts");
     const opportunityUi = read("src", "features", "school", "Phase3CourseOpportunityWorkbench.tsx");
     const enrollmentUi = read("src", "features", "school", "Phase3CourseEnrollmentWorkbench.tsx");
-    const enrollmentPage = read("src", "app", "[locale]", "dashboard", "followups", "enrollments", "page.tsx");
+    const classesPage = read("src", "app", "[locale]", "dashboard", "classes", "page.tsx");
+    const placementPage = read("src", "features", "school", "ClassPlacementPage.tsx");
     const zh = JSON.parse(read("messages", "zh.json"));
     const en = JSON.parse(read("messages", "en.json"));
 
-    expect(routes).toContain('href: "/dashboard/opportunities"');
-    expect(routes).toContain('href: "/dashboard/followups/enrollments"');
-    expect(nav).not.toContain('"opportunities"');
-    expect(nav).toContain('"followups"');
-    expect(nav).not.toContain('"enrollments"');
+    expect(routes).toContain('href: "/dashboard/classes"');
+    expect(nav).toContain('"classes"');
     expect(activityUi).toContain("EnrollmentHandoffButton");
     expect(assessmentUi).toContain("PostActivityHandoff");
     expect(opportunityData).toContain('source.route !== "await_product"');
@@ -139,8 +137,9 @@ describe("school operations Phase 3 enrollment handoff", () => {
     expect(enrollmentUi).toContain("assignCourseEnrollmentsAction");
     expect(enrollmentUi).toContain("transferCourseEnrollmentAction");
     expect(enrollmentUi).toContain("cancelCourseEnrollmentAction");
-    expect(enrollmentPage).toContain('requirePerm(locale, "enrollment.manage")');
-    expect(enrollmentPage).toContain("EnrollmentPlacementWorkbench");
+    expect(classesPage).toContain("<ClassPlacementPage");
+    expect(placementPage).toContain("enrollmentWorkflowRpc('can_access_enrollment_placement') !== true");
+    expect(placementPage).toContain("EnrollmentPlacementWorkbench");
     expect(zh.school.courseOpportunities.title).toBe("报班跟进");
     expect(en.school.courseEnrollments.title).toBe("Class placement");
   });

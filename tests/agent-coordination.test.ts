@@ -43,21 +43,21 @@ describe("协作登记与归属", () => {
     expect(ownersForPath("unclaimed.md", tasks)).toEqual([]);
   });
 
-  it("拒绝重复任务、越界路径和伪装为 worker 的 main 分支", () => {
+  it("拒绝重复任务、越界路径和不存在的协调任务", () => {
     const registry = { version: 1, coordinatorTaskId: "A", tasks: [task("A")] };
     expect(() => validateRegistry({ ...registry, tasks: [task("A"), task("A")] })).toThrow("重复");
     for (const invalid of ["../private", "C:/private", "/tmp/private", "src/../private", "src/*.ts", ".git/config", ".git", "src//hidden/"]) {
       expect(() => validateRegistry({ ...registry, tasks: [task("A", { writePaths: [invalid] })] })).toThrow("精确路径");
     }
-    expect(() => validateRegistry({ ...registry, tasks: [task("A", { checkout: "worktree" })] })).toThrow("独立任务分支");
-    expect(() => validateRegistry({ ...registry, coordinatorTaskId: "MISSING" })).toThrow("集成负责人");
+    expect(() => validateRegistry({ ...registry, coordinatorTaskId: "MISSING" })).toThrow("协调任务");
   });
 
-  it("每批仅允许一名集成人，每个活跃 worker 使用独立分支", () => {
+  it("工作区记录用于核对归属，允许按当前任务选择本地或独立分支", () => {
     const registry = { version: 1, coordinatorTaskId: "A", tasks: [task("A"), task("B", { checkout: "integration" })] };
-    expect(() => validateRegistry(registry)).toThrow("一名活跃集成人");
+    expect(() => validateRegistry(registry)).not.toThrow();
     registry.tasks = [task("A"), ...["B", "C"].map((id) => task(id, { checkout: "worktree", branch: "codex/shared" }))];
-    expect(() => validateRegistry(registry)).toThrow("各自独立的分支");
+    expect(() => validateRegistry(registry)).not.toThrow();
+    expect(() => validateRegistry({ ...registry, coordinatorTaskId: null, tasks: [task("A", { checkout: "local", branch: "codex/local-work" })] })).not.toThrow();
   });
 
   it("重命名归属覆盖新旧路径，保留空格和未跟踪路径", () => {
@@ -102,7 +102,7 @@ describe("跨 worktree 的已提交登记", () => {
       expect(git(worker, "status", "--porcelain=v1")).toBe(before);
       expect(git(worker, "rev-parse", "HEAD")).toBe(base);
       expect(fs.readFileSync(path.join(worker, ".ai/tasks/B.md"), "utf8")).toBe("本地尚未提交的记录");
-      expect(() => readContext(primary, { taskId: "B" })).toThrow("正确任务 worktree");
+      expect(readContext(primary, { taskId: "B" }).selected.branch).toBe("codex/fixture");
       expect(() => readContext(worker, { taskId: "MISSING" })).toThrow("未登记任务");
       expect(readContext(worker, { working: true }).registry.tasks[1].next).toBe("继续已分配任务");
       registry.tasks[1].card = ".ai/tasks/missing.md";
@@ -114,7 +114,7 @@ describe("跨 worktree 的已提交登记", () => {
       write(primary, ".ai/registry.json", JSON.stringify(registry));
       commit("fixture primary branch");
       git(primary, "switch", "-qc", "codex/primary-only");
-      expect(() => readContext(primary, { taskId: "B" })).toThrow("仅切分支不足以隔离施工");
+      expect(readContext(primary, { taskId: "B" }).selected.branch).toBe("codex/primary-only");
     } finally {
       // 只清理由本测试生成且仍位于系统临时目录的 fixture。
       const resolved = path.resolve(fixture);

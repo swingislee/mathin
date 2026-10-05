@@ -111,7 +111,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
       "migrations",
       "20260904000220_school_ops_assessment_route_and_bands.sql",
     );
-    const page = read("src", "app", "[locale]", "dashboard", "followups", "assessments", "page.tsx");
+    const page = read("src", "app", "[locale]", "dashboard", "assessments", "page.tsx");
     const queue = read("src", "features", "school", "AssessmentUnifiedWorkbench.tsx");
     const actions = read("src", "features", "school", "assessment-workbench-actions.ts");
     const query = read("src", "features", "school", "assessment-workbench-data.ts");
@@ -158,7 +158,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(queue).not.toContain("saveAssessmentWorkbenchRowAction");
     expect(queue).not.toContain("saveAssessmentWorkbenchRouteAction");
     expect(queue).not.toContain("routeGroup");
-    expect(routes).toContain('href: "/dashboard/followups/assessments"');
+    expect(routes).toContain('href: "/dashboard/assessments"');
   });
 
   it("orders the selectable assessment levels from low to high and retains the old value as read-only history", () => {

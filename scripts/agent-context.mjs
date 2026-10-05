@@ -9,7 +9,7 @@ import { pathToFileURL } from "node:url";
 const integrationRef = "refs/heads/main";
 export const ACTIVE_STATUSES = new Set(["ready", "in_progress", "in_review", "blocked"]);
 const STATUSES = new Set([...ACTIVE_STATUSES, "integrated", "done", "cancelled"]);
-const CHECKOUTS = new Set(["integration", "primary-transition", "worktree"]);
+const CHECKOUTS = new Set(["local", "integration", "primary-transition", "worktree"]);
 const REGISTRY_PATH = ".ai/registry.json";
 
 function git(args, cwd = process.cwd()) {
@@ -82,16 +82,10 @@ export function validateRegistry(registry) {
       if (!Array.isArray(task[key]) || !task[key].every(isRepoPath)) throw new Error(`${task.id} 的 ${key} 需要仓库内精确路径或目录前缀。`);
     }
     if (task.checkpoint !== null && !/^[a-f0-9]{40}$/.test(task.checkpoint)) throw new Error(`${task.id} 的检查点需要完整提交号或 null。`);
-    if (task.checkout === "worktree" && task.branch === "main") throw new Error(`${task.id} 的 worker 需要独立任务分支。`);
-    if (task.checkout !== "worktree" && task.branch !== "main") throw new Error(`${task.id} 的主 checkout 分支应为 main。`);
   }
-  const coordinator = registry.tasks.find((task) => task.id === registry.coordinatorTaskId);
-  if (!coordinator || coordinator.checkout !== "integration") throw new Error("当前集成负责人必须引用 integration 任务。");
-  if (registry.tasks.some((task) => ACTIVE_STATUSES.has(task.status) && task.checkout === "integration" && task !== coordinator)) {
-    throw new Error("同一批次只能登记一名活跃集成人。");
+  if (registry.coordinatorTaskId != null && !ids.has(registry.coordinatorTaskId)) {
+    throw new Error("协调任务需要引用已登记任务，或留空。");
   }
-  const branches = registry.tasks.filter((task) => ACTIVE_STATUSES.has(task.status) && task.checkout === "worktree").map((task) => task.branch);
-  if (new Set(branches).size !== branches.length) throw new Error("活跃 worktree 任务需要各自独立的分支。");
   const conflicts = scopeConflicts(registry.tasks);
   if (conflicts.length) throw new Error(conflicts.join("\n"));
   return registry;
@@ -126,15 +120,6 @@ export function readContext(cwd = process.cwd(), { taskId, working = false } = {
   for (const task of registry.tasks) read(task.card);
   const selected = taskId ? registry.tasks.find((task) => task.id === taskId) : null;
   if (taskId && !selected) throw new Error(`未登记任务：${taskId}`);
-  if (selected && ACTIVE_STATUSES.has(selected.status) && selected.branch !== branch) {
-    throw new Error(`${selected.id} 分配给 ${selected.branch}，当前是 ${branch}；先进入正确任务 worktree。`);
-  }
-  if (selected?.checkout === "worktree" && ACTIVE_STATUSES.has(selected.status)) {
-    const commonDir = path.resolve(root, git(["rev-parse", "--git-common-dir"], root).trim());
-    if (path.resolve(root).toLowerCase() === path.dirname(commonDir).toLowerCase()) {
-      throw new Error(`${selected.id} 需要独立 worktree；当前仍是主 checkout，仅切分支不足以隔离施工。`);
-    }
-  }
   const changes = parseChangedPaths(git(["status", "--porcelain=v1", "-z"], root));
   return { root, head, branch, integrationHead, registry, selected, changes, working };
 }
@@ -150,12 +135,13 @@ function main() {
   const { root, branch, head, integrationHead, registry, selected, changes, working } = readContext(process.cwd(), { taskId, working: args.includes("--check") });
   console.log(`工作目录：${root}\n当前分支：${branch}\n当前提交：${head}\n集成提交：${integrationHead}`);
   console.log(`登记来源：${working ? "当前工作副本（尚未代表 main 生效）" : "main 的已提交快照"}`);
-  console.log(`当前集成人：${registry.coordinatorTaskId}`);
+  console.log(`登记协调任务：${registry.coordinatorTaskId ?? "无"}`);
   for (const task of registry.tasks) {
     console.log(`- ${task.id} | ${task.status} | ${task.agent} | ${task.checkout} | ${task.branch} | ${task.title}`);
     console.log(`  任务卡：${task.card}；下一步：${task.next}`);
   }
   if (selected) console.log(`\n本任务独占范围：${selected.writePaths.join("、")}\n共享窗口：${selected.sharedPaths.join("、") || "无"}`);
+  if (selected && selected.branch !== branch) console.log(`所查任务登记在 ${selected.branch}；当前分支为 ${branch}。写入前按任务范围选择工作区。`);
   console.log("\n当前修改的登记归属：");
   for (const file of changes) console.log(`- ${file} → ${ownersForPath(file, registry.tasks).join("、") || "当前无活跃认领，先核对归属"}`);
   if (!changes.length) console.log("工作树干净。");
@@ -164,8 +150,6 @@ function main() {
     const owners = ownersForPath(file, active);
     if (owners.length > 1) console.log(`共享文件待串行协调：${file} → ${owners.join("、")}`);
   }
-  const transitioning = active.filter((task) => task.checkout === "primary-transition");
-  if (transitioning.length) console.log(`\n过渡中的主目录任务：${transitioning.map((task) => task.id).join("、")}；保留当前改动，到已提交检查点后切换独立 worktree。`);
   const adapterReady = [".claude/skills/mathin-verify/SKILL.md", ".agents/skills/verify/SKILL.md"].every((file) => fs.existsSync(path.join(root, file)));
   console.log(adapterReady
     ? "\nClaude 技能入口：.claude/skills/mathin-verify/SKILL.md → .agents/skills/verify/SKILL.md。"

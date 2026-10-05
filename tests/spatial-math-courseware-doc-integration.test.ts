@@ -19,15 +19,16 @@ describe("SML-0 production CoursewareDoc integration", () => {
     expect(() => parseCoursewareDoc({ ...standard, docVersion: "spatial-page-v2" })).toThrow();
   });
 
-  it("dispatches spatial documents to the shared renderer without retaining the legacy Studio route", () => {
+  it("dispatches spatial documents from the lecture workspace to the shared renderer", () => {
     const preview = read("src/features/courseware-studio/StagePreview.tsx");
     const workspace = read("src/features/courseware-studio/UnifiedCoursewareWorkspace.tsx");
+    const page = read("src/app/[locale]/dashboard/courseware/lectures/[lectureId]/page.tsx");
 
     expect(preview).toContain("isSpatialPageDoc(props.doc)");
     expect(preview).toContain("SpatialCoursewareStage");
     expect(preview).toContain('aspect-[4/3]');
     expect(workspace).toContain("StagePreview");
-    expect(() => read("src/app/[locale]/studio/courseware/[lectureId]/page.tsx")).toThrow();
+    expect(page).toContain("<UnifiedCoursewareWorkspace");
   });
 
   it("renders the initial deterministic spatial state with the existing WebGL and SVG fallback chain", () => {

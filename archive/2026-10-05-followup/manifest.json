@@ -1,0 +1,167 @@
+{
+  "date": "2026-10-05",
+  "baseCommit": "e72e00540a530216d4f9475b84c5fab2299ee63b",
+  "entries": [
+    {
+      "source": "scripts/ensure-r1-family-test-fixtures.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/ensure-r1-family-test-fixtures.mjs",
+      "reason": "旧 R1/P4E 手工验收造数及配套登录核对，现行命令和流程已退出；当前亲子关系与权限行为继续由现行实现和相关定向用例维护",
+      "action": "move",
+      "sha256": "ef33cb9fed87820e5ccf3829f64841cde01427b05c8c6b43c118ab37c8c0f623"
+    },
+    {
+      "source": "scripts/ensure-r1-family-journey-fixture.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/ensure-r1-family-journey-fixture.mjs",
+      "reason": "旧 R1/P4E 手工验收造数及配套登录核对，现行命令和流程已退出；当前亲子关系与权限行为继续由现行实现和相关定向用例维护",
+      "action": "move",
+      "sha256": "2740a3a7954cb060d4a46b80852238f1288d7013ea4e8f29db14c31e9ff01c2b"
+    },
+    {
+      "source": "scripts/ensure-r1-manual-test-dataset.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/ensure-r1-manual-test-dataset.mjs",
+      "reason": "旧 R1/P4E 手工验收造数及配套登录核对，现行命令和流程已退出；当前亲子关系与权限行为继续由现行实现和相关定向用例维护",
+      "action": "move",
+      "sha256": "2f7b50bdaccae2ddb473cacf249ff6f0624c8a1cf8e0c4cd966e38763f22cf6a"
+    },
+    {
+      "source": "scripts/verify-r1-family-auth-boundaries.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/verify-r1-family-auth-boundaries.mjs",
+      "reason": "旧 R1/P4E 手工验收造数及配套登录核对，现行命令和流程已退出；当前亲子关系与权限行为继续由现行实现和相关定向用例维护",
+      "action": "move",
+      "sha256": "6859f165dea3fe65382f641299bfcdf183c2e6f1b96399366a9f0dc1f0d4cae1"
+    },
+    {
+      "source": "scripts/p4e-offline-fixture.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/p4e-offline-fixture.mjs",
+      "reason": "旧 R1/P4E 手工验收造数及配套登录核对，现行命令和流程已退出；当前亲子关系与权限行为继续由现行实现和相关定向用例维护",
+      "action": "move",
+      "sha256": "447063534ea40ad6920a0e0581e9f1aa3a6019350b94c2f7e06cba7b0d2c245e"
+    },
+    {
+      "source": "scripts/fixtures/wechat-next/route.ts",
+      "destination": "archive/2026-10-05-followup/scripts/fixtures/wechat-next/route.ts",
+      "reason": "配套的隔离 Next 验证脚本已归档，当前应用与检查入口不再加载此临时路由",
+      "action": "move",
+      "sha256": "176e415ed355c1468f32f69892bc8b5f134ac07c1b07297cdb6294fb60159e77"
+    },
+    {
+      "source": "scripts/prepared-tool-scenes-local.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/prepared-tool-scenes-local.mjs",
+      "reason": "已随 v0.3.0 交付的 9 月固定教具迁移批次；当前迁移原文和数学、保存及权限断言保留",
+      "action": "move",
+      "sha256": "a0281e8d97d436a42d98d3d97d2e766c4a2badd6be6325ece741a559396538bb"
+    },
+    {
+      "source": "tests/solid-capacity-displacement-batch-runner.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/solid-capacity-displacement-batch-runner.test.ts",
+      "reason": "已随 v0.3.0 交付的 9 月固定教具迁移批次；当前迁移原文和数学、保存及权限断言保留",
+      "action": "move",
+      "sha256": "258804f60f94c66de3409095c51070698d1bce85a87bb4b5727ff62449871265"
+    },
+    {
+      "source": "scripts/lib/scoped-database-types.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/lib/scoped-database-types.mjs",
+      "reason": "仅为已归档的一次性迁移入口合并局部类型；现行 db:types 与 db:types:check 使用事务生成链路",
+      "action": "move",
+      "sha256": "cf07aacc2ab7d92650fce5a6e9e0bf324733de11e2819fd7a9e1d656807386b8"
+    },
+    {
+      "source": "tests/scoped-database-types.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/scoped-database-types.test.ts",
+      "reason": "仅为已归档的一次性迁移入口合并局部类型；现行 db:types 与 db:types:check 使用事务生成链路",
+      "action": "move",
+      "sha256": "00832d57f3fdaabf11afb071281ca847a82baf46662a18d9f93b7413d4ea6609"
+    },
+    {
+      "source": ".ai/registry.json",
+      "destination": "archive/2026-10-05-followup/.ai/registry.json",
+      "reason": "修订前原稿：保留历史工作区要求、夹具断言与当时操作说明，现行入口去除过期步骤",
+      "action": "copy",
+      "sha256": "3a9004c828451074ff14abd94bfa5ffb28c55d2ec5aef14578e2f37a84722284"
+    },
+    {
+      "source": "scripts/agent-context.mjs",
+      "destination": "archive/2026-10-05-followup/scripts/agent-context.mjs",
+      "reason": "修订前原稿：保留历史工作区要求、夹具断言与当时操作说明，现行入口去除过期步骤",
+      "action": "copy",
+      "sha256": "bcb19799de880e83a188f9218346d09e1938b475ba334c2ca0451dc67fffa1a6"
+    },
+    {
+      "source": "tests/agent-coordination.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/agent-coordination.test.ts",
+      "reason": "修订前原稿：保留历史工作区要求、夹具断言与当时操作说明，现行入口去除过期步骤",
+      "action": "copy",
+      "sha256": "8e22a0b187950c6615e1f2c7eded7d78972694f46254628a3ec86798f18bf692"
+    },
+    {
+      "source": "tests/r1-family-learning.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/r1-family-learning.test.ts",
+      "reason": "修订前原稿：保留历史工作区要求、夹具断言与当时操作说明，现行入口去除过期步骤",
+      "action": "copy",
+      "sha256": "2ee78a2af396f5bb8f82ed0d023d1d2be8bf93d868bf3158fbc49d527410fcfd"
+    },
+    {
+      "source": "tests/r1-write-target-policy.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/r1-write-target-policy.test.ts",
+      "reason": "修订前原稿：保留历史工作区要求、夹具断言与当时操作说明，现行入口去除过期步骤",
+      "action": "copy",
+      "sha256": "54738a6383044af1f4d99afbc6fc37e253c378bf9a839f9fb694c70323f27c92"
+    },
+    {
+      "source": "src/features/tools/spatial-interaction/README.md",
+      "destination": "archive/2026-10-05-followup/src/features/tools/spatial-interaction/README.md",
+      "reason": "修订前原稿：保留历史工作区要求、夹具断言与当时操作说明，现行入口去除过期步骤",
+      "action": "copy",
+      "sha256": "9b07d14dbcfa39dae8684db5cece1f346d5b9a348ff3fd6b1a5c68d23c3ae233"
+    },
+    {
+      "source": "supabase/auth-compat/README.md",
+      "destination": "archive/2026-10-05-followup/supabase/auth-compat/README.md",
+      "reason": "修订前原稿：保留历史工作区要求、夹具断言与当时操作说明，现行入口去除过期步骤",
+      "action": "copy",
+      "sha256": "789b3b6ff0d8d29e6aca86e4c74bf092cba912cb3dc90f4c6fbc8dceeb5ac2fb"
+    },
+    {
+      "source": "apps/parent-wechat/docs/portal.md",
+      "destination": "archive/2026-10-05-followup/apps/parent-wechat/docs/portal.md",
+      "action": "copy",
+      "reason": "修订前已提交原稿：旧本机初始化和 HTTP 造数命令已归档，当前说明改为按目标及具体风险选择",
+      "sha256": "3f56be31cb43b529b05af9f2fb0a43c3b4c6568c70460f57a0fff8ed5d161bff"
+    },
+    {
+      "source": "tests/school-ops-phase2.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/school-ops-phase2.test.ts",
+      "action": "copy",
+      "reason": "修订前原稿：历史页面路径、导航布局要求及平面教具批次说明；现行入口保留业务行为并对齐当前实现",
+      "sha256": "2798fb999e0ebea5790c570778696ba22c1b9edc8315fb8d8dc68d32755a37c1"
+    },
+    {
+      "source": "tests/school-ops-phase3.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/school-ops-phase3.test.ts",
+      "action": "copy",
+      "reason": "修订前原稿：历史页面路径、导航布局要求及平面教具批次说明；现行入口保留业务行为并对齐当前实现",
+      "sha256": "1a1ead042abf37c52b6c4800946d33b89d35068d63c9546a06b694172a3a514b"
+    },
+    {
+      "source": "tests/teacher-assessment-workbench.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/teacher-assessment-workbench.test.ts",
+      "action": "copy",
+      "reason": "修订前原稿：历史页面路径、导航布局要求及平面教具批次说明；现行入口保留业务行为并对齐当前实现",
+      "sha256": "03c38064a2d522d1742d64f398352e05197ac1c2ff0159370b60235a2a6a2d4e"
+    },
+    {
+      "source": "tests/spatial-math-courseware-doc-integration.test.ts",
+      "destination": "archive/2026-10-05-followup/tests/spatial-math-courseware-doc-integration.test.ts",
+      "action": "copy",
+      "reason": "修订前原稿：历史页面路径、导航布局要求及平面教具批次说明；现行入口保留业务行为并对齐当前实现",
+      "sha256": "c8b81837e66893a3657be2d2aedf0505596fb0f8357c7b78cd52b314a857df44"
+    },
+    {
+      "source": "src/features/tools/planar-kit/README.md",
+      "destination": "archive/2026-10-05-followup/src/features/tools/planar-kit/README.md",
+      "action": "copy",
+      "reason": "修订前原稿：历史页面路径、导航布局要求及平面教具批次说明；现行入口保留业务行为并对齐当前实现",
+      "sha256": "1665833dd03fd2581906fb36f25a0eb13ed2ddfa1ce978ce593ccd7be7700676"
+    }
+  ]
+}

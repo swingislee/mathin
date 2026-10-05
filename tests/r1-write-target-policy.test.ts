@@ -258,10 +258,6 @@ describe("R1-Live production write target policy", () => {
 
   it("guards every writer before its first remote write primitive", () => {
     const cases = [
-      ["scripts/ensure-r1-family-test-fixtures.mjs", "assertNonProductionWriteTarget({", "const admin = createClient"],
-      ["scripts/ensure-r1-family-journey-fixture.mjs", "assertNonProductionWriteTarget({", "const admin = createClient"],
-      ["scripts/ensure-r1-manual-test-dataset.mjs", "assertNonProductionWriteTarget({", "const admin = createClient"],
-      ["scripts/p4e-offline-fixture.mjs", "assertNonProductionWriteTarget({", "const admin = createClient"],
       ["scripts/ci-rebuild-db.mjs", "assertNonProductionWriteTarget({", 'spawnSync("psql"'],
       ["scripts/cw-import.mjs", "assertControlledContentWriteTarget({", "const client = createClient"],
       ["scripts/cw-adapt-4x3.mjs", "assertControlledContentWriteTarget({", "const storage = await uploadDerivedObjects"],

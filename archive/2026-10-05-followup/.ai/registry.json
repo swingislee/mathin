@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "coordinatorTaskId": "REPO-AUX-CLEANUP-20261005",
+  "tasks": [
+    {
+      "id": "REPO-AUX-CLEANUP-20261005",
+      "title": "按产品方向清理规划、阶段检查与辅助流程",
+      "agent": "codex",
+      "threadId": "01a0ffb9-c74e-7c80-ac23-13b52f30e52a",
+      "status": "done",
+      "checkout": "integration",
+      "branch": "main",
+      "card": ".ai/tasks/REPO-AUX-CLEANUP-20261005.md",
+      "writePaths": [
+        ".ai/tasks/REPO-AUX-CLEANUP-20261005.md",
+        ".ai/handoffs/",
+        "archive/2026-10-05/",
+        "archive/README.md",
+        "docs/manifests/",
+        "docs/agent/operations.md",
+        "docs/ops/data-operations.md",
+        "tests/",
+        "scripts/lib/db-audit-runner.mjs",
+        "scripts/run-sql-checks.mjs",
+        "scripts/run-*-db-audit.mjs",
+        "scripts/run-courseware-security.mjs",
+        "scripts/plan-r1-*.mjs",
+        "scripts/run-r1-playwright-release.mjs",
+        "scripts/verify-doc22-routes.mjs",
+        "scripts/courseware-workspace-rollout-audit.mjs",
+        "scripts/lib/courseware-workspace-*.mjs",
+        "schemas/r1-*-manifest.schema.json",
+        "supabase/fixtures/",
+        "supabase/pending/",
+        ".github/workflows/",
+        ".github/renovate.json",
+        "package.json",
+        "docs/README.md",
+        "docs/workflows/teaching.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "本批辅助清理完成：54 文件退役归档，6 份混合用例移除历史约束，CI 与 SQL 入口按需调用。当前产品材料、业务源码与服务保持原版本；后续业务实现从具体工作场景继续。"
+    }
+  ]
+}
