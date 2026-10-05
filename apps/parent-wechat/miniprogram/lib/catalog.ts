@@ -30,6 +30,10 @@ export const subjects = [{ id: "math", label: { zh: "数学思维", en: "Mathema
 const stages = stageGroups.reduce((all, group) => all.concat(group.stages), [] as typeof stageGroups[0]["stages"]);
 const preferenceKey = "gezhi.discovery.filters.v1";
 
+export function learnerGradeLabel(grade: number | null | undefined, locale: Locale) {
+  return stages.find(item => item.grade === grade)?.label[locale] || "";
+}
+
 export function normalizeFilters(value: unknown) {
   const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {

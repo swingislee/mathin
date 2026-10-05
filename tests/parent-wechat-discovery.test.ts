@@ -35,6 +35,7 @@ type RuntimePage = {
   location: (event: { currentTarget: { dataset: { value: string } } }) => void;
   chooseSlot: (event: { currentTarget: { dataset: { id: string } } }) => void;
   chooseParticipant: (event: { currentTarget: { dataset: { index: number } } }) => void;
+  chooseActivity: (event: Touch) => void;
   openActivity: (event: Touch) => void; chooseTeacher: (event: Touch) => void; chooseTime: (event: Touch) => void;
   submit: () => Promise<void>; retryPending: () => Promise<void>; loadParticipant: () => Promise<void>; startOver: () => void;
   renderRequests: () => void; selectConfirmation: (event: Touch) => void; confirm: (event: Touch) => Promise<void>;
@@ -404,16 +405,22 @@ describe("小程序发现与参与合同", () => {
     page.review(); expect(page.data.step).toBe(1);
   });
 
-  it("满额场次仍可进入同组其他地点，并提交所选场次 ID", async () => {
+  it("同名活动保持独立，满额活动不能暗中换成另一个年级或地点的名额", async () => {
     const post = vi.fn().mockResolvedValue({ id: "booking" });
     const run = runtime({ post }); run.load("pages/activity/index.ts"); const page = run.page();
-    const full = activity("full", { remaining: 0 });
-    const available = activity("south", { location: "South" });
+    const full = activity("full", { remaining: 0, targetGrades: [3] });
+    const available = activity("south", { location: "South", targetGrades: [6], durationMinutes: 90 });
     page.setData({ loaded: true, source: [full, available], participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] });
-    page.selectActivity(full); page.review(); expect(page.data.step).toBe(2);
+    page.selectActivity(full); page.review(); expect(page.data.step).toBe(1);
+    expect(page.data.locations).toEqual(["North"]);
     page.chooseSlot({ currentTarget: { dataset: { id: "full" } } });
     expect(page.data.selectedSlot).toBe("");
     page.location({ currentTarget: { dataset: { value: "South" } } });
+    page.chooseSlot({ currentTarget: { dataset: { id: "south" } } });
+    await page.book();
+    expect(post).not.toHaveBeenCalled();
+    expect(page.data.id).toBe("full");
+    page.chooseActivity({ currentTarget: { dataset: { id: "south" } } }); page.review();
     page.chooseSlot({ currentTarget: { dataset: { id: "south" } } });
     await page.book();
     expect(post).toHaveBeenCalledExactlyOnceWith({ action: "book", activityId: "south", participantId: "member-a" });
@@ -495,13 +502,48 @@ describe("小程序发现与参与合同", () => {
   it("周课表切换同名孩子后，保留新孩子的课次并丢弃旧响应", async () => {
     const slow = deferred<ParentLearning>();
     const request = vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve({ ...learning(id, "B schedule"),
+      summary: { grade: 8, nextSessionAt: null, weekSessionCount: 1, starTotal: 0 },
       schedule: [...learning(id, "B schedule").schedule, ...learning("other", "Other schedule").schedule] }));
-    const run = runtime({ learning: request }); run.load("pages/courses/index.ts"); const page = run.page();
+    const run = runtime({ learning: request, get: vi.fn().mockResolvedValue([]) }); run.load("pages/courses/index.ts"); const page = run.page();
     page.setData({ participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }], selectedDate: "2026-10-03" });
     const old = page.loadWeek();
     page.setData({ selected: 1 }); await page.loadWeek();
     slow.resolve(learning("member-a", "A schedule")); await old;
     expect(page.data.daySessions.map(row => row.title)).toEqual(["B schedule"]);
     expect(page.data.daySessions[0].participantId).toBe("member-b");
+    expect(page.data.gradeLabel).toBe("初二");
+  });
+
+  it("周课表与月课表显示同一天的相同真实安排，按孩子和业务 ID 区分同名记录", async () => {
+    const info = learning("member-a", "同名课程");
+    const rows = [booking("same-name", { title: { zh: "同名课程", en: "Same title" } }),
+      booking("other-child", { participantId: "member-b" }), booking("cancelled", { status: "cancelled" }),
+      booking("previous-month", { startsAt: new Date(2026, 8, 30, 14).toISOString() }),
+      booking("next-week", { startsAt: timestamp(5) })];
+    const api = { learning: vi.fn().mockResolvedValue(info), get: vi.fn().mockResolvedValue(rows) };
+    const weekRun = runtime(api); weekRun.load("pages/courses/index.ts"); const week = weekRun.page();
+    week.setData({ participants: [{ id: "member-a", name: "Same" }], selectedDate: "2026-10-03", gradeLabel: "初二" });
+    await week.loadWeek();
+    const monthRun = runtime(api); monthRun.load("pages/agenda/index.ts"); const month = monthRun.page();
+    month.setData({ participants: [{ id: "member-a", name: "Same" }], month: "2026-10", selectedDate: "2026-10-03" });
+    await month.loadMonth();
+    expect(week.data.daySessions).toEqual(month.data.dayEvents);
+    expect(week.data.daySessions).toHaveLength(2);
+    expect(week.data.daySessions.map(row => row.title)).toEqual(["同名课程", "同名课程"]);
+    expect(week.data.sessions).toEqual(expect.arrayContaining([expect.objectContaining({ key: "activity-previous-month" })]));
+    expect(week.data.sessions).not.toEqual(expect.arrayContaining([expect.objectContaining({ key: "activity-next-week" })]));
+    expect(month.data.events).not.toEqual(expect.arrayContaining([expect.objectContaining({ key: "activity-previous-month" })]));
+    expect(week.data.gradeLabel).toBe("");
+  });
+
+  it.each(["courses", "agenda"])("%s 的课表接口暂不可用时，仍显示已读取的活动并保留重试提示", async pageName => {
+    const run = runtime({ learning: vi.fn().mockRejectedValue(new Error("Unavailable")), get: vi.fn().mockResolvedValue([booking("confirmed")]) });
+    run.load(`pages/${pageName}/index.ts`); const page = run.page();
+    page.setData({ participants: [{ id: "member-a", name: "Same" }], month: "2026-10", selectedDate: "2026-10-03" });
+    if (pageName === "courses") await page.loadWeek(); else await page.loadMonth();
+    expect(pageName === "courses" ? page.data.daySessions : page.data.dayEvents).toEqual([
+      expect.objectContaining({ key: "activity-confirmed", kind: "activity", participantId: "member-a", endTime: "" }),
+    ]);
+    expect(page.data.error).toBeTruthy();
   });
 });

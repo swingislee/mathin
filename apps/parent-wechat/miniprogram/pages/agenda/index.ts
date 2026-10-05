@@ -1,15 +1,15 @@
 import { get, learning, session } from "../../lib/api";
 import type { Account, Booking, ParentLearning, Participant } from "../../lib/api-types";
-import { calendarDays, dateKey, monthRange, shiftMonth, sessionTimes } from "../../lib/discovery";
+import { calendarDays, dateKey, monthRange, shiftMonth } from "../../lib/discovery";
+import { scheduleItems, type ScheduleItem } from "../../lib/schedule";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
-import { pageData, syncPage, date, text, errorText, loginPage } from "../../lib/page";
+import { pageData, syncPage, errorText, loginPage } from "../../lib/page";
 
-type AgendaItem = { key: string; kind: "activity" | "session"; title: string; startsAt: string; when: string; detail: string; teacher: string } & ReturnType<typeof sessionTimes>;
 Page({
   data: { ...pageData("agenda"), authenticated: false, participants: [] as Participant[], selected: 0,
     month: dateKey(new Date()).slice(0, 7), selectedDate: dateKey(new Date()),
     weekdays: [] as { key: number; label: string }[], days: [] as ReturnType<typeof calendarDays>,
-    learning: null as ParentLearning | null, events: [] as AgendaItem[], dayEvents: [] as AgendaItem[], loaded: false },
+    learning: null as ParentLearning | null, events: [] as ScheduleItem[], dayEvents: [] as ScheduleItem[], loaded: false },
   loadVersion: 0,
   onShow() {
     syncPage(this, "agenda");
@@ -52,14 +52,8 @@ Page({
       const bookingResult = results[1];
       const info = learningResult.value;
       if (info && info.participantId !== participant.id) throw new Error("Unexpected participant");
-      const sessions: AgendaItem[] = (info?.schedule || []).filter(row => row.participantId === participant.id && dateKey(row.startsAt).startsWith(month))
-        .map(row => ({ key: "session-" + row.id, kind: "session", title: row.title, startsAt: row.startsAt,
-          when: date(row.startsAt), detail: row.classroomName, teacher: row.teacherName || "", ...sessionTimes(row) }));
-      const reservations: AgendaItem[] = bookingResult.value.filter(row => row.participantId === participant.id
-        && row.status !== "cancelled" && dateKey(row.startsAt).startsWith(month))
-        .map(row => ({ key: "activity-" + row.id, kind: "activity", title: text(row.title), startsAt: row.startsAt,
-          when: date(row.startsAt), detail: row.location || this.data.copy.locationPending, teacher: "", ...sessionTimes({ startsAt: row.startsAt, durationMinutes: null }) }));
-      const events = [...sessions, ...reservations].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+      const events = scheduleItems(info?.schedule || [], bookingResult.value, participant.id,
+        monthRange(month), this.data.locale === "en" ? "en" : "zh");
       this.setData({ learning: info, events, loaded: true, error: learningResult.error || bookingResult.error });
       this.renderCalendar();
     } catch (error) { if (version === this.loadVersion) this.setData({ error: errorText(error) }); }

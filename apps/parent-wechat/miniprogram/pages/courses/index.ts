@@ -1,19 +1,20 @@
 import { get, learning, session } from "../../lib/api";
-import type { Account, LearningSession, Participant } from "../../lib/api-types";
-import { dateKey, weekDays, weekRange, sessionTimes } from "../../lib/discovery";
+import type { Account, Booking, Participant } from "../../lib/api-types";
+import { learnerGradeLabel } from "../../lib/catalog";
+import { dateKey, weekDays, weekRange } from "../../lib/discovery";
+import { scheduleItems, type ScheduleItem } from "../../lib/schedule";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, loginPage } from "../../lib/page";
 
-type SessionView = LearningSession & ReturnType<typeof sessionTimes>;
 Page({
   data: { ...pageData("courses"), authenticated: false, participants: [] as Participant[], selected: 0,
     selectedDate: dateKey(new Date()), days: [] as ReturnType<typeof weekDays>, weekdays: [] as string[],
-    sessions: [] as SessionView[], daySessions: [] as SessionView[], loaded: false, sheet: false },
+    sessions: [] as ScheduleItem[], daySessions: [] as ScheduleItem[], gradeLabel: "", loaded: false, sheet: false },
   loadVersion: 0,
   onShow() {
     syncPage(this, "courses");
     this.setData({ authenticated: Boolean(session()), participants: [], sessions: [], daySessions: [],
-      selectedDate: dateKey(new Date()), loaded: false, loading: false, error: "", weekdays: this.data.copy.weekdays.split(",") });
+      selectedDate: dateKey(new Date()), gradeLabel: "", loaded: false, loading: false, error: "", weekdays: this.data.copy.weekdays.split(",") });
     this.renderWeek();
     if (session()) void this.load();
   },
@@ -37,17 +38,21 @@ Page({
     if (!participant) return;
     selectParticipant(participant.id);
     const version = ++this.loadVersion;
-    this.setData({ loading: true, error: "", sessions: [], daySessions: [], loaded: false });
+    this.setData({ loading: true, error: "", sessions: [], daySessions: [], gradeLabel: "", loaded: false });
     this.renderWeek();
     try {
       const range = weekRange(this.data.selectedDate);
-      const info = await learning(participant.id, range);
+      const [learningResult, bookingResult] = await Promise.all([
+        learning(participant.id, range).then(value => ({ value, error: "" })).catch(error => ({ value: null, error: errorText(error) })),
+        get<Booking[]>("bookings").then(value => ({ value, error: "" })).catch(error => ({ value: [] as Booking[], error: errorText(error) })),
+      ]);
       if (version !== this.loadVersion) return;
-      if (info.participantId !== participant.id) throw new Error("Unexpected participant");
-      const sessions = info.schedule.filter(row => row.participantId === participant.id
-        && Date.parse(row.startsAt) >= Date.parse(range.from) && Date.parse(row.startsAt) < Date.parse(range.to))
-        .map(row => ({ ...row, ...sessionTimes(row) })).sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
-      this.setData({ sessions, loaded: true }); this.renderWeek();
+      const info = learningResult.value;
+      if (info && info.participantId !== participant.id) throw new Error("Unexpected participant");
+      const locale = this.data.locale === "en" ? "en" : "zh";
+      const sessions = scheduleItems(info?.schedule || [], bookingResult.value, participant.id, range, locale);
+      this.setData({ sessions, gradeLabel: learnerGradeLabel(info?.summary?.grade, locale), loaded: true,
+        error: learningResult.error || bookingResult.error }); this.renderWeek();
     } catch (error) {
       if (version === this.loadVersion) this.setData({ error: errorText(error), authenticated: Boolean(session()) });
     } finally { if (version === this.loadVersion) this.setData({ loading: false }); }

@@ -1,7 +1,7 @@
 <view class="portal-page courses-page">
   <app-nav title="{{title}}" />
   <view class="portal-content">
-    <view class="learner-header"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><view class="learner-info"><view class="learner-name-row"><text class="learner-name">{{participants[selected].name || copy.chooseChild}}</text><button class="switch-child" bindtap="showParticipants">{{copy.switchChild}}<text>▾</text></button></view></view></view>
+    <view class="learner-header"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><view class="learner-info"><view class="learner-name-row"><text class="learner-name">{{participants[selected].name || copy.chooseChild}}</text><button class="switch-child" bindtap="showParticipants">{{copy.switchChild}}<text>▾</text></button></view><text wx:if="{{gradeLabel}}" class="learner-grade">{{gradeLabel}}</text></view></view>
     <view class="surface week-card">
       <view class="card-heading"><text class="section-title">{{copy.weekCourses}}</text><button class="text-link subtle" bindtap="agenda">{{copy.allSchedule}}<view class="chevron"></view></button></view>
       <view class="week-strip"><button wx:for="{{days}}" wx:key="date" class="week-day {{item.selected ? 'selected' : ''}}" data-date="{{item.date}}" bindtap="day"><text class="week-day-label">{{weekdays[item.weekday]}}</text><text class="week-day-number">{{item.today ? copy.todayShort : item.day}}</text><view wx:if="{{item.count}}" class="day-dot"></view></button></view>
@@ -9,7 +9,7 @@
       <text wx:elif="{{loading}}" class="loading-line">{{copy.loading}}</text>
       <view wx:elif="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
       <empty-state wx:elif="{{loaded && !daySessions.length}}" label="{{participants.length ? copy.noDayCourses : copy.noLinkNote}}" compact />
-      <view wx:for="{{daySessions}}" wx:key="id" class="lesson-card {{item.phase === 'ended' ? 'lesson-ended' : ''}}"><view class="lesson-time"><text class="lesson-status">{{copy[item.phase]}}</text><text class="lesson-start">{{item.startTime}}</text><text wx:if="{{item.endTime}}" class="lesson-end">~{{item.endTime}}</text></view><view class="lesson-content"><text class="lesson-title">{{item.title}}</text><text class="lesson-meta">{{item.classroomName}}{{item.teacherName ? ' | ' + item.teacherName : ''}}</text></view></view>
+      <view wx:for="{{daySessions}}" wx:key="key" class="lesson-card {{item.phase === 'ended' ? 'lesson-ended' : ''}}"><view class="lesson-time"><text class="lesson-status">{{copy[item.phase]}}</text><text class="lesson-start">{{item.startTime}}</text><text wx:if="{{item.endTime}}" class="lesson-end">~{{item.endTime}}</text></view><view class="lesson-content"><text class="lesson-title">{{item.title}}</text><text class="lesson-meta">{{item.detail || (item.kind === 'activity' ? copy.locationPending : '')}}{{item.teacher ? ' | ' + item.teacher : ''}}</text><text wx:if="{{item.kind === 'activity'}}" class="lesson-kind">{{copy.activityArrangement}}</text></view></view>
     </view>
   </view>
   <tab-overlay wx:if="{{sheet}}" />

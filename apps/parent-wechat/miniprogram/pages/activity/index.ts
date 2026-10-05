@@ -8,8 +8,8 @@ type ActivityView = Activity & { label: string; body: string; when: string };
 type Slot = { id: string; available: boolean; reserved: boolean; selected: boolean };
 type SlotRow = { key: string; start: string; end: string; cells: { date: string; options: Slot[] }[] };
 function sameActivity(a: Activity, b: Activity) {
-  return a.title.zh === b.title.zh && a.title.en === b.title.en
-    && a.description.zh === b.description.zh && a.description.en === b.description.en;
+  // 公开合同只有活动 ID，没有系列关系；同名活动不能据此合并成可替换场次。
+  return a.id === b.id;
 }
 Page({
   data: { ...pageData("discover"), id: "", activity: null as ActivityView | null, source: [] as Activity[],
@@ -35,13 +35,8 @@ Page({
     try {
       const rows = await get<Activity[]>("activities", "", false);
       if (version !== this.loadVersion) return;
-      const groups: Activity[] = [];
-      rows.forEach(row => {
-        const index = groups.findIndex(group => sameActivity(group, row));
-        if (index < 0) groups.push(row);
-        else if (!canReserve(groups[index]) && canReserve(row)) groups[index] = row;
-      });
-      this.setData({ source: rows, choices: groups.map(row => ({ id: row.id, label: text(row.title) })) });
+      this.setData({ source: rows, choices: rows.map(row => ({ id: row.id,
+        label: [text(row.title), date(row.startsAt), row.location].filter(Boolean).join(" · ") })) });
       const item = this.data.id ? rows.find(row => row.id === this.data.id) : rows.find(canReserve) || rows[0];
       if (!item) {
         this.setData({ activity: null, loaded: true, error: this.data.id ? this.data.copy.notFound : "" });
