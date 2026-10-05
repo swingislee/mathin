@@ -113,7 +113,8 @@ export function DashboardSidebarResizeHandle({
       data-dashboard-sidebar-resize
       data-resizing={resizing || undefined}
       className={cn(
-        "group/resize absolute inset-y-0 left-full z-20 flex w-4 touch-none select-none items-center cursor-col-resize focus-visible:outline-none",
+        // 边缘跨入主画布：高于页头（z-30），低于全局悬浮控件（z-40）。
+        "group/resize absolute inset-y-0 left-full z-[35] flex w-4 touch-none select-none items-center cursor-col-resize focus-visible:outline-none",
         "before:absolute before:inset-y-0 before:left-0 before:w-px before:bg-line hover:before:w-0.5 hover:before:bg-crater focus-visible:before:w-0.5 focus-visible:before:bg-crater",
         resizing && "before:w-0.5 before:bg-crater",
       )}
