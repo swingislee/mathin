@@ -1,4 +1,5 @@
 import { addCalendarDays, calendarDayKey, dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
+import type { CalendarRecurrence } from "./calendar-contract";
 
 export const ASSESSMENT_SLOT_SUBJECTS = ["math", "english"] as const;
 export type AssessmentSlotSubject = typeof ASSESSMENT_SLOT_SUBJECTS[number];
@@ -51,6 +52,7 @@ export interface SaveAssessmentSlotInput {
   endsAt: string;
   enabled: boolean;
   expectedUpdatedAt: string | null;
+  recurrence?: CalendarRecurrence | null;
 }
 
 export function assessmentSlotDraft(slot: AssessmentAvailabilitySlot, timeZone: string): AssessmentSlotDraft {

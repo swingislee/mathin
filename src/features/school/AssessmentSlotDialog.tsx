@@ -14,6 +14,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { cn } from "@/lib/utils";
 import { newId } from "@/lib/uuid";
 import { loadAssessmentSlotManagementAction, saveAssessmentSlotAction } from "./assessment-availability-actions";
+import { CalendarRecurrenceFields, calendarRecurrenceInput, newCalendarRecurrenceDraft } from "./CalendarRecurrenceFields";
 import {
   ASSESSMENT_SLOT_GRADES,
   ASSESSMENT_SLOT_SUBJECTS,
@@ -74,6 +75,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
   const common = useTranslations("school.classes");
   const calendar = useTranslations("school.calendar");
   const [draft, setDraft] = useState(() => slot ? assessmentSlotDraft(slot, timeZone) : newSlotDraft(props));
+  const [repeat, setRepeat] = useState(() => newCalendarRecurrenceDraft(draft.date));
   const [restoredSlot, setRestoredSlot] = useState<AssessmentAvailabilitySlot | null>(null);
   const [restoredData, setRestoredData] = useState<AssessmentSlotManagement | null>(null);
   const [operation, setOperation] = useState<"save" | "reload" | null>(null);
@@ -149,13 +151,16 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
       expectedUpdatedAt: draft.expectedUpdatedAt,
     } : assessmentSlotInput(draft, timeZone);
     if (!input) { setError("VALIDATION"); return; }
+    const recurrence = currentSlot ? null : calendarRecurrenceInput(repeat, draft.date, timeZone);
+    if (recurrence === undefined) { setError("REPEAT_VALIDATION"); return; }
+    const saveInput: SaveAssessmentSlotInput = currentSlot ? input : { ...input, recurrence };
 
     busyRef.current = true;
     setOperation("save");
     setError(null);
     let saved: AssessmentAvailabilitySlot | null = null;
     try {
-      const result = await saveAssessmentSlotAction(input);
+      const result = await saveAssessmentSlotAction(saveInput);
       if (!result.ok) {
         if (mountedRef.current) {
           setError(result.code);
@@ -244,6 +249,11 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
             </div>
           </div>
 
+          <p className="text-xs text-muted">{timeZone}</p>
+          {currentSlot ? <p className="text-xs text-muted">{calendar("slotSingleEditHint")}</p>
+            : <CalendarRecurrenceFields prefix={`${prefix}-repeat`} draft={repeat} startDate={draft.date} disabled={locked}
+              onChange={value => { if (!busyRef.current) { setRepeat(value); setError(null); } }} />}
+
           <fieldset disabled={locked}>
             <legend className="mb-3 text-sm font-medium text-ink">{t("subjects")}</legend>
             <div className="grid grid-cols-2 gap-3">{ASSESSMENT_SLOT_SUBJECTS.map(subject => <Label key={subject} className="flex min-h-6 cursor-pointer items-center gap-2">
@@ -282,7 +292,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
         </div>
 
         <div className="shrink-0 space-y-3 border-t border-line bg-paper px-6 py-4">
-          {error ? <p role="alert" className="text-sm text-rose">{t(assessmentAvailabilityError(error))}</p> : null}
+          {error ? <p role="alert" className="text-sm text-rose">{error === "REPEAT_VALIDATION" ? calendar("errorRepeat") : t(assessmentAvailabilityError(error))}</p> : null}
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button type="button" size="sm" variant="ghost" disabled={busy}
               onClick={() => { if (currentSlot) void restoreSaved(); else close(); }}>

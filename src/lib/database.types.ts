@@ -14752,6 +14752,8 @@ export type Database = {
           kind: string
           location: string
           organizer_id: string
+          recurrence: Json | null
+          series_id: string | null
           starts_at: string
           status: string
           title: string
@@ -14767,6 +14769,8 @@ export type Database = {
           kind: string
           location?: string
           organizer_id: string
+          recurrence?: Json | null
+          series_id?: string | null
           starts_at: string
           status?: string
           title: string
@@ -14782,6 +14786,8 @@ export type Database = {
           kind?: string
           location?: string
           organizer_id?: string
+          recurrence?: Json | null
+          series_id?: string | null
           starts_at?: string
           status?: string
           title?: string
@@ -14802,11 +14808,35 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "staff_calendar_events_series_id_fkey"
+            columns: ["series_id"]
+            referencedRelation: "staff_calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "staff_calendar_events_updated_by_fkey"
             columns: ["updated_by"]
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      staff_calendar_settings: {
+        Row: { organization_id: string; school_windows: Json; singleton_key: number; updated_at: string; updated_by: string | null }
+        Insert: { organization_id: string; school_windows?: Json; singleton_key?: number; updated_at?: string; updated_by?: string | null }
+        Update: { organization_id?: string; school_windows?: Json; singleton_key?: number; updated_at?: string; updated_by?: string | null }
+        Relationships: [
+          { foreignKeyName: "staff_calendar_settings_organization_id_fkey"; columns: ["organization_id"]; referencedRelation: "organizations"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_calendar_settings_updated_by_fkey"; columns: ["updated_by"]; referencedRelation: "profiles"; referencedColumns: ["id"] },
+        ]
+      }
+      staff_calendar_slot_series: {
+        Row: { created_at: string; created_by: string; request_id: string; request_payload: Json }
+        Insert: { created_at?: string; created_by: string; request_id: string; request_payload: Json }
+        Update: { created_at?: string; created_by?: string; request_id?: string; request_payload?: Json }
+        Relationships: [
+          { foreignKeyName: "staff_calendar_slot_series_created_by_fkey"; columns: ["created_by"]; referencedRelation: "profiles"; referencedColumns: ["id"] },
+          { foreignKeyName: "staff_calendar_slot_series_request_id_fkey"; columns: ["request_id"]; referencedRelation: "assessment_slots"; referencedColumns: ["id"] },
         ]
       }
       staff_initial_password_reissues: {
@@ -28795,6 +28825,49 @@ export type Database = {
           p_attendee_ids: string[]
           p_campus_id?: string
           p_expected_updated_at?: string
+          p_recurrence?: Json
+        }
+        Returns: Json
+      }
+      save_calendar_school_windows: {
+        Args: { p_school_windows: Json; p_expected_updated_at?: string }
+        Returns: Json
+      }
+      save_assessment_slot_series: {
+        Args: {
+          p_slot_id: string
+          p_teacher_id: string
+          p_campus_id: string
+          p_subjects: string[]
+          p_grades: number[]
+          p_starts_at: string
+          p_ends_at: string
+          p_enabled: boolean
+          p_recurrence: Json
+          p_expected_updated_at?: string
+        }
+        Returns: Json
+      }
+      staff_calendar_recurrence_starts: {
+        Args: { p_starts_at: string; p_recurrence: Json }
+        Returns: string[]
+      }
+      staff_calendar_school_windows_valid: {
+        Args: { p_windows: Json }
+        Returns: boolean
+      }
+      staff_calendar_campus_closed: {
+        Args: { p_campus_id: string; p_starts_at: string; p_ends_at: string }
+        Returns: boolean
+      }
+      staff_calendar_settings_can_view: {
+        Args: { p_organization_id: string }
+        Returns: boolean
+      }
+      staff_calendar_save_occurrence: {
+        Args: {
+          p_id: string; p_kind: string; p_title: string; p_description: string; p_starts_at: string; p_ends_at: string;
+          p_location: string; p_attendee_ids: string[]; p_campus_id: string; p_expected_updated_at: string; p_series_id: string; p_recurrence: Json
         }
         Returns: Json
       }

@@ -5,6 +5,7 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { getMyPerms } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parse, uuid } from "./actions/schemas";
+import { calendarRecurrenceSchema, calendarRecurrenceWithinRange } from "./calendar-recurrence-schema";
 import {
   ASSESSMENT_SLOT_SUBJECTS,
   type AssessmentAvailabilitySlot,
@@ -33,10 +34,13 @@ const managementSchema = z.object({
 const saveSchema = z.object({
   slotId: uuid, teacherId: uuid, campusId: uuid, subjects, grades,
   startsAt: instant, endsAt: instant, enabled: z.boolean(), expectedUpdatedAt: instant.nullable(),
+  recurrence: calendarRecurrenceSchema.nullable().optional(),
 }).refine(value => {
   const duration = (Date.parse(value.endsAt) - Date.parse(value.startsAt)) / 60_000;
   return duration >= 5 && duration <= 240 && Number.isInteger(duration)
-    && Date.parse(value.startsAt) % 60_000 === 0;
+    && Date.parse(value.startsAt) % 60_000 === 0
+    && calendarRecurrenceWithinRange(value.startsAt, value.recurrence)
+    && (!value.recurrence || value.expectedUpdatedAt === null);
 });
 
 async function authorizedClient() {
@@ -67,11 +71,14 @@ export async function saveAssessmentSlotAction(input: SaveAssessmentSlotInput): 
   try {
     const value = parse(saveSchema, input);
     const client = await authorizedClient();
-    const result = await client.rpc("save_assessment_slot", {
+    const args = {
       p_slot_id: value.slotId, p_teacher_id: value.teacherId, p_campus_id: value.campusId,
       p_subjects: value.subjects, p_grades: value.grades, p_starts_at: value.startsAt, p_ends_at: value.endsAt,
       p_enabled: value.enabled, p_expected_updated_at: value.expectedUpdatedAt ?? undefined,
-    });
+    };
+    const result = value.recurrence
+      ? await client.rpc("save_assessment_slot_series", { ...args, p_recurrence: value.recurrence })
+      : await client.rpc("save_assessment_slot", args);
     if (result.error) throw new Error(result.error.message);
     return { ok: true, data: slotSchema.parse(result.data) };
   } catch (error) {

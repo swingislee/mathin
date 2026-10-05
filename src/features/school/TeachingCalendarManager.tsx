@@ -64,15 +64,16 @@ function CalendarEntryDialog({
   entry,
   campuses,
   today,
+  onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entry: TeachingCalendarEntryV2 | null;
   campuses: Array<Pick<CampusV2, "id" | "name">>;
   today: string;
+  onSaved: () => void;
 }) {
   const t = useTranslations("school.academicCalendar");
-  const router = useRouter();
   const [form, setForm] = useState<TeachingCalendarEntryInput>(() => entry ? entryInput(entry) : emptyInput(today));
   const [impact, setImpact] = useState<{ key: string; value: TeachingCalendarImpactV2 } | null>(null);
   const [impactLoading, setImpactLoading] = useState(false);
@@ -89,7 +90,7 @@ function CalendarEntryDialog({
     TEACHING_DAY_MUST_BE_SINGLE_DATE: t("singleDayError"),
     default: t("actionFailed"),
   };
-  const closeAndRefresh = () => { onOpenChange(false); router.refresh(); };
+  const closeAndRefresh = () => { onOpenChange(false); onSaved(); };
   const createRun = useAction(createTeachingCalendarEntryAction, {
     successMessage: t("created"), errorMessage: errors, onSuccess: closeAndRefresh,
   });
@@ -261,33 +262,40 @@ export function TeachingCalendarManager({
   entries,
   campuses,
   today,
+  canManage = true,
+  embedded = false,
+  onSaved,
 }: {
   entries: TeachingCalendarEntryV2[];
   campuses: Array<Pick<CampusV2, "id" | "name">>;
   today: string;
+  canManage?: boolean;
+  embedded?: boolean;
+  onSaved?: () => void;
 }) {
   const t = useTranslations("school.academicCalendar");
   const router = useRouter();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TeachingCalendarEntryV2 | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<TeachingCalendarEntryV2 | null>(null);
+  const refresh = () => { if (onSaved) onSaved(); else router.refresh(); };
   const archiveRun = useAction(archiveTeachingCalendarEntryAction, {
     successMessage: t("archived"),
     errorMessage: { default: t("actionFailed") },
-    onSuccess: () => { setArchiveTarget(null); router.refresh(); },
+    onSuccess: () => { setArchiveTarget(null); refresh(); },
   });
   const rows = useMemo(() => [...entries].sort((left, right) => left.startsOn.localeCompare(right.startsOn)), [entries]);
   const openCreate = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (entry: TeachingCalendarEntryV2) => { setEditing(entry); setDialogOpen(true); };
 
   return (
-    <section className="border-t border-line/60 pt-6">
+    <section className={embedded ? "" : "border-t border-line/60 pt-6"}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-medium text-ink">{t("calendarTitle")}</h2>
           <p className="mt-1 max-w-3xl text-sm text-muted">{t("calendarIntro")}</p>
         </div>
-        <Button type="button" size="sm" onClick={openCreate}><CalendarPlus className="size-4" />{t("createEntry")}</Button>
+        {canManage ? <Button type="button" size="sm" onClick={openCreate}><CalendarPlus className="size-4" />{t("createEntry")}</Button> : null}
       </div>
       {rows.length === 0 ? (
         <DashboardEmptyCard className="mt-4">{t("empty")}</DashboardEmptyCard>
@@ -295,7 +303,7 @@ export function TeachingCalendarManager({
         <DashboardTableShell className="mt-4">
           <Table className="min-w-[52rem]">
             <TableHeader><TableRow>
-              <TableHead>{t("date")}</TableHead><TableHead>{t("name")}</TableHead><TableHead>{t("scope")}</TableHead><TableHead>{t("kind")}</TableHead><TableHead>{t("rule")}</TableHead><TableHead className="text-right">{t("actions")}</TableHead>
+              <TableHead>{t("date")}</TableHead><TableHead>{t("name")}</TableHead><TableHead>{t("scope")}</TableHead><TableHead>{t("kind")}</TableHead><TableHead>{t("rule")}</TableHead>{canManage ? <TableHead className="text-right">{t("actions")}</TableHead> : null}
             </TableRow></TableHeader>
             <TableBody>{rows.map((entry) => (
               <TableRow key={entry.id}>
@@ -304,16 +312,16 @@ export function TeachingCalendarManager({
                 <TableCell>{entry.campusName ?? t("organizationScope")}</TableCell>
                 <TableCell><Badge variant={entry.kind === "closed" ? "outline" : "secondary"}>{t(`kind_${entry.kind}`)}</Badge></TableCell>
                 <TableCell className="text-xs text-muted">{entry.kind === "closed" ? t("noSessions") : entry.scheduleMode === "manual" ? t("mode_manual") : t("mappedRule", { weekday: t(`weekday_${entry.mappedWeekday}`) })}</TableCell>
-                <TableCell><div className="flex justify-end gap-1">
+                {canManage ? <TableCell><div className="flex justify-end gap-1">
                   <Button type="button" size="sm" variant="ghost" aria-label={t("editEntry", { name: entry.name })} onClick={() => openEdit(entry)}><Pencil className="size-4" /></Button>
                   <Button type="button" size="sm" variant="ghost" aria-label={t("archiveEntry", { name: entry.name })} onClick={() => setArchiveTarget(entry)}><Trash2 className="size-4" /></Button>
-                </div></TableCell>
+                </div></TableCell> : null}
               </TableRow>
             ))}</TableBody>
           </Table>
         </DashboardTableShell>
       )}
-      {dialogOpen ? (
+      {canManage && dialogOpen ? (
         <CalendarEntryDialog
           key={editing?.id ?? `new:${today}`}
           open={dialogOpen}
@@ -321,9 +329,10 @@ export function TeachingCalendarManager({
           entry={editing}
           campuses={campuses}
           today={today}
+          onSaved={refresh}
         />
       ) : null}
-      <ConfirmDialog
+      {canManage ? <ConfirmDialog
         open={archiveTarget !== null}
         onOpenChange={(next) => { if (!next) setArchiveTarget(null); }}
         title={t("archiveTitle")}
@@ -332,7 +341,7 @@ export function TeachingCalendarManager({
         cancelLabel={t("cancel")}
         pending={archiveRun.pending}
         onConfirm={() => archiveTarget && archiveRun.run(archiveTarget.id)}
-      />
+      /> : null}
     </section>
   );
 }

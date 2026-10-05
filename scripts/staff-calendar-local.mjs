@@ -8,8 +8,9 @@ import { textFileSha256 } from './lib/text-hash.mjs';
 import { fixedPreviewActors, previewIdentitySql } from './parent-assessment-fixtures-local.mjs';
 
 const mode = process.argv[2];
-if (!['--preflight', '--check', '--apply', '--check-lesson-identity', '--apply-lesson-identity'].includes(mode)) throw new Error('USE_PREFLIGHT_CHECK_OR_APPLY');
+if (!['--preflight', '--check', '--apply', '--check-lesson-identity', '--apply-lesson-identity', '--check-planning', '--apply-planning'].includes(mode)) throw new Error('USE_PREFLIGHT_CHECK_OR_APPLY');
 const lessonIdentity = mode.endsWith('-lesson-identity');
+const planning = mode.endsWith('-planning');
 const checkMode = mode.startsWith('--check');
 const output = path.resolve('.tmp/staff-calendar');
 fs.mkdirSync(output, { recursive: true });
@@ -22,8 +23,8 @@ if (mode === '--preflight') {
     targetFingerprint: createHash('sha256').update(observed.systemIdentifier).digest('hex') }));
   process.exit(0);
 }
-const version = lessonIdentity ? '20261005000500_calendar_lesson_identity' : '20261005000400_staff_calendar';
-const migrationFile = `supabase/migrations/${version}.sql`, testFile = lessonIdentity ? 'supabase/tests/calendar_lesson_identity.sql' : 'supabase/tests/staff_calendar.sql';
+const version = planning ? '20261005000700_calendar_planning' : lessonIdentity ? '20261005000500_calendar_lesson_identity' : '20261005000400_staff_calendar';
+const migrationFile = `supabase/migrations/${version}.sql`, testFile = planning ? 'supabase/tests/calendar_planning.sql' : lessonIdentity ? 'supabase/tests/calendar_lesson_identity.sql' : 'supabase/tests/staff_calendar.sql';
 const digest = textFileSha256(migrationFile);
 const recorded = sql(`begin read only;select checksum from public.schema_migrations where version='${version}';commit;`);
 if (recorded && recorded !== digest) throw new Error('STAFF_CALENDAR_LEDGER_MISMATCH');
@@ -31,7 +32,7 @@ const migration = recorded ? '' : fs.readFileSync(migrationFile, 'utf8');
 const actors = fixedPreviewActors(fs.readFileSync('.claude/test-accounts.local.md', 'utf8'));
 const identities = previewIdentitySql(actors);
 const inputHash = createHash('sha256').update(digest).update(textFileSha256(testFile)).update(JSON.stringify(actors)).digest('hex');
-const checkedPath = path.join(output, lessonIdentity ? 'lesson-identity-checked.json' : 'checked.json');
+const checkedPath = path.join(output, planning ? 'planning-checked.json' : lessonIdentity ? 'lesson-identity-checked.json' : 'checked.json');
 const args = ['--context', 'desktop-linux', 'exec', '-i', 'supabase-db', 'psql', '-X', '-qAt', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'];
 const migrate = statement => {
   try { return execFileSync('docker.exe', args, { input: statement, encoding: 'utf8', windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], maxBuffer: 8 * 1024 * 1024 }).trim(); }
@@ -39,7 +40,9 @@ const migrate = statement => {
 };
 const relations = ['auth.users', 'public.profiles', 'public.classrooms', 'public.classroom_staff_assignments', 'public.class_sessions',
   'public.leads', 'public.lead_invitation_threads', 'public.lead_invitation_events', 'public.domain_events', 'public.assessment_slots', 'public.campuses', 'public.role_permissions'];
-if (recorded) relations.push('public.staff_calendar_events', 'public.staff_calendar_attendees');
+if (recorded || planning) relations.push('public.staff_calendar_events', 'public.staff_calendar_attendees');
+if (planning) relations.push('public.organizations', 'public.school_holidays');
+if (planning && recorded) relations.push('public.staff_calendar_settings', 'public.staff_calendar_slot_series');
 const fingerprint = () => sql(`begin read only;select md5(string_agg(relation||':'||digest,'|' order by relation)) from (${relations.map(relation =>
   `select '${relation}' relation,md5(coalesce(string_agg(md5(to_jsonb(r)::text),'' order by md5(to_jsonb(r)::text)),'')) digest from ${relation} r`).join(' union all ')}) rows;commit;`);
 if (checkMode) {
@@ -76,7 +79,8 @@ if (checkMode) {
   }
   if (fingerprint() !== before) throw new Error('STAFF_CALENDAR_ROLLBACK_CHANGED_DATA');
   fs.writeFileSync(checkedPath, JSON.stringify({ inputHash, target: observed.systemIdentifier, checkedAt: new Date().toISOString() }), 'utf8');
-  console.log(JSON.stringify({ passed: true, transactionRolledBack: true, checked: lessonIdentity
+  console.log(JSON.stringify({ passed: true, transactionRolledBack: true, checked: planning
+    ? ['planning-nonblocking', 'year-range', 'bounded-recurrence', 'monthly-anchor-dst', 'single-occurrence-edit', 'series-replay', 'series-atomic-conflict', 'slot-series-atomic-conflict', 'closed-campus-publish-and-booking', 'organization-settings-permission', 'settings-optimistic-conflict', 'complete-teaching-calendar', 'participant-and-parent-scope', 'teacher-lock-second-connection'] : lessonIdentity
     ? ['existing-schedule-scope', 'primary-assistant-identities', 'substitute-deduplication', 'owner-fallback', 'parent-and-anon-scope', 'campus-filter']
     : ['participant-rls', 'organizer-writes', 'invitation-response', 'individual-task-completion', 'parent-booking-busy', 'session-time-guard', 'teacher-lock-second-connection', 'optimistic-conflict'] }));
 } else {
@@ -84,5 +88,5 @@ if (checkMode) {
   const checked = JSON.parse(fs.readFileSync(checkedPath, 'utf8'));
   if (checked.inputHash !== inputHash || checked.target !== observed.systemIdentifier || Date.now() - Date.parse(checked.checkedAt) > 3_600_000) throw new Error('MATCHING_STAFF_CALENDAR_CHECK_REQUIRED');
   migrate(`begin;set local lock_timeout='5s';set local statement_timeout='60s';${migration}\ninsert into public.schema_migrations(version,checksum) values('${version}','${digest}');commit;`);
-  console.log(JSON.stringify({ applied: true, versions: [version], target: 'verified-windows-loopback', businessRowsWritten: 0 }));
+  console.log(JSON.stringify({ applied: true, versions: [version], target: 'verified-windows-loopback', businessRowsWritten: 0, settingsRowsWritten: planning ? 1 : 0 }));
 }

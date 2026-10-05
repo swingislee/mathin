@@ -12,5 +12,5 @@ export default async function AssessmentAvailabilityPage({ params }: { params: P
   ]);
   return <CalendarWorkbench locale={locale} timeZone={timeZone} now={now.getTime()} mode="availability"
     currentUserId={user.id} currentUserName={profile?.displayName ?? ""} roomOptions={roomOptions}
-    canManageAvailability canViewAssessments={permissions.has("review.write") || permissions.has("followup.view")} />;
+    canManageAvailability canManageLessons={permissions.has("class.manage")} />;
 }

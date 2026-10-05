@@ -4,7 +4,8 @@ import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
 import { parse, uuid } from "./actions/schemas";
-import { CALENDAR_EVENT_KINDS, type CalendarEvent, type CalendarEventStatus, type CalendarWorkspace, type SaveCalendarEventInput } from "./calendar-contract";
+import { CALENDAR_EVENT_KINDS, type CalendarEvent, type CalendarEventStatus, type CalendarSchoolWindow, type CalendarSchoolWindowsSettings, type CalendarWorkspace, type SaveCalendarEventInput } from "./calendar-contract";
+import { calendarRecurrenceSchema, calendarRecurrenceWithinRange } from "./calendar-recurrence-schema";
 
 const ERROR_CODES = ["UNAUTHENTICATED", "FORBIDDEN", "VALIDATION", "NOT_FOUND", "CONFLICT", "TIME_UNAVAILABLE", "ATTENDEE_UNAVAILABLE", "CAMPUS_UNAVAILABLE", "EVENT_CLOSED"] as const;
 const instant = z.string().datetime({ offset: true });
@@ -15,10 +16,25 @@ const eventSchema = z.object({
   organizerId: uuid, organizerName: z.string(),
   attendees: z.array(z.object({ userId: uuid, displayName: z.string(), response: z.enum(["pending", "accepted", "declined"]), completedAt: instant.nullable() })),
   updatedAt: instant, canEdit: z.boolean(), canComplete: z.boolean(), myCompletedAt: instant.nullable(),
+  seriesId: uuid.nullable(), recurrence: calendarRecurrenceSchema.nullable(),
 });
+const schoolWindowSchema = z.object({
+  weekday: z.number().int().min(0).max(6),
+  startMinute: z.number().int().min(0).max(1439), endMinute: z.number().int().min(1).max(1440),
+}).refine(value => value.endMinute > value.startMinute);
+const schoolWindowsSchema = z.array(schoolWindowSchema).max(70).refine(value => !value.some((left, index) =>
+  value.slice(index + 1).some(right => left.weekday === right.weekday
+    && left.startMinute < right.endMinute && right.startMinute < left.endMinute)));
+const schoolSettingsSchema = z.object({ schoolWindows: schoolWindowsSchema, updatedAt: instant });
 const workspaceSchema = z.object({
   currentUserId: uuid, people: z.array(z.object({ id: uuid, displayName: z.string() })),
   events: z.array(eventSchema), canCreate: z.boolean(),
+  schoolWindows: schoolWindowsSchema, settingsUpdatedAt: instant.nullable(), canManageSettings: z.boolean(),
+  teachingCalendar: z.array(z.object({
+    id: uuid, campusId: uuid.nullable(), campusName: z.string().nullable(), name: z.string(),
+    kind: z.enum(["closed", "teaching", "makeup"]), startsOn: z.string(), endsOn: z.string(),
+    scheduleMode: z.enum(["mapped", "manual"]).nullable(), mappedWeekday: z.number().int().min(0).max(6).nullable(), createdAt: z.string(),
+  })),
 });
 const saveSchema = z.object({
   id: uuid, kind: z.enum(CALENDAR_EVENT_KINDS), title: z.string().trim().min(1).max(160),
@@ -26,8 +42,14 @@ const saveSchema = z.object({
   location: z.string().trim().max(300), campusId: uuid.nullable(),
   attendeeIds: z.array(uuid).max(100).refine(value => new Set(value).size === value.length),
   expectedUpdatedAt: instant.nullable(),
-}).refine(value => Date.parse(value.endsAt) > Date.parse(value.startsAt)
-  && Date.parse(value.endsAt) - Date.parse(value.startsAt) <= 31 * 86_400_000);
+  recurrence: calendarRecurrenceSchema.nullable().optional(),
+}).refine(value => {
+  const duration = Date.parse(value.endsAt) - Date.parse(value.startsAt);
+  return duration > 0 && duration <= (value.kind === "strategy" ? 370 : 31) * 86_400_000
+    && (value.kind !== "milestone" || duration === 30 * 60_000)
+    && calendarRecurrenceWithinRange(value.startsAt, value.recurrence)
+    && (!value.recurrence || value.expectedUpdatedAt === null);
+});
 
 async function authenticatedClient() {
   const client = await createClient();
@@ -58,9 +80,22 @@ export async function saveCalendarEventAction(input: SaveCalendarEventInput): Pr
       p_starts_at: value.startsAt, p_ends_at: value.endsAt, p_location: value.location,
       p_campus_id: value.campusId ?? undefined, p_attendee_ids: value.attendeeIds,
       p_expected_updated_at: value.expectedUpdatedAt ?? undefined,
+      p_recurrence: value.recurrence ?? undefined,
     });
     if (result.error) throw new Error(result.error.message);
     return { ok: true, data: eventSchema.parse(result.data) };
+  } catch (error) { return actionError(error, ERROR_CODES); }
+}
+
+export async function saveCalendarSchoolWindowsAction(input: { schoolWindows: CalendarSchoolWindow[]; expectedUpdatedAt: string | null }): Promise<ActionResult<CalendarSchoolWindowsSettings>> {
+  try {
+    const value = parse(z.object({ schoolWindows: schoolWindowsSchema, expectedUpdatedAt: instant.nullable() }), input);
+    const client = await authenticatedClient();
+    const result = await client.rpc("save_calendar_school_windows", {
+      p_school_windows: value.schoolWindows, p_expected_updated_at: value.expectedUpdatedAt ?? undefined,
+    });
+    if (result.error) throw new Error(result.error.message);
+    return { ok: true, data: schoolSettingsSchema.parse(result.data) };
   } catch (error) { return actionError(error, ERROR_CODES); }
 }
 

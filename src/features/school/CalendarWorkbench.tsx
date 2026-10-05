@@ -1,23 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarPlus, ChevronLeft, ChevronRight, LoaderCircle, Mail, Plus, RefreshCw, Search } from "lucide-react";
+import { CalendarPlus, ChevronLeft, ChevronRight, Flag, LoaderCircle, Mail, Plus, RefreshCw, Search, Settings } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { AssessmentSlotDialog } from "./AssessmentSlotDialog";
 import { CalendarCanvas, CalendarMiniMonth } from "./CalendarCanvas";
-import { CalendarEventDialog } from "./CalendarEventDialog";
+import { CalendarEventDialog, calendarErrorKey } from "./CalendarEventDialog";
+import { CalendarSettingsDialog } from "./CalendarSettingsDialog";
 import { getWeekSchedule } from "./actions/schedule";
-import { loadAssessmentSlotManagementAction } from "./assessment-availability-actions";
-import type { AssessmentAvailabilitySlot, AssessmentSlotManagement } from "./assessment-availability-contract";
-import { loadCalendarWorkspaceAction } from "./calendar-actions";
+import { rescheduleSessionAction } from "./actions/classes";
+import { loadAssessmentSlotManagementAction, saveAssessmentSlotAction } from "./assessment-availability-actions";
+import { assessmentAvailabilityError, type AssessmentAvailabilitySlot, type AssessmentSlotManagement } from "./assessment-availability-contract";
+import { loadCalendarWorkspaceAction, saveCalendarEventAction } from "./calendar-actions";
 import type { CalendarEvent, CalendarEventKind, CalendarWorkspace } from "./calendar-contract";
 import { CALENDAR_KINDS, CALENDAR_TONES, calendarAnchor, calendarRange, shiftCalendarAnchor, type CalendarItem, type CalendarItemKind, type CalendarView } from "./calendar-layout";
 import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandPanel, DashboardCommandState, DashboardPage } from "./dashboard-page";
@@ -31,7 +34,7 @@ interface Props {
   currentUserId: string;
   currentUserName: string;
   canManageAvailability: boolean;
-  canViewAssessments: boolean;
+  canManageLessons?: boolean;
   roomOptions: RoomOptionV2[];
   mode?: "all" | "availability";
   refreshKey?: string;
@@ -40,14 +43,34 @@ interface Props {
 
 type Editor = { kind: CalendarEventKind | "availability"; start: string; event: CalendarEvent | null; slot: AssessmentAvailabilitySlot | null };
 
-export function CalendarWorkbench({ locale, timeZone, now, currentUserId, currentUserName, canManageAvailability, canViewAssessments, roomOptions, mode = "all", refreshKey, initialDate }: Props) {
+async function loadAvailabilityRange(from: string, to: string, timeZone: string) {
+  const last = calendarDayKey(addCalendarDays(new Date(to), -1, timeZone), timeZone);
+  const chunks: { from: string; to: string }[] = [];
+  let cursor = calendarDayKey(new Date(from), timeZone);
+  while (cursor <= last) {
+    const end = calendarDayKey(addCalendarDays(calendarAnchor(cursor, timeZone), 89, timeZone), timeZone);
+    chunks.push({ from: cursor, to: end < last ? end : last });
+    cursor = calendarDayKey(addCalendarDays(calendarAnchor(end, timeZone), 1, timeZone), timeZone);
+  }
+  const results = await Promise.all(chunks.map(chunk => loadAssessmentSlotManagementAction(chunk)));
+  const first = results[0];
+  if (!first?.ok) return first;
+  const slots = new Map(first.data.slots.map(slot => [slot.id, slot]));
+  for (const result of results.slice(1)) {
+    if (!result.ok) return result;
+    result.data.slots.forEach(slot => slots.set(slot.id, slot));
+  }
+  return { ok: true as const, data: { ...first.data, slots: [...slots.values()] } };
+}
+
+export function CalendarWorkbench({ locale, timeZone, now, currentUserId, currentUserName, canManageAvailability, canManageLessons = false, roomOptions, mode = "all", refreshKey, initialDate }: Props) {
   const t = useTranslations("school.calendar");
   const a = useTranslations("school.assessmentAvailability");
   const router = useRouter();
   const today = calendarDayKey(new Date(now), timeZone);
   const [anchor, setAnchor] = useState(initialDate && dateTimeInputToInstant(`${initialDate}T12:00`, timeZone) ? initialDate : today);
   const [view, setView] = useState<CalendarView>("week");
-  const [kinds, setKinds] = useState<CalendarItemKind[]>(mode === "availability" ? ["lesson", "availability", "meeting", "preparation"] : [...CALENDAR_KINDS]);
+  const [kinds, setKinds] = useState<CalendarItemKind[]>(mode === "availability" ? ["lesson", "availability", "meeting", "preparation", "strategy", "milestone"] : [...CALENDAR_KINDS]);
   const [person, setPerson] = useState("all");
   const [campus, setCampus] = useState("all");
   const [room, setRoom] = useState("all");
@@ -61,6 +84,9 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const resizeLock = useRef(false);
   const request = useRef(0);
   const range = useMemo(() => calendarRange(anchor, view, timeZone), [anchor, view, timeZone]);
   const from = range.start.toISOString();
@@ -75,7 +101,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
     void Promise.allSettled([
       getWeekSchedule(from, to),
       loadCalendarWorkspaceAction({ from, to }),
-      canManageAvailability ? loadAssessmentSlotManagementAction({ from: calendarDayKey(new Date(from), timeZone), to: calendarDayKey(addCalendarDays(new Date(to), -1, timeZone), timeZone) }) : Promise.resolve(null),
+      canManageAvailability ? loadAvailabilityRange(from, to, timeZone) : Promise.resolve(null),
     ]).then(([scheduleResult, calendarResult, slotResult]) => {
       if (cancelled || requestId !== request.current) return;
       const failures: string[] = [];
@@ -114,6 +140,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
       startsAt: entry.scheduledAt, endsAt: new Date(Date.parse(entry.scheduledAt) + Math.max(1, entry.durationMin) * 60_000).toISOString(),
       title: entry.classroomName || t("kind_lesson"), subtitle: [entry.lectureName, entry.teacherName].filter(Boolean).join(" · "),
       detail: [entry.campusName, entry.roomName].filter(Boolean).join(" · "), conflict: entry.conflict,
+      canResize: canManageLessons && Date.parse(entry.scheduledAt) > now,
     })),
     ...(availability?.slots ?? []).filter(slot => !invitationsOnly && room === "all" && (person === "all" || slot.teacherId === selectedPersonId) && (campus === "all" || slot.campusId === campus)).map(slot => {
       const booked = slot.activeBooked ?? slot.booked;
@@ -123,6 +150,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
         startsAt: slot.startsAt, endsAt: slot.endsAt, title: `${teacherName(slot.teacherId)} · ${t(state)}`,
         subtitle: slot.subjects.map(subject => a(`subject_${subject}`)).join(" / "), detail: campusName(slot.campusId),
         state: t(state), muted: !slot.enabled || Date.parse(slot.endsAt) <= now, conflict: Boolean(slot.blocked),
+        canResize: !slot.booked && Date.parse(slot.endsAt) > now,
       };
     }),
     ...(workspace?.events ?? []).filter(event => room === "all" && (campus === "all" || event.campusId === campus)
@@ -136,13 +164,14 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
         detail: [campusName(event.campusId), event.location].filter(Boolean).join(" · "),
         state: event.status !== "scheduled" ? t(`status_${event.status}`) : me?.response === "pending" ? t("response_pending") : undefined,
         muted: event.status !== "scheduled" || me?.response === "declined", pending: event.status === "scheduled" && me?.response === "pending",
+        canResize: event.canEdit && event.status === "scheduled",
       };
     }),
   ];
   const visible = items.filter(item => (invitationsOnly || kinds.includes(item.kind)) && [item.title, item.subtitle, item.detail, item.state].filter(Boolean).join(" ").toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const monthFormatter = new Intl.DateTimeFormat(locale, { timeZone, year: "numeric", month: "long" });
   const dayFormatter = new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric" });
-  const rangeLabel = view === "month" ? monthFormatter.format(calendarAnchor(anchor, timeZone)) : view === "day"
+  const rangeLabel = view === "year" ? anchor.slice(0, 4) : view === "month" ? monthFormatter.format(calendarAnchor(anchor, timeZone)) : view === "day"
     ? new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "long" }).format(range.start)
     : `${dayFormatter.format(range.start)} – ${dayFormatter.format(addCalendarDays(range.end, -1, timeZone))}`;
   const canCreate = Boolean(workspace?.canCreate);
@@ -184,6 +213,37 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
     setKinds(current => current.includes(kind) ? current.filter(value => value !== kind) : [...current, kind]);
   }
 
+  async function resizeItem(item: CalendarItem, startsAt: string, endsAt: string) {
+    if (resizeLock.current) return;
+    resizeLock.current = true;
+    setResizing(true);
+    try {
+      if (item.kind === "availability") {
+        const slot = availability?.slots.find(value => value.id === item.sourceId);
+        if (!slot || slot.booked) return;
+        const result = await saveAssessmentSlotAction({ slotId: slot.id, teacherId: slot.teacherId, campusId: slot.campusId, subjects: slot.subjects, grades: slot.grades,
+          startsAt, endsAt, enabled: slot.enabled, expectedUpdatedAt: slot.updatedAt });
+        if (!result.ok) { toast.error(a(assessmentAvailabilityError(result.code))); return; }
+        setAvailability(current => current ? { ...current, slots: current.slots.map(value => value.id === slot.id ? result.data : value) } : current);
+      } else if (item.kind === "lesson") {
+        if (!canManageLessons) return;
+        const result = await rescheduleSessionAction(item.sourceId, startsAt, Math.round((Date.parse(endsAt) - Date.parse(startsAt)) / 60_000));
+        if (!result.ok) { toast.error(t(calendarErrorKey(result.code))); return; }
+        setLessons(current => current.map(value => value.sessionId === item.sourceId ? { ...value, scheduledAt: startsAt, durationMin: Math.round((Date.parse(endsAt) - Date.parse(startsAt)) / 60_000) } : value));
+      } else {
+        const event = workspace?.events.find(value => value.id === item.sourceId);
+        if (!event?.canEdit) return;
+        const result = await saveCalendarEventAction({ id: event.id, kind: event.kind, title: event.title, description: event.description, startsAt, endsAt,
+          location: event.location, campusId: event.campusId, attendeeIds: event.attendees.filter(value => value.userId !== event.organizerId).map(value => value.userId), expectedUpdatedAt: event.updatedAt });
+        if (!result.ok) { toast.error(t(calendarErrorKey(result.code))); return; }
+        setWorkspace(current => current ? { ...current, events: current.events.map(value => value.id === event.id ? result.data : value) } : current);
+      }
+      toast.success(t("timeSaved"));
+      setRevision(value => value + 1);
+    } catch { toast.error(t("errorFailed")); }
+    finally { resizeLock.current = false; setResizing(false); }
+  }
+
   const filters = <>
     <Select value={person} onValueChange={setPerson}><SelectTrigger className="h-9 w-36" aria-label={t("member")}><SelectValue /></SelectTrigger><SelectContent>
       <SelectItem value="all">{t("allPeople")}</SelectItem><SelectItem value="me">{t("myCalendar")}</SelectItem>
@@ -208,18 +268,19 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
           <Button variant="ghost" size="sm" className="size-8 p-0" aria-label={t("previous")} onClick={() => setAnchor(shiftCalendarAnchor(anchor, view, -1, timeZone))}><ChevronLeft className="size-4" /></Button>
           <Button variant="secondary" size="sm" onClick={() => setAnchor(today)}>{t("today")}</Button>
           <Button variant="ghost" size="sm" className="size-8 p-0" aria-label={t("next")} onClick={() => setAnchor(shiftCalendarAnchor(anchor, view, 1, timeZone))}><ChevronRight className="size-4" /></Button>
-          <div className="flex rounded-md border border-line p-0.5" aria-label={t("view")}>{(["day", "week", "month"] as const).map(value =>
+          <div className="flex rounded-md border border-line p-0.5" aria-label={t("view")}>{(["day", "week", "month", "year"] as const).map(value =>
             <button type="button" key={value} aria-pressed={view === value} className={cn("rounded px-2.5 py-1 text-sm", view === value ? "bg-moon/50 font-medium" : "text-muted hover:bg-moon/20")} onClick={() => setView(value)}>{t(`view_${value}`)}</button>)}</div>
         </DashboardCommandState>
         <DashboardCommandFilters>{filters}</DashboardCommandFilters>
         <DashboardCommandActions>
+          <Button type="button" variant="ghost" size="sm" className="size-8 p-0" aria-label={t("calendarSettings")} title={t("calendarSettings")} disabled={!workspace || loading} onClick={() => setSettingsOpen(true)}><Settings className="size-4" /></Button>
           <Button type="button" variant="ghost" size="sm" className="size-8 p-0" aria-label={t("refresh")} disabled={loading} onClick={() => setRevision(value => value + 1)}>
             {loading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
           </Button>
           <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}><PopoverTrigger asChild><Button size="sm" disabled={loading || (!canCreate && !availability)}><Plus className="size-4" />{t("create")}</Button></PopoverTrigger>
             <PopoverContent align="end" className="w-44 space-y-1 p-1.5">
               {canManageAvailability ? <Button type="button" variant="ghost" className="w-full justify-start" disabled={!availability} onClick={() => begin("availability")}><CalendarPlus className="mr-1 size-4" />{t("kind_availability")}</Button> : null}
-              {(["meeting", "task", "preparation"] as const).map(kind => <Button type="button" variant="ghost" className="w-full justify-start" key={kind} disabled={!canCreate} onClick={() => begin(kind)}>{t(`kind_${kind}`)}</Button>)}
+              {(["meeting", "task", "preparation", "strategy", "milestone"] as const).map(kind => <Button type="button" variant="ghost" className="w-full justify-start" key={kind} disabled={!canCreate} onClick={() => begin(kind)}>{kind === "milestone" ? <Flag className="size-4 text-rose" /> : null}{t(`kind_${kind}`)}</Button>)}
             </PopoverContent>
           </Popover>
         </DashboardCommandActions>
@@ -236,21 +297,29 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
             onClick={() => setInvitationsOnly(value => !value)}><Mail className="size-4" /><span className="flex-1">{t("invitations")}</span><span className="text-muted">{pending.length}</span></button>
           <p className="mt-4 text-xs leading-relaxed text-muted">{t(mode === "availability" ? "availabilityHint" : "calendarHint")}</p>
           <p className="mt-3 text-[10px] text-muted">{timeZone}</p>
-          {canViewAssessments ? <Link href="/dashboard/assessments" className="mt-4 block text-xs text-muted hover:text-ink hover:underline">{t("assessmentWorkbench")}</Link> : null}
         </aside>
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-3 py-2 text-[11px] text-muted">
+            <span className="flex items-center gap-1.5"><span className="size-3 border border-crater/30 bg-moon/40" />{t("schoolTime")}</span>
+            <span className="flex items-center gap-1.5"><span className="size-3 border border-leaf-deep/20 bg-leaf/20" />{t("parentTime")}</span>
+            <span className="flex items-center gap-1.5"><span className="size-3 border border-line bg-line/45" />{t("closedDay")}</span>
+            {workspace && workspace.schoolWindows.length === 0 ? <button type="button" className="hover:text-ink hover:underline" onClick={() => setSettingsOpen(true)}>{t("schoolWindowsUnset")}</button> : null}
+          </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-2 py-2 lg:hidden">
             {CALENDAR_KINDS.filter(kind => kind !== "availability" || canManageAvailability).map(kind => <button type="button" key={kind} aria-pressed={kinds.includes(kind) && !invitationsOnly}
               className={cn("flex items-center gap-1.5 text-xs", (!kinds.includes(kind) || invitationsOnly) && "opacity-40")} onClick={() => toggleKind(kind)}><span className={cn("size-2 rounded-full", CALENDAR_TONES[kind].dot)} />{t(`kind_${kind}`)}</button>)}
             <button type="button" aria-pressed={invitationsOnly} className={cn("text-xs", invitationsOnly && "font-bold text-rose")} onClick={() => setInvitationsOnly(value => !value)}>{t("invitations")} {pending.length}</button>
           </div>
           {!loading && visible.length === 0 ? <p className="border-b border-line px-3 py-2 text-xs text-muted">{t(invitationsOnly ? "noInvitations" : search || kinds.length === 0 || person !== "all" || campus !== "all" || room !== "all" ? "noMatchingEvents" : "empty")}</p> : null}
-          <CalendarCanvas anchor={anchor} view={view} items={visible} locale={locale} timeZone={timeZone} now={now} loading={loading}
+          <CalendarCanvas anchor={anchor} view={view} items={visible} backgroundItems={items} locale={locale} timeZone={timeZone} now={now} loading={loading || resizing}
+            campusId={campus === "all" ? null : campus} schoolWindows={workspace?.schoolWindows ?? []} teachingCalendar={workspace?.teachingCalendar ?? []}
+            onResize={resizeItem} onCreateMilestone={canCreate ? start => begin("milestone", start) : undefined}
             onOpen={openItem} onSelectDay={day => { setAnchor(day); setView("day"); }}
-            onCreate={canCreate || availability ? start => begin(mode === "availability" && availability ? "availability" : canCreate ? "meeting" : "availability", start) : undefined} />
+            onCreate={canCreate || availability ? start => begin(view === "year" && canCreate ? "strategy" : mode === "availability" && availability ? "availability" : canCreate ? "meeting" : "availability", start) : undefined} />
         </div>
       </div>
     </DashboardPage>
+    {settingsOpen && workspace ? <CalendarSettingsDialog open onOpenChange={setSettingsOpen} workspace={workspace} campuses={campuses} today={today} onSaved={() => setRevision(value => value + 1)} /> : null}
     {editor?.kind === "availability" && availability ? <AssessmentSlotDialog open onOpenChange={open => { if (!open) setEditor(null); }} data={availability} timeZone={timeZone} slot={editor.slot}
       initialDate={calendarDayKey(new Date(editor.start), timeZone)} initialStartTime={zonedDateTimeInputValue(new Date(editor.start), timeZone).slice(11)}
       teacherId={person === "all" ? undefined : selectedPersonId}

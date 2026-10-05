@@ -48,7 +48,7 @@ export default async function SchedulePage({
         currentUserId={user.id}
         currentUserName={profile?.displayName ?? ""}
         canManageAvailability={perms.has("review.write") || perms.has("followup.write") || perms.has("schedule.manage")}
-        canViewAssessments={perms.has("review.write") || perms.has("followup.view")}
+        canManageLessons={perms.has("class.manage")}
         initialDate={first(rawSearchParams.date)}
         refreshKey={quickRow ? [quickRow.id, quickRow.scheduledAt, quickRow.durationMin, quickRow.roomId, quickRow.state].join(":") : ""}
       /> : <ScheduleWeekView

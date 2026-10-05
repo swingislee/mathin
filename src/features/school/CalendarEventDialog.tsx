@@ -14,7 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action-result";
 import { newId } from "@/lib/uuid";
 import { changeCalendarEventStatusAction, respondCalendarInvitationAction, saveCalendarEventAction } from "./calendar-actions";
-import type { CalendarEvent, CalendarEventKind, CalendarWorkspace } from "./calendar-contract";
+import { CALENDAR_EVENT_KINDS, type CalendarEvent, type CalendarEventKind, type CalendarWorkspace } from "./calendar-contract";
+import { CalendarRecurrenceFields, calendarRecurrenceInput, newCalendarRecurrenceDraft } from "./CalendarRecurrenceFields";
 import { dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 
 export function calendarErrorKey(code: string) {
@@ -26,6 +27,8 @@ export function calendarErrorKey(code: string) {
   if (code === "ATTENDEE_UNAVAILABLE") return "errorAttendee";
   if (code === "CAMPUS_UNAVAILABLE") return "errorCampus";
   if (code === "EVENT_CLOSED") return "errorClosed";
+  if (code === "REPEAT_VALIDATION") return "errorRepeat";
+  if (code === "STRATEGY_RANGE") return "errorStrategyRange";
   return "errorFailed";
 }
 
@@ -44,7 +47,11 @@ interface Props {
 }
 
 export function CalendarEventDialog(props: Props) {
-  return props.open ? <CalendarEventEditor {...props} /> : null;
+  return props.open ? <CalendarEventEditor key={props.event?.id ?? "new"} {...props} /> : null;
+}
+
+function defaultEventDuration(kind: CalendarEventKind) {
+  return kind === "strategy" ? 365 * 86_400_000 : (kind === "task" || kind === "milestone" ? 30 : 60) * 60_000;
 }
 
 function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, workspace, campuses, initialAttendeeIds = [], initialCampusId, onSaved }: Props) {
@@ -53,10 +60,12 @@ function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, wo
   const [draft, setDraft] = useState(() => ({
     kind: event?.kind ?? kind, title: event?.title ?? "", description: event?.description ?? "",
     start: zonedDateTimeInputValue(new Date(event?.startsAt ?? startsAt), timeZone),
-    end: zonedDateTimeInputValue(new Date(event?.endsAt ?? Date.parse(startsAt) + (kind === "task" ? 30 : 60) * 60_000), timeZone),
+    end: zonedDateTimeInputValue(new Date(event?.endsAt ?? Date.parse(startsAt) + defaultEventDuration(kind)), timeZone),
     location: event?.location ?? "", campusId: event ? event.campusId ?? "" : initialCampusId ?? "",
     attendeeIds: event?.attendees.filter(person => person.userId !== event.organizerId).map(person => person.userId) ?? initialAttendeeIds,
   }));
+  const [repeat, setRepeat] = useState(() => newCalendarRecurrenceDraft(
+    zonedDateTimeInputValue(new Date(event?.startsAt ?? startsAt), timeZone).slice(0, 10)));
   const [peopleSearch, setPeopleSearch] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -84,13 +93,18 @@ function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, wo
   }
 
   function save() {
+    if (saveLock.current || !editable || finished) return;
     const start = dateTimeInputToInstant(draft.start, timeZone);
-    const end = dateTimeInputToInstant(draft.end, timeZone);
+    const end = draft.kind === "milestone" && start ? new Date(start.getTime() + 30 * 60_000) : dateTimeInputToInstant(draft.end, timeZone);
     if (!draft.title.trim() || !start || !end || end <= start) { setError("VALIDATION"); return; }
+    if (draft.kind === "strategy" && end.getTime() - start.getTime() > 370 * 86_400_000) { setError("STRATEGY_RANGE"); return; }
+    const recurrence = event ? null : calendarRecurrenceInput(repeat, draft.start.slice(0, 10), timeZone);
+    if (recurrence === undefined) { setError("REPEAT_VALIDATION"); return; }
     void act(() => saveCalendarEventAction({
       id, kind: draft.kind, title: draft.title.trim(), description: draft.description.trim(),
       startsAt: start.toISOString(), endsAt: end.toISOString(), location: draft.location.trim(),
       campusId: draft.campusId || null, attendeeIds: draft.attendeeIds, expectedUpdatedAt: event?.updatedAt ?? null,
+      ...(!event ? { recurrence } : {}),
     }));
   }
 
@@ -113,23 +127,31 @@ function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, wo
         {finished ? <p className="text-sm text-muted">{t(`status_${event.status}`)}</p> : null}
         <fieldset disabled={pending || !editable || finished} className="space-y-4 disabled:opacity-80">
           <div className="space-y-1.5"><Label htmlFor="calendar-kind">{t("kind")}</Label>
-            <Select value={draft.kind} onValueChange={value => patch({ kind: value as CalendarEventKind })} disabled={pending || !editable || finished || Boolean(event)}>
+            <Select value={draft.kind} onValueChange={value => {
+              const nextKind = value as CalendarEventKind;
+              const start = dateTimeInputToInstant(draft.start, timeZone);
+              patch({ kind: nextKind, ...(start ? { end: zonedDateTimeInputValue(new Date(start.getTime() + defaultEventDuration(nextKind)), timeZone) } : {}) });
+            }} disabled={pending || !editable || finished || Boolean(event)}>
               <SelectTrigger id="calendar-kind"><SelectValue /></SelectTrigger>
-              <SelectContent>{(["meeting", "task", "preparation"] as const).map(value => <SelectItem key={value} value={value}>{t(`kind_${value}`)}</SelectItem>)}</SelectContent>
+              <SelectContent>{CALENDAR_EVENT_KINDS.map(value => <SelectItem key={value} value={value}>{t(`kind_${value}`)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1.5"><Label htmlFor="calendar-title">{t("eventTitle")}</Label>
             <Input id="calendar-title" value={draft.title} required maxLength={160} placeholder={t(`placeholder_${draft.kind}`)} onChange={e => patch({ title: e.target.value })} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="min-w-0 space-y-1.5"><Label htmlFor="calendar-start">{t("startsAt")}</Label>
+          <div className={draft.kind === "milestone" ? "space-y-3" : "grid gap-3 sm:grid-cols-2"}>
+            <div className="min-w-0 space-y-1.5"><Label htmlFor="calendar-start">{t(draft.kind === "milestone" ? "milestoneAt" : "startsAt")}</Label>
               <Input id="calendar-start" type="datetime-local" required value={draft.start} onChange={e => patch({ start: e.target.value })} />
             </div>
-            <div className="min-w-0 space-y-1.5"><Label htmlFor="calendar-end">{t("endsAt")}</Label>
-              <Input id="calendar-end" type="datetime-local" required value={draft.end} onChange={e => patch({ end: e.target.value })} />
-            </div>
+            {draft.kind !== "milestone" ? <div className="min-w-0 space-y-1.5"><Label htmlFor="calendar-end">{t("endsAt")}</Label>
+              <Input id="calendar-end" type="datetime-local" required min={draft.start} value={draft.end} onChange={e => patch({ end: e.target.value })} />
+            </div> : null}
           </div>
           <p className="text-xs text-muted">{timeZone}</p>
+          {draft.kind === "strategy" ? <p className="text-xs text-muted">{t("strategyTimingHint")}</p> : null}
+          {event?.seriesId ? <p className="text-xs text-muted">{t("seriesEditHint")}</p> : null}
+          {!event ? <CalendarRecurrenceFields prefix="calendar-repeat" draft={repeat} startDate={draft.start.slice(0, 10)}
+            disabled={pending || !editable || Boolean(finished)} onChange={value => { setRepeat(value); setError(null); }} /> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="min-w-0 space-y-1.5"><Label htmlFor="calendar-campus">{t("campus")}</Label>
               <Select value={draft.campusId || "none"} onValueChange={value => patch({ campusId: value === "none" ? "" : value })} disabled={pending || !editable || finished}>
