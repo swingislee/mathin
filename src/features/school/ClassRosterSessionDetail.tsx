@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { readClassSessionResource } from "./class-session-resource";
@@ -29,6 +29,13 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
   const [contacts, setContacts] = useState<TeachingRecords | null>(null);
   const cache = useRef<TeachingRecordCache>(new Map());
   const reviewedStudents = useRef(new Set<string>());
+  const dirtyParts = useRef({ materials: false, records: false });
+  const onMaterialsDirtyChange = useCallback((value: boolean) => {
+    dirtyParts.current.materials = value; onDirtyChange(value || dirtyParts.current.records);
+  }, [onDirtyChange]);
+  const onRecordsDirtyChange = useCallback((value: boolean) => {
+    dirtyParts.current.records = value; onDirtyChange(value || dirtyParts.current.materials);
+  }, [onDirtyChange]);
   useEffect(() => {
     const controller = new AbortController();
     void readClassSessionResource<unknown>(`/${locale}/dashboard/classes/session-detail`, { sessionId, classroomId }, controller.signal)
@@ -49,7 +56,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
     return () => controller.abort();
   }, [locale, sessionId, page, pageSize, attempt, contactRequested]);
   if (!data) return failed ? <div role="alert" className="flex items-center gap-3 text-xs text-muted">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></div> : <FollowupDetailLoading>{m.loading}</FollowupDetailLoading>;
-  const materials = <SessionMaterialsReader key={sessionId} sessionId={sessionId} classroomId={classroomId} locale={locale} timeZone={timeZone} />;
+  const materials = <SessionMaterialsReader key={sessionId} sessionId={sessionId} classroomId={classroomId} locale={locale} timeZone={timeZone} onDirtyChange={onMaterialsDirtyChange} />;
   if (!("records" in data)) return <div className="space-y-3"><DashboardCommandPanel>
     <DashboardCommandActions>
       <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/sessions/${sessionId}?stage=pre`}>{data.canPrepare ? m.prepare : m.viewPreparation}</Link>
@@ -65,7 +72,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
       inline={{ onPageChange: value => { setContactRequested(true); setPage(value); }, onPageSizeChange: value => { setContactRequested(true); setPageSize(value); setPage(1); } }}
       studentWork={<SessionStudentPostworkTable sessionId={sessionId} rows={work.rows} initialReviews={work.reviews} resultStatus={data.resultStatus}
         canWriteReview={data.canWriteReview} initialCommunications={data.records.sessionCommunications ?? { canRead: false, canWrite: false, completed: false, records: [] }}
-        locale={locale} timeZone={timeZone} today={calendarDayKey(new Date(now), timeZone)} onDirtyChange={onDirtyChange}
+        locale={locale} timeZone={timeZone} today={calendarDayKey(new Date(now), timeZone)} onDirtyChange={onRecordsDirtyChange}
         workspaceLink={<Link href={`/dashboard/sessions/${sessionId}?stage=${data.records.session.endedAt ? "post" : "live"}`} className="text-xs underline underline-offset-4">{m.workspace}</Link>}
         onReviewsSaved={reviews => { for (const review of reviews) reviewedStudents.current.add(review.studentId); onReviewCountChange?.(reviewedStudents.current.size); }} />}
     />

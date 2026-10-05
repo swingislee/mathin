@@ -12,6 +12,7 @@ export type MaterialFile = z.infer<typeof materialFileSchema> & { url: string | 
 export const materialSummarySchema = z.object({
   kind: z.literal("summary"), title: z.string().nullable(), classroomName: z.string(), scheduledAt: z.string().nullable(),
   lessonPlanCount: z.number(), solutionCount: z.number(), hasSolutionNotes: z.boolean(), hasVideo: z.boolean(),
+  canSupplement: z.boolean().default(false),
 });
 export type MaterialSummary = z.infer<typeof materialSummarySchema>;
 export const materialPlanSchema = z.object({

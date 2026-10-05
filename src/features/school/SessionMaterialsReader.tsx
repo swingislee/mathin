@@ -2,22 +2,30 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BookOpen, FileText, Film, PenLine, RefreshCw, X } from "lucide-react";
+import { BookOpen, FileText, Film, PenLine, RefreshCw, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DashboardCommandPanel, DashboardCommandState } from "./dashboard-page";
+import { useRouter } from "@/i18n/navigation";
+import { DashboardCommandActions, DashboardCommandPanel, DashboardCommandState } from "./dashboard-page";
 import { MATERIAL_KINDS, materialMessages, materialSummarySchema, type MaterialContent, type MaterialKind, type MaterialSummary } from "./session-materials-contract";
 import { readClassSessionResource } from "./class-session-resource";
+import { materialSupplementMessages } from "./session-material-supplement-contract";
 
 const Content = dynamic(() => import("./SessionMaterialContent").then(module => module.SessionMaterialContent), {
   ssr: false, loading: () => <Skeleton className="h-32 w-full" />,
 });
+const Supplement = dynamic(() => import("./SessionMaterialSupplement").then(module => module.SessionMaterialSupplement), {
+  ssr: false, loading: () => <Skeleton className="h-40 w-full" />,
+});
 const icons = { lesson_plan: FileText, solution: PenLine, rehearsal_video: Film, courseware: BookOpen };
 
-export function SessionMaterialsReader({ sessionId, classroomId, locale, timeZone }: {
-  sessionId: string; classroomId: string; locale: string; timeZone: string;
+export function SessionMaterialsReader({ sessionId, classroomId, locale, timeZone, onDirtyChange }: {
+  sessionId: string; classroomId: string; locale: string; timeZone: string; onDirtyChange?: (dirty: boolean) => void;
 }) {
   const m = materialMessages(locale);
+  const supplementM = materialSupplementMessages(locale);
+  const router = useRouter();
+  const [supplementOpen, setSupplementOpen] = useState(false);
   const [summary, setSummary] = useState<MaterialSummary | null>(null);
   const [active, setActive] = useState<MaterialKind | null>(null);
   const [contents, setContents] = useState<Partial<Record<MaterialKind, MaterialContent>>>({});
@@ -69,7 +77,11 @@ export function SessionMaterialsReader({ sessionId, classroomId, locale, timeZon
           </Button>;
         })}
       </DashboardCommandState>
+      {summary?.canSupplement && <DashboardCommandActions><Button size="sm" variant="secondary" aria-expanded={supplementOpen} disabled={supplementOpen} onClick={() => setSupplementOpen(true)}><Upload size={14} />{supplementM.open}</Button></DashboardCommandActions>}
     </DashboardCommandPanel>
+    {supplementOpen && <Supplement sessionId={sessionId} locale={locale} onDirtyChange={onDirtyChange} onClose={() => setSupplementOpen(false)} onSaved={() => {
+      loaded.current.clear(); setContents({}); setError(null); setAttempt(value => value + 1); router.refresh();
+    }} />}
     {error && <p role="alert" className="flex items-center gap-2 py-2 text-xs text-muted">{m[error]}<Button size="sm" variant="ghost" onClick={retry}>{m.retry}</Button></p>}
     {(active || Object.values(contents).some(Boolean)) && <div className="py-2" hidden={!active}>
       <div className="mb-3 flex min-w-0 flex-wrap items-center justify-between gap-2">

@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionAssetUrls, getSessionH5BindingUrls, getSessionPageDocs } from "@/features/classroom/courseware/session-assets";
 import { getSessionCoursewareTemplate } from "./courses";
 import { courseware_template_array_schema, overlayArraySchema, resolveCourseware } from "./courseware-overlay";
+import type { MaterialSupplementRpc } from "./session-material-supplement-contract";
 import {
   materialFileBelongsToSession, materialPlanSchema, materialQuerySchema, materialSolutionsSchema,
   materialSummarySchema, materialVideoSchema, type MaterialContent, type MaterialFile,
@@ -42,7 +43,11 @@ export async function getSessionMaterials(input: z.infer<typeof materialQuerySch
     p_session_id: input.sessionId, p_classroom_id: input.classroomId, p_kind: input.kind,
   });
   if (error) throw new Error(error.message === "FORBIDDEN" ? "FORBIDDEN" : "MATERIALS_UNAVAILABLE");
-  if (input.kind === "summary") return materialSummarySchema.parse(data);
+  if (input.kind === "summary") {
+    const rpc = client.rpc.bind(client) as unknown as MaterialSupplementRpc;
+    const capability = await rpc("can_supplement_session_materials", { p_session_id: input.sessionId });
+    return { ...materialSummarySchema.parse(data), canSupplement: !capability.error && capability.data === true };
+  }
   if (input.kind === "lesson_plan") {
     const result = materialPlanSchema.parse(data);
     return { ...result, files: await signMaterialFiles(result.files, input.sessionId, "lesson_plan") } satisfies MaterialContent;
