@@ -22,13 +22,20 @@
         "supabase/migrations/20261005180000_session_material_supplement.sql",
         "supabase/tests/session_material_supplement.sql",
         ".ai/tasks/ADMIN-MATERIAL-SUPPLEMENT-20261005.md",
-        ".ai/handoffs/ADMIN-MATERIAL-SUPPLEMENT-20261005.md"
+        ".ai/handoffs/ADMIN-MATERIAL-SUPPLEMENT-20261005.md",
+        "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts",
+        "supabase/migrations/20261005183000_session_material_completion_time.sql",
+        "supabase/tests/session_material_completion_time.sql",
+        "src/lib/database.types.ts",
+        "src/features/school/teaching-workbench/teaching-progress-matrix-contract.ts",
+        "tests/session-materials-read.test.ts",
+        "tests/teaching-progress-matrix-read.test.ts"
       ],
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": "ac6d886d44dfb551dc120ad5559aa8a53f82a670",
-      "next": "补交入口、窄权限事务与本地迁移已交付，3130 中英文班级页及管理/教师能力读取正常；资料补交和审核手感待产品负责人实际验收。"
+      "checkpoint": "95820635820e380dd2923e9324c636f95b7f666f",
+      "next": "管理补交可设置完成时间，并按该时间评估是否如期；本地迁移和开发入口已交付，待产品负责人实际验收。"
     },
     {
       "id": "REPO-AUX-CLEANUP-20261005",
