@@ -100,7 +100,7 @@
       "title": "测试记录修正与本地目录清理",
       "agent": "codex",
       "threadId": "01a0ffb9-c74e-7c80-ac23-13b52f30e52a",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/REPO-LOCAL-MAINTENANCE-20261005.md",
@@ -115,8 +115,8 @@
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": null,
-      "next": "先修正定向测试并核对本地 worktree、分支及临时文件的清理范围和恢复来源。"
+      "checkpoint": "9a76658d8684456631b37bd530c9b6ad943d973b",
+      "next": "测试记录与环境类型修正已提交；已清理 14 工作区、32 已合并分支及 19 临时项，恢复包校验通过。生产备份和 50 个未合并或状态未核实的工作区保留，后续按具体归属处理。"
     }
   ]
 }
