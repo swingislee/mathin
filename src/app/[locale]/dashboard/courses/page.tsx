@@ -51,12 +51,12 @@ async function CourseFamilyCommandPanel({ locale, searchParams }: { locale: stri
   ]);
   return (
     <DashboardCommandPanel>
-      <DashboardCommandFilters>
+      <DashboardCommandFilters className="w-full @3xl/chrome:w-auto">
         <CourseFamilyFilters filters={parseCourseFamilyFilters(rawSearchParams)} versionOptions={versionOptions} />
       </DashboardCommandFilters>
       {/* doc22 §13.5：只有 course.product.create 才看得到新建入口。 */}
       {(perms.has("course.product.create") || perms.has("course.manage") || perms.has("enrollment.manage")) && (
-        <DashboardCommandActions>
+        <DashboardCommandActions className="w-full items-stretch justify-start [&>a]:min-h-11 [&>a]:min-w-0 [&>a]:flex-1 [&>a]:basis-28 [&>a]:text-center @3xl/chrome:w-auto @3xl/chrome:justify-end @3xl/chrome:[&>a]:min-h-9 @3xl/chrome:[&>a]:flex-none @3xl/chrome:[&>a]:basis-auto">
           {(perms.has("course.manage") || perms.has("enrollment.manage")) && <Link href="/dashboard/courses/admissions" className={buttonVariants({ variant: "secondary", size: "sm" })}>{locale === "en" ? "Mini Program admissions" : "小程序课程报名"}</Link>}
           {perms.has("course.manage") && <Link href="/dashboard/courses/material-rules" className={buttonVariants({ variant: "secondary", size: "sm" })}>{materialT("rulesTitle")}</Link>}
           {perms.has("course.product.create") && <Link href="/dashboard/courses/new" className={buttonVariants({ size: "sm" })}>
