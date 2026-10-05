@@ -22,7 +22,7 @@ const subjects = z.array(z.enum(ASSESSMENT_SLOT_SUBJECTS)).min(1).max(2).refine(
 const grades = z.array(z.number().int().min(-1).max(12)).max(14).refine(value => new Set(value).size === value.length);
 const slotSchema = z.object({
   id: uuid, teacherId: uuid, campusId: uuid, subjects, grades,
-  startsAt: instant, endsAt: instant, enabled: z.boolean(), booked: z.boolean(), activeBooked: z.boolean().optional(), updatedAt: instant,
+  startsAt: instant, endsAt: instant, enabled: z.boolean(), booked: z.boolean(), activeBooked: z.boolean().optional(), blocked: z.boolean().optional(), updatedAt: instant,
 });
 const managementSchema = z.object({
   currentUserId: uuid, canManageAll: z.boolean(),

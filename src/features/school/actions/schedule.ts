@@ -1,8 +1,7 @@
 "use server";
 
 // ---------------------------------------------------------------------------
-// 课表（P4B-4）：student/parent 经白名单 RPC；staff 直查表，RLS 按
-// schedule.view.all（全校）或本人任教（otherwise）自然收窄，教师名在此合并进结果。
+// 学生/家长经专属 RPC；staff 的课次与实际教师身份共用既有课表授权集合。
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
@@ -75,13 +74,19 @@ export async function getWeekSchedule(
     }));
   }
 
-  const { data: sessionRows, error } = await supabase.rpc("get_staff_schedule_v2", {
+  const args = {
     p_from: range.fromIso,
     p_to: range.toIso,
     p_campus_id: nullableRpcArg(range.campusId),
     p_room_id: nullableRpcArg(range.roomId),
-  });
+  };
+  const [{ data: sessionRows, error }, { data: teacherRows, error: teacherError }] = await Promise.all([
+    supabase.rpc("get_staff_schedule_v2", args),
+    supabase.rpc("get_staff_schedule_teacher_ids", args),
+  ]);
   if (error) throw new Error(error.message);
+  if (teacherError) throw new Error(teacherError.message);
+  const teacherIdsBySession = new Map((teacherRows ?? []).map((row) => [row.session_id, row.teacher_ids]));
   return ((sessionRows ?? []) as StaffScheduleV2Row[]).map((row) => ({
     sessionId: row.session_id,
     studentId: "",
@@ -91,6 +96,7 @@ export async function getWeekSchedule(
     scheduledAt: row.scheduled_at,
     durationMin: row.duration_min ?? 0,
     teacherName: row.teacher_name ?? "",
+    teacherIds: teacherIdsBySession.get(row.session_id) ?? [],
     studentName: "",
     roomId: row.room_id,
     roomName: row.room_name,

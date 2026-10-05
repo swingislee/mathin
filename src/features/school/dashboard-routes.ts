@@ -158,9 +158,8 @@ export const DASHBOARD_ROUTES = {
     // 全高日历：周网格自己滚动（横向 + 纵向），日期表头 sticky 贴的是它而不是 <main>。
     shellMode: "panel",
     environments: ALL_ENVIRONMENTS,
-    // 课次创建属于班级上下文；课表只做跨班级/教师/课次的聚合时间视图（§5.3）。
-    createSurface: "parent",
-    creationOwner: "classes",
+    // 内部日程与可约时段在日历侧栏创建；正式课次继续由班级排课产生。
+    createSurface: "dialog",
     nav: { labelKey: "schedule", group: "teaching" },
   },
 
@@ -194,11 +193,11 @@ export const DASHBOARD_ROUTES = {
   },
   assessmentAvailability: {
     href: "/dashboard/assessments/availability",
-    kind: "workflow",
+    kind: "queue",
+    shellMode: "panel",
     environments: STAFF_ONLY,
     permissionAny: ["review.write", "followup.write", "schedule.manage"],
-    createSurface: "page",
-    createHref: "/dashboard/assessments/availability",
+    createSurface: "dialog",
     parent: "assessments",
   },
   assessmentDetail: {

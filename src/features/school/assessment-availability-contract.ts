@@ -15,6 +15,7 @@ export interface AssessmentAvailabilitySlot {
   enabled: boolean;
   booked: boolean;
   activeBooked?: boolean;
+  blocked?: boolean;
   updatedAt: string;
 }
 
@@ -33,6 +34,7 @@ export interface AssessmentSlotDraft {
   subjects: AssessmentSlotSubject[];
   grades: number[];
   date: string;
+  endDate?: string;
   startTime: string;
   endTime: string;
   enabled: boolean;
@@ -56,6 +58,7 @@ export function assessmentSlotDraft(slot: AssessmentAvailabilitySlot, timeZone: 
   return {
     slotId: slot.id, teacherId: slot.teacherId, campusId: slot.campusId,
     subjects: [...slot.subjects], grades: [...slot.grades], date: start.slice(0, 10), startTime: start.slice(11),
+    endDate: calendarDayKey(new Date(slot.endsAt), timeZone),
     endTime: zonedDateTimeInputValue(new Date(slot.endsAt), timeZone).slice(11),
     enabled: slot.enabled, expectedUpdatedAt: slot.updatedAt,
   };
@@ -63,7 +66,7 @@ export function assessmentSlotDraft(slot: AssessmentAvailabilitySlot, timeZone: 
 
 export function assessmentSlotInput(draft: AssessmentSlotDraft, timeZone: string): SaveAssessmentSlotInput | null {
   const startsAt = dateTimeInputToInstant(`${draft.date}T${draft.startTime}`, timeZone);
-  const endsAt = dateTimeInputToInstant(`${draft.date}T${draft.endTime}`, timeZone);
+  const endsAt = dateTimeInputToInstant(`${draft.endDate ?? draft.date}T${draft.endTime}`, timeZone);
   if (!startsAt || !endsAt || endsAt <= startsAt || !draft.teacherId || !draft.campusId || draft.subjects.length === 0) return null;
   const duration = (endsAt.getTime() - startsAt.getTime()) / 60_000;
   if (duration < 5 || duration > 240) return null;

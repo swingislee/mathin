@@ -14705,6 +14705,110 @@ export type Database = {
           },
         ]
       }
+      staff_calendar_attendees: {
+        Row: {
+          completed_at: string | null
+          event_id: string
+          responded_at: string | null
+          response: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          event_id: string
+          responded_at?: string | null
+          response?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          event_id?: string
+          responded_at?: string | null
+          response?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_calendar_attendees_event_id_fkey"
+            columns: ["event_id"]
+            referencedRelation: "staff_calendar_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_calendar_attendees_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_calendar_events: {
+        Row: {
+          campus_id: string | null
+          created_at: string
+          description: string
+          ends_at: string
+          id: string
+          kind: string
+          location: string
+          organizer_id: string
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          campus_id?: string | null
+          created_at?: string
+          description?: string
+          ends_at: string
+          id: string
+          kind: string
+          location?: string
+          organizer_id: string
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          campus_id?: string | null
+          created_at?: string
+          description?: string
+          ends_at?: string
+          id?: string
+          kind?: string
+          location?: string
+          organizer_id?: string
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_calendar_events_campus_id_fkey"
+            columns: ["campus_id"]
+            referencedRelation: "campuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_calendar_events_organizer_id_fkey"
+            columns: ["organizer_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_calendar_events_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_initial_password_reissues: {
         Row: {
           completed_at: string | null
@@ -24117,6 +24221,10 @@ export type Database = {
         Args: { p_failure_code: string; p_invitation_id: string }
         Returns: undefined
       }
+      change_calendar_event_status: {
+        Args: { p_id: string; p_status: string; p_expected_updated_at: string }
+        Returns: Json
+      }
       change_enrollment_placement: {
         Args: { p_input: Json; p_request_id: string }
         Returns: Json
@@ -25251,6 +25359,10 @@ export type Database = {
         Args: { p_assignment_id: string }
         Returns: Json
       }
+      get_calendar_workspace: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
       get_business_record_revision: {
         Args: { p_id: string; p_kind: string }
         Returns: Json
@@ -25876,6 +25988,15 @@ export type Database = {
       get_staff_overview_acquisition_contacts_v2: {
         Args: { p_window: Json }
         Returns: Json
+      }
+      get_staff_schedule_teacher_ids: {
+        Args: {
+          p_from: string
+          p_to: string
+          p_campus_id?: string
+          p_room_id?: string
+        }
+        Returns: { session_id: string; teacher_ids: string[] }[]
       }
       get_staff_schedule_v2: {
         Args: {
@@ -28657,6 +28778,25 @@ export type Database = {
           p_reset_id: string
         }
         Returns: undefined
+      }
+      respond_calendar_invitation: {
+        Args: { p_id: string; p_response: string }
+        Returns: Json
+      }
+      save_calendar_event: {
+        Args: {
+          p_id: string
+          p_kind: string
+          p_title: string
+          p_description: string
+          p_starts_at: string
+          p_ends_at: string
+          p_location: string
+          p_attendee_ids: string[]
+          p_campus_id?: string
+          p_expected_updated_at?: string
+        }
+        Returns: Json
       }
       save_assessment_slot: {
         Args: {

@@ -134,6 +134,8 @@ export interface ScheduleEntry {
   scheduledAt: string;
   durationMin: number;
   teacherName: string;
+  /** Staff calendar filtering uses actual teacher identities, including substitutes and assistants. */
+  teacherIds?: string[];
   studentName: string;
   roomId: string | null;
   roomName: string | null;
@@ -147,12 +149,14 @@ export interface ScheduleBlock extends ScheduleEntry {
 }
 
 /** 按某个字段分组、组内按开始时间排序，标出区间重叠（start1 < end2 && start2 < end1）的 sessionId。 */
-function collectOverlapConflicts(entries: ScheduleEntry[], keyOf: (entry: ScheduleEntry) => string): Set<string> {
+function collectOverlapConflicts(entries: ScheduleEntry[], keyOf: (entry: ScheduleEntry) => string | readonly string[]): Set<string> {
   const byKey = new Map<string, ScheduleEntry[]>();
   for (const entry of entries) {
-    const key = keyOf(entry);
-    if (!key) continue;
-    (byKey.get(key) ?? byKey.set(key, []).get(key)!).push(entry);
+    const value = keyOf(entry);
+    for (const key of new Set(typeof value === "string" ? [value] : value)) {
+      if (!key) continue;
+      (byKey.get(key) ?? byKey.set(key, []).get(key)!).push(entry);
+    }
   }
 
   const conflictIds = new Set<string>();
@@ -179,10 +183,10 @@ function collectOverlapConflicts(entries: ScheduleEntry[], keyOf: (entry: Schedu
 
 /**
  * 同教师或同教室同时段重叠标冲突色（10-§9 P4B-4 验收项；P4I-16 补上教室维度）：
- * teacherName/roomId 为空时对应维度不参与冲突判定。同名但不同 UUID 的教室不会冲突。
+ * 有 teacherIds 时按真实身份判定；旧家庭课表沿用 teacherName。空值不参与冲突判定。
  */
 export function markConflicts(entries: ScheduleEntry[]): ScheduleBlock[] {
-  const teacherConflicts = collectOverlapConflicts(entries, (entry) => entry.teacherName);
+  const teacherConflicts = collectOverlapConflicts(entries, (entry) => entry.teacherIds ?? entry.teacherName);
   const roomConflicts = collectOverlapConflicts(entries, (entry) => entry.roomId ?? "");
   return entries.map((entry) => ({
     ...entry,

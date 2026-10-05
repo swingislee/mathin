@@ -1,8 +1,9 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getNow, getTranslations, setRequestLocale } from "next-intl/server";
 import { ScheduleWeekView } from "@/features/school/ScheduleWeekView";
+import { CalendarWorkbench } from "@/features/school/CalendarWorkbench";
 import { SessionManagementDrawer } from "@/features/school/SessionManagementDrawer";
 import { getSessionQuickRow } from "@/features/school/classes";
-import { getMyPerms, requireUser } from "@/lib/auth";
+import { getActiveEnvironment, getMyPerms, getProfile, requireUser } from "@/lib/auth";
 import { getOrganizationTimezoneV2, listActiveRoomOptionsV2 } from "@/features/school/organization-locations";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -21,12 +22,15 @@ export default async function SchedulePage({
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requireUser(locale);
-  const [t, perms, rawSearchParams, roomOptions, timeZone] = await Promise.all([
+  const [t, perms, rawSearchParams, roomOptions, timeZone, now, environment, profile] = await Promise.all([
     getTranslations("school.schedule"),
     getMyPerms(user.id),
     searchParams,
     listActiveRoomOptionsV2(),
     getOrganizationTimezoneV2(),
+    getNow(),
+    getActiveEnvironment(user.id),
+    getProfile(user.id),
   ]);
 
   const requestedSessionId = first(rawSearchParams.session);
@@ -36,15 +40,24 @@ export default async function SchedulePage({
 
   return (
     <>
-      {/* 页壳由 ScheduleWeekView 自己渲染：周次切换与筛选是它的客户端状态，
-          必须住在命令面板里（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §14）。 */}
-      <ScheduleWeekView
+      {environment === "staff" ? <CalendarWorkbench
+        locale={locale}
+        now={now.getTime()}
+        timeZone={timeZone}
+        roomOptions={roomOptions}
+        currentUserId={user.id}
+        currentUserName={profile?.displayName ?? ""}
+        canManageAvailability={perms.has("review.write") || perms.has("followup.write") || perms.has("schedule.manage")}
+        canViewAssessments={perms.has("review.write") || perms.has("followup.view")}
+        initialDate={first(rawSearchParams.date)}
+        refreshKey={quickRow ? [quickRow.id, quickRow.scheduledAt, quickRow.durationMin, quickRow.roomId, quickRow.state].join(":") : ""}
+      /> : <ScheduleWeekView
         refreshKey={quickRow ? [quickRow.id, quickRow.scheduledAt, quickRow.durationMin, quickRow.roomId, quickRow.state].join(":") : ""}
         title={t("title")}
         canFilterAll={perms.has("schedule.view.all")}
         roomOptions={roomOptions}
         timeZone={timeZone}
-      />
+      />}
 
       <SessionManagementDrawer
         key={quickRow?.id ?? "none"}
@@ -53,7 +66,7 @@ export default async function SchedulePage({
         classroomDefaultRoomId={quickRow?.classroomDefaultRoomId ?? null}
         roomOptions={roomOptions}
         timeZone={timeZone}
-        closeHref="/dashboard/schedule"
+        closeHref={first(rawSearchParams.date) && /^\d{4}-\d{2}-\d{2}$/.test(first(rawSearchParams.date)!) ? `/dashboard/schedule?date=${first(rawSearchParams.date)}` : "/dashboard/schedule"}
       />
     </>
   );
