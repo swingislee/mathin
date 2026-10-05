@@ -1,3 +1,5 @@
+/// <reference path="../apps/parent-wechat/node_modules/miniprogram-api-typings/index.d.ts" />
+
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import vm from "node:vm";

@@ -3,16 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { runAssertionFiles } from "../scripts/lib/db-audit-runner.mjs";
 
 const files = ["r1_account_security_assertions.sql", "p6_courseware_security_assertions.sql"];
-const environment = {
+const environment: NodeJS.ProcessEnv = {
+  NODE_ENV: "test",
   DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/postgres",
   MATHIN_WRITE_TARGET_ENVIRONMENT: "test",
   MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "127.0.0.1:5432/postgres",
 };
 
 describe("explicit SQL assertion execution", () => {
-  it.each([
-    {},
-    { DATABASE_URL: environment.DATABASE_URL },
+  it.each<NodeJS.ProcessEnv>([
+    { NODE_ENV: "test" },
+    { NODE_ENV: "test", DATABASE_URL: environment.DATABASE_URL },
     { ...environment, MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "127.0.0.1:5432/another" },
     { ...environment, DATABASE_URL: "postgresql://postgres@supabase.mathin.club:5432/postgres" },
     { ...environment, DATABASE_URL: "postgresql://postgres@192.168.5.183:5432/postgres", MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "192.168.5.183:5432/postgres" },

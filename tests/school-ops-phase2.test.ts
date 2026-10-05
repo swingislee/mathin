@@ -95,7 +95,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(workspace).toContain('recommendedClass: assessment?.recommendedClass ?? ""');
   });
 
-  it("flows confirmed invitations into one teacher queue, then hands completed results to support", () => {
+  it("preserves confirmed and cancelled invitation facts, then hands completed results to support", () => {
     const migration = read(
       "supabase",
       "migrations",
@@ -112,6 +112,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
       "20260904000220_school_ops_assessment_route_and_bands.sql",
     );
     const page = read("src", "app", "[locale]", "dashboard", "assessments", "page.tsx");
+    const pagedQueue = read("src", "features", "school", "AssessmentPagedWorkbench.tsx");
     const queue = read("src", "features", "school", "AssessmentUnifiedWorkbench.tsx");
     const actions = read("src", "features", "school", "assessment-workbench-actions.ts");
     const query = read("src", "features", "school", "assessment-workbench-data.ts");
@@ -134,7 +135,7 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(rlsMigration).toContain("public.has_assessment_history_lead_access(id)");
     expect(rlsMigration).not.toContain("p_uid");
     expect(query).toContain('import "server-only"');
-    expect(query).toContain('.eq("state", "confirmed")');
+    expect(query).toContain('.in("state", ["confirmed", "cancelled"])');
     expect(query).toContain('source_invitation_id');
     expect(activityProjection).toContain('].join(",");');
     expect(query).toContain(".select(ACTIVITY_COLUMNS)");
@@ -147,11 +148,9 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     expect(correctionMigration).toContain("status = 'attended'");
     expect(correctionMigration).toContain("not public.has_perm(v_uid, 'review.write')");
     expect(correctionMigration).toContain("v_activity_kind <> 'assessment_1v1'");
-    expect(page).toContain("AssessmentUnifiedWorkbench");
-    expect(page).not.toContain("TeacherAssessmentQueue");
-    expect(page).not.toContain("SupportAssessmentPreview");
-    expect(page).not.toContain("AssessmentAggregateWorkbench");
-    expect(queue).toContain("DashboardCommandPanel");
+    expect(page).toContain("loadAssessmentWorkbenchPage");
+    expect(page).toContain("<AssessmentPagedWorkbench");
+    expect(pagedQueue).toContain("<AssessmentUnifiedWorkbench");
     expect(queue).toContain("sticky left-0 top-0");
     expect(queue).toContain("TeacherAssessmentEntryButton");
     expect(queue).toContain("assessmentWorkbenchStage");
@@ -230,8 +229,9 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
       .toEqual(["recorded"]);
     const historical: AssessmentWorkbenchRow={...makeRow('historical',true),recordState:'historical',scheduledAt:'',occurredOn:'2025-12-29'};
     const combined=[...rows,historical];
-    expect(assessmentWorkbenchCounts(combined)).toEqual({pending:1,in_progress:0,feedback:1,handled:0,all:3,historical:1});
-    expect(assessmentWorkbenchRowsForView(combined,{queue:'feedback'},'zh').map(row=>row.id)).toEqual(['recorded']);
+    // 历史标记记录来源；已完成、尚待跟进的测评继续进入反馈队列。
+    expect(assessmentWorkbenchCounts(combined)).toEqual({pending:1,in_progress:0,feedback:2,handled:0,all:3,historical:1});
+    expect(assessmentWorkbenchRowsForView(combined,{queue:'feedback'},'zh').map(row=>row.id)).toEqual(['recorded','historical']);
     expect(assessmentWorkbenchRowsForView(combined,{queue:'all',q:'贝贝'},'zh').map(row=>row.id)).toContain('historical');
   });
 });

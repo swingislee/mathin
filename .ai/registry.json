@@ -94,6 +94,29 @@
       ],
       "checkpoint": null,
       "next": "全仓复查完成：10 文件归档、13 原稿快照；过期协作限制、README 命令与测试路径已修正。静态检查通过，后续从产品负责人具体业务任务继续。"
+    },
+    {
+      "id": "REPO-LOCAL-MAINTENANCE-20261005",
+      "title": "测试记录修正与本地目录清理",
+      "agent": "codex",
+      "threadId": "01a0ffb9-c74e-7c80-ac23-13b52f30e52a",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/REPO-LOCAL-MAINTENANCE-20261005.md",
+      "writePaths": [
+        "tests/db-audit-target-policy.test.ts",
+        "tests/dashboard-table-divider-semantics.test.ts",
+        "tests/school-ops-phase2.test.ts",
+        ".ai/tasks/REPO-LOCAL-MAINTENANCE-20261005.md",
+        ".tmp/local-repo-maintenance-20261005/",
+        "tests/parent-wechat-discovery.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "先修正定向测试并核对本地 worktree、分支及临时文件的清理范围和恢复来源。"
     }
   ]
 }
