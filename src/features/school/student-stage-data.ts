@@ -24,6 +24,7 @@ export const studentStageRowSchema = z.object({
   detailLoaded: z.literal(false).optional(),
   canWrite: z.boolean(), canContact: z.boolean(), invitation: z.object({
     id: z.string(), leadId: z.string(), updatedAt: z.string(), kind: z.enum(INVITATION_KINDS), state: z.enum(INVITATION_STATES),
+    assessmentSlotId: z.string().nullable().optional(),
     activityId: z.string().nullable(), assessorId: z.string().nullable(), parentTimeOptions: z.array(z.string()), assessorTimeOptions: z.array(z.string()),
     scheduledAt: z.string().nullable(), locationText: z.string(), nextContactAt: z.string().nullable(),
   }).nullable(),

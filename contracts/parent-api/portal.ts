@@ -101,6 +101,18 @@ export type AssessmentState = "coordinating_time" | "awaiting_teacher" | "awaiti
 export type AssessmentEligibilityReason = "NO_LINKED_LEAD" | "AMBIGUOUS_LINKED_LEAD"
   | "LEAD_UNAVAILABLE" | "ACTIVE_INVITATION" | "NO_ELIGIBLE_TEACHER";
 export type AssessmentTeacher = { id: string; displayName: string };
+export type AssessmentSubject = "math" | "english";
+export type AssessmentSlot = {
+  id: string; teacherId: string; campusId: string; startsAt: string; endsAt: string; available: boolean;
+};
+export type AssessmentAvailability = {
+  participantId: string; timeZone: "Asia/Shanghai"; from: string; to: string;
+  teachers: AssessmentTeacher[]; campuses: { id: string; name: string }[]; slots: AssessmentSlot[];
+};
+export type AssessmentBookingDetails = {
+  slotId: string; subjects: AssessmentSubject[]; grade: number; mode: "campus";
+  campus: { id: string; name: string }; endsAt: string;
+};
 /** 时间选项为 Asia/Shanghai 的 YYYY-MM-DD@时段；它表示协调意向，不表示教师空闲库存。 */
 export type ParentAssessmentRequest = {
   id: string; participantId: string; teacher: AssessmentTeacher | null; state: AssessmentState;
@@ -112,6 +124,8 @@ export type ParentAssessmentRequest = {
   /** confirmed/completed 的实际预约时刻；不是确认操作发生时间。 */
   scheduledAt: string | null;
   updatedAt: string; canConfirm: boolean;
+  /** 已发布时段的预约信息；早期双边意向邀约没有此字段。 */
+  booking?: AssessmentBookingDetails | null;
 };
 export type ParentAssessmentOverview = {
   participantId: string; timeZone: "Asia/Shanghai";
@@ -128,7 +142,11 @@ export type AssessmentConfirmCommand = {
   /** 选择该邀约双边交集中的未来精确时段；after_school 只作为意向。 */
   timeOption: string; expectedUpdatedAt: string;
 };
-export type AssessmentCommand = AssessmentRequestCommand | AssessmentConfirmCommand;
+export type AssessmentBookCommand = {
+  action: "book"; id: string; participantId: string; slotId: string;
+  subjects: AssessmentSubject[]; grade: number; mode: "campus";
+};
+export type AssessmentCommand = AssessmentRequestCommand | AssessmentConfirmCommand | AssessmentBookCommand;
 export type ApiErrorCode = "VALIDATION" | "UNAUTHENTICATED" | "FORBIDDEN" | "ACCOUNT_SECURITY"
   | "NOT_FOUND" | "FORM_CHANGED" | "ACTIVITY_FULL" | "BOOKING_CLOSED" | "CONFLICT"
   | "TOO_LARGE" | "FILE_TYPE" | "RATE_LIMIT" | "UNAVAILABLE";

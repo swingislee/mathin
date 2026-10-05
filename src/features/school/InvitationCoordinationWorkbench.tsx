@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -139,7 +141,8 @@ function sameOptions(left: readonly string[], right: readonly string[]): boolean
 }
 
 function draftMatchesRow(draft: InvitationDraft, row: InvitationDraft): boolean {
-  return draft.kind === row.kind
+  return (draft.assessmentSlotId ?? null) === (row.assessmentSlotId ?? null)
+    && draft.kind === row.kind
     && draft.state === row.state
     && draft.activityId === row.activityId
     && draft.assessorId === row.assessorId
@@ -151,7 +154,7 @@ function draftMatchesRow(draft: InvitationDraft, row: InvitationDraft): boolean 
 }
 
 function invitationDraftFrom(row: InvitationDraft): InvitationDraft {
-  return { kind: row.kind, state: row.state, activityId: row.activityId, assessorId: row.assessorId,
+  return { assessmentSlotId: row.assessmentSlotId ?? null, kind: row.kind, state: row.state, activityId: row.activityId, assessorId: row.assessorId,
     parentTimeOptions: row.parentTimeOptions, assessorTimeOptions: row.assessorTimeOptions,
     scheduledAt: row.scheduledAt, locationText: row.locationText, nextContactAt: row.nextContactAt ?? null };
 }
@@ -205,6 +208,7 @@ function InvitationEditor({
   const t = useTranslations("school.invitations");
   const router = useRouter();
   const [draft, setDraft] = useState<InvitationDraft>({
+    assessmentSlotId: row.assessmentSlotId ?? null,
     kind: row.kind,
     state: row.state,
     activityId: row.activityId,
@@ -233,7 +237,8 @@ function InvitationEditor({
   const [historyOpen, setHistoryOpen] = useState(false);
   const submittedInputRef = useRef<UpdateInvitationInput | null>(null);
   const [draftStorageKey] = useState(() => invitationDraftSessionKey("coordination", row.id, row.updatedAt));
-  const assessorEditing = !canManageInvitation && row.assessorId === currentUserId;
+  const publishedBooking = Boolean(row.assessmentSlotId);
+  const assessorEditing = !publishedBooking && !canManageInvitation && row.assessorId === currentUserId;
   const updateRun = useAction(updateLeadInvitationAction, {
     successMessage: () => {
       const input = submittedInputRef.current;
@@ -246,6 +251,7 @@ function InvitationEditor({
     },
     errorMessage: {
       INVALID_INVITATION: t("invalidDraft"),
+      SLOT_BOOKING_IMMUTABLE: t("publishedBookingFixed"),
       ACTIVITY_NOT_FOUND: t("activityUnavailable"),
       ASSESSOR_UNAVAILABLE: t("assessorUnavailable"),
       INVITATION_CLOSED: t("alreadyClosed"),
@@ -263,6 +269,7 @@ function InvitationEditor({
       clearInvitationDraftSession(draftStorageKey);
       setDraftBase(invitationDraftFrom(input));
       setDraft({
+        assessmentSlotId: input.assessmentSlotId ?? null,
         kind: input.kind,
         state: input.state,
         activityId: input.activityId,
@@ -437,7 +444,24 @@ function InvitationEditor({
   }
   return (
     <div className="@container/invitation-editor min-w-0 max-w-full px-1">
-      {assessorEditing ? <div className="space-y-3">
+      {publishedBooking ? <div className="space-y-3" data-published-assessment-booking>
+        <div className="space-y-1 text-xs"><p className="font-medium text-ink">{currentArrangement}</p><p className="text-muted">{t("publishedBookingFixed")}</p></div>
+        <FollowupChoice className="w-48" label={t("channelLabel")} value={channel}
+          onValueChange={value => onEntryChange({ ...entry, channel: value as InvitationChannel })} disabled={pending}
+          options={CHANNELS.map(value => ({ value, label: t(`channel_${value}`) }))} />
+        <div className="space-y-1.5"><Label htmlFor={`booking-note-${row.id}`} className="text-xs">{t("noteLabel")}</Label>
+          <Textarea id={`booking-note-${row.id}`} value={note} onChange={event => setNote(event.target.value)} disabled={pending}
+            maxLength={2000} placeholder={t("notePlaceholder")} className="min-h-20 text-sm" />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" disabled={pending} onClick={() => submitSupport({ ...draft, state: "completed" })}>
+            {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden /> : <Check className="size-4" aria-hidden />}{t("completePublishedBooking")}
+          </Button>
+          <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => setCancelOpen(true)}>{t("cancelInvitation")}</Button>
+          {communicationTools}
+        </div>
+        <p className="text-xs text-muted">{t("completePublishedBookingHint")}</p>
+      </div> : assessorEditing ? <div className="space-y-3">
         <InvitationDraftFields key={draftStorageKey} value={draft} activities={activities} assessors={assessors} locale={locale}
           gradeHint={row.gradeHint}
           disabled={pending} allowNone={false} showReminder={false} editingScope="assessor"

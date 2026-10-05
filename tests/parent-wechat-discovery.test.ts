@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Activity, Booking, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest } from "../contracts/parent-api/portal";
 import type { ActivityFilter } from "../apps/parent-wechat/miniprogram/lib/discovery";
 import type * as AssessmentCalendar from "../apps/parent-wechat/miniprogram/lib/assessment-calendar";
+import type * as AssessmentBooking from "../apps/parent-wechat/miniprogram/lib/assessment-booking";
+import type { AssessmentAvailability } from "../contracts/parent-api/portal";
 type PendingRequest = { id: string; teacherId: string; parentTimeOptions: string[] };
 type AssessmentPending = {
   pendingAssessment: (account: string, participant: string) => PendingRequest | null;
@@ -24,7 +26,7 @@ type RuntimePage = {
     overview: ParentAssessmentOverview | null;
   };
   setData: (value: Record<string, unknown>) => void;
-  book: () => Promise<void>; review: () => void; back: () => void; loadMonth: () => Promise<void>;
+  book: () => Promise<void>; review: () => Promise<void>; back: () => void; loadMonth: () => Promise<void>;
   signIn: () => Promise<void>; load: () => Promise<void>; participant: (event: { detail: { value: string } }) => void;
   onShow: () => void; onHide: () => void; updateSelection: () => void;
   selectActivity: (activity: Activity) => void; startAgain: () => void; loadWeek: () => Promise<void>;
@@ -34,6 +36,9 @@ type RuntimePage = {
   openActivity: (event: Touch) => void; chooseTeacher: (event: Touch) => void; chooseTime: (event: Touch) => void;
   submit: () => Promise<void>; retryPending: () => Promise<void>; loadParticipant: () => Promise<void>; startOver: () => void;
   renderRequests: () => void; selectConfirmation: (event: Touch) => void; confirm: (event: Touch) => Promise<void>;
+  chooseCampus: (event: Touch) => void; chooseGrade: (event: Touch) => void; chooseMode: () => void;
+  showSheet: (event: Touch) => void; toggleSubject: (event: Touch) => void; confirmSubjects: () => void;
+  loadAvailability: () => Promise<void>;
 };
 type DiscoveryModule = {
   canReserve: (activity: Activity) => boolean; canCancel: (booking: Booking, now: number) => boolean;
@@ -64,6 +69,7 @@ function runtime(api: Record<string, unknown> = {}, language = "zh_CN") {
   function load(relative: "lib/discovery.ts"): DiscoveryModule;
   function load(relative: "lib/navigation.ts"): NavigationModule;
   function load(relative: "lib/assessment-calendar.ts"): typeof AssessmentCalendar;
+  function load(relative: "lib/assessment-booking.ts"): typeof AssessmentBooking;
   function load(relative: "lib/assessment-pending.ts"): AssessmentPending;
   function load(relative: string): Record<string, unknown>;
   function load(relative: string): Record<string, unknown> {
@@ -107,6 +113,11 @@ function deferred<T>() { let resolve!: (value: T) => void; const promise = new P
 const assessorId = "00000000-0000-4000-8000-000000000002";
 const assessmentId = "00000000-0000-4000-8000-000000000001";
 const assessmentTime = "2026-10-03@14:00";
+const slotId = "00000000-0000-4000-8000-000000000004";
+const campusId = "00000000-0000-4000-8000-000000000005";
+const availability = (): AssessmentAvailability => ({ participantId: "member-a", timeZone: "Asia/Shanghai", from: "2026-10-01", to: "2026-10-14",
+  teachers: [{ id: assessorId, displayName: "Assessor" }], campuses: [{ id: campusId, name: "Campus" }],
+  slots: [{ id: slotId, teacherId: assessorId, campusId, startsAt: "2026-10-03T06:00:00Z", endsAt: "2026-10-03T06:40:00Z", available: true }] });
 const assessmentRequest = (patch: Partial<ParentAssessmentRequest> = {}): ParentAssessmentRequest => ({
   id: assessmentId, participantId: "member-a", teacher: { id: assessorId, displayName: "Assessor" }, state: "awaiting_teacher",
   parentTimeOptions: [assessmentTime], teacherTimeOptions: [], sharedTimeOptions: [], proposedStartsAt: null, scheduledAt: null,
@@ -116,19 +127,60 @@ const assessmentOverview = (participantId = "member-a", requests: ParentAssessme
   participantId, timeZone: "Asia/Shanghai", eligibility: { canRequest: true, reason: null },
   teachers: [{ id: assessorId, displayName: "Assessor" }], requests,
 });
+const bookedAssessment = () => assessmentRequest({ state: "confirmed", parentTimeOptions: [], scheduledAt: "2026-10-03T06:00:00Z",
+  booking: { slotId, subjects: ["math", "english"], grade: 3, mode: "campus", campus: { id: campusId, name: "Campus" }, endsAt: "2026-10-03T06:40:00Z" } });
 async function assessmentPage(postAssessment: ReturnType<typeof vi.fn>, overview = assessmentOverview()) {
   const getAssessments = vi.fn().mockResolvedValue(overview);
-  const run = runtime({ postAssessment, getAssessments, requestId: () => assessmentId,
+  const getAssessmentSlots = vi.fn().mockResolvedValue(availability());
+  const run = runtime({ postAssessment, getAssessments, getAssessmentSlots, requestId: () => assessmentId,
     get: vi.fn().mockResolvedValue({ id: "account", participants: [{ id: "member-a", name: "A" }] }) });
   run.load("pages/assessment/index.ts"); const page = run.page();
-  page.setData({ firstDay: "2026-10-01", lastDay: "2026-10-28", week: "2026-09-28" });
   await page.load();
+  page.showSheet({ currentTarget: { dataset: { sheet: "subject" } } });
+  page.toggleSubject({ currentTarget: { dataset: { id: "math" } } });
+  page.toggleSubject({ currentTarget: { dataset: { id: "english" } } }); page.confirmSubjects();
+  page.chooseGrade({ currentTarget: { dataset: { grade: 3 } } }); page.chooseMode();
+  return { run, page, getAssessments, getAssessmentSlots };
+}
+async function selectAssessment(page: RuntimePage) {
+  await page.review();
+  page.chooseCampus({ currentTarget: { dataset: { id: campusId } } });
   page.chooseTeacher({ currentTarget: { dataset: { id: assessorId } } });
-  return { run, page, getAssessments };
+  page.chooseTime({ currentTarget: { dataset: { id: slotId } } });
 }
 
 describe("小程序发现与参与合同", () => {
   afterEach(() => vi.useRealTimers());
+  it("时段表仅从真实发布记录生成，保留完整星期和起止时间并禁用已约格", () => {
+    const { publishedAssessmentGrid } = runtime().load("lib/assessment-booking.ts");
+    const data = availability();
+    data.slots.push({ ...data.slots[0], id: "occupied", startsAt: "2026-10-04T06:00:00Z", endsAt: "2026-10-04T06:40:00Z", available: false });
+    const grid = publishedAssessmentGrid({ availability: data, campusId, teacherId: assessorId, weekIndex: 0,
+      selectedSlotId: slotId, weekdays: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"], periods: ["上午", "下午", "晚上"], now });
+    expect(grid.days.map(day => day.weekday)).toEqual(["周四", "周五", "周六", "周日", "周一", "周二", "周三"]);
+    expect(grid.weeks.map(week => week.label)).toEqual(["10.1~10.7", "10.8~10.14"]);
+    expect(grid.timeRows).toHaveLength(1);
+    expect(grid.timeRows[0]).toMatchObject({ start: "14:00", end: "14:40", period: "下午" });
+    expect(grid.timeRows[0].cells.filter(cell => cell.available).map(cell => cell.id)).toEqual([slotId]);
+    expect(grid.timeRows[0].cells[3]).toMatchObject({ id: "occupied", available: false, selected: false });
+  });
+
+  it("科目可多选确认，改年级清除原校区老师时段，迟到的旧时段响应不回填", async () => {
+    vi.useFakeTimers({ now });
+    const { page, getAssessmentSlots } = await assessmentPage(vi.fn());
+    expect(page.data.selectedSubjects).toEqual(["math", "english"]);
+    expect(page.data.teacherId).toBe("");
+    await selectAssessment(page);
+    expect(page.data.selectedSlotId).toBe(slotId);
+    const slow = deferred<AssessmentAvailability>();
+    getAssessmentSlots.mockReturnValueOnce(slow.promise);
+    const old = page.loadAvailability();
+    page.back(); page.chooseGrade({ currentTarget: { dataset: { grade: 4 } } });
+    slow.resolve(availability()); await old;
+    expect(page.data.availability).toBeNull();
+    expect(page.data.campusId).toBe(""); expect(page.data.teacherId).toBe(""); expect(page.data.selectedSlotId).toBe("");
+  });
+
   it("在已返回活动中组合语言、地点、日期与名额筛选，保持实际标题", () => {
     const { load } = runtime();
     const { filterActivities, canReserve } = load("lib/discovery.ts");
@@ -228,27 +280,27 @@ describe("小程序发现与参与合同", () => {
     expect(run.wx.navigateTo).toHaveBeenLastCalledWith({ url: "/pages/assessment/index?view=history" });
   });
 
-  it("测评选择老师和意向时间后提交一次申请，待老师回复不显示为已确认", async () => {
+  it("测评选好科目年级方式、校区老师和发布时段后只预约一次，显示真实确认", async () => {
     vi.useFakeTimers({ now });
     const pending = deferred<ParentAssessmentRequest>();
     const post = vi.fn(() => pending.promise);
     const { page } = await assessmentPage(post);
     await page.submit(); expect(post).not.toHaveBeenCalled();
-    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    await selectAssessment(page);
     const first = page.submit(); await page.submit();
-    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "request", id: assessmentId, participantId: "member-a", teacherId: assessorId, parentTimeOptions: [assessmentTime] });
-    pending.resolve(assessmentRequest()); await first;
+    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "book", id: assessmentId, participantId: "member-a", slotId, subjects: ["math", "english"], grade: 3, mode: "campus" });
+    pending.resolve(bookedAssessment()); await first;
     expect(page.data.requestSent).toBe(true);
-    expect(page.data.requests[0].state).toBe("awaiting_teacher");
-    expect(page.data.requests[0].scheduledLabel).toBe("");
+    expect(page.data.requests[0].state).toBe("confirmed");
+    expect(page.data.requests[0].scheduledLabel).toBe("2026.10.03 周六 14:00~14:40");
     expect(page.data.pending).toBeNull();
   });
 
   it("测评申请结果不明时保留原始输入，刷新后重试沿用同一 UUID", async () => {
     vi.useFakeTimers({ now });
-    const post = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue(assessmentRequest());
+    const post = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue(bookedAssessment());
     const { page } = await assessmentPage(post);
-    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    await selectAssessment(page);
     await page.submit(); expect(page.data.uncertain).toBe(true);
     await page.loadParticipant();
     expect(page.data.uncertain).toBe(true);
@@ -261,7 +313,7 @@ describe("小程序发现与参与合同", () => {
     vi.useFakeTimers({ now });
     const post = vi.fn().mockRejectedValue(new Error("connection lost"));
     const { page, getAssessments } = await assessmentPage(post);
-    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    await selectAssessment(page);
     await page.submit();
     getAssessments.mockResolvedValue(assessmentOverview("member-a", [assessmentRequest()]));
     await page.loadParticipant();
@@ -273,7 +325,7 @@ describe("小程序发现与参与合同", () => {
     vi.useFakeTimers({ now });
     const post = vi.fn().mockRejectedValue(new Error("connection lost"));
     const { page } = await assessmentPage(post);
-    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } });
+    await selectAssessment(page);
     await page.submit(); page.startOver(); expect(page.data.pending).not.toBeNull();
     await page.loadParticipant(); page.startOver();
     expect(page.data.pending).toBeNull(); expect(page.data.uncertain).toBe(false);
@@ -303,7 +355,7 @@ describe("小程序发现与参与合同", () => {
     const existing = assessmentRequest({ id: otherId, state: "awaiting_parent", teacherTimeOptions: [assessmentTime], sharedTimeOptions: [assessmentTime], canConfirm: true });
     const post = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue({ ...existing, state: "confirmed", canConfirm: false, scheduledAt: "2026-10-03T06:00:00Z" });
     const { page, getAssessments } = await assessmentPage(post);
-    page.review(); page.chooseTime({ currentTarget: { dataset: { value: assessmentTime } } }); await page.submit();
+    await selectAssessment(page); await page.submit();
     getAssessments.mockResolvedValue({ ...assessmentOverview("member-a", [existing]), eligibility: { canRequest: false, reason: "ACTIVE_INVITATION" } });
     await page.loadParticipant();
     expect(page.data.uncertain).toBe(true); expect(page.data.eligible).toBe(false);

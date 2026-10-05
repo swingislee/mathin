@@ -1,5 +1,5 @@
 import { config } from "../config.local";
-import type { Session, Media, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest, AssessmentCommand, ParentWechatAuthStatus, ParentWechatAuthResult } from "./api-types";
+import type { Session, Media, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest, AssessmentAvailability, AssessmentSubject, AssessmentCommand, ParentWechatAuthStatus, ParentWechatAuthResult } from "./api-types";
 
 const sessionKey="gezhi.session.v1";
 let refreshing:Promise<Session>|null=null;
@@ -48,6 +48,10 @@ export async function getAssessments(participant:string):Promise<ParentAssessmen
 }
 export async function postAssessment(data:AssessmentCommand):Promise<ParentAssessmentRequest>{
   return send<ParentAssessmentRequest>("assessments","POST",data,await accessToken());
+}
+export async function getAssessmentSlots(participant: string, subjects: AssessmentSubject[], grade: number): Promise<AssessmentAvailability> {
+  const query = `participant=${encodeURIComponent(participant)}&subjects=${encodeURIComponent(subjects.join(","))}&grade=${grade}`;
+  return send<AssessmentAvailability>("assessment-slots?" + query, "GET", undefined, await accessToken());
 }
 export async function login(identifier:string,password:string){const value=await send<Session>("auth","POST",{action:"login",identifier,password});saveSession(value);}
 export async function wechatAuthStatus():Promise<ParentWechatAuthStatus>{

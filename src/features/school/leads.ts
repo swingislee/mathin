@@ -67,6 +67,7 @@ interface LeadInvitationDbRow {
   state: InvitationState;
   activity_id: string | null;
   assessor_id: string | null;
+  assessment_slot_id?: string | null;
   proposed_time_text: string;
   parent_time_options?: string[];
   assessor_time_options?: string[];
@@ -186,7 +187,7 @@ export async function listLeadPool(
       .returns<LeadCommunicationDbRow[]>()),
     readSchoolQueryPages((start, end) => supabase
       .from("lead_invitation_threads")
-      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,updated_at")
+      .select("id,lead_id,kind,state,activity_id,assessor_id,assessment_slot_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,updated_at")
       .in("lead_id", leadIds)
       .not("state", "in", "(completed,cancelled)")
       .order("updated_at", { ascending: false })
@@ -212,6 +213,15 @@ export async function listLeadPool(
       .order('id', { ascending: true }).range(start, end)),
   ]);
   let invitationResult = initialInvitationResult;
+  if (invitationResult.error?.message?.includes("assessment_slot_id")) {
+    invitationResult = await readSchoolQueryPages((start, end) => supabase
+      .from("lead_invitation_threads")
+      .select("id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,updated_at")
+      .in("lead_id", leadIds)
+      .not("state", "in", "(completed,cancelled)")
+      .order("updated_at", { ascending: false }).order("id", { ascending: true })
+      .range(start, end).returns<LeadInvitationDbRow[]>());
+  }
   if (invitationResult.error?.code === "PGRST204"
       || invitationResult.error?.code === "42703"
       || invitationResult.error?.message?.includes("parent_time_options")) {
@@ -341,6 +351,7 @@ export async function listLeadPool(
           activityTitle: invitationActivity?.title ?? "",
           activityScheduledAt: invitationActivity?.scheduled_at ?? null,
           assessorId: invitation.assessor_id,
+          assessmentSlotId: invitation.assessment_slot_id ?? null,
           assessorName: invitation.assessor_id ? invitationAssessors.get(invitation.assessor_id) ?? "" : "",
           legacyTimeText: invitation.proposed_time_text,
           parentTimeOptions: invitation.parent_time_options ?? [],
@@ -348,7 +359,7 @@ export async function listLeadPool(
           scheduledAt: invitation.scheduled_at ?? null,
           locationText: invitation.location_text,
           updatedAt: invitation.updated_at,
-          nextContactAt,
+          nextContactAt: invitation.assessment_slot_id ? null : nextContactAt,
         } : null,
       };
     }),

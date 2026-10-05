@@ -1017,7 +1017,7 @@
       },
       "post": {
         "operationId": "submitParentAssessment",
-        "summary": "申请 1 对 1 测评或确认双方共同时间",
+        "summary": "预约已发布测评时段、提交旧协调申请或确认协调时间",
         "description": "request 保留客户端稳定 UUID 和规范化初始输入，幂等重试返回当前同一邀约；confirm 锁定邀约并核验 expectedUpdatedAt、教师与未来精确交集。已确认同一时段可重试。所有资格、时段和幂等冲突统一返回 CONFLICT，客户端刷新概览后核对并保留原请求 ID。JSON 最多 32 KiB；不接受客户端写 state、teacherTimeOptions 或内部线索字段。响应 private, no-store。",
         "security": [
           {
@@ -1046,7 +1046,7 @@
             }
           },
           "201": {
-            "description": "申请成功或同 ID 同输入的幂等恢复，返回当前邀约；不表示测评已完成。",
+            "description": "已确认的时段预约，或旧协调申请的当前状态；幂等重试返回当前记录。",
             "content": {
               "application/json": {
                 "schema": {
@@ -1289,6 +1289,102 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParentWechatAuthError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/parent/assessment-slots": {
+      "get": {
+        "operationId": "getParentAssessmentAvailability",
+        "summary": "按学员、科目和测评年级读取已发布的两周测评时段",
+        "description": "上海日期今天至第 14 天（含），只返回主动发布且符合全部所选科目和年级的时段。available=false 表示已被占用；不返回他人的预约资料。",
+        "security": [
+          {
+            "parentBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "participant",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "subjects",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(math|english|math,english|english,math)$"
+            },
+            "description": "逗号分隔的数学、英语科目，支持多选。"
+          },
+          {
+            "name": "grade",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": -1,
+              "maximum": 12,
+              "description": "-1 幼中班，0 幼大班，1–12 对应年级。"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "真实申请资格、有限范围教师和邀约。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentAvailability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "输入格式、字段内容或命令无效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "需要有效 Bearer 令牌。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号安全门或当前参与人权限不足。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RPC 尚未安装、查询失败或响应不符合合同；不以空数据掩盖失败。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
@@ -1595,14 +1691,24 @@
             "description": "是否在预约开放时间内；仍须检查 remaining 和提交时的实时名额"
           },
           "targetGrades": {
-            "type": ["array", "null"],
-            "items": { "type": "integer", "minimum": 1, "maximum": 12 },
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
             "maxItems": 12,
             "uniqueItems": true,
             "description": "发现筛选：null 或缺省表示年级待核对；空数组表示不限年级"
           },
           "subject": {
-            "enum": ["math", null],
+            "enum": [
+              "math",
+              null
+            ],
             "description": "Mathin 公开数学课程为 math；未分类项目为 null"
           }
         }
@@ -2771,6 +2877,17 @@
           "canConfirm": {
             "type": "boolean",
             "description": "等待家长、线索及教师仍有效且存在未来精确交集；写入时仍重新核验。"
+          },
+          "booking": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssessmentBookingDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "主动发布时段预约的科目、年级、校区与结束时间。旧协调预约可为空或省略。"
           }
         }
       },
@@ -2889,6 +3006,9 @@
       },
       "AssessmentCommand": {
         "oneOf": [
+          {
+            "$ref": "#/components/schemas/AssessmentBookCommand"
+          },
           {
             "$ref": "#/components/schemas/AssessmentRequestCommand"
           },
@@ -3059,6 +3179,233 @@
               "WECHAT_MFA_REQUIRED",
               "WECHAT_PHONE_LINKING_UNAVAILABLE"
             ]
+          }
+        }
+      },
+      "AssessmentBookingDetails": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "slotId",
+          "subjects",
+          "grade",
+          "mode",
+          "campus",
+          "endsAt"
+        ],
+        "properties": {
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjects": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "math",
+                "english"
+              ]
+            }
+          },
+          "grade": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 12,
+            "description": "-1 幼中班，0 幼大班，1–12 对应年级。"
+          },
+          "mode": {
+            "const": "campus"
+          },
+          "campus": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              }
+            }
+          },
+          "endsAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AssessmentBookCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "id",
+          "participantId",
+          "slotId",
+          "subjects",
+          "grade",
+          "mode"
+        ],
+        "properties": {
+          "action": {
+            "const": "book"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slotId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "subjects": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "math",
+                "english"
+              ]
+            }
+          },
+          "grade": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 12,
+            "description": "-1 幼中班，0 幼大班，1–12 对应年级。"
+          },
+          "mode": {
+            "const": "campus"
+          }
+        },
+        "description": "按老师主动发布的可约时段创建已确认的一对一测评；同一请求 UUID 和原始输入可幂等重试。"
+      },
+      "AssessmentAvailability": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "participantId",
+          "timeZone",
+          "from",
+          "to",
+          "teachers",
+          "campuses",
+          "slots"
+        ],
+        "properties": {
+          "participantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timeZone": {
+            "const": "Asia/Shanghai"
+          },
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "teachers": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "displayName"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "displayName": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "campuses": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "slots": {
+            "type": "array",
+            "maxItems": 2000,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "teacherId",
+                "campusId",
+                "startsAt",
+                "endsAt",
+                "available"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "teacherId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "campusId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "available": {
+                  "type": "boolean"
+                }
+              }
+            }
           }
         }
       }

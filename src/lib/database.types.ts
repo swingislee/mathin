@@ -1310,6 +1310,94 @@ export type Database = {
           },
         ]
       }
+      assessment_slots: {
+        Row: {
+          campus_id: string
+          created_at: string
+          created_by: string
+          enabled: boolean
+          ends_at: string
+          grades: number[]
+          id: string
+          starts_at: string
+          subjects: string[]
+          teacher_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          campus_id: string
+          created_at?: string
+          created_by: string
+          enabled?: boolean
+          ends_at: string
+          grades?: number[]
+          id: string
+          starts_at: string
+          subjects: string[]
+          teacher_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          campus_id?: string
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          ends_at?: string
+          grades?: number[]
+          id?: string
+          starts_at?: string
+          subjects?: string[]
+          teacher_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_slots_campus_id_fkey"
+            columns: ["campus_id"]
+            referencedRelation: "campuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_slots_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_slots_created_by_fkey"
+            columns: ["created_by"]
+            referencedRelation: "statistics_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_slots_teacher_id_fkey"
+            columns: ["teacher_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_slots_teacher_id_fkey"
+            columns: ["teacher_id"]
+            referencedRelation: "statistics_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_slots_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessment_slots_updated_by_fkey"
+            columns: ["updated_by"]
+            referencedRelation: "statistics_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_workflow_events: {
         Row: {
           action: string
@@ -8492,6 +8580,7 @@ export type Database = {
       lead_invitation_threads: {
         Row: {
           activity_id: string | null
+          assessment_slot_id: string | null
           assessor_id: string | null
           assessor_time_options: string[]
           closed_at: string | null
@@ -8503,6 +8592,8 @@ export type Database = {
           lead_id: string
           location_text: string
           owner_id_at_open: string | null
+          parent_request_actor: string | null
+          parent_request_payload: Json | null
           parent_time_options: string[]
           proposed_time_text: string
           rescheduled_at: string | null
@@ -8514,6 +8605,7 @@ export type Database = {
         }
         Insert: {
           activity_id?: string | null
+          assessment_slot_id?: string | null
           assessor_id?: string | null
           assessor_time_options?: string[]
           closed_at?: string | null
@@ -8525,6 +8617,8 @@ export type Database = {
           lead_id: string
           location_text?: string
           owner_id_at_open?: string | null
+          parent_request_actor?: string | null
+          parent_request_payload?: Json | null
           parent_time_options?: string[]
           proposed_time_text?: string
           rescheduled_at?: string | null
@@ -8536,6 +8630,7 @@ export type Database = {
         }
         Update: {
           activity_id?: string | null
+          assessment_slot_id?: string | null
           assessor_id?: string | null
           assessor_time_options?: string[]
           closed_at?: string | null
@@ -8547,6 +8642,8 @@ export type Database = {
           lead_id?: string
           location_text?: string
           owner_id_at_open?: string | null
+          parent_request_actor?: string | null
+          parent_request_payload?: Json | null
           parent_time_options?: string[]
           proposed_time_text?: string
           rescheduled_at?: string | null
@@ -8557,6 +8654,18 @@ export type Database = {
           updated_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lead_invitation_threads_assessment_slot_id_fkey"
+            columns: ["assessment_slot_id"]
+            referencedRelation: "assessment_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_invitation_threads_parent_request_actor_fkey"
+            columns: ["parent_request_actor"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lead_invitation_threads_activity_id_fkey"
             columns: ["activity_id"]
@@ -23685,6 +23794,16 @@ export type Database = {
         Args: { p_activity_id: string; p_student_id: string }
         Returns: string
       }
+      book_parent_assessment_slot: {
+        Args: {
+          p_grade: number
+          p_request_id: string
+          p_slot_id: string
+          p_student_id: string
+          p_subjects: string[]
+        }
+        Returns: Json
+      }
       build_cw_paired_delivery_snapshot: {
         Args: { p_lecture_id: string }
         Returns: Json
@@ -25122,6 +25241,10 @@ export type Database = {
       get_account_support_snapshot: { Args: never; Returns: Json }
       get_activity_enrollment_context: {
         Args: { p_invitation_id: string; p_registration_id: string }
+        Returns: Json
+      }
+      get_assessment_slot_management: {
+        Args: { p_from: string; p_to: string }
         Returns: Json
       }
       get_assignment_question_workbook: {
@@ -27293,6 +27416,10 @@ export type Database = {
       overview_date_v2: { Args: { value: string }; Returns: string }
       overview_encode_component_v2: { Args: { value: string }; Returns: string }
       overview_trim_v2: { Args: { value: string }; Returns: string }
+      parent_assessment_availability: {
+        Args: { p_grade: number; p_student_id: string; p_subjects: string[] }
+        Returns: Json
+      }
       perform_cw_paired_publish: {
         Args: {
           p_lecture_id: string
@@ -28530,6 +28657,20 @@ export type Database = {
           p_reset_id: string
         }
         Returns: undefined
+      }
+      save_assessment_slot: {
+        Args: {
+          p_campus_id: string
+          p_enabled: boolean
+          p_ends_at: string
+          p_expected_updated_at?: string
+          p_grades: number[]
+          p_slot_id: string
+          p_starts_at: string
+          p_subjects: string[]
+          p_teacher_id: string
+        }
+        Returns: Json
       }
       save_course_material_rule: {
         Args: { p_expected_version: number; p_input: Json; p_rule_id: string }

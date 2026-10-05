@@ -1,4 +1,5 @@
 import { getNow, getTranslations, setRequestLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 import { AssessmentPagedWorkbench } from "@/features/school/AssessmentPagedWorkbench";
 import { loadAssessmentWorkbenchPage } from "@/features/school/assessment-list-data";
 import { listAssessmentAssessorOptions } from "@/features/school/invitations";
@@ -17,10 +18,11 @@ export default async function AssessmentsPage({
   const { locale } = await params;
   const query=await searchParams;
   setRequestLocale(locale);
-  const user = await requireAnyPerm(locale, ["review.write", "followup.view"]);
+  const user = await requireAnyPerm(locale, ["review.write", "followup.view", "followup.write", "schedule.manage"]);
   const permissions = await getMyPerms(user.id);
   const canAssess = permissions.has("review.write");
   const canSupport = permissions.has("followup.view");
+  if (!canAssess && !canSupport) redirect(`/${locale}/dashboard/assessments/availability`);
   const canManageAssessor = permissions.has("followup.write");
   const [assessors, timeZone, now, tableT, assessmentT, t, teacherT, quickT] = await Promise.all([
     listAssessmentAssessorOptions(),
@@ -42,6 +44,7 @@ export default async function AssessmentsPage({
       canAssess={canAssess}
       canSupport={canSupport}
       canManageAssessor={canManageAssessor}
+      canManageAvailability={canAssess || canManageAssessor || permissions.has("schedule.manage")}
       canQuickEntry={canAssess || permissions.has("followup.write")}
     />
   );

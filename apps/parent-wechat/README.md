@@ -4,7 +4,7 @@
 
 使用原生 TypeScript、WXML、WXSS；不依赖 React 或网页运行时。
 
-2026-10-05 开发端校正：按参考图恢复长条按钮、关闭按钮、阶段／科目弹层和家长四列服务网格，发现页使用“班级阶段 + 科目”。原生模拟器已核查发现筛选与重置、测评两步选择与返回、课程及月历、家长弹层和登记按钮；本轮未提交预约或登记。当前视觉与交互待产品负责人验收，平台发布状态沿用上方记录。
+2026-10-05 开发端校正：按参考图恢复长条按钮、关闭按钮、阶段／科目弹层和家长四列服务网格，发现页使用“班级阶段 + 科目”。测评基础信息为学员、数学／英语多选、年级、线下到校区测试；第二步选择校区、老师及主动发布的两周可约时段。后台入口为 `/zh/dashboard/assessments/availability`，新数据库能力仅应用于本机开发库。视觉与交互待产品负责人验收，平台发布状态沿用上方记录。
 
 1. 在仓库根目录运行 `corepack pnpm install --frozen-lockfile`。
 2. 微信开发者工具选择“导入项目”，目录指向当前文件夹（包含 project.config.json）。
@@ -24,7 +24,7 @@
 
 周课表与月课表复用 iOS 同批的 `/api/v1/parent/learning` 与版本化 DTO，按参与人 ID 和时间范围读取；不新增小程序专用课程、家庭或预约表。活动预约采用“基础信息 → 选择时间”，按真实场次展示地点与周时段，确认后提交所选场次 ID。`api-types.ts` 由共用合同生成，调整接口时同时核对 Next.js、iOS 和小程序调用方。当前手机端视觉与交互需产品负责人验收。
 
-“测评预约”对应项目现有的 `assessment_1v1`：预约真实老师做 1 对 1 测评，路由为 `pages/assessment/index`，独立于活动。它通过共用 `/api/v1/parent/assessments` 接入既有邀约：选择孩子与可预约老师、提交意向时间、查看教师回复，再确认双方共有的具体时段。申请记录使用 `?view=history`。部署该入口时同时满足[测评接口与数据库依赖](../../contracts/parent-api/README.md#1-对-1-测评稳定合同)。
+“测评预约”对应现有 `assessment_1v1`，路由为 `pages/assessment/index`。`/api/v1/parent/assessment-slots` 按孩子、科目、年级读取老师主动发布的可约时段；确认所选时段后，通过 `/api/v1/parent/assessments` 的 `book` 命令写入既有邀约。记录使用 `?view=history`，旧协调申请继续支持查看及共有时段确认。部署该入口时同时满足[测评接口与数据库依赖](../../contracts/parent-api/README.md#1-对-1-测评稳定合同)。
 
 ```sh
 corepack pnpm parents:wechat:typecheck

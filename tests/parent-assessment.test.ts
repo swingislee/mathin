@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, POST } from "@/app/api/v1/parent/assessments/route";
+import { GET as GET_SLOTS } from "@/app/api/v1/parent/assessment-slots/route";
 import type { AssessmentCommand, ParentAssessmentOverview, ParentAssessmentRequest } from "../contracts/parent-api/portal";
 
 type Result = { data: unknown; error: { message: string; code?: string } | null };
@@ -20,6 +21,8 @@ const actor = "33333333-3333-4333-8333-333333333333";
 const teacher = "44444444-4444-4444-8444-444444444444";
 const invitation = "55555555-5555-4555-8555-555555555555";
 const otherInvitation = "66666666-6666-4666-8666-666666666666";
+const slot = "77777777-7777-4777-8777-777777777777";
+const campus = "88888888-8888-4888-8888-888888888888";
 const option = "2026-10-03@10:00";
 const updatedAt = "2026-10-01T04:00:00.123456+00:00";
 const ok = (data: unknown): Result => ({ data, error: null });
@@ -64,6 +67,66 @@ beforeEach(() => {
 });
 
 describe("家长独立 1 对 1 测评 HTTP 合同", () => {
+  const availability = () => ({ participantId: child, timeZone: "Asia/Shanghai", from: "2026-10-01", to: "2026-10-14",
+    teachers: [{ id: teacher, displayName: "测评老师", privatePhone: "private" }], campuses: [{ id: campus, name: "校区" }],
+    slots: [{ id: slot, teacherId: teacher, campusId: campus, startsAt: "2026-10-03T07:00:00Z", endsAt: "2026-10-03T07:40:00Z", available: true, privateBookingId: invitation }] });
+  const slotRequest = (query = `participant=${child}&subjects=math,english&grade=3`, authenticated = true) => new Request(`https://app.example.invalid/api/v1/parent/assessment-slots?${query}`, { headers: authenticated ? { authorization: "Bearer test-only-token" } : {} });
+  const bookCommand = () => ({ action: "book", id: invitation, participantId: child, slotId: slot, subjects: ["math", "english"], grade: 3, mode: "campus" });
+  const booked = () => requestRow({ state: "confirmed", parentTimeOptions: [], scheduledAt: "2026-10-03T07:00:00Z",
+    booking: { slotId: slot, subjects: ["math", "english"], grade: 3, mode: "campus", campus: { id: campus, name: "校区" }, endsAt: "2026-10-03T07:40:00Z" } });
+
+  it("发布时段查询按学员、全部所选科目与年级授权，过滤内部预约资料", async () => {
+    state.results.parent_assessment_availability = ok(availability());
+    expect((await GET_SLOTS(slotRequest(undefined, false))).status).toBe(401);
+    const result = await GET_SLOTS(slotRequest());
+    expect(result.status).toBe(200);
+    expect(result.headers.get("Cache-Control")).toBe("private, no-store");
+    const body = await result.json();
+    expect(body.slots[0]).not.toHaveProperty("privateBookingId");
+    expect(body.teachers[0]).not.toHaveProperty("privatePhone");
+    expect(state.rpc).toHaveBeenCalledWith("parent_assessment_availability", { p_student_id: child, p_subjects: ["math", "english"], p_grade: 3 });
+    expect(state.admin).not.toHaveBeenCalled();
+  });
+
+  it("拒绝重复/缺失科目、空年级及不属于当前孩子的时段投影", async () => {
+    for (const query of [`participant=${child}&subjects=math&grade=`, `participant=${child}&subjects=math,math&grade=3`,
+      `participant=${child}&subjects=math&grade=3&grade=4`, `participant=${child}&grade=3`]) {
+      expect((await GET_SLOTS(slotRequest(query))).status).toBe(400);
+    }
+    expect(state.rpc).not.toHaveBeenCalled();
+    for (const value of [{ ...availability(), participantId: sibling }, { ...availability(), teachers: [] },
+      { ...availability(), to: "2026-10-13" }, { ...availability(), slots: [{ ...availability().slots[0], endsAt: "2026-10-03T06:00:00Z" }] }]) {
+      state.results.parent_assessment_availability = ok(value);
+      expect((await GET_SLOTS(slotRequest())).status).toBe(503);
+    }
+  });
+
+  it("预约仅传发布时段和选择信息，幂等重试接受已取消状态并保留业务冲突", async () => {
+    state.results.book_parent_assessment_slot = ok(booked());
+    const result = await POST(postRequest(bookCommand()));
+    expect(result.status).toBe(201); expect(await result.json()).toEqual(booked());
+    expect(state.rpc).toHaveBeenCalledWith("book_parent_assessment_slot", { p_request_id: invitation, p_student_id: child, p_slot_id: slot, p_subjects: ["math", "english"], p_grade: 3 });
+    state.results.book_parent_assessment_slot = ok({ ...booked(), state: "cancelled", scheduledAt: null });
+    expect((await POST(postRequest(bookCommand()))).status).toBe(201);
+    for (const message of ["SLOT_UNAVAILABLE", "CAMPUS_UNAVAILABLE"]) {
+      state.results.book_parent_assessment_slot = fail(message);
+      expect((await POST(postRequest(bookCommand()))).status).toBe(409);
+    }
+  });
+
+  it("预约响应必须匹配原时段和科目年级，客户端不能改教师或状态", async () => {
+    for (const body of [{ ...bookCommand(), teacherId: teacher }, { ...bookCommand(), state: "confirmed" },
+      { ...bookCommand(), subjects: ["math", "math"] }, { ...bookCommand(), grade: 13 }, { ...bookCommand(), mode: "online" }]) {
+      expect((await POST(postRequest(body))).status).toBe(400);
+    }
+    expect(state.rpc).not.toHaveBeenCalled();
+    for (const value of [requestRow(), { ...booked(), booking: { ...booked().booking, subjects: ["math"] } },
+      { ...booked(), booking: { ...booked().booking, slotId: otherInvitation } }]) {
+      state.results.book_parent_assessment_slot = ok(value);
+      expect((await POST(postRequest(bookCommand()))).status).toBe(503);
+    }
+  });
+
   it("以 Bearer + getUser 检查登录和账号安全门，匿名及员工不能调用", async () => {
     expect((await GET(getRequest(undefined, false))).status).toBe(401);
     expect(state.rpc).not.toHaveBeenCalled();
@@ -274,7 +337,8 @@ describe("家长独立 1 对 1 测评 HTTP 合同", () => {
       expect(await response.json()).toEqual({ code: "UNAVAILABLE" });
     }
     state.results.parent_assessment_overview = ok({ ...overview(), teachers: [] });
-    expect((await GET(getRequest())).status).toBe(503);
+    // 新预约的教师通过单独的发布时段接口返回，旧任课教师列表允许为空。
+    expect((await GET(getRequest())).status).toBe(200);
     state.results.parent_assessment_overview = ok({ ...overview(), eligibility: { canRequest: false, reason: null } });
     expect((await GET(getRequest())).status).toBe(503);
     state.results.confirm_parent_assessment = ok(requestRow());

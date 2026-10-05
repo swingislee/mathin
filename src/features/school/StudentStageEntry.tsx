@@ -3,8 +3,10 @@
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { LoaderCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +28,7 @@ const draftSchema = z.object({
   requestId: z.string().uuid(), note: z.string().max(2000), nextContactAt: z.string().nullable(),
   outcome: z.enum(["connected","unreachable","declined","invalid_number"]).nullable(), wechatAdded: z.boolean().nullable(), interestLevel: z.enum(["A","B","C"]).nullable(),
   invitation: z.object({ kind: z.enum(INVITATION_KINDS), state: z.enum(INVITATION_STATES), activityId: z.string().nullable(), assessorId: z.string().nullable(),
+    assessmentSlotId: z.string().nullable().optional(),
     parentTimeOptions: z.array(z.string()), assessorTimeOptions: z.array(z.string()), scheduledAt: z.string().nullable(), locationText: z.string(), nextContactAt: z.string().nullable().optional() }).nullable(),
   courseId: z.string(), termId: z.string(), result: z.enum(["considering","committed","payment_pending","not_enrolled","nurturing","confirm"]), paymentEvidence: z.string().max(1000),
 });
@@ -94,13 +97,16 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
   const enrollmentType = enrollmentContext?.type ?? (row.stage === "awaiting_renewal" ? "renewal" : row.stage === "former_student" ? "reactivate" : "new");
   const matchingOpportunity = options?.opportunities.find(o => o.course_id === draft.courseId && o.term_id === draft.termId && o.opportunity_type === enrollmentType);
   const reminderAllowed = mode === "contact" ? draft.outcome === "unreachable" || draft.outcome === "declined"
-    : mode === "invitation" ? Boolean(draft.invitation && invitationCanHaveNextContactReminder(draft.invitation)) : true;
+    : mode === "invitation" ? Boolean(!row.invitation?.assessmentSlotId && !options?.row.invitation?.assessmentSlotId && draft.invitation && invitationCanHaveNextContactReminder(draft.invitation)) : true;
+  const invitationT = useTranslations("school.invitations");
+  const publishedInvitation = row.invitation?.assessmentSlotId ? row.invitation
+    : options?.row.invitation?.assessmentSlotId ? options.row.invitation : null;
   const invitationValue = draft.invitation ?? emptyInvitationDraft("assessment_1v1");
   const businessLoaded = options !== null;
   const disabled = pending || !row.canWrite;
   const valid = mode === "note" ? Boolean(row.studentId && draft.note.trim())
     : mode === "contact" ? Boolean(row.canContact && draft.outcome)
-    : mode === "invitation" ? row.canContact && businessLoaded && draft.invitation !== null && invitationDraftIsComplete(invitationValue)
+    : mode === "invitation" ? !publishedInvitation && row.canContact && businessLoaded && draft.invitation !== null && invitationDraftIsComplete(invitationValue)
     : Boolean(row.studentId && businessLoaded && draft.courseId && draft.termId && matchingOpportunity?.stage !== "enrolled"
       && (draft.result !== "confirm" || canEnroll && draft.paymentEvidence.trim()));
   const save = async (advance: boolean) => {
@@ -176,9 +182,12 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
         : loadError ? <p className="text-sm text-muted">{m.loadFailed}<Button variant="ghost" size="sm" onClick={() => { setLoading(true); setRevision(v => v + 1); }}>{m.retry}</Button></p> : null : null}
       {mode === "invitation" && options ? <div className="space-y-3">
         {row.invitation ? <p className="text-xs text-muted">{m.activeInvitation}</p> : null}
-        <InvitationDraftFields value={invitationValue} activities={options.invitations.activities} assessors={options.invitations.assessors}
+        {publishedInvitation ? <div className="space-y-2 text-xs">
+          <p className="text-muted">{invitationT("publishedBookingFixed")}</p>
+          <Link href={`/dashboard/communication?lead=${encodeURIComponent(publishedInvitation.leadId)}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>{invitationT("managePublishedBooking")}</Link>
+        </div> : <InvitationDraftFields value={invitationValue} activities={options.invitations.activities} assessors={options.invitations.assessors}
           locale={locale} disabled={disabled} allowNone={false} showReminder={false} gradeHint={row.grade}
-          enableProgressShortcuts={false} onChange={invitation => change({ invitation })} />
+          enableProgressShortcuts={false} onChange={invitation => change({ invitation })} />}
       </div> : null}
       {mode === "enrollment" && options ? <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">

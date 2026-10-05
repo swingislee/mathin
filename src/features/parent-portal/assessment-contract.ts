@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type {
-  AssessmentCommand, ParentAssessmentOverview, ParentAssessmentRequest,
+  AssessmentAvailability, AssessmentCommand, ParentAssessmentOverview, ParentAssessmentRequest,
 } from "../../../contracts/parent-api/portal";
 
 const uuid = z.string().uuid().transform((value) => value.toLowerCase());
@@ -15,8 +15,17 @@ const uniqueOptions = (exact = false) => z.array(exact ? exactTimeOption : timeO
   .max(84).refine((values) => new Set(values).size === values.length);
 
 export const assessmentQuerySchema = z.object({ participant: uuid }).strict();
+const subjects = z.array(z.enum(["math", "english"])).min(1).max(2)
+  .refine(values => new Set(values).size === values.length);
+const grade = z.number().int().min(-1).max(12);
+export const assessmentSlotsQuerySchema = z.object({ participant: uuid,
+  subjects: z.string().transform(value => value.split(",")).pipe(subjects), grade: z.string().regex(/^(-1|[0-9]|1[0-2])$/).transform(Number).pipe(grade),
+}).strict();
 
 export const assessmentCommandSchema: z.ZodType<AssessmentCommand> = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("book"), id: uuid, participantId: uuid, slotId: uuid,
+    subjects, grade, mode: z.literal("campus"),
+  }).strict(),
   z.object({
     action: z.literal("request"), id: uuid, participantId: uuid, teacherId: uuid,
     parentTimeOptions: uniqueOptions().min(1),
@@ -29,12 +38,29 @@ export const assessmentCommandSchema: z.ZodType<AssessmentCommand> = z.discrimin
 
 // 输出逐字段解析，丢弃 RPC 未来可能附带的内部字段，保持跨端合同边界。
 const teacherSchema = z.object({ id: uuid, displayName: z.string() });
+const campusSchema = z.object({ id: uuid, name: z.string() });
+export const assessmentAvailabilitySchema: z.ZodType<AssessmentAvailability> = z.object({
+  participantId: uuid, timeZone: z.literal("Asia/Shanghai"), from: calendarDate, to: calendarDate,
+  teachers: z.array(teacherSchema).max(100), campuses: z.array(campusSchema).max(100),
+  slots: z.array(z.object({ id: uuid, teacherId: uuid, campusId: uuid,
+    startsAt: dateTime, endsAt: dateTime, available: z.boolean(),
+  })).max(2000),
+}).superRefine((value, context) => {
+  if (Date.parse(value.to) - Date.parse(value.from) !== 13 * 86400000
+    || value.slots.some(slot => Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)
+    || !value.teachers.some(teacher => teacher.id === slot.teacherId)
+    || !value.campuses.some(campus => campus.id === slot.campusId))
+    || new Set(value.slots.map(slot => slot.id)).size !== value.slots.length) {
+    context.addIssue({ code: "custom", message: "INVALID_ASSESSMENT_AVAILABILITY" });
+  }
+});
 export const assessmentRequestSchema: z.ZodType<ParentAssessmentRequest> = z.object({
   id: uuid, participantId: uuid, teacher: teacherSchema.nullable(),
   state: z.enum(["coordinating_time", "awaiting_teacher", "awaiting_parent", "confirmed", "completed", "cancelled"]),
   parentTimeOptions: uniqueOptions(), teacherTimeOptions: uniqueOptions(), sharedTimeOptions: uniqueOptions(true),
   proposedStartsAt: dateTime.nullable(), scheduledAt: dateTime.nullable(), updatedAt: dateTime,
   canConfirm: z.boolean(),
+  booking: z.object({ slotId: uuid, subjects, grade, mode: z.literal("campus"), campus: campusSchema, endsAt: dateTime }).nullable().optional(),
 }).superRefine((value, context) => {
   if (value.state !== "awaiting_parent" && value.proposedStartsAt !== null) {
     context.addIssue({ code: "custom", path: ["proposedStartsAt"], message: "INVALID_ASSESSMENT_PROJECTION" });
@@ -63,8 +89,7 @@ export const assessmentOverviewSchema: z.ZodType<ParentAssessmentOverview> = z.o
   if (value.requests.some((request) => request.participantId !== value.participantId)) {
     context.addIssue({ code: "custom", path: ["requests"], message: "INVALID_ASSESSMENT_PARTICIPANT" });
   }
-  if ((value.eligibility.canRequest && !value.teachers.length)
-    || new Set(value.teachers.map((teacher) => teacher.id)).size !== value.teachers.length
+  if (new Set(value.teachers.map((teacher) => teacher.id)).size !== value.teachers.length
     || new Set(value.requests.map((request) => request.id)).size !== value.requests.length) {
     context.addIssue({ code: "custom", message: "INVALID_ASSESSMENT_PROJECTION" });
   }

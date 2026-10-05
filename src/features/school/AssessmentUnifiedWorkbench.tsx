@@ -14,6 +14,8 @@ import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
@@ -45,6 +47,7 @@ import {
 } from "./assessment-workbench-contract";
 import {
   DashboardCommandFilters,
+  DashboardCommandActions,
   DashboardPage,
   DashboardTableColumnHeader,
   DashboardTableShell,
@@ -97,6 +100,7 @@ export function AssessmentUnifiedWorkbench({
   canAssess,
   canSupport,
   canManageAssessor,
+  canManageAvailability = canAssess || canManageAssessor,
   canQuickEntry = canAssess,
   initialQuery,
   initialRecordState = 'current',
@@ -110,6 +114,7 @@ export function AssessmentUnifiedWorkbench({
   canAssess: boolean;
   canSupport: boolean;
   canManageAssessor: boolean;
+  canManageAvailability?: boolean;
   canQuickEntry?: boolean;
   initialQuery?: string;
   initialRecordState?: StateFilter;
@@ -405,6 +410,11 @@ export function AssessmentUnifiedWorkbench({
               aria-label={t("searchPlaceholder")}
             />
           </DashboardCommandFilters>
+          {canManageAvailability ? <DashboardCommandActions>
+            <Link href="/dashboard/assessments/availability" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+              <CalendarClock className="size-4" aria-hidden />{hubT("availability")}
+            </Link>
+          </DashboardCommandActions> : null}
         </FollowupCommandPanel>
       )}
     >

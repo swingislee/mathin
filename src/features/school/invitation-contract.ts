@@ -62,6 +62,8 @@ export type InvitationWorkStep =
   | "closed";
 
 export interface InvitationDraft {
+  /** Published availability booking; its teacher, time and campus stay fixed. */
+  assessmentSlotId?: string | null;
   kind: InvitationKind;
   state: InvitationState;
   activityId: string | null;
@@ -213,6 +215,7 @@ export function applyDirectAssessmentTime(
   option: string,
   targetState: "awaiting_parent" | "confirmed" = "confirmed",
 ): InvitationDraft | null {
+  if (draft.assessmentSlotId) return null;
   const scheduledAt = assessmentTimeOptionToInstant(option);
   if (draft.kind !== "assessment_1v1" || !draft.assessorId || !scheduledAt) return null;
   return {
@@ -229,6 +232,7 @@ export function selectInvitationProgress(
   draft: InvitationDraft,
   state: InvitationState,
 ): InvitationDraft {
+  if (draft.assessmentSlotId) return draft;
   if (!invitationStatesForKind(draft.kind).includes(state)) return draft;
   if (draft.kind !== "assessment_1v1") {
     return {
@@ -263,6 +267,13 @@ export function selectInvitationProgress(
 }
 
 export function invitationDraftIsComplete(draft: InvitationDraft): boolean {
+  if (draft.assessmentSlotId) {
+    return draft.kind === "assessment_1v1"
+      && ["confirmed", "completed", "cancelled"].includes(draft.state)
+      && Boolean(draft.assessorId && draft.scheduledAt && Number.isFinite(Date.parse(draft.scheduledAt)))
+      && draft.activityId === null && draft.parentTimeOptions.length === 0 && draft.assessorTimeOptions.length === 0
+      && !draft.nextContactAt;
+  }
   if (draft.kind === "assessment_1v1") {
     if (draft.state === "coordinating_time") return true;
     if (!draft.assessorId || draft.parentTimeOptions.length === 0) return false;

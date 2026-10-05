@@ -23,6 +23,7 @@ interface InvitationDbRow {
   state: InvitationState;
   activity_id: string | null;
   assessor_id: string | null;
+  assessment_slot_id?: string | null;
   proposed_time_text: string;
   parent_time_options?: string[];
   assessor_time_options?: string[];
@@ -185,12 +186,12 @@ export async function listInvitationCoordination(
 ): Promise<InvitationCoordinationRow[]> {
   if (selection.leadIds?.length === 0) return [];
   const supabase = await createClient();
-  const readInvitations = (legacy: boolean) => {
+  const readInvitations = (legacy: boolean, includeSlots = true) => {
     const readPage = (leadIds: string[] | undefined, start: number, end: number) => {
       let query = supabase.from("lead_invitation_threads")
         .select(legacy
           ? "id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,location_text,summary,updated_at"
-          : "id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,summary,updated_at");
+          : `id,lead_id,kind,state,activity_id,assessor_id,proposed_time_text,parent_time_options,assessor_time_options,scheduled_at,location_text,summary,updated_at${includeSlots ? ",assessment_slot_id" : ""}`);
       if (leadIds) query = query.in("lead_id", leadIds);
       if (selection.assessorId) query = query.eq("assessor_id", selection.assessorId);
       if (filters.queue === "closed") query = query.in("state", ["completed", "cancelled"]);
@@ -207,6 +208,9 @@ export async function listInvitationCoordination(
       : readSchoolQueryPages((start, end) => readPage(undefined, start, end));
   };
   let invitationResult = await readInvitations(false);
+  if (invitationResult.error?.message?.includes("assessment_slot_id")) {
+    invitationResult = await readInvitations(false, false);
+  }
   if (invitationResult.error?.code === "PGRST204"
       || invitationResult.error?.code === "42703"
       || invitationResult.error?.message?.includes("parent_time_options")) {
@@ -300,6 +304,7 @@ export async function listInvitationCoordination(
       activityTitle: activity?.title ?? "",
       activityScheduledAt: activity?.scheduled_at ?? null,
       assessorId: invitation.assessor_id,
+      assessmentSlotId: invitation.assessment_slot_id ?? null,
       assessorName: invitation.assessor_id ? assessorById.get(invitation.assessor_id) ?? "" : "",
       legacyTimeText: invitation.proposed_time_text,
       parentTimeOptions: invitation.parent_time_options ?? [],
@@ -308,7 +313,7 @@ export async function listInvitationCoordination(
       locationText: invitation.location_text || activity?.location || "",
       summary: invitation.summary,
       updatedAt: invitation.updated_at,
-      nextContactAt: reminderByLead.get(lead.id) ?? null,
+      nextContactAt: invitation.assessment_slot_id ? null : reminderByLead.get(lead.id) ?? null,
       events: (eventsByInvitation.get(invitation.id) ?? []).map((event) => ({
         id: event.id,
         fromState: event.from_state,

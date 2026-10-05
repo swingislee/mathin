@@ -28,7 +28,8 @@
 | `GET /api/v1/parent/learning?participant=...` | 一个孩子的课表、考勤、学习摘要、请假进度、报告及当前账号通知 | 必须 |
 | `POST /api/v1/parent/learning` | `leave` 提交请假申请；`readNotification` 标记本人通知已读 | 必须 |
 | `GET /api/v1/parent/assessments?participant=...` | 一个孩子的 1 对 1 测评申请、资格和有限范围教师 | 必须 |
-| `POST /api/v1/parent/assessments` | `request` 提交测评意向；`confirm` 确认双方共同时间 | 必须 |
+| `GET /api/v1/parent/assessment-slots?participant=...&subjects=math,english&grade=3` | 按孩子、科目、年级读取未来两周已发布测评时段 | 必须 |
+| `POST /api/v1/parent/assessments` | `book` 预约发布时段；`request` / `confirm` 保留旧协调流程 | 必须 |
 | `POST /api/v1/parent/portal` | `intake` / `book` / `cancel` / `submit` | `intake` 免登录，其余必须 |
 | `POST /api/v1/parent/media` | multipart `file` 上传，附练习与参与人两个请求头 | 必须 |
 | `GET /api/v1/parent/media?id=...` | 获取 5 分钟有效的私有预览地址 | 必须 |
@@ -105,17 +106,23 @@
 
 ## 1 对 1 测评稳定合同
 
+2026-10-05 新增老师主动发布排班：`20261005000100_assessment_published_slots.sql`、`20261005000200_assessment_slot_closure.sql`、`20261005000300_assessment_slot_booking_status.sql` 已应用于本机隔离开发库，未部署生产。新增 `assessment_slots` 存发布安排，预约仍写入原有邀约。教职员入口是 `/zh/dashboard/assessments/availability`，`review.write` 老师自管，`followup.write` / `schedule.manage` 工作人员全管；已约历史的主体内容不可修改，关闭发布保留预约事实。
+
+`GET /api/v1/parent/assessment-slots` 必填 `participant`、逗号分隔的 `subjects`（`math`、`english`，可多选）和 `grade`（-1 幼中班、0 幼大班、1～12 年级）。`parent_assessment_availability` 以调用者身份验证孩子范围，返回上海日期今天至今天+13 的 `{ participantId, timeZone, from, to, teachers, campuses, slots }`。时段含 `{ id, teacherId, campusId, startsAt, endsAt, available }`，只展示主动发布并符合全部所选科目和年级的安排；`available=false` 表示占用，未发布时间不补造记录。发布老师可以不是孩子原任课教师，输出不含其他家长或预约信息。
+
+预约命令为 `{ action: "book", id, participantId, slotId, subjects, grade, mode: "campus" }`，调用 `book_parent_assessment_slot`。数据库锁定请求、学生及老师，核验发布状态、科目、年级、当前资格和时间占用后生成 `confirmed` 邀约，HTTP 返回 201。重试同 ID、同输入返回当前状态，包括已完成或已取消；变更输入或已占用返回 `CONFLICT`。结果的可选 `booking` 含时段、科目、年级、方式、校区及结束时间；旧协调记录可为 null 或省略。新预约可从既有邀约沟通明细完成或取消，取消后重新开放仍有效的发布时段。
+
 `/api/v1/parent/assessments` 的 HTTP 实现和 OpenAPI 已接入本节合同。GET 必填 `participant`；UUID 接受大小写输入并统一以小写传递和返回。POST 的 `request`（含同 ID 幂等恢复）返回 HTTP 201，`confirm` 返回 HTTP 200。代码交付不表示数据库 RPC 已安装或预约业务已可运行；数据库尚未升级时返回 `UNAVAILABLE`，目标环境升级按各自授权流程执行。
 
 2026-10-03 核对：`20261001000200_parent_assessment_requests.sql` 已完成本机事务／鉴权检查，并随[v0.3.0 发布生产](../../archive/2026-10-04/docs/evidence/r1/release-v030-20261002.md)。10 月 2 日已装载固定开发样例，一名孩子可新申请，另一名可查看教师回复并确认，实际 HTTP 与模拟器读取通过，见[开发集成记录](../../archive/2026-10-04/.ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md)。10 月 1 日 `NO_LINKED_LEAD` 是装载前样例的历史结果；用户后续操作以实际状态为准。完整申请→教师回复→家长确认仍待人工验收，生产接口检查不代替该业务闭环。
 
 独立测评复用已有 `lead_invitation_threads(kind=assessment_1v1)`，通过 `parent_assessment_overview`、`request_parent_assessment` 和 `confirm_parent_assessment` 读取和推进同一条邀约。HTTP 使用调用者的 Bearer Supabase client，数据库实时核验 `miniapp_can_participate(student, 'grades')`；学生 UUID 经现有 `leads.student_id` 对应业务线索。没有唯一可用线索时保留已有邀约读取和确认，新申请由 `eligibility` 说明限制。
 
-`ParentAssessmentOverview` 返回所选 `participantId`、固定时区 `Asia/Shanghai`、`eligibility`、`teachers` 和 `requests`。教师候选仅来自孩子当前有效报名班级的当前任课教师或负责人，并核验教师账号有效及 `review.write` 权限；字段只有 `id` 和 `displayName`。教师按名称、ID 排序，邀约按更新时间、ID 倒序，各最多 100 条。已有邀约的教师随该条邀约返回。没有可证明的候选范围时 `teachers=[]`，`eligibility.reason=NO_ELIGIBLE_TEACHER`；不将全校员工清单作为家长选项。
+`ParentAssessmentOverview` 返回所选 `participantId`、固定时区 `Asia/Shanghai`、`eligibility`、`teachers` 和 `requests`。其中 `teachers` 保留旧协调入口的当前任课教师或负责人，核验账号及 `review.write`；字段只有 `id`、`displayName`，按名称、ID 排序，邀约按更新时间、ID 倒序，各最多 100 条。主动发布老师由独立 `assessment-slots` 接口返回，因此概览允许 `canRequest=true` 且旧 `teachers=[]`。已有邀约的老师随该条记录返回。
 
 `eligibility.canRequest` 为 `true` 时 `reason=null`；否则 `reason` 为 `NO_LINKED_LEAD`、`AMBIGUOUS_LINKED_LEAD`、`LEAD_UNAVAILABLE`、`ACTIVE_INVITATION` 或 `NO_ELIGIBLE_TEACHER`。空数组表示授权查询的真实结果；查询失败返回错误，不降级为空列表。
 
-时间意向 token 使用 `YYYY-MM-DD@时段`，有效时段为 `09:50`、`10:00`、`14:00`、`16:00`、`17:00`、`17:30`、`19:20`、`after_school`。每组最多 84 项并保持唯一。它们表示该邀约双方的协调意向，没有全局教师库存、占位或避免教师跨邀约时间冲突的承诺。`parentTimeOptions` 和 `teacherTimeOptions` 保留双方原有候选；`sharedTimeOptions` 只返回双方交集中未来可确认的精确时段，排序去重，排除 `after_school` 和过期项。
+旧协调流程的时间意向 token 使用 `YYYY-MM-DD@时段`，有效时段为 `09:50`、`10:00`、`14:00`、`16:00`、`17:00`、`17:30`、`19:20`、`after_school`，每组最多 84 项且唯一。`parentTimeOptions` 和 `teacherTimeOptions` 保留双方候选；`sharedTimeOptions` 只返回双方交集中未来可确认的精确时段，排除 `after_school` 和过期项。新发布时段预约的这些数组为空，以 `booking` 和 `scheduledAt` 表示实际安排；数据库也阻止旧协调预约与已约发布时段重叠。
 
 `coordinating_time`、`awaiting_teacher` 和 `awaiting_parent` 都表示待确认；其 `scheduledAt=null`。`proposedStartsAt` 仅在 `awaiting_parent` 表示已提出的预约时刻，允许为 `null`。`scheduledAt` 仅在 `confirmed` / `completed` 表示实际预约时刻；它不是确认操作发生时间。`cancelled` 的两项时间均为 `null`。`canConfirm` 只在等待家长、线索和教师仍有效且存在未来精确交集时为 `true`，最终写入仍重新核验这些事实。
 

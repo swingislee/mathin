@@ -187,10 +187,19 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/assessments",
     kind: "queue",
     environments: STAFF_ONLY,
-    permissionAny: ["review.write", "followup.view"],
+    permissionAny: ["review.write", "followup.view", "followup.write", "schedule.manage"],
     // 已确认的 1 对 1 邀约自动进入这里；首次录入才物化到访事实，不要求提前建 Student。
     createSurface: "derived",
     nav: { labelKey: "assessments", group: "subjectOperations" },
+  },
+  assessmentAvailability: {
+    href: "/dashboard/assessments/availability",
+    kind: "workflow",
+    environments: STAFF_ONLY,
+    permissionAny: ["review.write", "followup.write", "schedule.manage"],
+    createSurface: "page",
+    createHref: "/dashboard/assessments/availability",
+    parent: "assessments",
   },
   assessmentDetail: {
     hrefPattern: "/dashboard/assessments/[registrationId]",

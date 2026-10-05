@@ -22,6 +22,7 @@ const timeOptions = z.array(z.string().refine(isAssessmentTimeOption))
 
 const updateInvitationSchema = z.object({
   invitationId: uuid,
+  assessmentSlotId: uuid.nullable().optional(),
   kind: z.enum(INVITATION_KINDS),
   state: z.enum(INVITATION_STATES),
   activityId: uuid.nullable(),
@@ -34,6 +35,9 @@ const updateInvitationSchema = z.object({
   channel: z.enum(INVITATION_CHANNELS),
   note: text(2000),
 }).superRefine((value, context) => {
+  if (value.assessmentSlotId && (!["completed", "cancelled"].includes(value.state) || !invitationDraftIsComplete(value))) {
+    context.addIssue({ code: "custom", message: "SLOT_BOOKING_IMMUTABLE" });
+  }
   const activeState = !["completed", "cancelled"].includes(value.state);
   if ((activeState && !invitationStatesForKind(value.kind).includes(value.state))
       || (activeState && !invitationDraftIsComplete(value))) {
@@ -93,6 +97,7 @@ export async function updateLeadInvitationAction(
   } catch (error) {
     return actionError(error, [
       "INVALID_INVITATION",
+      "SLOT_BOOKING_IMMUTABLE",
       "ACTIVITY_NOT_FOUND",
       "ASSESSOR_UNAVAILABLE",
       "INVITATION_CLOSED",
