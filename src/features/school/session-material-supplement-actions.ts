@@ -13,7 +13,7 @@ export async function supplementSessionMaterialAction(input: MaterialSupplementI
     const { supabase } = await authorizedClient("class.manage");
     const client = supabase as unknown as { rpc: MaterialSupplementRpc };
     const { data, error } = await client.rpc("supplement_session_preparation_artifact", {
-      p_session_id: value.sessionId, p_kind: value.kind, p_files: value.files, p_notes: value.notes, p_video_url: value.videoUrl,
+      p_session_id: value.sessionId, p_kind: value.kind, p_files: value.files, p_notes: value.notes, p_video_url: value.videoUrl, p_completed_at: value.completedAt,
     });
     if (error) throw new Error(error.message);
     const result = materialSupplementResultSchema.parse(data);
@@ -21,6 +21,6 @@ export async function supplementSessionMaterialAction(input: MaterialSupplementI
     revalidatePath("/[locale]/dashboard/sessions/[sessionId]", "page");
     return { ok: true, data: result };
   } catch (error) {
-    return actionError(error, ["UNAUTHENTICATED", "FORBIDDEN", "SESSION_NOT_FOUND", "VALIDATION", "FILES_LIMIT", "NOTES_LIMIT", "MATERIAL_CONFLICT", "REVIEWER_NOT_AVAILABLE"]);
+    return actionError(error, ["UNAUTHENTICATED", "FORBIDDEN", "SESSION_NOT_FOUND", "VALIDATION", "FILES_LIMIT", "NOTES_LIMIT", "MATERIAL_CONFLICT", "REVIEWER_NOT_AVAILABLE", "COMPLETION_TIME_INVALID"]);
   }
 }

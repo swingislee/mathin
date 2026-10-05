@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const deps = vi.hoisted(() => ({ rpc: vi.fn(), sign: vi.fn(), admin: vi.fn(), pages: vi.fn(), assets: vi.fn(), h5: vi.fn(), template: vi.fn() }));
+const deps = vi.hoisted(() => ({ rpc: vi.fn(), reviews: vi.fn(), sign: vi.fn(), admin: vi.fn(), pages: vi.fn(), assets: vi.fn(), h5: vi.fn(), template: vi.fn() }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: deps.rpc, storage: { from: () => ({ createSignedUrls: deps.sign }) } }) }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: deps.rpc,
+  from: () => ({ select: () => ({ eq: deps.reviews }) }), storage: { from: () => ({ createSignedUrls: deps.sign }) } }) }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: deps.admin }));
 vi.mock("@/features/classroom/courseware/session-assets", () => ({ getSessionPageDocs: deps.pages, getSessionAssetUrls: deps.assets, getSessionH5BindingUrls: deps.h5 }));
 vi.mock("@/features/school/courses", () => ({ getSessionCoursewareTemplate: deps.template }));
@@ -19,12 +20,16 @@ describe("教学材料按权限与选择读取", () => {
   it("权限失败时不请求 Storage 和课件内容", async () => {
     deps.rpc.mockResolvedValue({ error: { message: "FORBIDDEN" } });
     await expect(getSessionMaterials({ ...base, kind: "lesson_plan" })).rejects.toThrow("FORBIDDEN");
-    expect(deps.sign).not.toHaveBeenCalled(); expect(deps.pages).not.toHaveBeenCalled(); expect(deps.admin).not.toHaveBeenCalled();
+    expect(deps.sign).not.toHaveBeenCalled(); expect(deps.pages).not.toHaveBeenCalled(); expect(deps.admin).not.toHaveBeenCalled(); expect(deps.reviews).not.toHaveBeenCalled();
   });
   it("摘要不请求正文或签名", async () => {
     const summary = { kind: "summary", title: "Test", classroomName: "Test class", scheduledAt: null, lessonPlanCount: 0, solutionCount: 0, hasSolutionNotes: false, hasVideo: false };
     deps.rpc.mockResolvedValue({ data: summary });
-    expect(await getSessionMaterials({ ...base, kind: "summary" })).toEqual(summary);
+    deps.reviews.mockResolvedValue({ data: [{ artifact_kind: "solution", completed_at: "2026-09-20T00:00:00Z", submitted_at: "2026-10-05T00:00:00Z" }] });
+    expect(await getSessionMaterials({ ...base, kind: "summary" })).toEqual({ ...summary, canSupplement: false,
+      completionTimes: [{ kind: "solution", completedAt: "2026-09-20T00:00:00Z", submittedAt: "2026-10-05T00:00:00Z" }],
+    });
+    expect(deps.reviews).toHaveBeenCalledWith("session_id", sessionId);
     expect(deps.sign).not.toHaveBeenCalled(); expect(deps.pages).not.toHaveBeenCalled(); expect(deps.template).not.toHaveBeenCalled();
   });
   it("签名只发送当前课次对应类型的去重附件", async () => {

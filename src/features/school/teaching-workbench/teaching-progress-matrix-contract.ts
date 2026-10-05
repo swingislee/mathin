@@ -38,7 +38,7 @@ export const TEACHING_PROGRESS_BLOCK_TONES: Record<TeachingProgressState, string
   unavailable: "border-dashed border-line bg-card text-muted",
 };
 
-/** 迟交由本次完成时间决定；按时提交后的审核等待不会变成逾期。 */
+/** 迟交由本次完成时间决定；按时完成后的审核等待不会变成逾期。 */
 export function timedTeachingProgress(progress: TeachingProgress, { dueAt = null, completedAt = null, now }: {
   dueAt?: string | null; completedAt?: string | null; now: number;
 }): TeachingProgress {

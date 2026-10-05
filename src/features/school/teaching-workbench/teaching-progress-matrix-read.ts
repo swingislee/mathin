@@ -53,7 +53,7 @@ export async function getTeachingProgressMatrix({ userId, canViewTeam, canReadCo
   const ids = sessions.map(row => row.id);
   const [reviews, plans, facts, substitutes] = await Promise.all([
     readSchoolQueryBatches(ids, (batch, start, end) => client.from("session_preparation_reviews")
-      .select("session_id,artifact_kind,status,submitted_at,reviewed_at").in("session_id", batch).order("session_id").order("artifact_kind").range(start, end)),
+      .select("session_id,artifact_kind,status,submitted_at,completed_at,reviewed_at").in("session_id", batch).order("session_id").order("artifact_kind").range(start, end)),
     readSchoolQueryBatches(ids, (batch, start, end) => client.from("lesson_plans")
       .select("session_id,content,status,updated_at").in("session_id", batch).order("session_id").range(start, end)),
     readSchoolQueryBatches(ids, async batch => {
@@ -93,7 +93,7 @@ export async function getTeachingProgressMatrix({ userId, canViewTeam, canReadCo
         const review = reviewMap.get(session.id)?.find(row => row.artifact_kind === kind);
         if (reviews.error || (kind === "lesson_plan" && !review && plans.error)) return unavailable();
         return timedTeachingProgress(artifactProgress(review?.status ?? (kind === "lesson_plan" ? plan?.status : undefined)), {
-          dueAt: preparationDeadline, completedAt: review?.submitted_at, now,
+          dueAt: preparationDeadline, completedAt: review?.completed_at ?? review?.submitted_at, now,
         });
       };
       const task = (kind: string) => !fact ? unavailable() : postwork(completionProgress(fact.tasks.find(row => row.kind === kind)?.status), kind);

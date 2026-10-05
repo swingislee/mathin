@@ -66,6 +66,8 @@ export function SessionMaterialsReader({ sessionId, classroomId, locale, timeZon
     if (kind === "solution") return summary.solutionCount ? m.available : summary.hasSolutionNotes ? m.savedNotes : m.empty;
     return summary.hasVideo ? m.available : m.empty;
   };
+  const completion = summary?.completionTimes.find(record => record.kind === active);
+  const formatTime = (value: string) => new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
   return <section className="min-w-0" aria-label={m.title} data-session-materials>
     <DashboardCommandPanel className="min-h-10 py-1">
       <DashboardCommandState>
@@ -79,7 +81,7 @@ export function SessionMaterialsReader({ sessionId, classroomId, locale, timeZon
       </DashboardCommandState>
       {summary?.canSupplement && <DashboardCommandActions><Button size="sm" variant="secondary" aria-expanded={supplementOpen} disabled={supplementOpen} onClick={() => setSupplementOpen(true)}><Upload size={14} />{supplementM.open}</Button></DashboardCommandActions>}
     </DashboardCommandPanel>
-    {supplementOpen && <Supplement sessionId={sessionId} locale={locale} onDirtyChange={onDirtyChange} onClose={() => setSupplementOpen(false)} onSaved={() => {
+    {supplementOpen && <Supplement sessionId={sessionId} locale={locale} timeZone={timeZone} onDirtyChange={onDirtyChange} onClose={() => setSupplementOpen(false)} onSaved={() => {
       loaded.current.clear(); setContents({}); setError(null); setAttempt(value => value + 1); router.refresh();
     }} />}
     {error && <p role="alert" className="flex items-center gap-2 py-2 text-xs text-muted">{m[error]}<Button size="sm" variant="ghost" onClick={retry}>{m.retry}</Button></p>}
@@ -92,6 +94,10 @@ export function SessionMaterialsReader({ sessionId, classroomId, locale, timeZon
         ].filter(Boolean).join(" · ")}</span></p>
         <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={retry}><RefreshCw size={13} />{m.refresh}</Button><Button size="sm" variant="ghost" onClick={() => choose(null)} aria-label={m.close}><X size={14} /></Button></div>
       </div>
+      {completion?.completedAt && <p className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+        <span>{m.completedAt} <time dateTime={completion.completedAt}>{formatTime(completion.completedAt)}</time></span>
+        <span>{m.submittedAt} <time dateTime={completion.submittedAt}>{formatTime(completion.submittedAt)}</time></span>
+      </p>}
       {active && !contents[active] && !error && <p role="status" className="py-6 text-xs text-muted">{m.loading}</p>}
       {MATERIAL_KINDS.filter(kind => contents[kind]).map(kind => <div key={kind} id={`materials-${sessionId}-${kind}`} ref={element => { panels.current[kind] = element; }} hidden={active !== kind} className="max-h-[70dvh] overflow-y-auto overscroll-contain pr-2">
         <Content content={contents[kind]!} locale={locale} timeZone={timeZone} sessionId={sessionId} onRetry={retry} />

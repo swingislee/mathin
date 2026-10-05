@@ -45,8 +45,13 @@ export async function getSessionMaterials(input: z.infer<typeof materialQuerySch
   if (error) throw new Error(error.message === "FORBIDDEN" ? "FORBIDDEN" : "MATERIALS_UNAVAILABLE");
   if (input.kind === "summary") {
     const supplementClient = client as unknown as { rpc: MaterialSupplementRpc };
-    const capability = await supplementClient.rpc("can_supplement_session_materials", { p_session_id: input.sessionId });
-    return { ...materialSummarySchema.parse(data), canSupplement: !capability.error && capability.data === true };
+    const [capability, reviews] = await Promise.all([
+      supplementClient.rpc("can_supplement_session_materials", { p_session_id: input.sessionId }),
+      client.from("session_preparation_reviews").select("artifact_kind,completed_at,submitted_at").eq("session_id", input.sessionId),
+    ]);
+    return materialSummarySchema.parse({ ...materialSummarySchema.parse(data), canSupplement: !capability.error && capability.data === true,
+      completionTimes: (reviews.data ?? []).map(review => ({ kind: review.artifact_kind, completedAt: review.completed_at, submittedAt: review.submitted_at })),
+    });
   }
   if (input.kind === "lesson_plan") {
     const result = materialPlanSchema.parse(data);

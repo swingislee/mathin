@@ -60,6 +60,18 @@ beforeEach(() => {
 });
 
 describe("teaching matrix reads", () => {
+  it("uses manager-recorded completion for lateness while old records keep submission timing", async () => {
+    tables.session_preparation_reviews[0].submitted_at = "2026-10-05T00:00:00Z";
+    tables.session_preparation_reviews[0].completed_at = "2026-09-23T00:00:00Z";
+    tables.session_preparation_reviews[1].submitted_at = "2026-10-05T00:00:00Z";
+    const result = await getTeachingProgressMatrix(options);
+    const lesson = result.sessions.find(row => row.id === "s1")!;
+    expect(lesson.progress.solution).toMatchObject({ state: "archived", completedAt: "2026-09-23T00:00:00Z" });
+    expect(lesson.progress.lesson_plan).toMatchObject({ state: "overdue_review", completedAt: "2026-10-05T00:00:00Z" });
+    tables.session_preparation_reviews[0].completed_at = "2026-09-25T00:00:00Z";
+    expect((await getTeachingProgressMatrix(options)).sessions.find(row => row.id === "s1")!.progress.solution.state).toBe("overdue_archived");
+  });
+
   it("keeps all teachers and empty classes in one matrix, excludes cancelled sessions and preserves source statuses", async () => {
     const data = await getTeachingProgressMatrix(options);
     expect(data.classrooms.map(row => row.id)).toEqual(["a", "b", "c"]);
