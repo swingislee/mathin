@@ -14843,9 +14843,9 @@ export type Database = {
         ]
       }
       staff_calendar_settings: {
-        Row: { organization_id: string; school_windows: Json; singleton_key: number; updated_at: string; updated_by: string | null }
-        Insert: { organization_id: string; school_windows?: Json; singleton_key?: number; updated_at?: string; updated_by?: string | null }
-        Update: { organization_id?: string; school_windows?: Json; singleton_key?: number; updated_at?: string; updated_by?: string | null }
+        Row: { organization_id: string; school_windows: Json; available_windows: Json; singleton_key: number; updated_at: string; updated_by: string | null }
+        Insert: { organization_id: string; school_windows?: Json; available_windows?: Json; singleton_key?: number; updated_at?: string; updated_by?: string | null }
+        Update: { organization_id?: string; school_windows?: Json; available_windows?: Json; singleton_key?: number; updated_at?: string; updated_by?: string | null }
         Relationships: [
           { foreignKeyName: "staff_calendar_settings_organization_id_fkey"; columns: ["organization_id"]; referencedRelation: "organizations"; referencedColumns: ["id"] },
           { foreignKeyName: "staff_calendar_settings_updated_by_fkey"; columns: ["updated_by"]; referencedRelation: "profiles"; referencedColumns: ["id"] },
@@ -28856,6 +28856,14 @@ export type Database = {
       }
       save_calendar_school_windows: {
         Args: { p_school_windows: Json; p_expected_updated_at?: string }
+        Returns: Json
+      }
+      save_calendar_scheduling_settings: {
+        Args: { p_school_windows: Json; p_available_windows: Json; p_expected_updated_at?: string }
+        Returns: Json
+      }
+      get_calendar_series: {
+        Args: { p_series_id: string }
         Returns: Json
       }
       save_assessment_slot_series: {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type PointerEvent } from "react";
-import { ChevronLeft, ChevronRight, Flag, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag, Repeat2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,12 +55,13 @@ interface CalendarResize {
   startsAt: string; endsAt: string; moved: boolean;
 }
 
-export function CalendarCanvas({ anchor, view, items, backgroundItems = items, locale, timeZone, now, loading, schoolWindows = [], teachingCalendar = [], campusId = null, onOpen, onCreate, onCreateMilestone, onResize, onSelectDay }: {
+export function CalendarCanvas({ anchor, view, items, backgroundItems = items, draft = null, locale, timeZone, now, loading, schoolWindows = [], availableWindows = [], teachingCalendar = [], campusId = null, onOpen, onCreate, onCreateMilestone, onResize, onSelectDay }: {
   anchor: string; view: CalendarView; items: CalendarItem[]; locale: string; timeZone: string; now: number; loading?: boolean;
-  schoolWindows?: readonly CalendarSchoolWindow[]; teachingCalendar?: readonly TeachingCalendarEntryV2[]; campusId?: string | null;
+  schoolWindows?: readonly CalendarSchoolWindow[]; availableWindows?: readonly CalendarSchoolWindow[]; teachingCalendar?: readonly TeachingCalendarEntryV2[]; campusId?: string | null;
   backgroundItems?: CalendarItem[];
-  onOpen: (item: CalendarItem) => void; onCreate?: (start: Date) => void; onSelectDay: (day: string) => void;
-  onCreateMilestone?: (start: Date) => void; onResize?: (item: CalendarItem, startsAt: string, endsAt: string) => Promise<void>;
+  draft?: CalendarItem | null;
+  onOpen: (item: CalendarItem) => void; onCreate?: (start: Date, target: HTMLElement) => void; onSelectDay: (day: string) => void;
+  onCreateMilestone?: (start: Date, target: HTMLElement) => void; onResize?: (item: CalendarItem, startsAt: string, endsAt: string) => Promise<void>;
 }) {
   const t = useTranslations("school.calendar");
   const [clock, setClock] = useState(now);
@@ -77,18 +78,19 @@ export function CalendarCanvas({ anchor, view, items, backgroundItems = items, l
   const previewItems = resize ? items.map(item => item.id === resize.item.id ? { ...item, startsAt: resize.startsAt, endsAt: resize.endsAt } : item) : items;
   const timedItems = previewItems.filter(item => item.kind !== "strategy" && item.kind !== "milestone");
   const laidOutDays = days.map(day => layoutCalendarDay(timedItems, day, timeZone));
-  const placements = laidOutDays.flat();
+  const draftDays = days.map(day => layoutCalendarDay(draft ? [draft] : [], day, timeZone));
+  const placements = [...laidOutDays.flat(), ...draftDays.flat().filter(value => value.item.kind !== "strategy")];
   const flagMinutes = items.filter(item => item.kind === "milestone").map(item => {
     const parts = zonedDateParts(new Date(item.startsAt), timeZone);
     return parts.hour * 60 + parts.minute;
   });
-  const periods = days.flatMap(day => calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems).periods);
+  const periods = days.flatMap(day => calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems, availableWindows).periods);
   const firstHour = Math.max(0, Math.min(8, ...placements.map(item => Math.floor(item.fromMinute / 60)), ...flagMinutes.map(minute => Math.floor(minute / 60)), ...periods.map(period => Math.floor(period.from / 60))));
   const lastHour = Math.min(24, Math.max(21, ...placements.map(item => Math.ceil(item.toMinute / 60)), ...flagMinutes.map(minute => Math.ceil((minute + 30) / 60)), ...periods.map(period => Math.ceil(period.to / 60))));
   const hourPixels = 72;
   const height = (lastHour - firstHour) * hourPixels;
   const steps = (lastHour - firstHour) * 2;
-  const titleFor = (item: CalendarItem) => [item.title, `${time.format(new Date(item.startsAt))}–${time.format(new Date(item.endsAt))}`, item.subtitle, item.detail, item.state].filter(Boolean).join(" · ");
+  const titleFor = (item: CalendarItem) => [item.title, item.seriesId ? t("repeatingEvent") : "", `${time.format(new Date(item.startsAt))}–${time.format(new Date(item.endsAt))}`, item.subtitle, item.detail, item.state].filter(Boolean).join(" · ");
 
   function beginResize(event: PointerEvent<HTMLButtonElement>, item: CalendarItem, day: string, edge: "start" | "end", fromMinute: number, toMinute: number) {
     if (loading || resize || resizeSaving || !onResize || !item.canResize) return;
@@ -127,32 +129,32 @@ export function CalendarCanvas({ anchor, view, items, backgroundItems = items, l
   function cancelResize() { if (!resizeSaving) setResize(null); }
 
   if (view === "year") return <CalendarYearView anchor={anchor} items={items} locale={locale} timeZone={timeZone} today={today} loading={loading}
-    backgroundItems={backgroundItems} campusId={campusId} schoolWindows={schoolWindows} teachingCalendar={teachingCalendar} onOpen={onOpen} onCreate={onCreate} onCreateMilestone={onCreateMilestone} onSelectDay={onSelectDay} />;
+    backgroundItems={backgroundItems} draft={draft} campusId={campusId} schoolWindows={schoolWindows} availableWindows={availableWindows} teachingCalendar={teachingCalendar} onOpen={onOpen} onCreate={onCreate} onCreateMilestone={onCreateMilestone} onSelectDay={onSelectDay} />;
 
   if (view === "month") return <div className="min-h-0 flex-1 overflow-auto" aria-busy={loading}>
     <div className="grid min-h-full min-w-[680px] grid-cols-7" style={{ gridTemplateRows: "36px repeat(6, minmax(104px, 1fr))" }}>
-      {days.slice(0, 7).map(day => <div key={day.toISOString()} className="sticky top-0 z-10 border-b border-line bg-paper py-2 text-center text-xs text-muted">{weekday.format(day)}</div>)}
+      {days.slice(0, 7).map(day => <div key={day.toISOString()} className="sticky top-0 z-10 border-b border-slate-200 bg-white py-2 text-center text-xs text-slate-500">{weekday.format(day)}</div>)}
       {days.map(day => {
         const key = calendarDayKey(day, timeZone);
         const parts = zonedDateParts(day, timeZone);
         const entries = calendarItemsForDay(items, day, timeZone);
-        const context = calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems);
-        return <div key={key} className={cn("min-w-0 border-b border-r border-line p-1.5", context.closed ? "bg-line/35" : context.periods.length ? "bg-moon/10" : "bg-leaf/5", parts.month !== month && "opacity-60")}>
-          <div className="mb-1 flex items-center justify-between">
+        const context = calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems, availableWindows);
+        return <div key={key} className={cn("relative min-w-0 border-b border-r border-slate-200 p-1.5", context.closed ? "bg-slate-50" : "bg-white", parts.month !== month && "text-slate-400")}>
+          {onCreate ? <button type="button" className="absolute inset-0 hover:bg-blue-50/40 focus-visible:bg-blue-50" disabled={loading} aria-label={`${dateLabel.format(day)} ${t("create")}`}
+            onClick={event => onCreate(dateTimeInputToInstant(`${key}T09:00`, timeZone)!, event.currentTarget)} /> : null}
+          <div className="pointer-events-none relative mb-1 flex items-center justify-between">
             <button type="button" aria-label={dateLabel.format(day)} onClick={() => onSelectDay(key)}
-              className={cn("flex size-7 items-center justify-center rounded-full text-sm hover:bg-moon/50", key === today && "bg-rose text-white")}>{parts.day}</button>
-            <div className="flex">{onCreateMilestone ? <button type="button" disabled={loading} className="flex size-6 items-center justify-center rounded text-rose/70 hover:bg-cheek/30" aria-label={`${dateLabel.format(day)} ${t("kind_milestone")}`} onClick={() => onCreateMilestone(calendarAnchor(key, timeZone))}><Flag className="size-3" /></button> : null}
-              {onCreate ? <button type="button" disabled={loading} className="flex size-6 items-center justify-center rounded text-muted hover:bg-moon/40" aria-label={`${dateLabel.format(day)} ${t("create")}`}
-                onClick={() => onCreate(dateTimeInputToInstant(`${key}T09:00`, timeZone)!)}><Plus className="size-3.5" /></button> : null}</div>
+              className={cn("pointer-events-auto flex size-7 items-center justify-center rounded-full text-sm hover:bg-blue-100", key === today && "bg-blue-600 text-white")}>{parts.day}</button>
           </div>
-          {context.notices.length ? <p className="mb-1 truncate px-1 text-[10px] text-muted" title={context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}>{context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}</p> : null}
+          {context.notices.length ? <p className="mb-1 truncate px-1 text-[10px] text-slate-500" title={context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}>{context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}</p> : null}
           {entries.slice(0, 3).map(item => <button key={item.id} type="button" title={titleFor(item)} onClick={() => onOpen(item)}
-            className={cn("mb-1 flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:brightness-95", CALENDAR_TONES[item.kind].block,
+            className={cn("relative mb-1 flex w-full min-w-0 items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:brightness-95", CALENDAR_TONES[item.kind].block,
               item.muted && "opacity-50", item.pending && "border border-dashed")}>
-            {item.kind === "milestone" ? <Flag className="size-3 shrink-0 fill-rose text-rose" /> : <span className={cn("size-1.5 shrink-0 rounded-full", CALENDAR_TONES[item.kind].dot)} />}
+            {item.kind === "milestone" ? <Flag className="size-3 shrink-0" /> : item.seriesId ? <Repeat2 className="size-3 shrink-0" /> : null}
             <span className="truncate">{item.kind !== "strategy" && item.kind !== "milestone" ? time.format(new Date(item.startsAt)) : ""} {item.title}</span>
           </button>)}
-          {entries.length > 3 ? <button type="button" className="px-1 text-xs text-muted hover:underline" onClick={() => onSelectDay(key)}>{t("moreEvents", { count: entries.length - 3 })}</button> : null}
+          {draft && calendarItemsForDay([draft], day, timeZone).length ? <div className="pointer-events-none relative mb-1 truncate rounded border border-blue-500 bg-blue-100 px-1 py-1 text-xs text-blue-700">{draft.title || t("quickTitle")} · {time.format(new Date(draft.startsAt))}</div> : null}
+          {entries.length > 3 ? <button type="button" className="relative px-1 text-xs text-slate-500 hover:underline" onClick={() => onSelectDay(key)}>{t("moreEvents", { count: entries.length - 3 })}</button> : null}
         </div>;
       })}
     </div>
@@ -161,48 +163,47 @@ export function CalendarCanvas({ anchor, view, items, backgroundItems = items, l
   return <div className="relative min-h-0 flex-1 overflow-auto overscroll-contain" aria-busy={loading}>
     <div className={cn("relative grid", view === "week" ? "min-w-[770px]" : "min-w-[280px]")}
       style={{ gridTemplateColumns: `56px repeat(${days.length}, minmax(0, 1fr))` }}>
-      <div className="sticky top-0 z-20 flex items-end justify-center border-b border-line bg-paper pb-2 text-[10px] text-muted">{t("time")}</div>
+      <div className="sticky top-0 z-20 flex items-end justify-center border-b border-slate-200 bg-white pb-2 text-[10px] text-slate-500">{t("time")}</div>
       {days.map(day => {
         const key = calendarDayKey(day, timeZone);
-        return <div key={key} className="sticky top-0 z-20 relative h-[66px] border-b border-l border-line bg-paper">
+        return <div key={key} className="sticky top-0 z-20 relative h-[66px] border-b border-l border-slate-200 bg-white">
           <button type="button" onClick={() => onSelectDay(key)} aria-label={dateLabel.format(day)}
-            className={cn("flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-muted", key === today && "text-rose")}>
-            <span>{weekday.format(day)}</span><span className={cn("flex size-7 items-center justify-center rounded-full text-base font-medium text-ink", key === today && "bg-rose text-white")}>{zonedDateParts(day, timeZone).day}</span>
+            className={cn("flex h-full w-full flex-col items-center justify-center gap-1 text-xs text-slate-500", key === today && "text-blue-600")}>
+            <span>{weekday.format(day)}</span><span className={cn("flex size-7 items-center justify-center rounded-full text-base font-medium text-slate-900", key === today && "bg-blue-600 text-white")}>{zonedDateParts(day, timeZone).day}</span>
           </button>
-          {onCreateMilestone ? <button type="button" disabled={loading} className="absolute right-0.5 top-0.5 flex size-6 items-center justify-center text-rose/70 hover:bg-cheek/30" aria-label={`${dateLabel.format(day)} ${t("kind_milestone")}`} onClick={() => onCreateMilestone(calendarAnchor(key, timeZone))}><Flag className="size-3" /></button> : null}
         </div>;
       })}
-      <div className="border-b border-line py-2 text-center text-[10px] text-muted">{t("allDay")}</div>
+      <div className="border-b border-slate-200 py-2 text-center text-[10px] text-slate-500">{t("allDay")}</div>
       {days.map(day => {
         const key = calendarDayKey(day, timeZone);
-        const context = calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems);
+        const context = calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems, availableWindows);
         const plans = calendarItemsForDay(items.filter(item => item.kind === "strategy"), day, timeZone);
-        return <div key={key} className={cn("min-h-8 min-w-0 border-b border-l border-line px-1 py-1", context.closed && "bg-line/35")}>
-          {context.notices.length ? <p className="truncate text-[10px] text-muted" title={context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}>{context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}</p> : null}
+        return <div key={key} className={cn("min-h-8 min-w-0 border-b border-l border-slate-200 px-1 py-1", context.closed && "bg-slate-100")}>
+          {context.notices.length ? <p className="truncate text-[10px] text-slate-500" title={context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}>{context.notices.map(entry => [entry.campusName, entry.name].filter(Boolean).join(" · ")).join(" / ")}</p> : null}
           {plans.slice(0, 2).map(item => <button type="button" key={item.id} className={cn("mb-0.5 w-full truncate rounded px-1 py-0.5 text-left text-[10px]", CALENDAR_TONES.strategy.block, item.muted && "opacity-50")} onClick={() => onOpen(item)} title={item.title}>{item.title}</button>)}
-          {plans.length > 2 ? <button type="button" className="text-[10px] text-muted" onClick={() => onSelectDay(key)}>{t("moreEvents", { count: plans.length - 2 })}</button> : null}
+          {plans.length > 2 ? <button type="button" className="text-[10px] text-slate-500" onClick={() => onSelectDay(key)}>{t("moreEvents", { count: plans.length - 2 })}</button> : null}
+          {draft?.kind === "strategy" && calendarItemsForDay([draft], day, timeZone).length ? <div className="truncate rounded border border-blue-500 bg-blue-100 px-1 py-0.5 text-xs text-blue-700">{draft.title || t("quickTitle")}</div> : null}
         </div>;
       })}
       <div className="relative" style={{ height }}>
-        {Array.from({ length: lastHour - firstHour }, (_, index) => <div key={index} className="absolute inset-x-0 pr-2 text-right text-[11px] text-muted" style={{ top: index * hourPixels + 3 }}>
+        {Array.from({ length: lastHour - firstHour }, (_, index) => <div key={index} className="absolute inset-x-0 pr-2 text-right text-[11px] text-slate-500" style={{ top: index * hourPixels + 3 }}>
           {String(firstHour + index).padStart(2, "0")}:00
         </div>)}
       </div>
       {days.map((day, index) => {
         const key = calendarDayKey(day, timeZone);
         const marker = (clockParts.hour + clockParts.minute / 60 - firstHour) * hourPixels;
-        const context = calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems);
+        const context = calendarDayContext(day, timeZone, campusId, teachingCalendar, schoolWindows, backgroundItems, availableWindows);
         const flags = items.filter(item => item.kind === "milestone" && calendarDayKey(new Date(item.startsAt), timeZone) === key);
-        return <div key={key} className="relative border-l border-line" style={{ height }}>
+        return <div key={key} className="relative border-l border-slate-200" style={{ height }}>
           {Array.from({ length: steps }, (_, step) => {
             const minutes = firstHour * 60 + step * 30;
             const at = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
             const style = { top: step * hourPixels / 2, height: hourPixels / 2 };
-            const className = cn("absolute inset-x-0 border-t border-line/70", step % 2 !== 0 && "border-dashed border-line/40", context.closed ? "bg-line/35" : context.schoolTime(minutes) ? "bg-moon/25" : "bg-leaf/10");
-            return onCreate ? <button type="button" key={step} disabled={loading || Boolean(resize)} className={cn(className, "group flex items-center justify-center transition-colors hover:bg-moon/50 focus-visible:bg-moon/40 focus-visible:outline focus-visible:outline-crater")}
-              style={style} title={t(context.closed ? "closedDay" : context.schoolTime(minutes) ? "schoolTime" : "parentTime")} aria-label={`${dateLabel.format(day)} ${at} ${t("create")}`} onClick={() => onCreate(dateTimeInputToInstant(`${key}T${at}`, timeZone)!)}>
-              <Plus className="size-3.5 text-muted opacity-30 group-hover:opacity-100 group-focus-visible:opacity-100" />
-            </button>
+            const className = cn("absolute inset-x-0 border-t border-slate-200", step % 2 !== 0 && "border-slate-100", context.closed ? "bg-slate-100/70" : context.schoolTime(minutes) ? "bg-slate-50" : context.schedulable(minutes) ? "bg-emerald-50/70" : "bg-white");
+            return onCreate ? <button type="button" key={step} disabled={loading || Boolean(resize)} className={cn(className, "transition-colors hover:bg-blue-50 focus-visible:bg-blue-50 focus-visible:outline focus-visible:outline-blue-500")}
+              data-calendar-create style={style} title={context.closed ? t("closedDay") : context.schoolTime(minutes) ? t("schoolTime") : context.schedulable(minutes) ? t("parentTime") : undefined}
+              aria-label={`${dateLabel.format(day)} ${at} ${t("create")}`} onClick={event => onCreate(dateTimeInputToInstant(`${key}T${at}`, timeZone)!, event.currentTarget)} />
               : <div key={step} className={className} style={style} />;
           })}
           {laidOutDays[index].map(({ item, fromMinute, toMinute, lane, lanes }) => {
@@ -211,21 +212,20 @@ export function CalendarCanvas({ anchor, view, items, backgroundItems = items, l
             const handles = Boolean(item.canResize && onResize && !loading && (!resize || active));
             return <div key={item.id}
               className={cn("group absolute z-[2] rounded-md border-l-[3px] text-left text-xs leading-tight shadow-sm hover:z-10 focus-within:z-10",
-                CALENDAR_TONES[item.kind].block, item.muted && "opacity-50", item.pending && "border border-dashed", item.conflict && "ring-1 ring-rose", active && "z-10 ring-2 ring-crater")}
+                CALENDAR_TONES[item.kind].block, item.muted && "opacity-50", item.pending && "border border-dashed", item.conflict && "ring-1 ring-rose", active && "z-10 ring-2 ring-blue-500")}
               style={{ top: (fromMinute / 60 - firstHour) * hourPixels + 1, height: eventHeight, left: `calc(${lane * 100 / lanes}% + 2px)`, width: `calc(${100 / lanes}% - 4px)` }}>
-              <button type="button" disabled={Boolean(resize)} onClick={() => onOpen(item)} title={titleFor(item)} aria-label={titleFor(item)} className="h-full w-full overflow-hidden rounded-r-md px-1.5 py-1 text-left hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-crater">
-                <p className="truncate font-medium">{item.title}</p>
+              <button type="button" disabled={Boolean(resize)} onClick={() => onOpen(item)} title={titleFor(item)} aria-label={titleFor(item)} className="h-full w-full overflow-hidden rounded-r-md px-1.5 py-1 text-left hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
+                <p className="flex items-center gap-1 font-medium">{item.seriesId ? <Repeat2 className="size-3 shrink-0" /> : null}<span className="truncate">{item.title}</span></p>
                 {eventHeight >= 34 ? <p className="truncate text-[10px]">{time.format(new Date(item.startsAt))}–{time.format(new Date(item.endsAt))}{item.state ? ` · ${item.state}` : ""}</p> : null}
-                {eventHeight >= 52 && item.subtitle ? <p className="truncate text-[11px] text-muted">{item.subtitle}</p> : null}
-                {eventHeight >= 68 && item.detail ? <p className="truncate text-[10px] text-muted">{item.detail}</p> : null}
+                {eventHeight >= 52 && item.subtitle ? <p className="truncate text-[11px] opacity-90">{item.subtitle}</p> : null}
+                {eventHeight >= 68 && item.detail ? <p className="truncate text-[10px] opacity-90">{item.detail}</p> : null}
               </button>
               {handles ? (["start", "end"] as const).filter(edge => calendarDayKey(new Date(edge === "start" ? item.startsAt : Date.parse(item.endsAt) - 1), timeZone) === key).map(edge => <button type="button" key={edge}
-                className={cn("absolute inset-x-1 z-10 flex h-2 touch-none cursor-ns-resize items-center justify-center rounded-sm hover:bg-ink/15 focus-visible:bg-ink/15", edge === "start" ? "top-0" : "bottom-0")}
-                aria-label={t(edge === "start" ? "resizeStart" : "resizeEnd")} title={t("resizeHint")}
+                className={cn("absolute inset-x-0 z-10 h-2 touch-none cursor-ns-resize focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-700", edge === "start" ? "-top-0.5" : "-bottom-0.5")}
+                aria-label={t(edge === "start" ? "resizeStart" : "resizeEnd")}
                 onPointerDown={event => beginResize(event, item, key, edge, fromMinute, toMinute)} onPointerMove={moveResize} onPointerUp={event => void finishResize(event)} onPointerCancel={cancelResize}
-                onKeyDown={event => { if (event.key === "Escape") cancelResize(); }}>
-                <span className={cn("h-0.5 w-5 rounded bg-ink/35 opacity-30 group-hover:opacity-100", active && "opacity-100")} />
-              </button>) : null}
+                onClick={event => event.stopPropagation()}
+                onKeyDown={event => { if (event.key === "Escape") cancelResize(); }} />) : null}
             </div>;
           })}
           {onCreateMilestone ? <button type="button" disabled={loading || Boolean(resize)} className="absolute inset-y-0 left-0 z-[3] w-2 cursor-crosshair hover:bg-rose/15" title={t("addMilestoneLine")} aria-label={`${dateLabel.format(day)} ${t("addMilestoneLine")}`}
@@ -233,17 +233,22 @@ export function CalendarCanvas({ anchor, view, items, backgroundItems = items, l
               const rect = event.currentTarget.getBoundingClientRect();
               const minute = Math.max(firstHour * 60, Math.min(lastHour * 60 - 30, Math.round((firstHour * 60 + (event.clientY - rect.top) / hourPixels * 60) / 30) * 30));
               const start = calendarTimeAt(key, minute, timeZone);
-              if (start) onCreateMilestone(start);
+              if (start) onCreateMilestone(start, event.currentTarget);
             }} /> : null}
           {flags.map(item => {
             const parts = zonedDateParts(new Date(item.startsAt), timeZone);
             const at = Math.max(0, Math.min(height - 20, (parts.hour + parts.minute / 60 - firstHour) * hourPixels));
             return <div key={item.id} className={cn("pointer-events-none absolute bottom-0 left-1 z-[4] border-l border-dashed border-rose/70", item.muted && "opacity-35")} style={{ top: at }}>
-              <button type="button" className="pointer-events-auto absolute -left-1 top-0 flex max-w-[150px] items-center gap-1 whitespace-nowrap bg-paper/90 pr-1 text-xs text-rose-deep hover:underline" title={`${time.format(new Date(item.startsAt))} · ${item.title}`} onClick={() => onOpen(item)}>
+              <button type="button" className="pointer-events-auto absolute -left-1 top-0 flex max-w-[150px] items-center gap-1 whitespace-nowrap bg-white/90 pr-1 text-xs text-rose-deep hover:underline" title={`${time.format(new Date(item.startsAt))} · ${item.title}`} onClick={() => onOpen(item)}>
                 <Flag className="size-3.5 shrink-0 fill-rose text-rose" /><span className="truncate">{item.title}</span>
               </button>
             </div>;
           })}
+          {draftDays[index].filter(value => value.item.kind !== "strategy").map(({ item, fromMinute, toMinute }) => <div key={item.id}
+            className="pointer-events-none absolute inset-x-0.5 z-[15] overflow-hidden rounded border border-blue-500 bg-blue-100/95 px-1.5 py-1 text-xs text-blue-700 ring-1 ring-blue-500/20"
+            style={{ top: (fromMinute / 60 - firstHour) * hourPixels + 1, height: Math.max(24, (toMinute - fromMinute) / 60 * hourPixels - 2) }}>
+            <span className="font-medium">{item.title || t("quickTitle")}</span><span className="ml-2 text-[10px]">{time.format(new Date(item.startsAt))}–{time.format(new Date(item.endsAt))}</span>
+          </div>)}
           {key === today && marker >= 0 && marker < height ? <div className="pointer-events-none absolute inset-x-0 z-[4] border-t border-rose" style={{ top: marker }}>
             <span className="absolute -left-1 -top-1 size-2 rounded-full bg-rose" />
           </div> : null}

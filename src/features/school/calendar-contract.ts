@@ -21,6 +21,7 @@ export interface CalendarSchoolWindow {
 
 export interface CalendarSchoolWindowsSettings {
   schoolWindows: CalendarSchoolWindow[];
+  availableWindows: CalendarSchoolWindow[];
   updatedAt: string;
 }
 
@@ -58,6 +59,7 @@ export interface CalendarWorkspace {
   events: CalendarEvent[];
   canCreate: boolean;
   schoolWindows: CalendarSchoolWindow[];
+  availableWindows: CalendarSchoolWindow[];
   settingsUpdatedAt: string | null;
   canManageSettings: boolean;
   teachingCalendar: TeachingCalendarEntryV2[];

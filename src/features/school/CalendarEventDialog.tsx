@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Check, LoaderCircle, Save, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, LoaderCircle, Repeat2, Save, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,12 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/action-result";
 import { newId } from "@/lib/uuid";
-import { changeCalendarEventStatusAction, respondCalendarInvitationAction, saveCalendarEventAction } from "./calendar-actions";
+import { changeCalendarEventStatusAction, loadCalendarSeriesAction, respondCalendarInvitationAction, saveCalendarEventAction } from "./calendar-actions";
 import { CALENDAR_EVENT_KINDS, type CalendarEvent, type CalendarEventKind, type CalendarWorkspace } from "./calendar-contract";
 import { CalendarRecurrenceFields, calendarRecurrenceInput, newCalendarRecurrenceDraft } from "./CalendarRecurrenceFields";
 import { dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
+import type { CalendarCreateDraft } from "./calendar-create-draft";
+import { calendarRange } from "./calendar-layout";
 
 export function calendarErrorKey(code: string) {
   if (code === "FORBIDDEN" || code === "UNAUTHENTICATED") return "errorForbidden";
@@ -43,6 +45,9 @@ interface Props {
   campuses: { id: string; name: string }[];
   initialAttendeeIds?: string[];
   initialCampusId?: string;
+  initialDraft?: CalendarCreateDraft;
+  onDraftChange?: (draft: Partial<CalendarCreateDraft>) => void;
+  onOpenSeriesEvent?: (event: CalendarEvent) => void;
   onSaved: (event: CalendarEvent) => void;
 }
 
@@ -54,28 +59,44 @@ function defaultEventDuration(kind: CalendarEventKind) {
   return kind === "strategy" ? 365 * 86_400_000 : (kind === "task" || kind === "milestone" ? 30 : 60) * 60_000;
 }
 
-function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, workspace, campuses, initialAttendeeIds = [], initialCampusId, onSaved }: Props) {
+function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, workspace, campuses, initialAttendeeIds = [], initialCampusId, initialDraft, onDraftChange, onOpenSeriesEvent, onSaved }: Props) {
   const t = useTranslations("school.calendar");
-  const [id] = useState(() => event?.id ?? newId());
+  const [id] = useState(() => event?.id ?? initialDraft?.id ?? newId());
   const [draft, setDraft] = useState(() => ({
-    kind: event?.kind ?? kind, title: event?.title ?? "", description: event?.description ?? "",
-    start: zonedDateTimeInputValue(new Date(event?.startsAt ?? startsAt), timeZone),
-    end: zonedDateTimeInputValue(new Date(event?.endsAt ?? Date.parse(startsAt) + defaultEventDuration(kind)), timeZone),
-    location: event?.location ?? "", campusId: event ? event.campusId ?? "" : initialCampusId ?? "",
-    attendeeIds: event?.attendees.filter(person => person.userId !== event.organizerId).map(person => person.userId) ?? initialAttendeeIds,
+    kind: event?.kind ?? kind, title: event?.title ?? initialDraft?.title ?? "", description: event?.description ?? initialDraft?.description ?? "",
+    start: initialDraft?.start ?? zonedDateTimeInputValue(new Date(event?.startsAt ?? startsAt), timeZone),
+    end: initialDraft?.end ?? zonedDateTimeInputValue(new Date(event?.endsAt ?? Date.parse(startsAt) + defaultEventDuration(kind)), timeZone),
+    location: event?.location ?? initialDraft?.location ?? "", campusId: event ? event.campusId ?? "" : initialDraft?.campusId ?? initialCampusId ?? "",
+    attendeeIds: event?.attendees.filter(person => person.userId !== event.organizerId).map(person => person.userId) ?? initialDraft?.attendeeIds ?? initialAttendeeIds,
   }));
   const [repeat, setRepeat] = useState(() => newCalendarRecurrenceDraft(
     zonedDateTimeInputValue(new Date(event?.startsAt ?? startsAt), timeZone).slice(0, 10)));
   const [peopleSearch, setPeopleSearch] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seriesEvents, setSeriesEvents] = useState<CalendarEvent[]>([]);
+  const [seriesError, setSeriesError] = useState(false);
+  const [seriesRevision, setSeriesRevision] = useState(0);
+  useEffect(() => {
+    if (!event?.seriesId) return;
+    let cancelled = false;
+    void loadCalendarSeriesAction(event.seriesId).then(result => {
+      if (cancelled) return;
+      setSeriesError(!result.ok);
+      if (result.ok) setSeriesEvents(result.data);
+    }).catch(() => { if (!cancelled) setSeriesError(true); });
+    return () => { cancelled = true; };
+  }, [event?.seriesId, seriesRevision]);
   const saveLock = useRef(false);
   const editable = !event || event.canEdit;
   const finished = event?.status === "cancelled" || event?.status === "completed";
   const myInvitation = event?.attendees.find(person => person.userId === workspace.currentUserId);
   const organizerId = event?.organizerId ?? workspace.currentUserId;
   const availablePeople = workspace.people.filter(person => person.id !== organizerId && person.displayName.toLocaleLowerCase().includes(peopleSearch.toLocaleLowerCase()));
-  const patch = (value: Partial<typeof draft>) => { setDraft(current => ({ ...current, ...value })); setError(null); };
+  const patch = (value: Partial<typeof draft>) => { setDraft(current => ({ ...current, ...value })); if (!event) onDraftChange?.(value); setError(null); };
+  const series = event?.seriesId ? seriesEvents.filter(item => item.seriesId === event.seriesId && item.id !== event.id && item.status !== "cancelled").sort((left, right) => left.startsAt.localeCompare(right.startsAt)) : [];
+  const previous = series.filter(item => item.startsAt < event!.startsAt).at(-1);
+  const next = series.find(item => item.startsAt > event!.startsAt);
 
   async function act(action: () => Promise<ActionResult<CalendarEvent>>) {
     if (saveLock.current) return;
@@ -125,12 +146,23 @@ function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, wo
       </div> : null}
       <form className="mt-5 space-y-5" onSubmit={e => { e.preventDefault(); save(); }}>
         {finished ? <p className="text-sm text-muted">{t(`status_${event.status}`)}</p> : null}
+        {event?.seriesId ? <div className="space-y-2 border-y border-line py-3 text-xs text-muted">
+          <p className="flex items-center gap-2"><Repeat2 className="size-3.5" />{event.recurrence ? t("seriesSchedule", { unit: t(`repeatUnit_${event.recurrence.frequency}`), interval: event.recurrence.interval, until: event.recurrence.until }) : t("repeatingEvent")}</p>
+          <p>{t("seriesEditHint")}</p>
+          {seriesError ? <button type="button" disabled={pending} className="text-blue-600 hover:underline" onClick={() => setSeriesRevision(value => value + 1)}>{t("retrySeries")}</button> : null}
+          {onOpenSeriesEvent && (previous || next) ? <div className="flex gap-4">
+            {previous ? <button type="button" disabled={pending} className="flex items-center gap-1 text-blue-600 hover:underline" onClick={() => onOpenSeriesEvent(previous)}><ChevronLeft className="size-3" />{zonedDateTimeInputValue(new Date(previous.startsAt), timeZone).slice(0, 10)}</button> : null}
+            {next ? <button type="button" disabled={pending} className="flex items-center gap-1 text-blue-600 hover:underline" onClick={() => onOpenSeriesEvent(next)}>{zonedDateTimeInputValue(new Date(next.startsAt), timeZone).slice(0, 10)}<ChevronRight className="size-3" /></button> : null}
+          </div> : null}
+        </div> : null}
         <fieldset disabled={pending || !editable || finished} className="space-y-4 disabled:opacity-80">
           <div className="space-y-1.5"><Label htmlFor="calendar-kind">{t("kind")}</Label>
             <Select value={draft.kind} onValueChange={value => {
               const nextKind = value as CalendarEventKind;
               const start = dateTimeInputToInstant(draft.start, timeZone);
-              patch({ kind: nextKind, ...(start ? { end: zonedDateTimeInputValue(new Date(start.getTime() + defaultEventDuration(nextKind)), timeZone) } : {}) });
+              const year = calendarRange(draft.start.slice(0, 10), "year", timeZone);
+              patch({ kind: nextKind, ...(nextKind === "strategy" ? { start: zonedDateTimeInputValue(year.start, timeZone), end: zonedDateTimeInputValue(year.end, timeZone) }
+                : start ? { end: zonedDateTimeInputValue(new Date(start.getTime() + 30 * 60_000), timeZone) } : {}) });
             }} disabled={pending || !editable || finished || Boolean(event)}>
               <SelectTrigger id="calendar-kind"><SelectValue /></SelectTrigger>
               <SelectContent>{CALENDAR_EVENT_KINDS.map(value => <SelectItem key={value} value={value}>{t(`kind_${value}`)}</SelectItem>)}</SelectContent>
@@ -149,7 +181,6 @@ function CalendarEventEditor({ onOpenChange, event, kind, startsAt, timeZone, wo
           </div>
           <p className="text-xs text-muted">{timeZone}</p>
           {draft.kind === "strategy" ? <p className="text-xs text-muted">{t("strategyTimingHint")}</p> : null}
-          {event?.seriesId ? <p className="text-xs text-muted">{t("seriesEditHint")}</p> : null}
           {!event ? <CalendarRecurrenceFields prefix="calendar-repeat" draft={repeat} startDate={draft.start.slice(0, 10)}
             disabled={pending || !editable || Boolean(finished)} onChange={value => { setRepeat(value); setError(null); }} /> : null}
           <div className="grid gap-3 sm:grid-cols-2">

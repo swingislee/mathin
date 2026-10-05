@@ -39,6 +39,8 @@ export interface AssessmentSlotDialogProps {
   initialStartTime: string;
   teacherId?: string;
   campusId?: string;
+  initialDraft?: AssessmentSlotDraft;
+  onDraftChange?: (draft: AssessmentSlotDraft) => void;
   onSaved: (slot: AssessmentAvailabilitySlot) => void;
 }
 
@@ -74,7 +76,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
   const t = useTranslations("school.assessmentAvailability");
   const common = useTranslations("school.classes");
   const calendar = useTranslations("school.calendar");
-  const [draft, setDraft] = useState(() => slot ? assessmentSlotDraft(slot, timeZone) : newSlotDraft(props));
+  const [draft, setDraft] = useState(() => slot ? assessmentSlotDraft(slot, timeZone) : props.initialDraft ?? newSlotDraft(props));
   const [repeat, setRepeat] = useState(() => newCalendarRecurrenceDraft(draft.date));
   const [restoredSlot, setRestoredSlot] = useState<AssessmentAvailabilitySlot | null>(null);
   const [restoredData, setRestoredData] = useState<AssessmentSlotManagement | null>(null);
@@ -105,6 +107,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
   function patch(value: Partial<AssessmentSlotDraft>) {
     if (busyRef.current || needsRefresh) return;
     setDraft(current => ({ ...current, ...value }));
+    if (!slot) props.onDraftChange?.({ ...draft, ...value });
     setError(null);
   }
 

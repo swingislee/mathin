@@ -25,11 +25,11 @@ const schoolWindowSchema = z.object({
 const schoolWindowsSchema = z.array(schoolWindowSchema).max(70).refine(value => !value.some((left, index) =>
   value.slice(index + 1).some(right => left.weekday === right.weekday
     && left.startMinute < right.endMinute && right.startMinute < left.endMinute)));
-const schoolSettingsSchema = z.object({ schoolWindows: schoolWindowsSchema, updatedAt: instant });
+const schoolSettingsSchema = z.object({ schoolWindows: schoolWindowsSchema, availableWindows: schoolWindowsSchema, updatedAt: instant });
 const workspaceSchema = z.object({
   currentUserId: uuid, people: z.array(z.object({ id: uuid, displayName: z.string() })),
   events: z.array(eventSchema), canCreate: z.boolean(),
-  schoolWindows: schoolWindowsSchema, settingsUpdatedAt: instant.nullable(), canManageSettings: z.boolean(),
+  schoolWindows: schoolWindowsSchema, availableWindows: schoolWindowsSchema.default([]), settingsUpdatedAt: instant.nullable(), canManageSettings: z.boolean(),
   teachingCalendar: z.array(z.object({
     id: uuid, campusId: uuid.nullable(), campusName: z.string().nullable(), name: z.string(),
     kind: z.enum(["closed", "teaching", "makeup"]), startsOn: z.string(), endsOn: z.string(),
@@ -87,15 +87,25 @@ export async function saveCalendarEventAction(input: SaveCalendarEventInput): Pr
   } catch (error) { return actionError(error, ERROR_CODES); }
 }
 
-export async function saveCalendarSchoolWindowsAction(input: { schoolWindows: CalendarSchoolWindow[]; expectedUpdatedAt: string | null }): Promise<ActionResult<CalendarSchoolWindowsSettings>> {
+export async function saveCalendarSchoolWindowsAction(input: { schoolWindows: CalendarSchoolWindow[]; availableWindows: CalendarSchoolWindow[]; expectedUpdatedAt: string | null }): Promise<ActionResult<CalendarSchoolWindowsSettings>> {
   try {
-    const value = parse(z.object({ schoolWindows: schoolWindowsSchema, expectedUpdatedAt: instant.nullable() }), input);
+    const value = parse(z.object({ schoolWindows: schoolWindowsSchema, availableWindows: schoolWindowsSchema, expectedUpdatedAt: instant.nullable() }), input);
     const client = await authenticatedClient();
-    const result = await client.rpc("save_calendar_school_windows", {
-      p_school_windows: value.schoolWindows, p_expected_updated_at: value.expectedUpdatedAt ?? undefined,
+    const result = await client.rpc("save_calendar_scheduling_settings", {
+      p_school_windows: value.schoolWindows, p_available_windows: value.availableWindows, p_expected_updated_at: value.expectedUpdatedAt ?? undefined,
     });
     if (result.error) throw new Error(result.error.message);
     return { ok: true, data: schoolSettingsSchema.parse(result.data) };
+  } catch (error) { return actionError(error, ERROR_CODES); }
+}
+
+export async function loadCalendarSeriesAction(seriesId: string): Promise<ActionResult<CalendarEvent[]>> {
+  try {
+    const id = parse(uuid, seriesId);
+    const client = await authenticatedClient();
+    const result = await client.rpc("get_calendar_series", { p_series_id: id });
+    if (result.error) throw new Error(result.error.message);
+    return { ok: true, data: z.array(eventSchema).parse(result.data) };
   } catch (error) { return actionError(error, ERROR_CODES); }
 }
 

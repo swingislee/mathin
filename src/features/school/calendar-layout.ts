@@ -24,16 +24,17 @@ export interface CalendarItem {
   conflict?: boolean;
   pending?: boolean;
   canResize?: boolean;
+  seriesId?: string | null;
 }
 
 export const CALENDAR_TONES: Record<CalendarItemKind, { block: string; dot: string }> = {
-  lesson: { block: "border-crater bg-crater/15 text-ink", dot: "bg-crater" },
-  availability: { block: "border-leaf-deep/60 bg-leaf/20 text-ink", dot: "bg-leaf-deep" },
-  meeting: { block: "border-rose/55 bg-cheek/30 text-ink", dot: "bg-rose" },
-  task: { block: "border-crater/60 bg-moon/45 text-ink", dot: "bg-moon ring-1 ring-crater/60" },
-  preparation: { block: "border-leaf-deep/45 bg-leaf/10 text-ink", dot: "bg-leaf" },
-  strategy: { block: "border-crater bg-moon/60 text-ink", dot: "bg-crater" },
-  milestone: { block: "border-rose bg-cheek/20 text-rose-deep", dot: "bg-rose" },
+  lesson: { block: "border-blue-700 bg-blue-600 text-white", dot: "bg-blue-600" },
+  availability: { block: "border-emerald-700 bg-emerald-500 text-white", dot: "bg-emerald-500" },
+  meeting: { block: "border-indigo-700 bg-indigo-500 text-white", dot: "bg-indigo-500" },
+  task: { block: "border-amber-600 bg-amber-400 text-amber-950", dot: "bg-amber-400" },
+  preparation: { block: "border-cyan-700 bg-cyan-500 text-cyan-950", dot: "bg-cyan-500" },
+  strategy: { block: "border-violet-700 bg-violet-500 text-white", dot: "bg-violet-500" },
+  milestone: { block: "border-red-600 bg-red-500 text-white", dot: "bg-red-500" },
 };
 
 export function calendarAnchor(value: string, timeZone: string): Date {
@@ -43,10 +44,11 @@ export function calendarAnchor(value: string, timeZone: string): Date {
 export function calendarRange(anchor: string, view: CalendarView, timeZone: string) {
   const date = calendarAnchor(anchor, timeZone);
   if (view === "year") {
-    const { year } = zonedDateParts(date, timeZone);
-    const start = zonedDateTimeToInstant({ year, month: 0, day: 1 }, timeZone);
-    const end = zonedDateTimeToInstant({ year: year + 1, month: 0, day: 1 }, timeZone);
-    const count = Math.round((Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86_400_000);
+    const parts = zonedDateParts(date, timeZone);
+    const year = parts.year - (parts.month < 6 ? 1 : 0);
+    const start = zonedDateTimeToInstant({ year, month: 6, day: 1 }, timeZone);
+    const end = zonedDateTimeToInstant({ year: year + 1, month: 6, day: 1 }, timeZone);
+    const count = Math.round((Date.UTC(year + 1, 6, 1) - Date.UTC(year, 6, 1)) / 86_400_000);
     return { start, end, days: Array.from({ length: count }, (_, index) => addCalendarDays(start, index, timeZone)) };
   }
   const start = view === "day" ? startOfDay(date, timeZone)
@@ -61,8 +63,8 @@ export function calendarRange(anchor: string, view: CalendarView, timeZone: stri
 export function shiftCalendarAnchor(anchor: string, view: CalendarView, direction: number, timeZone: string): string {
   const date = calendarAnchor(anchor, timeZone);
   if (view === "year") {
-    const { year } = zonedDateParts(date, timeZone);
-    return `${year + direction}-01-01`;
+    const { year } = zonedDateParts(calendarRange(anchor, "year", timeZone).start, timeZone);
+    return `${year + direction}-07-01`;
   }
   if (view !== "month") return calendarDayKey(addCalendarDays(date, direction * (view === "week" ? 7 : 1), timeZone), timeZone);
   const { year, month } = zonedDateParts(date, timeZone);
@@ -79,16 +81,22 @@ export function calendarTimeAt(day: string, minutes: number, timeZone: string): 
 
 /** Campus overrides and mapped teaching days reuse the school's existing calendar. */
 export function calendarDayContext(day: Date, timeZone: string, campusId: string | null,
-  entries: readonly TeachingCalendarEntryV2[], windows: readonly CalendarSchoolWindow[], items: CalendarItem[]) {
+  entries: readonly TeachingCalendarEntryV2[], windows: readonly CalendarSchoolWindow[], items: CalendarItem[], availableWindows: readonly CalendarSchoolWindow[] = []) {
   const key = calendarDayKey(day, timeZone);
   const entry = effectiveTeachingCalendarEntry(entries, key, campusId);
   const notices = campusId ? entry ? [entry] : [] : entries.filter(value => value.startsOn <= key && value.endsOn >= key);
   const closed = entry?.kind === "closed";
   const weekday = entry?.scheduleMode === "mapped" && entry.mappedWeekday !== null ? entry.mappedWeekday : zonedDateParts(day, timeZone).weekday;
   const periods = closed ? [] : windows.filter(window => window.weekday === weekday).map(window => ({ from: window.startMinute, to: window.endMinute }));
-  if (!closed) layoutCalendarDay(items.filter(item => item.kind === "lesson"), day, timeZone)
-    .forEach(item => periods.push({ from: item.fromMinute, to: item.toMinute }));
-  return { entry, notices, closed, periods, schoolTime: (minute: number) => periods.some(period => period.from < minute + 30 && period.to > minute) };
+  const busy = layoutCalendarDay(items.filter(item => !item.muted && ["lesson", "meeting", "preparation", "availability"].includes(item.kind)), day, timeZone);
+  const allowed = closed ? [] : availableWindows.length
+    ? availableWindows.filter(window => window.weekday === weekday).map(window => ({ from: window.startMinute, to: window.endMinute }))
+    : windows.length ? [{ from: 8 * 60, to: 21 * 60 }] : [];
+  // A cell is available only if the complete half hour fits; partial clashes stay unmarked.
+  const schoolTime = (minute: number) => periods.some(period => period.from < minute + 30 && period.to > minute);
+  const schedulable = (minute: number) => allowed.some(period => period.from <= minute && period.to >= minute + 30)
+    && !schoolTime(minute) && !busy.some(item => item.fromMinute < minute + 30 && item.toMinute > minute);
+  return { entry, notices, closed, periods: [...periods, ...allowed], schoolTime, schedulable };
 }
 
 export function calendarItemsForDay(items: CalendarItem[], day: Date, timeZone: string): CalendarItem[] {

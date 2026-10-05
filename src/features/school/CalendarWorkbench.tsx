@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,8 @@ import { AssessmentSlotDialog } from "./AssessmentSlotDialog";
 import { CalendarCanvas, CalendarMiniMonth } from "./CalendarCanvas";
 import { CalendarEventDialog, calendarErrorKey } from "./CalendarEventDialog";
 import { CalendarSettingsDialog } from "./CalendarSettingsDialog";
+import { CalendarQuickCreate } from "./CalendarQuickCreate";
+import { calendarCreatePreview, calendarCreateSlotDraft, newCalendarCreateDraft, type CalendarCreateDraft } from "./calendar-create-draft";
 import { getWeekSchedule } from "./actions/schedule";
 import { rescheduleSessionAction } from "./actions/classes";
 import { loadAssessmentSlotManagementAction, saveAssessmentSlotAction } from "./assessment-availability-actions";
@@ -41,7 +43,11 @@ interface Props {
   initialDate?: string;
 }
 
-type Editor = { kind: CalendarEventKind | "availability"; start: string; event: CalendarEvent | null; slot: AssessmentAvailabilitySlot | null };
+type Editor = { kind: CalendarEventKind | "availability"; start: string; event: CalendarEvent | null; slot: AssessmentAvailabilitySlot | null; draft?: CalendarCreateDraft };
+const CALENDAR_GROUPS: { key: "lessons" | "availability" | "events" | "plans"; kinds: CalendarItemKind[] }[] = [
+  { key: "lessons", kinds: ["lesson"] }, { key: "availability", kinds: ["availability"] },
+  { key: "events", kinds: ["meeting", "task", "preparation"] }, { key: "plans", kinds: ["strategy", "milestone"] },
+];
 
 async function loadAvailabilityRange(from: string, to: string, timeZone: string) {
   const last = calendarDayKey(addCalendarDays(new Date(to), -1, timeZone), timeZone);
@@ -83,6 +89,10 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [creation, setCreation] = useState<{ draft: CalendarCreateDraft; target: HTMLElement } | null>(null);
+  const [quickSaving, setQuickSaving] = useState(false);
+  const quickSaveLock = useRef(false);
+  const createButton = useRef<HTMLSpanElement>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [resizing, setResizing] = useState(false);
@@ -134,7 +144,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
   const pending = (workspace?.events ?? []).filter(event => event.status === "scheduled" && event.organizerId !== currentUserId && event.attendees.some(value => value.userId === currentUserId && value.response === "pending"));
 
   const items: CalendarItem[] = [
-    ...markConflicts(lessons).filter(entry => !invitationsOnly && (person === "all" || entry.teacherIds?.includes(selectedPersonId))
+    ...markConflicts(lessons).filter(entry => (person === "all" || entry.teacherIds?.includes(selectedPersonId))
       && (campus === "all" || entry.campusId === campus) && (room === "all" || entry.roomId === room)).map(entry => ({
       id: `lesson-${entry.sessionId}`, sourceId: entry.sessionId, kind: "lesson" as const,
       startsAt: entry.scheduledAt, endsAt: new Date(Date.parse(entry.scheduledAt) + Math.max(1, entry.durationMin) * 60_000).toISOString(),
@@ -142,7 +152,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
       detail: [entry.campusName, entry.roomName].filter(Boolean).join(" · "), conflict: entry.conflict,
       canResize: canManageLessons && Date.parse(entry.scheduledAt) > now,
     })),
-    ...(availability?.slots ?? []).filter(slot => !invitationsOnly && room === "all" && (person === "all" || slot.teacherId === selectedPersonId) && (campus === "all" || slot.campusId === campus)).map(slot => {
+    ...(availability?.slots ?? []).filter(slot => room === "all" && (person === "all" || slot.teacherId === selectedPersonId) && (campus === "all" || slot.campusId === campus)).map(slot => {
       const booked = slot.activeBooked ?? slot.booked;
       const state = booked ? "slotBooked" : !slot.enabled ? "slotClosed" : Date.parse(slot.endsAt) <= now ? "slotPast" : slot.blocked ? "slotBlocked" : "slotAvailable";
       return {
@@ -154,8 +164,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
       };
     }),
     ...(workspace?.events ?? []).filter(event => room === "all" && (campus === "all" || event.campusId === campus)
-      && (person === "all" || event.organizerId === selectedPersonId || event.attendees.some(value => value.userId === selectedPersonId && value.response !== "declined"))
-      && (!invitationsOnly || pending.some(value => value.id === event.id))).map(event => {
+      && (person === "all" || event.organizerId === selectedPersonId || event.attendees.some(value => value.userId === selectedPersonId && value.response !== "declined"))).map(event => {
       const me = event.attendees.find(value => value.userId === currentUserId);
       return {
         id: `event-${event.id}`, sourceId: event.id, kind: event.kind, title: event.title,
@@ -165,18 +174,21 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
         state: event.status !== "scheduled" ? t(`status_${event.status}`) : me?.response === "pending" ? t("response_pending") : undefined,
         muted: event.status !== "scheduled" || me?.response === "declined", pending: event.status === "scheduled" && me?.response === "pending",
         canResize: event.canEdit && event.status === "scheduled",
+        seriesId: event.seriesId,
       };
     }),
   ];
-  const visible = items.filter(item => (invitationsOnly || kinds.includes(item.kind)) && [item.title, item.subtitle, item.detail, item.state].filter(Boolean).join(" ").toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const visible = items.filter(item => (invitationsOnly ? item.pending : kinds.includes(item.kind)) && [item.title, item.subtitle, item.detail, item.state].filter(Boolean).join(" ").toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   const monthFormatter = new Intl.DateTimeFormat(locale, { timeZone, year: "numeric", month: "long" });
   const dayFormatter = new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric" });
-  const rangeLabel = view === "year" ? anchor.slice(0, 4) : view === "month" ? monthFormatter.format(calendarAnchor(anchor, timeZone)) : view === "day"
+  const year = Number(calendarDayKey(range.start, timeZone).slice(0, 4));
+  const rangeLabel = view === "year" ? t("planningYear", { year, nextYear: year + 1 }) : view === "month" ? monthFormatter.format(calendarAnchor(anchor, timeZone)) : view === "day"
     ? new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "long" }).format(range.start)
     : `${dayFormatter.format(range.start)} – ${dayFormatter.format(addCalendarDays(range.end, -1, timeZone))}`;
   const canCreate = Boolean(workspace?.canCreate);
 
-  function begin(kind: Editor["kind"], start?: Date) {
+  function begin(kind: Editor["kind"], start?: Date, target?: HTMLElement) {
+    if (quickSaveLock.current) return;
     if (kind === "availability" && !availability) return;
     if (kind !== "availability" && !workspace?.canCreate) return;
     const clock = new Date();
@@ -185,10 +197,21 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
     const at = start ?? (defaultDay === clockDay ? new Date(Math.ceil((clock.getTime() + 1) / 1_800_000) * 1_800_000)
       : dateTimeInputToInstant(`${defaultDay}T09:00`, timeZone)!);
     setCreateMenuOpen(false);
-    setEditor({ kind, start: at.toISOString(), event: null, slot: null });
+    const draft = newCalendarCreateDraft(kind, at, timeZone);
+    draft.attendeeIds = person === "all" || selectedPersonId === currentUserId ? [] : [selectedPersonId];
+    draft.campusId = campus === "all" ? (kind === "availability" ? campuses[0]?.id ?? "" : "") : campus;
+    draft.teacherId = availability?.canManageAll && person !== "all" && availability.teachers.some(value => value.id === selectedPersonId) ? selectedPersonId
+      : availability?.teachers.find(value => value.id === currentUserId)?.id ?? (availability?.canManageAll ? availability.teachers[0]?.id : "") ?? "";
+    const element = target ?? createButton.current;
+    if (element) {
+      setCreation({ draft: creation && creation.draft.kind === kind ? { ...creation.draft, start: draft.start, end: draft.end } : draft, target: element });
+      setEditor(null);
+    }
   }
 
   function openItem(item: CalendarItem) {
+    if (quickSaveLock.current) return;
+    setCreation(null);
     if (item.kind === "lesson") {
       router.push(`/dashboard/schedule?session=${encodeURIComponent(item.sourceId)}&date=${anchor}`, { scroll: false });
     } else if (item.kind === "availability") {
@@ -208,10 +231,28 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
     setRevision(value => value + 1);
   }
 
-  function toggleKind(kind: CalendarItemKind) {
+  function toggleGroup(group: CalendarItemKind[]) {
     setInvitationsOnly(false);
-    setKinds(current => current.includes(kind) ? current.filter(value => value !== kind) : [...current, kind]);
+    setKinds(current => group.every(kind => current.includes(kind)) ? current.filter(kind => !group.includes(kind)) : [...new Set([...current, ...group])]);
   }
+
+  function eventSaved(event: CalendarEvent) {
+    setWorkspace(current => current ? { ...current, events: [...current.events.filter(value => value.id !== event.id), event] } : current);
+    setKinds(current => current.includes(event.kind) ? current : [...current, event.kind]);
+    revealSaved(event.startsAt);
+  }
+
+  function slotSaved(slot: AssessmentAvailabilitySlot) {
+    setAvailability(current => current ? { ...current, slots: [...current.slots.filter(value => value.id !== slot.id), slot] } : current);
+    setKinds(current => current.includes("availability") ? current : [...current, "availability"]);
+    revealSaved(slot.startsAt);
+  }
+
+  function patchCreation(value: Partial<CalendarCreateDraft>) {
+    setCreation(current => current ? { ...current, draft: { ...current.draft, ...value } } : current);
+  }
+
+  function closeEditor(open: boolean) { if (!open) { setEditor(null); setCreation(null); } }
 
   async function resizeItem(item: CalendarItem, startsAt: string, endsAt: string) {
     if (resizeLock.current) return;
@@ -260,7 +301,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
     </div>
   </>;
 
-  return <>
+  return <Popover open={Boolean(creation && !editor)} onOpenChange={open => { if (!open && !quickSaveLock.current) setCreation(null); }}>
     <DashboardPage title={t(mode === "availability" ? "availabilityTitle" : "title")} meta={<span>{rangeLabel}</span>} density="compact"
       className="panel-canvas flex min-h-0 w-full flex-1 flex-col" bodyClassName="min-h-0 flex-1" contentClassName="flex min-h-0 flex-1 flex-col"
       commandPanel={<DashboardCommandPanel>
@@ -273,14 +314,14 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
         </DashboardCommandState>
         <DashboardCommandFilters>{filters}</DashboardCommandFilters>
         <DashboardCommandActions>
-          <Button type="button" variant="ghost" size="sm" className="size-8 p-0" aria-label={t("calendarSettings")} title={t("calendarSettings")} disabled={!workspace || loading} onClick={() => setSettingsOpen(true)}><Settings className="size-4" /></Button>
+          <Button type="button" variant="ghost" size="sm" aria-label={t("calendarSettings")} disabled={!workspace || loading} onClick={() => setSettingsOpen(true)}><Settings className="size-4" />{t("calendarSettings")}</Button>
           <Button type="button" variant="ghost" size="sm" className="size-8 p-0" aria-label={t("refresh")} disabled={loading} onClick={() => setRevision(value => value + 1)}>
             {loading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
           </Button>
-          <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}><PopoverTrigger asChild><Button size="sm" disabled={loading || (!canCreate && !availability)}><Plus className="size-4" />{t("create")}</Button></PopoverTrigger>
-            <PopoverContent align="end" className="w-44 space-y-1 p-1.5">
+          <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}><span ref={createButton}><PopoverTrigger asChild><Button size="sm" disabled={loading || quickSaving || (!canCreate && !availability)}><Plus className="size-4" />{t("create")}</Button></PopoverTrigger></span>
+            <PopoverContent align="end" className="w-44 space-y-1 p-1.5" onCloseAutoFocus={event => event.preventDefault()}>
               {canManageAvailability ? <Button type="button" variant="ghost" className="w-full justify-start" disabled={!availability} onClick={() => begin("availability")}><CalendarPlus className="mr-1 size-4" />{t("kind_availability")}</Button> : null}
-              {(["meeting", "task", "preparation", "strategy", "milestone"] as const).map(kind => <Button type="button" variant="ghost" className="w-full justify-start" key={kind} disabled={!canCreate} onClick={() => begin(kind)}>{kind === "milestone" ? <Flag className="size-4 text-rose" /> : null}{t(`kind_${kind}`)}</Button>)}
+              {(["meeting", "strategy", "milestone"] as const).map(kind => <Button type="button" variant="ghost" className="w-full justify-start" key={kind} disabled={!canCreate} onClick={() => begin(kind)}>{kind === "milestone" ? <Flag className="size-4 text-red-500" /> : null}{t(`kind_${kind}`)}</Button>)}
             </PopoverContent>
           </Popover>
         </DashboardCommandActions>
@@ -290,45 +331,61 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
         <aside className="hidden w-52 shrink-0 overflow-y-auto border-r border-line py-4 pr-4 lg:block">
           <CalendarMiniMonth key={anchor.slice(0, 7)} anchor={anchor} today={today} locale={locale} timeZone={timeZone} onSelect={setAnchor} />
           <h2 className="mb-3 mt-6 text-sm font-medium">{t("calendars")}</h2>
-          <div className="space-y-2.5">{CALENDAR_KINDS.filter(kind => kind !== "availability" || canManageAvailability).map(kind => <Label key={kind} className="flex cursor-pointer items-center gap-2 text-sm font-normal">
-            <Checkbox checked={kinds.includes(kind) && !invitationsOnly} onCheckedChange={() => toggleKind(kind)} /><span className={cn("size-2 rounded-full", CALENDAR_TONES[kind].dot)} />{t(`kind_${kind}`)}
+          <div className="space-y-2.5">{CALENDAR_GROUPS.filter(group => group.key !== "availability" || canManageAvailability).map(group => <Label key={group.key} className="flex cursor-pointer items-center gap-2 text-sm font-normal">
+            <Checkbox checked={group.kinds.every(kind => kinds.includes(kind)) && !invitationsOnly} onCheckedChange={() => toggleGroup(group.kinds)} /><span className={cn("size-2 rounded-full", CALENDAR_TONES[group.kinds[0]].dot)} />{t(`group_${group.key}`)}
           </Label>)}</div>
           <button type="button" aria-pressed={invitationsOnly} className={cn("mt-6 flex w-full items-center gap-2 rounded-md py-2 text-left text-sm hover:bg-moon/20", invitationsOnly && "bg-moon/40")}
             onClick={() => setInvitationsOnly(value => !value)}><Mail className="size-4" /><span className="flex-1">{t("invitations")}</span><span className="text-muted">{pending.length}</span></button>
-          <p className="mt-4 text-xs leading-relaxed text-muted">{t(mode === "availability" ? "availabilityHint" : "calendarHint")}</p>
           <p className="mt-3 text-[10px] text-muted">{timeZone}</p>
         </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line px-3 py-2 text-[11px] text-muted">
-            <span className="flex items-center gap-1.5"><span className="size-3 border border-crater/30 bg-moon/40" />{t("schoolTime")}</span>
-            <span className="flex items-center gap-1.5"><span className="size-3 border border-leaf-deep/20 bg-leaf/20" />{t("parentTime")}</span>
-            <span className="flex items-center gap-1.5"><span className="size-3 border border-line bg-line/45" />{t("closedDay")}</span>
-            {workspace && workspace.schoolWindows.length === 0 ? <button type="button" className="hover:text-ink hover:underline" onClick={() => setSettingsOpen(true)}>{t("schoolWindowsUnset")}</button> : null}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white text-slate-900 [color-scheme:light]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-200 px-3 py-2 text-[11px] text-slate-500">
+            {workspace && (workspace.schoolWindows.length > 0 || workspace.availableWindows.length > 0) ? <>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-emerald-200" />{t("parentTime")}</span>
+              <span className="flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-slate-200" />{t("schoolTime")}</span>
+            </> : null}
+            <button type="button" className="ml-auto text-blue-600 hover:underline" disabled={!workspace || loading} onClick={() => setSettingsOpen(true)}>{t("configureScheduling")}</button>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-2 py-2 lg:hidden">
-            {CALENDAR_KINDS.filter(kind => kind !== "availability" || canManageAvailability).map(kind => <button type="button" key={kind} aria-pressed={kinds.includes(kind) && !invitationsOnly}
-              className={cn("flex items-center gap-1.5 text-xs", (!kinds.includes(kind) || invitationsOnly) && "opacity-40")} onClick={() => toggleKind(kind)}><span className={cn("size-2 rounded-full", CALENDAR_TONES[kind].dot)} />{t(`kind_${kind}`)}</button>)}
+            {CALENDAR_GROUPS.filter(group => group.key !== "availability" || canManageAvailability).map(group => <button type="button" key={group.key} aria-pressed={group.kinds.every(kind => kinds.includes(kind)) && !invitationsOnly}
+              className={cn("flex items-center gap-1.5 text-xs", (!group.kinds.some(kind => kinds.includes(kind)) || invitationsOnly) && "opacity-40")} onClick={() => toggleGroup(group.kinds)}><span className={cn("size-2 rounded-full", CALENDAR_TONES[group.kinds[0]].dot)} />{t(`group_${group.key}`)}</button>)}
             <button type="button" aria-pressed={invitationsOnly} className={cn("text-xs", invitationsOnly && "font-bold text-rose")} onClick={() => setInvitationsOnly(value => !value)}>{t("invitations")} {pending.length}</button>
           </div>
           {!loading && visible.length === 0 ? <p className="border-b border-line px-3 py-2 text-xs text-muted">{t(invitationsOnly ? "noInvitations" : search || kinds.length === 0 || person !== "all" || campus !== "all" || room !== "all" ? "noMatchingEvents" : "empty")}</p> : null}
-          <CalendarCanvas anchor={anchor} view={view} items={visible} backgroundItems={items} locale={locale} timeZone={timeZone} now={now} loading={loading || resizing}
-            campusId={campus === "all" ? null : campus} schoolWindows={workspace?.schoolWindows ?? []} teachingCalendar={workspace?.teachingCalendar ?? []}
-            onResize={resizeItem} onCreateMilestone={canCreate ? start => begin("milestone", start) : undefined}
+          <CalendarCanvas anchor={anchor} view={view} items={visible} backgroundItems={items} draft={creation ? calendarCreatePreview(creation.draft, timeZone) : null} locale={locale} timeZone={timeZone} now={now} loading={loading || resizing || quickSaving}
+            campusId={campus === "all" ? null : campus} schoolWindows={workspace?.schoolWindows ?? []} availableWindows={workspace?.availableWindows ?? []} teachingCalendar={workspace?.teachingCalendar ?? []}
+            onResize={resizeItem} onCreateMilestone={canCreate ? (start, target) => begin("milestone", start, target) : undefined}
             onOpen={openItem} onSelectDay={day => { setAnchor(day); setView("day"); }}
-            onCreate={canCreate || availability ? start => begin(view === "year" && canCreate ? "strategy" : mode === "availability" && availability ? "availability" : canCreate ? "meeting" : "availability", start) : undefined} />
+            onCreate={canCreate || availability ? (start, target) => begin(view === "year" && canCreate ? "strategy" : mode === "availability" && availability ? "availability" : canCreate ? "meeting" : "availability", start, target) : undefined} />
         </div>
       </div>
     </DashboardPage>
+    {creation ? <PopoverAnchor virtualRef={{ current: creation.target }} /> : null}
+    {creation && !editor ? <PopoverContent side="right" align="start" sideOffset={8} collisionPadding={12} aria-label={t("quickCreate")}
+      className="max-h-[min(680px,85dvh)] w-[400px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-xl border-slate-200 bg-white p-5 text-slate-900 shadow-xl [color-scheme:light]"
+      onInteractOutside={event => { if (quickSaveLock.current) event.preventDefault(); }}
+      onEscapeKeyDown={event => { if (quickSaveLock.current) event.preventDefault(); }}
+      onCloseAutoFocus={event => event.preventDefault()}>
+      <CalendarQuickCreate key={creation.draft.id} draft={creation.draft} onChange={draft => setCreation(current => current ? { ...current, draft } : current)}
+        timeZone={timeZone} workspace={workspace} availability={availability} campuses={campuses}
+        onBusyChange={busy => { quickSaveLock.current = busy; setQuickSaving(busy); }} onClose={() => setCreation(null)}
+        onMore={() => setEditor({ kind: creation.draft.kind, start: dateTimeInputToInstant(creation.draft.start, timeZone)?.toISOString() ?? new Date(now).toISOString(), event: null, slot: null, draft: creation.draft })}
+        onEventSaved={eventSaved} onSlotSaved={slotSaved} />
+    </PopoverContent> : null}
     {settingsOpen && workspace ? <CalendarSettingsDialog open onOpenChange={setSettingsOpen} workspace={workspace} campuses={campuses} today={today} onSaved={() => setRevision(value => value + 1)} /> : null}
-    {editor?.kind === "availability" && availability ? <AssessmentSlotDialog open onOpenChange={open => { if (!open) setEditor(null); }} data={availability} timeZone={timeZone} slot={editor.slot}
+    {editor?.kind === "availability" && availability ? <AssessmentSlotDialog open onOpenChange={closeEditor} data={availability} timeZone={timeZone} slot={editor.slot}
+      initialDraft={editor.draft ? calendarCreateSlotDraft(editor.draft) : undefined}
+      onDraftChange={draft => patchCreation({ start: `${draft.date}T${draft.startTime}`, end: `${draft.endDate ?? draft.date}T${draft.endTime}`, teacherId: draft.teacherId, campusId: draft.campusId, subjects: draft.subjects })}
       initialDate={calendarDayKey(new Date(editor.start), timeZone)} initialStartTime={zonedDateTimeInputValue(new Date(editor.start), timeZone).slice(11)}
       teacherId={person === "all" ? undefined : selectedPersonId}
       campusId={campus === "all" ? undefined : campus}
-      onSaved={slot => { setAvailability(current => current ? { ...current, slots: [...current.slots.filter(value => value.id !== slot.id), slot] } : current); setKinds(current => current.includes("availability") ? current : [...current, "availability"]); revealSaved(slot.startsAt); }} /> : null}
-    {editor && editor.kind !== "availability" && workspace ? <CalendarEventDialog open onOpenChange={open => { if (!open) setEditor(null); }} event={editor.event} kind={editor.kind}
+      onSaved={slotSaved} /> : null}
+    {editor && editor.kind !== "availability" && workspace ? <CalendarEventDialog open onOpenChange={closeEditor} event={editor.event} kind={editor.kind}
+      initialDraft={editor.draft} onDraftChange={patchCreation}
+      onOpenSeriesEvent={event => { setAnchor(calendarDayKey(new Date(event.startsAt), timeZone)); setView("week"); setEditor({ kind: event.kind, start: event.startsAt, event, slot: null }); setCreation(null); }}
       startsAt={editor.start} timeZone={timeZone} workspace={workspace} campuses={campuses}
       initialAttendeeIds={person === "all" || selectedPersonId === currentUserId ? [] : [selectedPersonId]}
       initialCampusId={campus === "all" ? undefined : campus}
-      onSaved={event => { setWorkspace(current => current ? { ...current, events: [...current.events.filter(value => value.id !== event.id), event] } : current); setKinds(current => current.includes(event.kind) ? current : [...current, event.kind]); revealSaved(event.startsAt); }} /> : null}
-  </>;
+      onSaved={eventSaved} /> : null}
+  </Popover>;
 }
