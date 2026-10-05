@@ -41,6 +41,14 @@
     "apps",
     "archive",
     ".tmp",
-    ".worktrees"
+    ".worktrees",
+    ".rc-worktrees",
+    ".codex",
+    ".pnpm-store",
+    ".prod-backups",
+    ".next-*",
+    "playwright-report",
+    "test-results",
+    "blob-report"
   ]
 }
