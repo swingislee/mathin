@@ -11,8 +11,8 @@ export async function supplementSessionMaterialAction(input: MaterialSupplementI
     if (!parsed.success) throw new Error("VALIDATION");
     const value = parsed.data;
     const { supabase } = await authorizedClient("class.manage");
-    const rpc = supabase.rpc.bind(supabase) as unknown as MaterialSupplementRpc;
-    const { data, error } = await rpc("supplement_session_preparation_artifact", {
+    const client = supabase as unknown as { rpc: MaterialSupplementRpc };
+    const { data, error } = await client.rpc("supplement_session_preparation_artifact", {
       p_session_id: value.sessionId, p_kind: value.kind, p_files: value.files, p_notes: value.notes, p_video_url: value.videoUrl,
     });
     if (error) throw new Error(error.message);
