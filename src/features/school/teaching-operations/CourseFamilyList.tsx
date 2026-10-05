@@ -1,15 +1,22 @@
-import { ArrowRight, BookOpen, CircleAlert, Layers3, School } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { DashboardEmptyCard } from "@/features/school/dashboard-page";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DashboardEmptyCard, DashboardTableShell } from "@/features/school/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { compareCourseDifficulty } from "./course-difficulty";
 import { type CourseFamilyListItem, COURSE_SEASONS } from "./course-queries";
 import type { CourseSeason } from "./types";
 
-function courseSeasonLabel(season: CourseSeason | null, translate: (key: string) => string) {
+/** 与 list_course_families 的每页条数一致。 */
+const PAGE_SIZE = 20;
+
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
+
+function courseSeasonLabel(season: CourseSeason | null, translate: Translator) {
   if (season === null) return translate("courseSeasonUnspecified");
   return translate(COURSE_SEASONS.find((item) => item.value === season)?.labelKey ?? "summer");
 }
@@ -24,16 +31,76 @@ function summarizeGrades(grades: number[]) {
   return ranges.map(({ start, end }) => start === end ? String(start) : `${start}–${end}`).join(" · ");
 }
 
+function summarizeFamily(family: CourseFamilyListItem, t: Translator) {
+  const variants = family.matchedVariants;
+  return {
+    grades: summarizeGrades(variants.map((variant) => variant.grade)),
+    classTypes: [...new Set(variants.map((variant) => variant.classType))].sort(compareCourseDifficulty).map((classType) => classType || t("defaultClassType")),
+    seasons: [...new Set(variants.map((variant) => variant.courseSeason))].sort((a, b) => (a ?? 5) - (b ?? 5)).map((season) => courseSeasonLabel(season, t)),
+    catalogVersions: [...new Map(variants
+      .filter((variant) => variant.catalogVersionSlug !== "default")
+      .map((variant) => [variant.catalogVersionSlug, variant.catalogVersionTitle])).values()],
+  };
+}
+
+function ReadinessMeter({ family, t }: { family: CourseFamilyListItem; t: Translator }) {
+  const total = family.lectureCount;
+  const ready = family.releasedLectureCount;
+  const complete = family.incompleteLectureCount === 0;
+  const percent = total > 0 ? Math.round((ready / total) * 100) : 0;
+  return <div className="flex w-full min-w-0 flex-col gap-1.5 lg:w-40">
+    <div className="flex items-baseline justify-between gap-2 text-xs">
+      <span className="text-sm text-ink tabular-nums">{ready}<span className="text-muted">/{total}</span></span>
+      <span className={cn("whitespace-nowrap", complete ? "text-leaf-deep" : "text-rose")}>
+        {complete ? t("ready") : t("readinessIssues", { count: family.incompleteLectureCount })}
+      </span>
+    </div>
+    <div className="h-1.5 overflow-hidden rounded-full bg-line" role="presentation">
+      <div className={cn("h-full rounded-full", complete ? "bg-leaf-deep" : "bg-leaf")} style={{ width: `${percent}%` }} />
+    </div>
+  </div>;
+}
+
+function pageHref(basePath: string, params: Record<string, string>, page: number) {
+  const search = new URLSearchParams(params);
+  if (page > 1) search.set("page", String(page));
+  else search.delete("page");
+  const query = search.toString();
+  return query ? `${basePath}?${query}` : basePath;
+}
+
+async function CourseFamilyPager({ currentPage, totalPages, basePath, params }: {
+  currentPage: number; totalPages: number; basePath: string; params: Record<string, string>;
+}) {
+  const t = await getTranslations("school.courses");
+  const leadsT = await getTranslations("school.leads");
+  const step = (page: number, label: string, icon: ReactNode) => page < 1 || page > totalPages
+    ? <span aria-disabled="true" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "size-9 p-0 opacity-40")}>{icon}</span>
+    : <Link href={pageHref(basePath, params, page)} aria-label={label} title={label} className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "size-9 p-0")}>{icon}</Link>;
+  return <nav aria-label={t("pagination")} className="flex items-center justify-end gap-2 text-xs text-muted">
+    {step(currentPage - 1, leadsT("previous"), <ChevronLeft className="size-4" aria-hidden />)}
+    <span className="tabular-nums">{t("pageSummary", { page: currentPage, pages: totalPages })}</span>
+    {step(currentPage + 1, leadsT("next"), <ChevronRight className="size-4" aria-hidden />)}
+  </nav>;
+}
+
+// 课程产品库是一张连续的产品目录：一行一个课程产品，适用范围、课件准备和使用规模按列对齐便于横向比较；
+// 整行进入产品详情。窄屏由 Table stacked 排成连续记录。
 export async function CourseFamilyList({
   families,
   totalCount,
   hasFilters,
   resetHref,
+  currentPage,
+  searchParams,
 }: {
   families: CourseFamilyListItem[];
   totalCount: number;
   hasFilters: boolean;
   resetHref: string;
+  currentPage: number;
+  /** 当前筛选参数，翻页时原样保留。 */
+  searchParams: Record<string, string>;
 }) {
   const t = await getTranslations("school.courses");
   if (families.length === 0) {
@@ -41,52 +108,60 @@ export async function CourseFamilyList({
       action={hasFilters ? <Link href={resetHref} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{t("clearFilters")}</Link> : undefined}
     >{t("familyEmpty")}</DashboardEmptyCard>;
   }
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
-  return <div className="space-y-4">
+  return <div className="space-y-3">
     <p className="text-sm text-muted">{t("familyResults", { count: totalCount })}</p>
-    <div className="grid items-stretch gap-4 @4xl/page:grid-cols-2">
-      {families.map((family) => {
-        const variants = family.matchedVariants;
-        const classTypes = [...new Set(variants.map((variant) => variant.classType))].sort(compareCourseDifficulty);
-        const seasons = [...new Set(variants.map((variant) => variant.courseSeason))].sort((a, b) => (a ?? 5) - (b ?? 5));
-        const catalogVersions = [...new Map(variants
-          .filter((variant) => variant.catalogVersionSlug !== "default")
-          .map((variant) => [variant.catalogVersionSlug, variant.catalogVersionTitle])).values()];
-        const dimensions = [
-          { label: t("gradeLabel"), value: summarizeGrades(variants.map((variant) => variant.grade)) },
-          { label: t("classType"), value: classTypes.map((classType) => classType || t("defaultClassType")).join(" · ") },
-          { label: t("courseSeason"), value: seasons.map((season) => courseSeasonLabel(season, t)).join(" · ") },
-          { label: t("catalogVersion"), value: catalogVersions.join(" · ") },
-        ].filter((dimension) => dimension.value);
-
-        return <article key={family.id} className="@container/course-card flex min-w-0 flex-col gap-4 rounded-2xl border border-line bg-card p-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-crater/40 bg-moon/30 text-crater @md/course-card:size-16" aria-hidden="true"><BookOpen className="size-6 @md/course-card:size-8" strokeWidth={1.5} /></div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <h2 className="min-w-0 flex-1 font-display text-lg leading-snug break-words text-ink @md/course-card:text-xl">{family.title}</h2>
-                <div className="flex shrink-0 flex-wrap gap-1.5"><Badge variant={family.status === "enabled" ? "secondary" : "outline"}>{t(family.status)}</Badge>{family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}</div>
-              </div>
-              <p className="mt-1 text-sm break-words text-muted">{[family.publisher, family.stage, family.subject, family.edition].filter(Boolean).join(" · ")}</p>
-            </div>
-          </div>
-          {dimensions.length > 0 && <dl className="space-y-2 text-sm" aria-label={t("availableVariants")}>
-            {dimensions.map(({ label, value }) => <div key={label} className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3">
-              <dt className="text-muted">{label}</dt>
-              <dd className="min-w-0 break-words text-ink">{value}</dd>
-            </div>)}
-          </dl>}
-          <dl className="grid grid-cols-3 gap-3 border-t border-line pt-3 text-xs">
-            <div className="min-w-0"><dt className="flex items-center gap-1 text-muted"><Layers3 className="size-3.5 shrink-0" />{t("variants")}</dt><dd className="mt-1 text-sm font-medium break-words text-ink tabular-nums">{family.variantCount}</dd></div>
-            <div className="min-w-0"><dt className="text-muted">{t("readiness")}</dt><dd className="mt-1 text-sm font-medium break-words text-ink tabular-nums">{family.releasedLectureCount}/{family.lectureCount}</dd></div>
-            <div className="min-w-0"><dt className="flex items-center gap-1 text-muted"><School className="size-3.5 shrink-0" />{t("usingClasses")}</dt><dd className="mt-1 text-sm font-medium break-words text-ink tabular-nums">{family.classroomCount}</dd></div>
-          </dl>
-          <div className="mt-auto flex flex-col gap-3 @sm/course-card:flex-row @sm/course-card:items-center @sm/course-card:justify-between">
-            <p className={cn("flex min-w-0 items-center gap-1 text-xs", family.incompleteLectureCount ? "text-rose" : "text-leaf-deep")}><CircleAlert className="size-3.5 shrink-0" />{family.incompleteLectureCount ? t("readinessIssues", { count: family.incompleteLectureCount }) : t("readinessComplete")}</p>
-            <Link href={`/dashboard/courses/${family.id}`} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "min-h-11 w-full shrink-0 @sm/course-card:w-auto")}>{t("viewProduct")}<ArrowRight className="size-4" /></Link>
-          </div>
-        </article>;
-      })}
-    </div>
+    <DashboardTableShell data-course-family-table>
+      <Table mobileLayout="stacked" className="w-full text-left text-sm lg:min-w-[60rem]">
+        <TableHeader className="text-xs text-muted">
+          <TableRow className="hover:bg-card">
+            <TableHead className="w-[34%]">{t("productColumn")}</TableHead>
+            <TableHead>{t("gradeLabel")}</TableHead>
+            <TableHead>{t("classType")}</TableHead>
+            <TableHead>{t("courseSeason")}</TableHead>
+            <TableHead>{t("readiness")}</TableHead>
+            <TableHead className="text-right">{t("variants")}</TableHead>
+            <TableHead className="text-right">{t("usingClasses")}</TableHead>
+            <TableHead className="w-10"><span className="sr-only">{t("viewProduct")}</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {families.map((family) => {
+            const summary = summarizeFamily(family, t);
+            const meta = [family.publisher, family.stage, family.subject, family.edition].filter(Boolean).join(" · ");
+            return <TableRow key={family.id} className="group relative cursor-pointer">
+              <TableCell mobileSpan="primary" className="py-3.5">
+                <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  {/* 标题链接撑满整行，行内其余内容只读。 */}
+                  <Link href={`/dashboard/courses/${family.id}`} className="min-w-0 font-display text-base leading-snug break-words text-ink after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-ring">
+                    {family.title}
+                  </Link>
+                  {family.status !== "enabled" && <Badge variant="outline">{t(family.status)}</Badge>}
+                  {family.purpose === "test" && <Badge variant="outline">{t("test")}</Badge>}
+                </div>
+                {meta && <p className="mt-0.5 text-xs break-words text-muted">{meta}</p>}
+                {summary.catalogVersions.length > 0 && <p className="mt-0.5 text-xs break-words text-muted">{t("catalogVersion")} · {summary.catalogVersions.join(" · ")}</p>}
+                <p className="mt-1 text-xs text-muted tabular-nums lg:hidden">{t("familyCounts", { variants: family.variantCount, classes: family.classroomCount })}</p>
+              </TableCell>
+              <TableCell mobileLabel={t("gradeLabel")} mobileEmpty={!summary.grades} className="whitespace-nowrap tabular-nums text-ink">{summary.grades || "—"}</TableCell>
+              <TableCell mobileLabel={t("classType")} mobileEmpty={summary.classTypes.length === 0}>
+                <div className="flex flex-wrap gap-1">
+                  {summary.classTypes.map((classType) => <span key={classType} className="rounded-md border border-line bg-paper px-1.5 py-0.5 text-xs leading-none text-ink">{classType}</span>)}
+                </div>
+              </TableCell>
+              <TableCell mobileLabel={t("courseSeason")} mobileEmpty={summary.seasons.length === 0} className="text-ink">{summary.seasons.join(" · ") || "—"}</TableCell>
+              <TableCell mobileLabel={t("readiness")}><ReadinessMeter family={family} t={t} /></TableCell>
+              <TableCell mobileHidden className="text-right tabular-nums text-ink">{family.variantCount}</TableCell>
+              <TableCell mobileHidden className={cn("text-right tabular-nums", family.classroomCount ? "text-ink" : "text-muted")}>{family.classroomCount}</TableCell>
+              <TableCell mobileSpan="secondary" className="pr-3 text-right text-muted" aria-hidden="true">
+                <ChevronRight className="ml-auto size-4 transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
+              </TableCell>
+            </TableRow>;
+          })}
+        </TableBody>
+      </Table>
+    </DashboardTableShell>
+    {totalPages > 1 && <CourseFamilyPager currentPage={Math.min(currentPage, totalPages)} totalPages={totalPages} basePath="/dashboard/courses" params={searchParams} />}
   </div>;
 }

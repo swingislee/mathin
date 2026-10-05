@@ -56,10 +56,10 @@ async function CourseFamilyCommandPanel({ locale, searchParams }: { locale: stri
       </DashboardCommandFilters>
       {/* doc22 §13.5：只有 course.product.create 才看得到新建入口。 */}
       {(perms.has("course.product.create") || perms.has("course.manage") || perms.has("enrollment.manage")) && (
-        <DashboardCommandActions className="w-full items-stretch justify-start [&>a]:min-h-11 [&>a]:min-w-0 [&>a]:flex-1 [&>a]:basis-28 [&>a]:text-center @3xl/chrome:w-auto @3xl/chrome:justify-end @3xl/chrome:[&>a]:min-h-9 @3xl/chrome:[&>a]:flex-none @3xl/chrome:[&>a]:basis-auto">
+        <DashboardCommandActions className="w-full justify-start [&>a]:min-h-11 [&>a]:min-w-0 [&>a]:flex-1 [&>a]:whitespace-nowrap [&>a[data-primary]]:basis-full @3xl/chrome:w-auto @3xl/chrome:justify-end @3xl/chrome:[&>a]:min-h-9 @3xl/chrome:[&>a]:flex-none @3xl/chrome:[&>a[data-primary]]:basis-auto">
           {(perms.has("course.manage") || perms.has("enrollment.manage")) && <Link href="/dashboard/courses/admissions" className={buttonVariants({ variant: "secondary", size: "sm" })}>{locale === "en" ? "Mini Program admissions" : "小程序课程报名"}</Link>}
           {perms.has("course.manage") && <Link href="/dashboard/courses/material-rules" className={buttonVariants({ variant: "secondary", size: "sm" })}>{materialT("rulesTitle")}</Link>}
-          {perms.has("course.product.create") && <Link href="/dashboard/courses/new" className={buttonVariants({ size: "sm" })}>
+          {perms.has("course.product.create") && <Link data-primary href="/dashboard/courses/new" className={buttonVariants({ size: "sm" })}>
             <Plus className="size-4" />
             {t("newProduct")}
           </Link>}
@@ -74,5 +74,9 @@ async function CourseFamilyLibrary({ locale, searchParams }: { locale: string; s
   const filters = parseCourseFamilyFilters(rawSearchParams);
   const { families, totalCount } = await listCourseFamilies(filters);
   const hasFilters = Boolean(filters.q || filters.grade || filters.courseSeason || filters.classType || filters.catalogVersion || filters.familyStatus || filters.variantStatus || filters.purpose || filters.readiness);
-  return <CourseFamilyList families={families} totalCount={totalCount} hasFilters={hasFilters} resetHref="/dashboard/courses" />;
+  const params = Object.fromEntries(Object.entries(rawSearchParams).flatMap(([key, value]) => {
+    const first = Array.isArray(value) ? value[0] : value;
+    return first ? [[key, first]] : [];
+  }));
+  return <CourseFamilyList families={families} totalCount={totalCount} hasFilters={hasFilters} resetHref="/dashboard/courses" currentPage={filters.page} searchParams={params} />;
 }
