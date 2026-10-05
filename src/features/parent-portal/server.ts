@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loginIdentifierSchema } from "@/lib/auth-identifier";
-import type { ApiErrorCode, Report, PracticeSubmission, Media } from "../../../contracts/parent-api/portal";
+import type { Activity, ApiErrorCode, Report, PracticeSubmission, Media } from "../../../contracts/parent-api/portal";
 import { intakeFormSchema, intakeSchema, validateAnswers, mediaType, PHOTO_BYTES, VIDEO_BYTES } from "./validation";
 
 export class PortalError extends Error {
@@ -106,7 +106,19 @@ export async function portalGet(request:Request) {
   const query=new URL(request.url).searchParams;
   const resource=query.get("resource");
   if(resource==="form")return response(await getForm(z.string().regex(/^[a-z0-9-]{1,64}$/).parse(query.get("form")||"welcome")));
-  if(resource==="activities")return response(requireResult(await client().rpc("miniapp_public_activities")));
+  if(resource==="activities") {
+    const rows=requireResult(await client().rpc("miniapp_public_activities")) as unknown as Activity[];
+    if(!rows.length)return response(rows);
+    // 仅补充公开 RPC 已放行的项目；不把未发布活动或内部备注带入公开接口。
+    const metadata=z.array(z.object({id:uuid,target_grades:z.array(z.number().int().min(1).max(12)).nullable(),kind:z.string()}))
+      .parse(requireResult(await createAdminClient().from("activities").select("id,target_grades,kind")
+        .in("id",rows.map(row=>row.id)).is("deleted_at",null).eq("record_state","current")));
+    const byId=new Map(metadata.map(row=>[row.id,row]));
+    return response(rows.filter(row=>byId.has(row.id)).map(row=>({...row,
+      targetGrades:byId.get(row.id)!.target_grades,
+      subject:byId.get(row.id)!.kind==="public_class"?"math":null,
+    })));
+  }
   const {db,user,profile}=await authorize(request);
   if(resource==="account")return response({id:user.id,displayName:profile.display_name,
     participants:requireResult(await db.rpc("get_my_students"))?.map((row:{id:string;name:string})=>({id:row.id,name:row.name}))??[]});

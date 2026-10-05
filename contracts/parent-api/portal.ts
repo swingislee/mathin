@@ -17,6 +17,10 @@ export type Activity = {
   id: string; title: LocalizedText; description: LocalizedText; location: string;
   startsAt: string; durationMinutes: number | null; remaining: number | null;
   bookable: boolean;
+  /** 发现筛选：null/缺省表示待核对，空数组表示不限年级。 */
+  targetGrades?: number[] | null;
+  /** Mathin 公开数学课程为 math；未分类项目为 null。 */
+  subject?: "math" | null;
 };
 export type Booking = {
   id: string; activityId: string; participantId: string; participantName: string;

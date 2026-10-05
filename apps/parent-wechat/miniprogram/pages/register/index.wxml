@@ -7,7 +7,7 @@
       <block wx:elif="{{form}}">
         <text wx:if="{{formDescription}}" class="form-help block">{{formDescription}}</text>
         <view class="surface form-card"><view wx:for="{{fields}}" wx:key="id" class="field">
-          <text class="field-label"><text>{{item.label}}</text><text class="muted small">{{item.required ? copy.required : copy.optional}}</text></text>
+          <view class="field-label"><text>{{item.label}}</text><text class="muted small">{{item.required ? copy.required : copy.optional}}</text></view>
           <input wx:if="{{item.type === 'text' || item.type === 'phone'}}" class="input" type="text" value="{{item.value}}" data-index="{{index}}" bindinput="input" maxlength="{{item.type === 'phone' ? 30 : 200}}" placeholder="{{item.label}}" disabled="{{busy}}" />
           <textarea wx:elif="{{item.type === 'textarea'}}" class="input textarea" value="{{item.value}}" data-index="{{index}}" bindinput="input" maxlength="2000" placeholder="{{item.label}}" disabled="{{busy}}" />
           <button wx:elif="{{item.type === 'select'}}" class="input row" data-index="{{index}}" bindtap="showOptions" disabled="{{busy}}"><text>{{item.value || copy.select}}</text><view class="chevron down"></view></button>

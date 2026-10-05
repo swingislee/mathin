@@ -2,21 +2,22 @@
   <app-nav title="{{brandName}}" brand />
   <view class="portal-content">
     <view class="discovery-filters">
-      <button class="filter-pill" data-sheet="location" bindtap="showFilter"><text>{{location || copy.allLocations}}</text><view class="chevron down"></view></button>
-      <button class="filter-pill" data-sheet="period" bindtap="showFilter"><text>{{period === 'week' ? copy.nextSevenDays : (period === 'month' ? copy.thisMonth : copy.allDates)}}</text><view class="chevron down"></view></button>
+      <button class="filter-pill" data-sheet="stage" bindtap="showFilter"><text wx:if="{{stageLabel}}" class="filter-prefix">{{copy.learnerPrefix}}</text><text>{{stageLabel || copy.classStage}}</text><view class="chevron down"></view></button>
+      <button class="filter-pill" data-sheet="subject" bindtap="showFilter"><text>{{subjectLabel || copy.allSubjects}}</text><view class="chevron down"></view></button>
     </view>
+    <view class="catalog-recommendation"><text class="recommendation-star">★</text><text>{{stageLabel ? copy.catalogHintBefore + stageLabel + copy.catalogHintAfter : copy.catalogDefaultHint}}</text></view>
     <button class="feature-entry surface" bindtap="book" hover-class="pressed">
       <image class="feature-art" src="/assets/appointment.png" mode="aspectFit" aria-hidden="true" />
-      <view class="feature-copy"><text class="feature-title">{{copy.assessmentBooking}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
+      <view class="feature-copy"><text class="feature-title">{{copy.discoverAssessment}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
     </button>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:elif="{{loading && !loaded}}" class="loading-line">{{copy.loading}}</text>
     <block wx:elif="{{loaded && !activities.length}}">
-      <empty-state label="{{source.length ? copy.noMatches : copy.noActivities}}" />
+      <empty-state label="{{copy.catalogEmpty}}" spacious />
       <button class="reset-action" bindtap="reset"><text class="reset-symbol">↻</text>{{copy.clearFilters}}</button>
     </block>
     <view wx:else class="surface activity-list" hidden="{{!activities.length}}">
-      <view class="card-heading"><text class="section-title">{{copy.activities}}</text><button class="text-link" bindtap="showAll">{{showAll ? copy.collapse : copy.viewAll}}<view class="chevron"></view></button></view>
+      <view class="card-heading"><text class="section-title">{{copy.catalogTitle}}</text><button class="text-link" bindtap="showAll">{{showAll ? copy.collapse : copy.viewAll}}<view class="chevron"></view></button></view>
       <block wx:for="{{activities}}" wx:key="id">
         <button wx:if="{{showAll || index < 3}}" class="activity-row" data-id="{{item.id}}" bindtap="openActivity" hover-class="pressed">
           <view class="activity-tile"><image src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
@@ -26,9 +27,15 @@
     </view>
     <text wx:if="{{source.length >= 100}}" class="small muted block limit-note">{{copy.catalogLimit}}</text>
   </view>
-  <view class="floating-services surface"><button bindtap="register"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.intakeTitle}}</text></button><button bindtap="reservations"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{copy.myBookings}}</text></button></view>
-  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop"><view class="sheet-heading"><text>{{sheet === 'location' ? copy.chooseLocation : copy.chooseDate}}</text><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view><view class="option-grid">
-    <block wx:if="{{sheet === 'location'}}"><button class="option-pill {{!location ? 'selected' : ''}}" data-value="" bindtap="location">{{copy.allLocations}}</button><button wx:for="{{locations}}" wx:key="*this" class="option-pill {{location === item ? 'selected' : ''}}" data-value="{{item}}" bindtap="location">{{item}}</button></block>
-    <block wx:else><button class="option-pill {{period === 'all' ? 'selected' : ''}}" data-value="all" bindtap="period">{{copy.allDates}}</button><button class="option-pill {{period === 'week' ? 'selected' : ''}}" data-value="week" bindtap="period">{{copy.nextSevenDays}}</button><button class="option-pill {{period === 'month' ? 'selected' : ''}}" data-value="month" bindtap="period">{{copy.thisMonth}}</button></block>
-  </view></view></view>
+  <view class="floating-services surface"><button bindtap="register"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.intakeTitle}}</text></button><button bindtap="book"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button><button bindtap="reservations"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{copy.myBookings}}</text></button></view>
+  <tab-overlay wx:if="{{sheet}}" />
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop">
+    <view class="bottom-sheet catalog-sheet" catchtap="noop">
+      <view class="sheet-heading"><view><text class="block">{{sheet === 'stage' ? copy.studentGrade : copy.learningSubject}}</text><text class="sheet-subtitle">{{sheet === 'stage' ? copy.chooseGradeHint : copy.chooseSubjectHint}}</text></view><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view>
+      <scroll-view wx:if="{{sheet === 'stage'}}" class="grade-scroll" scroll-y>
+        <view wx:for="{{stageGroups}}" wx:key="id" class="grade-group"><text class="section-title">{{item.label}}</text><view class="option-grid"><button wx:for="{{item.stages}}" wx:for-item="grade" wx:key="id" class="option-pill {{stage === grade.id ? 'selected' : ''}}" data-value="{{grade.id}}" bindtap="chooseFilter">{{grade.label}}</button></view></view>
+      </scroll-view>
+      <view wx:else class="option-grid"><button class="option-pill {{!subject ? 'selected' : ''}}" data-value="" bindtap="chooseFilter">{{copy.allSubjects}}</button><button wx:for="{{subjects}}" wx:key="id" class="option-pill {{subject === item.id ? 'selected' : ''}}" data-value="{{item.id}}" bindtap="chooseFilter">{{item.label}}</button></view>
+    </view>
+  </view>
 </view>

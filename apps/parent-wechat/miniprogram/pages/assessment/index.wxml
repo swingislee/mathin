@@ -1,8 +1,8 @@
 <view class="portal-page booking-page">
   <app-nav title="{{showHistory ? copy.myAssessments : copy.assessmentBooking}}" back />
   <view class="portal-content has-fixed-actions">
-    <view class="assessment-toolbar"><button class="text-link" bindtap="toggleHistory">{{showHistory ? copy.assessmentBooking : copy.myAssessments}}<view class="chevron"></view></button></view>
-    <button wx:if="{{authenticated && participants.length}}" class="assessment-child" data-sheet="participant" bindtap="showSheet" disabled="{{busy}}"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{participants[selected].name}}</text><text class="switch-child">{{copy.switchChild}}</text></button>
+    <view wx:if="{{showHistory}}" class="assessment-toolbar"><button class="text-link" bindtap="toggleHistory">{{copy.assessmentBooking}}<view class="chevron"></view></button></view>
+    <button wx:if="{{showHistory && authenticated && participants.length}}" class="assessment-child" data-sheet="participant" bindtap="showSheet" disabled="{{busy}}"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{participants[selected].name}}</text><text class="switch-child">{{copy.switchChild}}</text></button>
     <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
     <block wx:elif="{{authenticated && loaded}}">
       <block wx:if="{{showHistory}}">
@@ -34,6 +34,7 @@
         </view>
         <text wx:if="{{eligibilityHint}}" class="muted small block limit-note">{{eligibilityHint}}</text>
         <text wx:elif="{{eligible && !teachers.length}}" class="muted small block limit-note">{{copy.noAssessors}}</text>
+        <view class="assessment-history-link"><button class="text-link" bindtap="toggleHistory">{{copy.myAssessments}}<view class="chevron"></view></button></view>
       </block>
     </block>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}<block wx:if="{{uncertain}}"><button class="text-button" bindtap="viewHistory" disabled="{{busy}}">{{copy.myAssessments}}</button><button wx:if="{{pending}}" class="text-button" bindtap="retryPending" disabled="{{busy}}">{{copy.retryAssessment}}</button><button wx:if="{{pending && pendingChecked && eligible}}" class="text-button" bindtap="startOver" disabled="{{busy}}">{{copy.restartAssessment}}</button></block><button wx:else class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>

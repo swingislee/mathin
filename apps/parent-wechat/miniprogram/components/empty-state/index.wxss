@@ -4,3 +4,5 @@
 .empty-art-label { display: block; margin-top: 24rpx; color: var(--empty-ink, #97ac75); font-size: 28rpx; line-height: 1.6; }
 .empty-art-compact { padding: 46rpx 0 28rpx; }
 .empty-art-compact .empty-art-image { width: 260rpx; height: 175rpx; }
+.empty-art-spacious { padding-bottom: 70rpx; }
+.empty-art-spacious .empty-art-label { margin-top: 90rpx; font-size: 30rpx; font-weight: 600; }

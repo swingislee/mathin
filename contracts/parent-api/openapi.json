@@ -1593,6 +1593,17 @@
           "bookable": {
             "type": "boolean",
             "description": "是否在预约开放时间内；仍须检查 remaining 和提交时的实时名额"
+          },
+          "targetGrades": {
+            "type": ["array", "null"],
+            "items": { "type": "integer", "minimum": 1, "maximum": 12 },
+            "maxItems": 12,
+            "uniqueItems": true,
+            "description": "发现筛选：null 或缺省表示年级待核对；空数组表示不限年级"
+          },
+          "subject": {
+            "enum": ["math", null],
+            "description": "Mathin 公开数学课程为 math；未分类项目为 null"
           }
         }
       },

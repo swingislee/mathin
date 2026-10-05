@@ -17,7 +17,7 @@ Page({
     this.renderWeek();
     if (session()) void this.load();
   },
-  onHide() { this.loadVersion++; },
+  onHide() { this.loadVersion++; this.setData({ sheet: false }); },
   async load() {
     const version = ++this.loadVersion;
     this.setData({ loading: true, error: "" });
