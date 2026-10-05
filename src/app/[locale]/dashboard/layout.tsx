@@ -4,7 +4,7 @@ import { setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
 import { DashboardShell } from "@/features/school/DashboardShell";
 import { DashboardPreferenceScope } from "@/features/school/dashboard-page/DashboardPreferenceScope";
-import { DASHBOARD_SIDEBAR_COOKIE, parseDashboardSidebarMode } from "@/features/school/dashboard-sidebar";
+import { DASHBOARD_SIDEBAR_COOKIE, DASHBOARD_SIDEBAR_WIDTH_COOKIE, parseDashboardSidebarPreference } from "@/features/school/dashboard-sidebar";
 import { getMyStudents } from "@/features/school/customer";
 import { filterSchoolNav, HOME_NAV_ITEM, PARENT_NAV_ITEMS, STUDENT_NAV_ITEMS, type SchoolNavItem } from "@/features/school/nav";
 import { isFeatureEnabled } from "@/features/school/organization-settings";
@@ -30,8 +30,12 @@ export default async function DashboardLayout({
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requireUser(locale, { allowAccountRecovery: true });
-  // doc 27 §3 D1：侧栏宽度参与首帧布局，必须在服务端就定下来。
-  const sidebarMode = parseDashboardSidebarMode((await cookies()).get(DASHBOARD_SIDEBAR_COOKIE)?.value);
+  // 宽度和显隐参与首帧布局，刷新后直接恢复上次偏好。
+  const cookieStore = await cookies();
+  const sidebarPreference = parseDashboardSidebarPreference(
+    cookieStore.get(DASHBOARD_SIDEBAR_COOKIE)?.value,
+    cookieStore.get(DASHBOARD_SIDEBAR_WIDTH_COOKIE)?.value,
+  );
   // P4I-1：左侧导航跟渲染在下面的 Home 一样按"当前使用环境"分派，不再直接认
   // profiles.role——员工兼家长切换到家庭视角时，导航也要跟着换成家庭导航。
   // doc22 §10：与页面级 requireDashboardEnvironment 共用同一个（每请求缓存的）判定。
@@ -55,7 +59,7 @@ export default async function DashboardLayout({
       <SiteHeader workspace />
       <DashboardPreferenceScope userId={user.id}>
         {rememberTeacherWorkspace ? <Suspense fallback={null}><TeacherWorkspaceMemory /></Suspense> : null}
-        <DashboardShell nav={nav} initialSidebarMode={sidebarMode}>{children}</DashboardShell>
+        <DashboardShell nav={nav} initialSidebarPreference={sidebarPreference}>{children}</DashboardShell>
       </DashboardPreferenceScope>
     </div>
   );

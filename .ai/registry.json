@@ -3,6 +3,30 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "DASHBOARD-SIDEBAR-RESIZE-20261005",
+      "title": "Dashboard 侧栏拖动宽度与独立收起",
+      "agent": "codex",
+      "threadId": "01a10c18-c296-76f0-82b4-df74469666bd",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/DASHBOARD-SIDEBAR-RESIZE-20261005.md",
+      "writePaths": [
+        "src/features/school/DashboardShell.tsx",
+        "src/features/school/DashboardSidebarResizeHandle.tsx",
+        "src/features/school/dashboard-sidebar.ts",
+        "src/app/[locale]/dashboard/layout.tsx",
+        ".ai/tasks/DASHBOARD-SIDEBAR-RESIZE-20261005.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": null,
+      "next": "已实现边缘拖动、图标吸附与独立收起，恢复上次宽度；定向静态检查通过，3130 开发服务可访问，待实际拖动手感验收，生产未部署。"
+    },
+    {
       "id": "ADMIN-MATERIAL-SUPPLEMENT-20261005",
       "title": "管理代老师补交课次资料",
       "agent": "codex",

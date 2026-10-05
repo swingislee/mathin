@@ -8,7 +8,6 @@ import {
   CalendarRange,
   ChartNoAxesColumnIncreasing,
   ChartSpline,
-  ChevronsLeft,
   ClipboardCheck,
   ClipboardList,
   ClipboardPenLine,
@@ -41,7 +40,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import { Fragment, useState } from "react";
+import { Fragment, useId, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import { MainFloatingControl } from "@/components/global-floating-controls";
 import { Button } from "@/components/ui/button";
@@ -53,9 +52,11 @@ import { cn } from "@/lib/utils";
 import { resolveDashboardShellMode } from "./dashboard-routes";
 import {
   DASHBOARD_SIDEBAR_COOKIE,
-  nextDashboardSidebarMode,
-  type DashboardSidebarMode,
+  DASHBOARD_SIDEBAR_WIDTH_COOKIE,
+  dashboardSidebarMode,
+  type DashboardSidebarPreference,
 } from "./dashboard-sidebar";
+import { DashboardSidebarResizeHandle } from "./DashboardSidebarResizeHandle";
 import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 import { Student360Workspace } from "./Student360Sheet";
 import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
@@ -128,7 +129,7 @@ function NavList({
     <nav
       data-dashboard-nav
       aria-label={navT("sidebarLabel")}
-      className={cn("flex flex-col gap-0.5 pb-4", collapsed ? "px-2" : "px-3")}
+      className="flex min-w-0 flex-col gap-0.5 px-2 pb-4"
     >
       {withGroupHeaders(nav).map(({ item, showGroupHeader }) => {
         const Icon = ICONS[item.labelKey] ?? LayoutDashboard;
@@ -139,36 +140,31 @@ function NavList({
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
-            aria-label={collapsed ? label : undefined}
+            aria-label={label}
             className={cn(
-              "flex min-h-8 items-center rounded-xl text-sm transition-colors",
-              collapsed ? "justify-center px-0 py-1.5" : "gap-3 px-3 py-1",
+              "flex min-h-8 min-w-0 items-center rounded-xl py-1.5 text-sm transition-colors",
               active ? "bg-moon/35 font-medium text-ink" : "text-muted hover:bg-card/70 hover:text-ink",
             )}
           >
-            <Icon size={collapsed ? 17 : 15} strokeWidth={1.75} />
-            {collapsed ? null : label}
+            <span className="flex w-10 shrink-0 items-center justify-center"><Icon size={17} strokeWidth={1.75} /></span>
+            {collapsed ? null : <span className="min-w-0 truncate pr-3">{label}</span>}
           </DashboardIntentLink>
         );
         return (
           <Fragment key={item.href}>
             {showGroupHeader ? (
               collapsed ? (
-                <div className="mx-1 my-1.5 border-t border-line first:mt-0" aria-hidden />
+                <div className="flex h-7 shrink-0 items-center px-1" aria-hidden><div className="w-full border-t border-line" /></div>
               ) : (
-                <p className="mb-1 mt-2 px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted first:mt-1">
-                  {navT(`group_${item.group}`)}
+                <p className="flex h-7 min-w-0 shrink-0 items-center px-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+                  <span className="truncate">{navT(`group_${item.group}`)}</span>
                 </p>
               )
             ) : null}
-            {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>{link}</TooltipTrigger>
-                <TooltipContent side="right">{label}</TooltipContent>
-              </Tooltip>
-            ) : (
-              link
-            )}
+            <Tooltip>
+              <TooltipTrigger asChild>{link}</TooltipTrigger>
+              <TooltipContent side="right">{label}</TooltipContent>
+            </Tooltip>
           </Fragment>
         );
       })}
@@ -179,38 +175,51 @@ function NavList({
 /** Dashboard keeps the navigation static and gives scrolling responsibility to the main workspace. */
 export function DashboardShell({
   nav,
-  initialSidebarMode,
+  initialSidebarPreference,
   children,
 }: {
   nav: readonly SchoolNavItem[];
-  initialSidebarMode: DashboardSidebarMode;
+  initialSidebarPreference: DashboardSidebarPreference;
   children: React.ReactNode;
 }) {
   const shellT = useTranslations("dashboard.shell");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [sidebarMode, setSidebarMode] = useState<DashboardSidebarMode>(initialSidebarMode);
+  const [sidebar, setSidebar] = useState(initialSidebarPreference);
+  const sidebarId = useId();
+  const hideNavRef = useRef<HTMLButtonElement>(null);
+  const restoreNavRef = useRef<HTMLButtonElement>(null);
   // doc 23 §6：外壳模式来自路由合同，Shell 不再自己认路径。
   const workspace = resolveDashboardShellMode(pathname) === "panel";
+  const sidebarMode = dashboardSidebarMode(sidebar);
   const collapsed = sidebarMode === "icons";
 
-  const applySidebarMode = (next: DashboardSidebarMode) => {
-    setSidebarMode(next);
-    // 一年有效期 + Lax：这是纯展示偏好，跨站请求带不带它都无所谓，但刷新和新标签页要记得。
-    document.cookie = `${DASHBOARD_SIDEBAR_COOKIE}=${next}; path=/; max-age=31536000; samesite=lax`;
+  const applySidebarPreference = (next: DashboardSidebarPreference, commit = true) => {
+    setSidebar(next);
+    if (!commit) return;
+    const options = "path=/; max-age=31536000; samesite=lax";
+    document.cookie = `${DASHBOARD_SIDEBAR_COOKIE}=${dashboardSidebarMode(next)}; ${options}`;
+    document.cookie = `${DASHBOARD_SIDEBAR_WIDTH_COOKIE}=${next.width}; ${options}`;
+  };
+
+  const toggleSidebarVisibility = () => {
+    applySidebarPreference({ ...sidebar, hidden: !sidebar.hidden });
+    requestAnimationFrame(() => {
+      (sidebar.hidden ? hideNavRef : restoreNavRef).current?.focus();
+    });
   };
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="flex min-h-0 w-full flex-1 overflow-hidden">
       {sidebarMode === "hidden" ? null : (
         <aside
+          id={sidebarId}
           data-dashboard-sidebar={sidebarMode}
-          className={cn(
-            "relative hidden shrink-0 overflow-hidden border-r border-line bg-card/35 lg:flex lg:flex-col",
-            collapsed ? "w-14" : "w-60",
-          )}
+          style={{ width: sidebar.width }}
+          className="relative hidden shrink-0 bg-card/35 lg:flex lg:flex-col"
         >
-          <div className={cn("relative z-10 flex shrink-0 items-center", collapsed ? "flex-col gap-1 px-2 pb-3 pt-4" : "gap-2 px-6 pb-5 pt-6")}>
+          <div className={cn("relative z-10 flex h-20 shrink-0 items-center", collapsed ? "flex-col justify-center gap-1 px-2" : "gap-2 px-4")}>
             <Link
               href="/"
               aria-label="Mathin"
@@ -219,25 +228,23 @@ export function DashboardShell({
               {collapsed ? "M" : "Mathin"}
             </Link>
             <Button
+              ref={hideNavRef}
               type="button"
               variant="ghost"
               size="sm"
               className="size-8 shrink-0 rounded-full p-0 text-muted hover:text-ink"
-              aria-label={shellT(collapsed ? "hideNav" : "collapseNav")}
-              onClick={() => applySidebarMode(nextDashboardSidebarMode(sidebarMode))}
+              aria-label={shellT("hideNav")}
+              title={shellT("hideNav")}
+              aria-controls={sidebarId}
+              aria-expanded
+              onClick={toggleSidebarVisibility}
             >
-              {collapsed ? <ChevronsLeft size={16} /> : <PanelLeftClose size={16} />}
+              <PanelLeftClose size={16} />
             </Button>
           </div>
 
-          <ScrollArea className="relative z-10 min-h-0 flex-1">
-            {collapsed ? (
-              <TooltipProvider delayDuration={200}>
-                <NavList nav={nav} pathname={pathname} collapsed />
-              </TooltipProvider>
-            ) : (
-              <NavList nav={nav} pathname={pathname} />
-            )}
+          <ScrollArea className="relative z-10 min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
+            <NavList nav={nav} pathname={pathname} collapsed={collapsed} />
           </ScrollArea>
 
           {/*
@@ -259,11 +266,16 @@ export function DashboardShell({
                 alt=""
                 fill
                 loading="eager"
-                sizes="240px"
+                sizes="320px"
                 className="object-cover object-bottom opacity-[0.14] mix-blend-multiply dark:opacity-[0.12] dark:mix-blend-screen"
               />
             </div>
           )}
+          <DashboardSidebarResizeHandle
+            width={sidebar.width}
+            sidebarId={sidebarId}
+            onResize={(width, commit) => applySidebarPreference({ ...sidebar, width }, commit)}
+          />
         </aside>
       )}
 
@@ -290,13 +302,16 @@ export function DashboardShell({
         </Sheet>
         {sidebarMode === "hidden" ? (
           <Button
+            ref={restoreNavRef}
             type="button"
             variant="secondary"
             size="sm"
             data-dashboard-nav-floating
             className="hidden size-11 rounded-full bg-paper p-0 shadow-lg hover:bg-card lg:inline-flex"
             aria-label={shellT("expandNav")}
-            onClick={() => applySidebarMode(nextDashboardSidebarMode(sidebarMode))}
+            title={shellT("expandNav")}
+            aria-expanded={false}
+            onClick={toggleSidebarVisibility}
           >
             <PanelLeftOpen size={18} />
           </Button>
@@ -329,5 +344,6 @@ export function DashboardShell({
         </main>
       </Student360Workspace>
     </div>
+    </TooltipProvider>
   );
 }

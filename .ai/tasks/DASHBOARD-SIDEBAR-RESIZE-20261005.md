@@ -1,0 +1,9 @@
+# Dashboard 侧栏拖动宽度与独立收起
+
+- 目标：用边缘拖动调整图标／文字导航的宽度；隐藏独立操作，重新打开恢复原宽度。
+- 分支：`main`。负责 `DashboardShell.tsx`、`DashboardSidebarResizeHandle.tsx`、`dashboard-sidebar.ts`、Dashboard layout；共享文案只改 `dashboard.shell`。
+- 交互：56px 图标窄条；176–320px 文字区，默认 240px；临界吸附，双击恢复默认；保留手机抽屉。
+- 当前状态：已实现并接入现有开发服务，生产未部署，待产品负责人实际操作确认。
+- 实际检查：4 个变更源码文件的 ESLint 通过；zh/en JSON 读取通过；本机 3130 开发服务在线，Dashboard 匿名请求按现有逻辑跳转登录。未运行自动化测试或浏览器验证。
+- 待人工确认：图标／文字切换吸附阈值与拖动手感；收起后恢复原宽度；刷新及切页保留宽度。边缘支持方向键、Home／End，拖动时 Esc 取消。
+- 开发入口：<http://192.168.5.213:3130/zh/dashboard>。

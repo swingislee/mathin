@@ -1109,9 +1109,12 @@
       "openNav": "Open navigation",
       "title": "Navigation",
       "closeNav": "Close navigation",
-      "collapseNav": "Collapse to icons",
       "hideNav": "Hide navigation",
-      "expandNav": "Show navigation"
+      "expandNav": "Restore navigation",
+      "resizeNav": "Resize navigation",
+      "resizeNavHint": "Drag left or right to resize, or use the arrow keys. Double-click to reset.",
+      "iconsOnly": "Icons only",
+      "navWidth": "Navigation width: {width} pixels"
     }
   },
   "teacherMicrocourses": {

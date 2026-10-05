@@ -1109,9 +1109,12 @@
       "openNav": "打开导航",
       "title": "导航",
       "closeNav": "关闭导航",
-      "collapseNav": "收起为图标",
       "hideNav": "隐藏导航",
-      "expandNav": "展开导航"
+      "expandNav": "恢复导航",
+      "resizeNav": "调整导航宽度",
+      "resizeNavHint": "左右拖动调整宽度，双击恢复默认；也可使用左右方向键",
+      "iconsOnly": "仅显示图标",
+      "navWidth": "导航宽度 {width} 像素"
     }
   },
   "teacherMicrocourses": {
