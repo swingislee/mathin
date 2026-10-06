@@ -20,13 +20,14 @@ const factsSchema = z.array(z.object({
 }));
 
 /** 同一已授权班级集合的只读投影；正文留在服务端，前端只接收身份与进度。 */
-export async function getTeachingProgressMatrix({ userId, canViewTeam, canReadCommunication, termId, now = Date.now() }: {
-  userId: string; canViewTeam: boolean; canReadCommunication: boolean; termId?: string; now?: number;
+export async function getTeachingProgressMatrix({ userId, canViewTeam, canReadCommunication, termId, now = Date.now(), offeringType }: {
+  userId: string; canViewTeam: boolean; canReadCommunication: boolean; termId?: string; now?: number; offeringType?: "long_term_formal" | "short_term_topic";
 }): Promise<TeachingProgressMatrixData> {
   const client = await createClient();
   const classes = await readSchoolQueryPages((start, end) => {
     const query = client.from("classrooms").select("id,name,term_id,grade,room,course:courses!classrooms_course_id_fkey(title,grade,class_type),default_room:campus_rooms!classrooms_default_room_id_fkey(name,campuses(name))")
       .eq("purpose", "production").is("archived_at", null).is("trashed_at", null);
+    if (offeringType) query.eq("offering_type", offeringType);
     return (termId ? query.eq("term_id", termId) : query).order("id").range(start, end);
   });
   if (classes.error) throw new Error("TEACHING_MATRIX_UNAVAILABLE");

@@ -3,6 +3,42 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "SHORT-COURSES-20261006",
+      "title": "短期班独立工作入口与数独四讲批量排课",
+      "agent": "codex",
+      "threadId": "01a110a0-e9fc-7670-bb56-ffafe338dc87",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/SHORT-COURSES-20261006.md",
+      "writePaths": [
+        "src/features/school/short-courses/",
+        "src/app/[locale]/dashboard/short-courses/",
+        "supabase/migrations/20261006170000_short_course_workspace.sql",
+        "supabase/tests/short_course_workspace.sql",
+        ".ai/tasks/SHORT-COURSES-20261006.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "messages/en.json",
+        "messages/zh.json",
+        "src/app/[locale]/dashboard/classes/[classId]/page.tsx",
+        "src/app/[locale]/dashboard/classes/new/page.tsx",
+        "src/features/school/ClassBuildWizard.tsx",
+        "src/features/school/ClassRosterSessionDetail.tsx",
+        "src/features/school/RosterPanel.tsx",
+        "src/features/school/DashboardShell.tsx",
+        "src/features/school/nav.ts",
+        "src/features/school/dashboard-routes.ts",
+        "src/features/school/teaching-operations/classroom-queries.ts",
+        "src/features/school/teaching-workbench/TeachingProgressPage.tsx",
+        "src/features/school/teaching-workbench/teaching-progress-matrix-read.ts"
+      ],
+      "checkpoint": null,
+      "next": "独立短期班工作区与本次数独六班24课次已在开发端可用；事务/权限、ESLint与页面读取检查通过；待产品负责人使用确认，教室及学生名册待补，生产未部署。"
+    },
+    {
       "id": "COMMUNICATION-UNIFIED-20261006",
       "title": "统一沟通三阶段与有依据的 SVG 状态",
       "agent": "codex",

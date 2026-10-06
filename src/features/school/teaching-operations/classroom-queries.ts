@@ -13,6 +13,7 @@ export interface ClassroomListFilters {
   operationalStatus?: ClassroomOperationalStatus;
   purpose?: ClassroomPurpose;
   readiness?: "ready" | "incomplete";
+  offeringType?: ClassroomOfferingType;
   page: number;
 }
 
@@ -115,6 +116,7 @@ export async function listClassroomsForScope(scope: ClassroomScope, filters: Cla
       operationalStatus: filters.operationalStatus ?? "",
       purpose: filters.purpose ?? "",
       readiness: filters.readiness ?? "",
+      offeringType: filters.offeringType ?? (scope === "test" ? "" : "long_term_formal"),
     },
     p_page: filters.page,
   });

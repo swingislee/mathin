@@ -14,10 +14,12 @@ import { calendarDayKey } from "./schedule";
 import { AttendanceDrawer } from "./AttendanceDrawer";
 import { DashboardCommandActions, DashboardCommandPanel } from "./dashboard-page";
 import { SessionMaterialsReader } from "./SessionMaterialsReader";
+import { preserveReturnTo } from "./object-workspace/return-target";
 
-export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZone, now, onDirtyChange, onReviewCountChange }: {
+export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZone, now, onDirtyChange, onReviewCountChange, returnTo }: {
   sessionId: string; classroomId: string; locale: string; timeZone: string; now: number; onDirtyChange: (value: boolean) => void;
   onReviewCountChange?: (count: number) => void;
+  returnTo?: string;
 }) {
   const m = classSessionMessages(locale);
   const [data, setData] = useState<ClassSessionDetail | null>(null);
@@ -59,7 +61,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
   const materials = <SessionMaterialsReader key={sessionId} sessionId={sessionId} classroomId={classroomId} locale={locale} timeZone={timeZone} onDirtyChange={onMaterialsDirtyChange} />;
   if (!("records" in data)) return <div className="space-y-3"><DashboardCommandPanel>
     <DashboardCommandActions>
-      <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={`/dashboard/sessions/${sessionId}?stage=pre`}>{data.canPrepare ? m.prepare : m.viewPreparation}</Link>
+      <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={preserveReturnTo(`/dashboard/sessions/${sessionId}?stage=pre`, returnTo)}>{data.canPrepare ? m.prepare : m.viewPreparation}</Link>
       {data.canMarkAttendance && <AttendanceDrawer sessionId={sessionId} appearance="secondary" />}
       {data.canEnterLive && <Link className={buttonVariants({ size: "sm" })} href={`/classroom/${classroomId}/session/${sessionId}/live?entry=prep`}>{m.enter}</Link>}
     </DashboardCommandActions>
@@ -73,7 +75,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
       studentWork={<SessionStudentPostworkTable sessionId={sessionId} rows={work.rows} initialReviews={work.reviews} resultStatus={data.resultStatus}
         canWriteReview={data.canWriteReview} initialCommunications={data.records.sessionCommunications ?? { canRead: false, canWrite: false, completed: false, records: [] }}
         locale={locale} timeZone={timeZone} today={calendarDayKey(new Date(now), timeZone)} onDirtyChange={onRecordsDirtyChange}
-        workspaceLink={<Link href={`/dashboard/sessions/${sessionId}?stage=${data.records.session.endedAt ? "post" : "live"}`} className="text-xs underline underline-offset-4">{m.workspace}</Link>}
+        workspaceLink={<Link href={preserveReturnTo(`/dashboard/sessions/${sessionId}?stage=${data.records.session.endedAt ? "post" : "live"}`, returnTo)} className="text-xs underline underline-offset-4">{m.workspace}</Link>}
         onReviewsSaved={reviews => { for (const review of reviews) reviewedStudents.current.add(review.studentId); onReviewCountChange?.(reviewedStudents.current.size); }} />}
     />
   </div>;

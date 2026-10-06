@@ -66,6 +66,7 @@ export function ClassBuildWizard({
   initialCourseId,
   initialMaterialOptions,
   inheritMaterialFrom,
+  fixedOfferingType,
 }: {
   schoolTerms: SchoolTermRow[];
   teachers: StaffOption[];
@@ -75,6 +76,7 @@ export function ClassBuildWizard({
   initialCourseId?: string;
   initialMaterialOptions?: MaterialOptions;
   inheritMaterialFrom?: string;
+  fixedOfferingType?: ClassroomOfferingType;
 }) {
   const t = useTranslations("school.classBuild");
   const materialT = useTranslations("school.classMaterial");
@@ -92,7 +94,7 @@ export function ClassBuildWizard({
     : emptyMaterialSelection);
   const [materialLoading, setMaterialLoading] = useState(false);
   const initialPurposeHandled = useRef(false);
-  const [offeringType, setOfferingType] = useState<ClassroomOfferingType>("long_term_formal");
+  const [offeringType, setOfferingType] = useState<ClassroomOfferingType>(fixedOfferingType ?? "long_term_formal");
   const [course, setCourse] = useState<ClassBuildCourseDetail | null>(null);
   const [courseSessions, setCourseSessions] = useState<ClassBuildLecture[]>([]);
   const [name, setName] = useState("");
@@ -511,8 +513,8 @@ export function ClassBuildWizard({
       <div className="mt-5">
         <Label className="text-xs font-normal text-muted">{t("offeringType")}</Label>
         <div className="mt-2 flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" aria-pressed={offeringType === "long_term_formal"} onClick={() => setOfferingType("long_term_formal")} className={cn(offeringType === "long_term_formal" && "border-moon bg-moon/50 font-medium text-ink")}>{t("offering_long_term_formal")}</Button>
-          <Button type="button" variant="secondary" aria-pressed={offeringType === "short_term_topic"} onClick={() => setOfferingType("short_term_topic")} className={cn(offeringType === "short_term_topic" && "border-moon bg-moon/50 font-medium text-ink")}>{t("offering_short_term_topic")}</Button>
+          {(!fixedOfferingType || fixedOfferingType === "long_term_formal") && <Button type="button" variant="secondary" aria-pressed={offeringType === "long_term_formal"} onClick={() => setOfferingType("long_term_formal")} className={cn(offeringType === "long_term_formal" && "border-moon bg-moon/50 font-medium text-ink")}>{t("offering_long_term_formal")}</Button>}
+          {(!fixedOfferingType || fixedOfferingType === "short_term_topic") && <Button type="button" variant="secondary" aria-pressed={offeringType === "short_term_topic"} onClick={() => setOfferingType("short_term_topic")} className={cn(offeringType === "short_term_topic" && "border-moon bg-moon/50 font-medium text-ink")}>{t("offering_short_term_topic")}</Button>}
         </div>
         <p className="mt-2 text-xs text-muted">{t(offeringType === "long_term_formal" ? "offeringLongTermHint" : "offeringShortTermHint")}</p>
       </div>

@@ -39,6 +39,7 @@ import {
   Users,
 } from "lucide-react";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Fragment, useId, useRef, useState } from "react";
 import type { ComponentType } from "react";
@@ -76,6 +77,7 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   coursewareReview: ClipboardCheck,
   sharedAssets: Images,
   classes: School,
+  shortCourses: CalendarRange,
   teachingWorkbench: ListChecks,
   activities: Sparkles,
   academicYears: CalendarRange,
@@ -121,8 +123,9 @@ function NavList({
   collapsed?: boolean;
 }) {
   const navT = useTranslations("school.nav");
+  const returnTo = useSearchParams().get("returnTo");
   // 桌面与移动端共用同一个 active 结果（doc22 §9）：两端各算一次曾经是双重高亮的来源之一。
-  const activeHref = resolveActiveNavHref(pathname, nav);
+  const activeHref = resolveActiveNavHref(pathname, nav, returnTo);
   return (
     // 具名：讲次工作区等页面会渲染自己的 <nav>，无名导航既让读屏用户分不清两者，
     // 也让"侧栏当前项"无法被稳定选中（验收脚本据此断言无双重高亮）。

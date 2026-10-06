@@ -52,7 +52,7 @@ import {
 } from "@/features/school/object-workspace";
 import { TeachingReadinessPanel } from "@/features/school/TeachingReadinessPanel";
 import { listMyWorkItems } from "@/features/school/work-items";
-import { Link } from "@/i18n/navigation";
+import { Link, redirect } from "@/i18n/navigation";
 import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
 import {
   getOrganizationTimezoneV2,
@@ -164,6 +164,9 @@ async function ClassDetailBody({
     getScheduleDefaultsV2(),
   ]);
   if (!classroom) notFound();
+  if (classroom.offeringType === "short_term_topic") {
+    redirect({ locale, href: preserveReturnTo(`/dashboard/short-courses/${classId}`, parseReturnTo({ returnTo: rawSearchParams.returnTo, environment })) });
+  }
 
   const isManagementView = classroom.capabilities.canManageClassroom;
   const isTeachingView = classroom.capabilities.canPrepareTeaching;

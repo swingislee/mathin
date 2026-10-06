@@ -45,6 +45,7 @@ export default async function NewClassPage({
       <DashboardContentGrid>
         <DashboardMainColumn>
           <ClassBuildWizard
+            fixedOfferingType="long_term_formal"
             schoolTerms={schoolTerms}
             teachers={teachers}
             roomOptions={roomOptions}

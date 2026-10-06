@@ -45,6 +45,7 @@ const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "home",
   "schedule",
   "classes",
+  "shortCourses",
   "students",
   "leads",
   "invitations",
@@ -106,7 +107,7 @@ const OBJECT_ROUTE_FALLBACKS: readonly { prefix: string; navHref: string }[] = [
   { prefix: "/dashboard/sessions", navHref: "/dashboard/classes" },
 ];
 
-export function resolveActiveNavHref(pathname: string, nav: readonly SchoolNavItem[]): string | null {
+export function resolveActiveNavHref(pathname: string, nav: readonly SchoolNavItem[], returnTo?: string | null): string | null {
   let best: string | null = null;
   for (const item of nav) {
     // 总览只精确匹配，否则它会吃掉每一条 /dashboard/* 路径。
@@ -117,6 +118,11 @@ export function resolveActiveNavHref(pathname: string, nav: readonly SchoolNavIt
     if (best === null || item.href.length > best.length) best = item.href;
   }
   if (best) return best;
+
+  const returnPath = returnTo?.split("?")[0];
+  if (pathname.startsWith("/dashboard/sessions/")
+    && (returnPath === "/dashboard/short-courses" || returnPath?.startsWith("/dashboard/short-courses/"))
+    && nav.some(item => item.href === "/dashboard/short-courses")) return "/dashboard/short-courses";
 
   const fallback = OBJECT_ROUTE_FALLBACKS.find((entry) => pathname.startsWith(entry.prefix));
   if (!fallback) return null;

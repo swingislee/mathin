@@ -52,7 +52,7 @@ function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signal
   return null;
 }
 
-export function RosterPanel({ classroomId, roster, canManage, viewerRole, signals, returnTo, canWriteFollowup = false, latestFollowUps = {} }: {
+export function RosterPanel({ classroomId, roster, canManage, viewerRole, signals, returnTo, canWriteFollowup = false, latestFollowUps = {}, continuous = false }: {
   classroomId: string;
   roster: RosterRow[];
   canManage: boolean;
@@ -62,6 +62,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
   returnTo: string;
   canWriteFollowup?: boolean;
   latestFollowUps?: Record<string, QuickFollowUpSaved>;
+  continuous?: boolean;
 }) {
   const t = useTranslations("school.classes");
   const workspaceT = useTranslations("school.followupWorkspace");
@@ -136,7 +137,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
   const pending = enrollRun.pending || withdrawRun.pending || transferRun.pending;
 
   return (
-    <section className="rounded-2xl border border-line bg-card p-5">
+    <section className={continuous ? "min-w-0" : "rounded-2xl border border-line bg-card p-5"}>
       <div className="flex items-center justify-between">
         <h2 className="text-base font-medium text-ink">{t("roster", { count: roster.length })}</h2>
         {canManage && (
