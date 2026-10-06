@@ -5,6 +5,24 @@ const TABLES = {
   '2026秋季在读学员表格': 'service',
 };
 const value = (record, ...names) => names.map(name => record.cells.find(cell => cell.fieldName.replace(/^A:\s*/, '').trim() === name)?.text?.trim()).find(Boolean) ?? '';
+const PERIODS = { acquired: '获取月份', followed: '跟进月份', confirmed: '确认月份', arrived: '到访月份', enrolled: '报名月份' };
+
+function periodDefaults(records, schema, kind) {
+  if (kind === 'service') return {};
+  const field = kind === 'assessment' ? 'arrived' : 'acquired';
+  const firstView = schema.table.viewMap?.[schema.table.views?.[0]];
+  const sourceFilter = firstView?.property?.filterInfo?.conditions?.find(condition => schema.table.fieldMap[condition.fieldId]?.name === PERIODS[field]);
+  const sourceMonth = schema.table.fieldMap[sourceFilter?.fieldId]?.property?.options?.find(option => sourceFilter.value?.includes(option.id))?.name;
+  const groupFilter = kind === 'acquisition' ? firstView?.property?.filterInfo?.conditions?.find(condition => schema.table.fieldMap[condition.fieldId]?.name === '获客组别') : null;
+  const group = schema.table.fieldMap[groupFilter?.fieldId]?.property?.options?.find(option => groupFilter.value?.includes(option.id))?.name;
+  // Use the source's opening view, or a dated acquisition batch. Do not infer a year for month-only facts.
+  const dated = records.flatMap(record => {
+    const date = value(record, kind === 'assessment' ? '到访日期' : '获取日期').match(/^(20\d{2})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
+    const month = value(record, PERIODS[field]);
+    return date && month === `${Number(date[2])}月` ? [{ month, date: Number(date[1]) * 10000 + Number(date[2]) * 100 + Number(date[3]) }] : [];
+  }).sort((a, b) => b.date - a.date);
+  return { field, month: sourceMonth || dated[0]?.month || records.map(record => value(record, PERIODS[field])).find(Boolean) || 'unknown', ...(group ? { group } : {}) };
+}
 const MARKS = [
   ['promised_visit', '诺访', 'yellow', '诺访与否', '诺访'],
   ['arrived', '已到访', 'lime', '到访与否', '已到'],
@@ -18,10 +36,13 @@ const MARKS = [
 export function buildBaseWorklistLayout({ records, schemas }) {
   const tables = new Map(schemas);
   const layouts = new Map();
+  const defaults = new Map();
   for (const [tableId, schema] of tables) {
     const firstView = schema.table.viewMap?.[schema.table.views?.[0]];
     const ids = [...new Set([...(firstView?.property?.records ?? []), ...Object.keys(schema.recordMap)])];
     layouts.set(tableId, new Map(ids.map((id, index) => [id, index + 1])));
+    const tableRecords = records.filter(record => record.tableId === tableId);
+    defaults.set(tableId, periodDefaults(tableRecords, schema, TABLES[tableRecords[0]?.tableName]));
   }
   const rows = [];
   for (const record of records) {
@@ -30,9 +51,9 @@ export function buildBaseWorklistLayout({ records, schemas }) {
     const schema = tables.get(record.tableId);
     const field = (...names) => value(record, ...names);
     const group = kind === 'acquisition' ? field('获客组别')
-      : kind === 'assessment' ? field('到访月份', '确认月份') : field('授课学科老师');
+      : kind === 'assessment' ? field('学服', '学服老师', '学服人员') : field('授课学科老师');
     const subgroup = kind === 'acquisition' ? field('确认人员', '跟进人', '沟通人员')
-      : kind === 'assessment' ? field('学服', '学服老师', '学服人员') : field('单师班序（仅多维统计用）');
+      : kind === 'assessment' ? '' : field('单师班序（仅多维统计用）');
     const markers = MARKS.flatMap(([key, label, color, name, match]) => {
       const text = field(name);
       return (name === '用户当下加V与否' ? /^(已加|是|加V)/.test(text) : text === match) ? [{ key, label, color, field: name }] : [];
@@ -55,16 +76,24 @@ export function buildBaseWorklistLayout({ records, schemas }) {
         .map(option => ({ field: cell.fieldName, label: option.name, sourceColor: option.color }));
     });
     rows.push({ logical_key: `${record.tableId}:${record.sourceRecordId}`, kind,
-      group_label: group || '未分组', subgroup_label: subgroup || '未分配',
+      group_label: group || '未分组', subgroup_label: kind === 'assessment' ? '' : subgroup || '未分配',
+      periods: Object.fromEntries(Object.entries(PERIODS).map(([key, name]) => [key, field(name) || null])),
+      period_defaults: defaults.get(record.tableId),
       source_rank: layouts.get(record.tableId)?.get(record.sourceRecordId) ?? Number.MAX_SAFE_INTEGER,
       markers, context, classifications });
   }
   for (const kind of Object.values(TABLES)) {
     const groups = new Map();
     for (const row of rows.filter(r => r.kind === kind).sort((a, b) => a.source_rank - b.source_rank)) {
-      const key = `${row.group_label} / ${row.subgroup_label}`;
-      if (!groups.has(key)) groups.set(key, groups.size + 1);
-      row.group_rank = groups.get(key);
+      if (!groups.has(row.group_label)) groups.set(row.group_label, new Map());
+      const subgroups = groups.get(row.group_label);
+      if (!subgroups.has(row.subgroup_label)) subgroups.set(row.subgroup_label, []);
+      subgroups.get(row.subgroup_label).push(row);
+    }
+    let rank = 0;
+    for (const subgroups of groups.values()) for (const members of subgroups.values()) {
+      rank += 1;
+      for (const row of members) row.group_rank = rank;
     }
   }
   return rows;

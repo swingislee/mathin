@@ -3,6 +3,28 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "BASE-WORKLIST-GROUPS-20261006",
+      "title": "补齐 Base 工作名单月份与分组层级",
+      "agent": "codex",
+      "threadId": "01a09e59-524e-7810-9aa2-5fb811957bb8",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/BASE-WORKLIST-GROUPS-20261006.md",
+      "writePaths": [
+        ".ai/tasks/BASE-WORKLIST-GROUPS-20261006.md",
+        "src/features/school/source-worklist/",
+        "scripts/lib/base-worklist-layout.mjs",
+        "supabase/migrations/20261006130000_source_worklist_periods.sql",
+        ".tmp/base-dev-20261006/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "月份与小组导航、两层折叠分组和默认工作范围已在开发端可用；月份读取、权限与页面定向检查通过，待产品负责人使用确认。生产未改动。"
+    },
+    {
       "id": "BASE-DEV-WORKLIST-20261006",
       "title": "开发端 Base 工作名单与颜色分类",
       "agent": "codex",
