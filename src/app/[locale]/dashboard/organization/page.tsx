@@ -17,7 +17,7 @@ export default async function OrganizationPage({ params }: { params: Promise<{ l
   ]);
 
   return (
-    <DashboardPage title={t("title")} description={t("intro")} commandPanel={<DashboardCommandPanel><DashboardCommandActions><Link href="/dashboard/organization/advisors" className={buttonVariants({ variant: "secondary", size: "sm" })}>{locale === "en" ? "Grade advisors" : "年级学辅设置"}</Link></DashboardCommandActions></DashboardCommandPanel>}>
+    <DashboardPage title={t("title")} description={t("intro")} commandPanel={<DashboardCommandPanel><DashboardCommandActions><Link href="/dashboard/organization/advisors" className={buttonVariants({ variant: "secondary", size: "sm" })}>{locale === "en" ? "Grade advisors" : "年级学服设置"}</Link></DashboardCommandActions></DashboardCommandPanel>}>
       <OrganizationProfileForm profile={profile} />
     </DashboardPage>
   );

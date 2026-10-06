@@ -28,8 +28,8 @@
 | `GET /api/v1/parent/courses` | 主动展示的长期班、短期班及活动，沿用既有 HTTP 路径 | 免登录 |
 | `GET /api/v1/parent/courses?resource=applications` | 当前账号提交且仍有孩子权限的预报名及历史申请 | 必须 |
 | `POST /api/v1/parent/courses` | `apply` 提交班级／活动预报名；`cancel` 撤回本人待联系预报名 | 必须 |
-| `GET /api/v1/parent/advisors` | 按年级公开已启用的学辅二维码及手机号 | 免登录 |
-| `GET /api/v1/parent/advisors/qr?path=...` | 同源读取公开的学辅二维码图片 | 免登录 |
+| `GET /api/v1/parent/advisors` | 按年级公开已启用的学服二维码及手机号 | 免登录 |
+| `GET /api/v1/parent/advisors/qr?path=...` | 同源读取公开的学服二维码图片 | 免登录 |
 | `GET /api/v1/parent/learning?participant=...` | 一个孩子的课表、考勤、学习摘要、请假进度、报告及当前账号通知 | 必须 |
 | `POST /api/v1/parent/learning` | `leave` 提交请假申请；`readNotification` 标记本人通知已读 | 必须 |
 | `GET /api/v1/parent/assessments?participant=...` | 一个孩子的 1 对 1 测评申请、资格和有限范围教师 | 必须 |
@@ -48,7 +48,7 @@
 
 申请命令为 `{action:"apply",id,kind,publicationId,revision,classroomId,participantId}`；班级的 `classroomId=publicationId`，活动的 `classroomId=null`。请求保存对象快照，检查真实展示版本、亲子关系及重复请求。状态为 `pending/contacted/declined/cancelled`；旧 `confirmed` 只表示既有正式报名历史。工作人员联系处理不会创建正式报名、分班、活动参与名单或缴费。家长可撤回待联系预报名，正式业务由线下办理。
 
-学辅联系人按精确年级配置，公开接口只返回已启用记录；没有设置的年级为空。二维码 URL 使用当前 API origin，手机号用于平台拨号。二维码上传和设置需要 `organization.profile.manage`，家长端没有聊天、支付或退款入口。
+学服联系人按精确年级配置，公开接口只返回已启用记录；没有设置的年级为空。二维码 URL 使用当前 API origin，手机号用于平台拨号。二维码上传和设置需要 `organization.profile.manage`，家长端没有聊天、支付或退款入口。
 
 照片上限 12 MiB、视频 64 MiB，每次提交 1～9 个附件，单账号预留空间上限 1 GiB。根据文件签名识别 JPEG/PNG/WebP/HEIC/MP4/MOV，视频额外核验 `video` 权限。附件只存入私有 `miniapp-practice` bucket；签名 URL 经同一 API origin 代理，手机无需访问 Supabase 内网地址。失败重试会复用客户端已完成的上传；未确认上传响应时可能留下预留文件，目前保留供后台核对，没有新增自动清理任务。
 

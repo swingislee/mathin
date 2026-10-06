@@ -3,7 +3,7 @@ import type { AdvisorContact } from "../../lib/api-types";
 import { stageGroups } from "../../lib/catalog";
 import { pageData, syncPage, currentLocale, errorText } from "../../lib/page";
 const words = {
-  zh: { title: "联系学辅", grade: "选择学员年级", advisor: "学辅老师", scan: "长按二维码添加老师微信", phone: "拨打手机号", missing: "该年级的学辅联系方式尚未设置。", save: "查看二维码" },
+  zh: { title: "联系学服", grade: "选择学员年级", advisor: "学服老师", scan: "长按二维码添加老师微信", phone: "拨打手机号", missing: "该年级的学服联系方式尚未设置。", save: "查看二维码" },
   en: { title: "Contact advisor", grade: "Student grade", advisor: "Learning advisor", scan: "Long press the QR code to add the advisor on WeChat", phone: "Call advisor", missing: "Advisor contact details are not configured for this grade yet.", save: "View QR code" },
 };
 Page({

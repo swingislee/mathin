@@ -19,11 +19,11 @@ export function ParentAdvisorSettings({ rows }: { rows: AdvisorSetting[] }) {
       start(async () => { const r = await saveAdvisorContact(form); setNotice(r.ok ? (en ? "Saved" : "已保存") : (en ? "Check the phone number and QR image, then retry." : "请核对手机号和二维码图片后重试。")); if (r.ok) router.refresh(); });
     }}>
       <input type="hidden" name="qrPath" value={row?.qrPath || ""} />
-      <label className="grid gap-1 text-sm">{en ? "Advisor name (optional)" : "学辅老师称呼（可选）"}<input className="rounded-lg border border-line bg-card p-2" name="teacherName" maxLength={60} defaultValue={row?.teacherName || ""} disabled={busy} /></label>
+      <label className="grid gap-1 text-sm">{en ? "Advisor name (optional)" : "学服老师称呼（可选）"}<input className="rounded-lg border border-line bg-card p-2" name="teacherName" maxLength={60} defaultValue={row?.teacherName || ""} disabled={busy} /></label>
       <label className="grid gap-1 text-sm">{en ? "Phone number" : "手机号"}<input className="rounded-lg border border-line bg-card p-2" name="phone" type="tel" maxLength={24} required defaultValue={row?.phone || ""} disabled={busy} /></label>
-      {row && <img src={row.qrCodeUrl} alt={en ? "Current advisor QR code" : "当前学辅二维码"} className="h-44 w-44 rounded-lg border border-line object-contain" />}
+      {row && <img src={row.qrCodeUrl} alt={en ? "Current advisor QR code" : "当前学服二维码"} className="h-44 w-44 rounded-lg border border-line object-contain" />}
       <label className="grid gap-1 text-sm">{en ? "QR image (PNG, JPG or WebP, up to 1 MB)" : "上传老师二维码（PNG、JPG 或 WebP，1 MB 以内）"}<input type="file" accept="image/png,image/jpeg,image/webp" name="qrFile" required={!row} disabled={busy} /></label>
-      <label className="flex gap-2 text-sm"><input type="checkbox" name="enabled" value="true" defaultChecked={row?.enabled ?? true} disabled={busy} />{en ? "Show this advisor for this grade" : "对该年级展示此学辅联系方式"}</label>
+      <label className="flex gap-2 text-sm"><input type="checkbox" name="enabled" value="true" defaultChecked={row?.enabled ?? true} disabled={busy} />{en ? "Show this advisor for this grade" : "对该年级展示此学服联系方式"}</label>
       <Button className="justify-self-start" disabled={busy}>{en ? "Save" : "保存"}</Button>
     </form>
     {notice && <p role="status" className="text-sm">{notice}</p>}
