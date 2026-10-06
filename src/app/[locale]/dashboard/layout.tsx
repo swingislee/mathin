@@ -6,11 +6,11 @@ import { DashboardShell } from "@/features/school/DashboardShell";
 import { DashboardPreferenceScope } from "@/features/school/dashboard-page/DashboardPreferenceScope";
 import { DASHBOARD_SIDEBAR_COOKIE, DASHBOARD_SIDEBAR_WIDTH_COOKIE, parseDashboardSidebarPreference } from "@/features/school/dashboard-sidebar";
 import { getMyStudents } from "@/features/school/customer";
-import { filterSchoolNav, HOME_NAV_ITEM, PARENT_NAV_ITEMS, STUDENT_NAV_ITEMS, type SchoolNavItem } from "@/features/school/nav";
-import { isFeatureEnabled } from "@/features/school/organization-settings";
+import { filterSchoolNav, HOME_NAV_ITEM, STUDENT_NAV_ITEMS, type SchoolNavItem } from "@/features/school/nav";
 import { getActiveEnvironment, getMyPerms, requireUser } from "@/lib/auth";
 import { isTeacherWorkspaceViewer } from "@/features/school/teacher-workspace";
 import { TeacherWorkspaceMemory } from "@/features/school/TeacherWorkspaceMemory";
+import { FamilyShell } from "@/features/family-web/FamilyShell";
 
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
@@ -40,16 +40,18 @@ export default async function DashboardLayout({
   // profiles.role——员工兼家长切换到家庭视角时，导航也要跟着换成家庭导航。
   // doc22 §10：与页面级 requireDashboardEnvironment 共用同一个（每请求缓存的）判定。
   const active = await getActiveEnvironment(user.id);
+  if (active === "family") {
+    return <DashboardPreferenceScope userId={user.id}><FamilyShell locale={locale}>{children}</FamilyShell></DashboardPreferenceScope>;
+  }
   const rememberTeacherWorkspace = active === "staff" && await isTeacherWorkspaceViewer(user.id);
 
   let nav: readonly SchoolNavItem[] = [HOME_NAV_ITEM];
   if (active === "staff") {
     nav = filterSchoolNav(await getMyPerms(user.id));
-  } else if (active === "family" || active === "learning") {
+  } else if (active === "learning") {
     const bound = (await safe(getMyStudents, [])).length > 0;
     if (bound) {
-      const financeEnabled = active === "family" && await safe(() => isFeatureEnabled("finance.enabled"), false);
-      nav = active === "learning" ? STUDENT_NAV_ITEMS : PARENT_NAV_ITEMS.filter((item) => item.href !== "/dashboard/finance" || financeEnabled);
+      nav = STUDENT_NAV_ITEMS;
     }
   }
 

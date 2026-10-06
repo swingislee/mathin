@@ -1,6 +1,7 @@
 <view class="portal-page booking-page assessment-page">
   <app-nav title="{{showHistory ? copy.myAssessments : copy.assessmentBooking}}" back />
   <view class="portal-content has-fixed-actions">
+    <text wx:if="{{!showHistory}}" class="small muted block">{{copy.assessmentPurpose}}</text>
     <view wx:if="{{showHistory}}" class="assessment-toolbar"><button class="text-link" bindtap="toggleHistory">{{copy.assessmentBooking}}<view class="chevron"></view></button></view>
     <button wx:if="{{showHistory && authenticated && participants.length}}" class="assessment-child" data-sheet="participant" bindtap="showSheet" disabled="{{busy}}"><image class="child-avatar" src="/assets/child.png" aria-hidden="true" /><text>{{participants[selected].name}}</text><text class="switch-child">{{copy.switchChild}}</text></button>
     <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>

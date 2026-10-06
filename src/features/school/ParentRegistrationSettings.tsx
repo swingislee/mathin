@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,27 @@ const words = {
 const field = "w-full rounded-lg border border-line bg-card px-3 py-2";
 const localTime = (v: string) => { const d = new Date(v); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
 export function ParentRegistrationSettings({ value }: { value: RegistrationWorkbench }) {
-  const locale = useLocale() === "en" ? "en" : "zh", t = words[locale], router = useRouter();
+  const locale = useLocale() === "en" ? "en" : "zh", router = useRouter();
+  const t = { ...words[locale], ...(value.kind === "activity" ? locale === "zh" ? {
+    title: "公益活动展示与报名", hint: "家长提交公益活动报名后，由学服联系确认。", closes: "活动报名截止时间",
+    enabled: "在小程序展示公益活动并接受报名", applications: "活动报名", empty: "暂无活动报名",
+    note: "小程序展示的公益活动不收取参与费用。提交申请不占用名额，由学服联系确认参与安排。",
+  } : {
+    title: "Community activity listing and registration", hint: "An advisor contacts families to confirm participation.", closes: "Activity registration closes",
+    enabled: "Publish this community activity in the Mini Program", applications: "Activity requests", empty: "No activity requests",
+    note: "Community activities published in the Mini Program have no participation fee. Requests do not reserve places; an advisor confirms arrangements.",
+  } : { enabled: locale === "zh" ? "在家长网页展示并接受班级预报名" : "Show on the family website and accept class pre-registration" }) };
   const [busy, start] = useTransition(), [notice, setNotice] = useState("");
   const [draft, setDraft] = useState({ ...value.publication, bookingClosesAt: localTime(value.publication.bookingClosesAt) });
+  const [revision, setRevision] = useState(value.publication.revision);
   const [replies, setReplies] = useState<Record<string, string>>({});
-  useEffect(() => { setDraft({ ...value.publication, bookingClosesAt: localTime(value.publication.bookingClosesAt) }); }, [value.publication.revision]);
+  if (revision !== value.publication.revision) {
+    setRevision(value.publication.revision);
+    setDraft({ ...value.publication, bookingClosesAt: localTime(value.publication.bookingClosesAt) });
+  }
   const run = (action: () => ReturnType<typeof reviewRegistration>) => start(async () => {
-    const r = await action(); setNotice(r.ok ? t.saved : r.error === "FORM_CHANGED" || r.error === "CONFLICT" ? t.conflict : t.failed);
-    if (r.ok || !r.ok && r.error === "FORM_CHANGED") router.refresh();
+    const r = await action(); setNotice(r.ok ? t.saved : r.code === "FORM_CHANGED" || r.code === "CONFLICT" ? t.conflict : t.failed);
+    if (r.ok || !r.ok && r.code === "FORM_CHANGED") router.refresh();
   });
   return <DashboardPage title={`${value.name} · ${t.title}`} description={t.hint}
     backHref={value.kind === "class" ? `/dashboard/classes/${value.targetId}` : "/dashboard/activities"} backLabel={t.back}>

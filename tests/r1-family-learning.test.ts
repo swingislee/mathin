@@ -70,20 +70,15 @@ describe("R1-5 family learning contracts", () => {
   });
 
   it("keeps the parent home centered on children, tasks, and leave", () => {
-    const parentHome = read("src/features/school/home/ParentHome.tsx");
+    const parentHome = read("src/features/school/home/ParentHome.tsx") + read("src/features/family-web/FamilyHome.tsx");
     const assignmentPage = read("src/app/[locale]/dashboard/assignments/page.tsx");
     const leavePanel = read("src/features/school/LeaveRequestPanel.tsx");
-    const tiles = read("src/features/school/tiles.ts");
     expect(parentHome).toContain('/dashboard/children?child=');
     expect(parentHome).toContain('/dashboard/assignments?child=');
     expect(parentHome).toContain('#leave');
-    expect(parentHome).toContain('customerT("goChildDetail")');
     expect(parentHome).not.toContain('from("game_leaderboard")');
     expect(parentHome).not.toContain('from("posts")');
     expect(parentHome).not.toContain('pickEligible("parent"');
-    expect(parentHome).toContain("childKeys.every((key) => shownKeys.has(key))");
-    expect(parentHome).toContain("mergeTileLayout(eligible, null");
-    expect(tiles).toContain('return [...childKeys, "bindChild"]');
     expect(assignmentPage).toContain("ManagedVideoUploadPanel");
     expect(leavePanel).toContain("submitSessionLeaveRequestAction");
   });
@@ -155,13 +150,13 @@ describe("R1-5 family learning contracts", () => {
   it("isolates same-name children by stable student id", () => {
     const schedule = read("src/features/school/actions/schedule.ts");
     const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
-    const parentHome = read("src/features/school/home/ParentHome.tsx");
+    const parentHome = read("src/features/school/home/ParentHome.tsx") + read("src/features/family-web/FamilyHome.tsx");
     expect(privacyMigration).toMatch(/get_my_schedule[\s\S]*student_id uuid/);
     expect(privacyMigration).toMatch(/get_my_attendance[\s\S]*student_id uuid/);
     expect(schedule).toContain("studentId: row.student_id");
     expect(childrenPage).toContain("entry.studentId === activeId");
     expect(childrenPage).toContain("row.studentId === activeId");
-    expect(parentHome).toContain("entry.studentId === child.studentId");
+    expect(parentHome).toContain("row.studentId === child?.studentId");
   });
 
   it("does not present an unloaded guardian list as an empty relationship", () => {
@@ -208,7 +203,7 @@ describe("R1-5 family learning contracts", () => {
     const customer = read("src/features/school/customer.ts");
     const results = read("src/features/school/FamilyLearningResults.tsx");
     const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
-    const parentHome = read("src/features/school/home/ParentHome.tsx");
+    const parentHome = read("src/features/school/home/ParentHome.tsx") + read("src/features/family-web/FamilyHome.tsx");
     expect(availabilityMigration).toContain("family_visibility_state");
     expect(availabilityMigration).toContain("session_family_briefs_sync_visibility");
     expect(availabilityMigration).toContain("get_my_session_review_states");
@@ -219,13 +214,13 @@ describe("R1-5 family learning contracts", () => {
     expect(results).toContain("reviewStatusHint_");
     expect(results).toContain("CustomerVideoButton");
     expect(childrenPage).toContain('id="learning-results"');
-    expect(parentHome).toContain("recentReviewState.availabilityState");
+    expect(parentHome).toContain("学习反馈");
   });
 
   it("renders the four required family special states in both locales", () => {
     const customer = read("src/features/school/customer.ts");
     const studentHome = read("src/features/school/home/StudentHome.tsx");
-    const parentHome = read("src/features/school/home/ParentHome.tsx");
+    const parentHome = read("src/features/school/home/ParentHome.tsx") + read("src/features/family-web/FamilyHome.tsx");
     const childrenPage = read("src/app/[locale]/dashboard/children/page.tsx");
     const zh = JSON.parse(read("messages/zh.json"));
     const en = JSON.parse(read("messages/en.json"));
@@ -237,7 +232,7 @@ describe("R1-5 family learning contracts", () => {
       expect(messages.school.students.reviewStatus_withdrawn).toBeTruthy();
     }
     expect(studentHome).toContain('customerT("notBound")');
-    expect(parentHome).toContain('customerT("noChildren")');
+    expect(parentHome).toContain("先关联孩子，查看专属安排");
     expect(customer).toContain('paymentStatus: financeEnabled ? row.payment_status : "closed"');
     expect(childrenPage).toContain('t(`payment_${summary.paymentStatus}`)');
   });

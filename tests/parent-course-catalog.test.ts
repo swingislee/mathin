@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference -- WeChat supplies ambient types, not an importable runtime module.
 /// <reference path="../apps/parent-wechat/node_modules/miniprogram-api-typings/index.d.ts" />
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -5,36 +6,27 @@ import vm from "node:vm";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import type { CatalogClass, CourseOffer } from "../contracts/parent-api/portal";
-import { classTimeGrid, classTimes, courseCard, filterCourseOffers, matchingClasses } from "../apps/parent-wechat/miniprogram/lib/course-catalog";
+import { courseCard, filterCourseOffers } from "../apps/parent-wechat/miniprogram/lib/course-catalog";
 import type { CourseApplicationCommand } from "../contracts/parent-api/portal";
 
 const room: CatalogClass = { id: "class-a", name: "A class", familyId: "family", familyTitle: "Logic", courseId: "course", grade: 4, subject: "逻辑思维", level: "A", termId: "fall", termName: "秋季",
   campusId: "campus-a", campusName: "东校区", roomName: "101", remaining: 3, teachers: [{ id: "teacher-a", name: "Teacher A" }],
   sessions: [{ at: "2030-10-03T00:30:00Z", duration: 150 }, { at: "2030-10-10T00:30:00Z", duration: 150 }] };
-const offer: CourseOffer = { id: room.id, kind: "class", activity: null, title: "真实班级", description: "", priceCents: null, bookingClosesAt: "2030-12-01T00:00:00Z", revision: 1, classes: [room] };
-describe("published course selection", () => {
-  it("filters actual grades, subjects and terms without an activity-kind alias", () => {
-    expect(filterCourseOffers([offer], "g4", "逻辑思维", "fall", 0)).toEqual([offer]);
-    expect(filterCourseOffers([offer], "g3", "", "", 0)).toEqual([]);
-    expect(filterCourseOffers([offer], "g4", "math", "", 0)).toEqual([]);
-    expect(filterCourseOffers([offer], "", "", "spring", 0)).toEqual([]);
-    expect(filterCourseOffers([offer], "", "", "", Date.parse("2031-01-01"))).toEqual([]);
+const classOffer: CourseOffer = { id: room.id, kind: "class", activity: null, title: "真实班级", description: "", priceCents: null, bookingClosesAt: "2030-12-01T00:00:00Z", revision: 1, classes: [room] };
+const offer: CourseOffer = { ...classOffer, id: "activity-a", kind: "activity", title: "公益讲座", classes: [],
+  activity: { id: "activity-a", targetGrades: [4], location: "活动室", startsAt: "2030-10-03T00:30:00Z", durationMinutes: 60, remaining: null } };
+describe("published Mini Program activities", () => {
+  it("shows only activities for the selected grade and registration period", () => {
+    expect(filterCourseOffers([classOffer, offer], "g4", 0)).toEqual([offer]);
+    expect(filterCourseOffers([offer], "g3", 0)).toEqual([]);
+    expect(filterCourseOffers([offer], "", Date.parse("2031-01-01"))).toEqual([]);
   });
-  it("keeps class identity when teachers and scheduled times match", () => {
-    const second = { ...room, id: "class-b", name: "B class", remaining: 0 };
-    const grid = classTimeGrid([room, second], "zh");
-    expect(grid.days).toEqual([{ id: 4, label: "周四" }]);
-    expect(grid.rows[0].time).toBe("08:30–11:00");
-    expect(grid.rows[0].cells[0].choices.map(c => [c.id, c.full])).toEqual([["class-a", false], ["class-b", true]]);
-    expect(classTimes(room, "zh")).toBe("周四 08:30–11:00");
-  });
-  it("does not invent teachers, schedules or prices for incomplete records", () => {
-    const pending = { ...room, teachers: [], campusId: null, sessions: [] };
-    expect(matchingClasses([pending], { level: "A", campus: "pending", teacher: "" })).toEqual([pending]);
-    expect(matchingClasses([pending], { level: "A", campus: "pending", teacher: "teacher-a" })).toEqual([]);
-    expect(classTimeGrid([pending], "zh").rows).toEqual([]);
-    expect(courseCard({ ...offer, classes: [pending] }, "zh")).toMatchObject({ priceLabel: "线下缴费", startLabel: "开课时间待定" });
-    expect(courseCard({ ...offer, priceCents: 0 }, "zh").priceLabel).toBe("线下缴费");
+  it("keeps an unknown target grade distinct from an unrestricted activity", () => {
+    const unknown = { ...offer, activity: { ...offer.activity!, targetGrades: null } };
+    const unrestricted = { ...offer, activity: { ...offer.activity!, targetGrades: [] } };
+    expect(filterCourseOffers([unknown], "g4", 0)).toEqual([]);
+    expect(filterCourseOffers([unrestricted], "g4", 0)).toEqual([unrestricted]);
+    expect(courseCard(offer, "zh")).toMatchObject({ priceLabel: "公益活动", startLabel: "2030.10.03", meta: "活动室" });
   });
 });
 
@@ -65,10 +57,10 @@ function selectionPage(command: (input: CourseApplicationCommand) => Promise<{ i
     return exports;
   }
   load(path.join(root, "pages/course-select/index.ts"));
-  page.setData({ authenticated: true, accountId: "account-a", offer, id: offer.id, classId: room.id, participants: [{ id: "child-a", name: "Child A" }], selected: 0 });
+  page.setData({ authenticated: true, accountId: "account-a", offer, id: offer.id, participants: [{ id: "child-a", name: "Child A" }], selected: 0 });
   return { page, storage, api, wx };
 }
-describe("course application submission", () => {
+describe("activity application submission", () => {
   it("locks submission while the confirmation dialog is open", async () => {
     const modal = deferred<{ confirm: boolean }>(); const result = deferred<{ id: string }>();
     const post = vi.fn(() => result.promise); const run = selectionPage(post, modal.promise);
@@ -77,7 +69,7 @@ describe("course application submission", () => {
     expect(post).not.toHaveBeenCalled();
     modal.resolve({ confirm: true });
     await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(1));
-    expect(post).toHaveBeenCalledWith({ action: "apply", kind: "class", id: "stable-request", publicationId: offer.id, revision: offer.revision, classroomId: room.id, participantId: "child-a" });
+    expect(post).toHaveBeenCalledWith({ action: "apply", kind: "activity", id: "stable-request", publicationId: offer.id, revision: offer.revision, classroomId: null, participantId: "child-a" });
     result.resolve({ id: "stable-request" }); await first;
     expect(run.page.data.sent).toBe(true); expect(run.storage.size).toBe(0);
   });
@@ -86,7 +78,7 @@ describe("course application submission", () => {
     const run = selectionPage(post, Promise.resolve({ confirm: true }));
     await run.page.submit();
     const pending = run.page.data.pending;
-    expect(pending).toMatchObject({ id: "stable-request", participantId: "child-a", classroomId: room.id });
+    expect(pending).toMatchObject({ id: "stable-request", participantId: "child-a", classroomId: null });
     expect(run.storage.size).toBe(1);
     await run.page.submit();
     expect(post.mock.calls[0][0]).toEqual(post.mock.calls[1][0]);

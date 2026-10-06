@@ -22,16 +22,17 @@ export type LoginCardProps = {
   error?: string;
   wechatError?: string;
   dialog?: boolean;
+  family?: boolean;
   onSuccess?: () => void;
   onNavigate?: () => void;
 };
 
 /** 页面与浮窗共用一份表单；外层 Card / Dialog 各自提供唯一表面。 */
-export function LoginCard({ locale, wechatAvailable, next, error, wechatError, dialog = false, onSuccess, onNavigate }: LoginCardProps) {
+export function LoginCard({ locale, wechatAvailable, next, error, wechatError, dialog = false, family = false, onSuccess, onNavigate }: LoginCardProps) {
   const t = useTranslations("auth");
   const wechat = useTranslations("wechat");
   const id = useId();
-  const [method, setMethod] = useState("email");
+  const [method, setMethod] = useState(family ? "phone" : "email");
   const [email, setEmail] = useState({ localPart: "", domain: locale === "zh" ? "qq.com" : "gmail.com" });
   const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -46,8 +47,9 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, d
 
   return <div className="p-6 sm:p-8" data-login-card>
     <div className="mb-7">
-      <Link href="/" onNavigate={onNavigate} className="font-display text-xl">Mathin</Link>
-      <Heading className="mt-7 font-display text-3xl">{t("loginTitle")}</Heading>
+      <Link href={family ? "/family" : "/"} onNavigate={onNavigate} className="font-display text-xl">{family ? locale === "en" ? "Gezhi · Families" : "格致未来思维 · 家长服务" : "Mathin"}</Link>
+      <Heading className="mt-7 font-display text-3xl">{family ? locale === "en" ? "Welcome back" : "欢迎回来" : t("loginTitle")}</Heading>
+      {family && <p className="mt-3 text-sm text-muted">{locale === "en" ? "Sign in to see your child's schedule, feedback and registration." : "登录后查看孩子的安排、学习反馈与班级报名。"}</p>}
     </div>
 
     <form action={action} autoComplete="on" aria-busy={busy}>

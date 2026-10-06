@@ -157,7 +157,8 @@ export async function logout(formData: FormData) {
   const cookieStore = await cookies();
   cookieStore.delete(WECHAT_FLOW_COOKIE);
   cookieStore.delete(WECHAT_GUEST_COOKIE);
-  redirect(`/${locale}`);
+  const returnTo = formData.get("returnTo");
+  redirect(resolveSafeReturnTo(typeof returnTo === "string" ? returnTo : null, locale, `/${locale}`));
 }
 
 export async function requestPasswordRecovery(formData: FormData) {

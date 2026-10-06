@@ -44,13 +44,13 @@ export async function advisorContacts(): Promise<import("./api-types").AdvisorCo
   return send("advisors", "GET");
 }
 export async function courseCatalog(): Promise<CourseOffer[]> {
-  return send<CourseOffer[]>("courses", "GET");
+  return send<CourseOffer[]>("activities", "GET");
 }
 export async function courseApplications(): Promise<CourseApplication[]> {
-  return send<CourseApplication[]>("courses?resource=applications", "GET", undefined, await accessToken());
+  return send<CourseApplication[]>("activities?resource=applications", "GET", undefined, await accessToken());
 }
 export async function courseCommand(data: CourseApplicationCommand): Promise<{ id?: string; ok?: boolean }> {
-  return send("courses", "POST", data, await accessToken());
+  return send("activities", "POST", data, await accessToken());
 }
 export async function learning(participant:string,range:{from:string;to:string}):Promise<ParentLearning>{
   const query=`participant=${encodeURIComponent(participant)}&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;

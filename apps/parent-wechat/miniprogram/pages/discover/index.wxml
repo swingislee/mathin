@@ -1,42 +1,26 @@
 <view class="portal-page discover-page">
   <app-nav title="{{full ? courseCopy.catalog : brandName}}" brand="{{!full}}" back="{{full}}" />
   <view class="portal-content">
-    <view class="discovery-filters">
-      <button class="filter-pill" data-sheet="stage" bindtap="showFilter"><text wx:if="{{stageLabel}}" class="filter-prefix">{{copy.learnerPrefix}}</text><text>{{stageLabel || copy.classStage}}</text><view class="chevron down"></view></button>
-      <button class="filter-pill" data-sheet="subject" bindtap="showFilter"><text>{{subjectLabel || copy.allSubjects}}</text><view class="chevron down"></view></button>
-      <button wx:if="{{full}}" class="filter-pill" data-sheet="term" bindtap="showFilter"><text>{{termLabel || courseCopy.allTerms}}</text><view class="chevron down"></view></button>
-    </view>
-    <view class="option-grid catalog-kinds"><button class="option-pill {{!kind ? 'selected' : ''}}" data-kind="" bindtap="chooseKind">{{courseCopy.allKinds}}</button><button class="option-pill {{kind === 'long' ? 'selected' : ''}}" data-kind="long" bindtap="chooseKind">{{courseCopy.longClass}}</button><button class="option-pill {{kind === 'short' ? 'selected' : ''}}" data-kind="short" bindtap="chooseKind">{{courseCopy.shortClass}}</button><button class="option-pill {{kind === 'activity' ? 'selected' : ''}}" data-kind="activity" bindtap="chooseKind">{{courseCopy.activity}}</button></view>
     <button wx:if="{{!full}}" class="feature-entry surface" bindtap="book" hover-class="pressed">
       <image class="feature-art" src="/assets/appointment.png" mode="aspectFit" aria-hidden="true" />
       <view class="feature-copy"><text class="feature-title">{{copy.discoverAssessment}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
     </button>
+    <view class="discovery-filters"><button class="filter-pill" bindtap="showFilter"><text>{{stageLabel || copy.studentGrade}}</text><view class="chevron down"></view></button><button wx:if="{{stage}}" class="text-button" bindtap="reset">{{copy.clearFilters}}</button></view>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:elif="{{loading && !loaded}}" class="loading-line">{{copy.loading}}</text>
-    <block wx:elif="{{loaded && !offers.length}}">
-      <empty-state label="{{courseCopy.catalogEmpty}}" spacious />
-      <button class="reset-action" bindtap="reset"><text class="reset-symbol">↻</text>{{copy.clearFilters}}</button>
-    </block>
+    <empty-state wx:elif="{{loaded && !offers.length}}" label="{{courseCopy.catalogEmpty}}" spacious />
     <view wx:else class="surface activity-list" hidden="{{!offers.length}}">
       <view class="card-heading"><text class="section-title">{{courseCopy.catalog}}</text><button wx:if="{{!full}}" class="text-link" bindtap="showAll">{{courseCopy.all}}<view class="chevron"></view></button></view>
-      <block wx:for="{{offers}}" wx:key="id">
-        <button wx:if="{{full || index < 3}}" class="activity-row" data-id="{{item.id}}" bindtap="openCourse" hover-class="pressed">
-          <view class="activity-tile"><image src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
-          <view class="activity-row-content"><text class="activity-row-title">{{item.label}}</text><text class="activity-row-meta">{{item.startLabel}} · {{item.meta}}</text><view class="activity-row-bottom"><text class="course-price">{{item.priceLabel}}</text><text class="small-pill {{item.open ? '' : 'unavailable'}}">{{item.open ? courseCopy.choose : courseCopy.full}}</text></view></view>
-        </button>
-      </block>
+      <block wx:for="{{offers}}" wx:key="id"><button wx:if="{{full || index < 3}}" class="activity-row" data-id="{{item.id}}" bindtap="openCourse" hover-class="pressed">
+        <view class="activity-tile"><image src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
+        <view class="activity-row-content"><text class="activity-row-title">{{item.label}}</text><text class="activity-row-meta">{{item.startLabel}} · {{item.meta}}</text><view class="activity-row-bottom"><text class="course-price">{{item.priceLabel}}</text><text class="small-pill">{{courseCopy.choose}}</text></view></view>
+      </button></block>
     </view>
   </view>
   <view wx:if="{{!full}}" class="floating-services surface"><button bindtap="advisor"><image class="line-icon" src="/assets/icons/family.png" aria-hidden="true" /><text>{{courseCopy.advisor}}</text></button><button bindtap="book"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button><button bindtap="applications"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{courseCopy.applications}}</text></button></view>
   <tab-overlay wx:if="{{sheet && !full}}" />
-  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop">
-    <view class="bottom-sheet catalog-sheet" catchtap="noop">
-      <view class="sheet-heading"><view><text class="block">{{sheet === 'stage' ? copy.studentGrade : (sheet === 'term' ? courseCopy.allTerms : copy.learningSubject)}}</text><text class="sheet-subtitle">{{sheet === 'stage' ? copy.chooseGradeHint : courseCopy.filterHint}}</text></view><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view>
-      <scroll-view wx:if="{{sheet === 'stage'}}" class="grade-scroll" scroll-y>
-        <view wx:for="{{stageGroups}}" wx:key="id" class="grade-group"><text class="section-title">{{item.label}}</text><view class="option-grid"><button wx:for="{{item.stages}}" wx:for-item="grade" wx:key="id" class="option-pill {{stage === grade.id ? 'selected' : ''}}" data-value="{{grade.id}}" bindtap="chooseFilter">{{grade.label}}</button></view></view>
-      </scroll-view>
-      <view wx:elif="{{sheet === 'term'}}" class="option-grid"><button class="option-pill {{!term ? 'selected' : ''}}" data-value="" bindtap="chooseFilter">{{courseCopy.allTerms}}</button><button wx:for="{{terms}}" wx:key="id" class="option-pill {{term === item.id ? 'selected' : ''}}" data-value="{{item.id}}" bindtap="chooseFilter">{{item.label}}</button></view>
-      <view wx:else class="option-grid"><button class="option-pill {{!subject ? 'selected' : ''}}" data-value="" bindtap="chooseFilter">{{copy.allSubjects}}</button><button wx:for="{{subjects}}" wx:key="id" class="option-pill {{subject === item.id ? 'selected' : ''}}" data-value="{{item.id}}" bindtap="chooseFilter">{{item.label}}</button></view>
-    </view>
-  </view>
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet catalog-sheet" catchtap="noop">
+    <view class="sheet-heading"><view><text class="block">{{copy.studentGrade}}</text><text class="sheet-subtitle">{{courseCopy.filterHint}}</text></view><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view>
+    <scroll-view class="grade-scroll" scroll-y><button class="option-pill {{!stage ? 'selected' : ''}}" data-value="" bindtap="chooseFilter">{{courseCopy.allGrades}}</button><view wx:for="{{stageGroups}}" wx:key="id" class="grade-group"><text class="section-title">{{item.label}}</text><view class="option-grid"><button wx:for="{{item.stages}}" wx:for-item="grade" wx:key="id" class="option-pill {{stage === grade.id ? 'selected' : ''}}" data-value="{{grade.id}}" bindtap="chooseFilter">{{grade.label}}</button></view></view></scroll-view>
+  </view></view>
 </view>
