@@ -35,7 +35,7 @@
         "src/features/school/InvitationCoordinationWorkbench.tsx"
       ],
       "checkpoint": null,
-      "next": "开发端三阶段沟通、线索首联和有依据的 SVG 状态已可验收；14 人依据完成测评备注归入待报名。页面、权限与定向检查通过，待实际使用反馈，生产未改动。"
+      "next": "沟通三阶段与线索首联开发端可验收；本轮 SVG 已对齐班级学情的 24px 状态格与 14px 图标，移除角标并用颜色区分，定向静态检查通过，待实际使用反馈。"
     },
     {
       "id": "BASE-WORKLIST-GROUPS-20261006",

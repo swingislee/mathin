@@ -1,24 +1,27 @@
 'use client';
 
+import { ClipboardList, HeartPulse, MapPin } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Student360Trigger } from '../Student360Sheet';
 import { WechatGlyph } from '../WechatStatusControl';
+import { LEARNING_CHECK_STATUS_STYLE } from '../session-learning-visual';
 import type { StudentStageRow } from '../student-stage-contract';
 import { resolveStatusEvidence, type StatusFacet } from './contract';
 
-export function StatusGlyph({ facet, value, review = false }: { facet: StatusFacet; value: string; review?: boolean }) {
-  const unknown = value === 'unknown', negative = value === 'no' || value === 'not_promised';
-  const symbol = review ? '!' : unknown ? '?' : negative ? '×' : facet === 'interest' ? value : facet === 'assessment' && value !== 'complete' ? value : '✓';
-  return <svg viewBox="0 0 32 32" className="size-8 shrink-0" fill="none" aria-hidden="true" focusable="false">
-    {facet === 'wechat' ? <g transform="translate(1 0) scale(1.1)"><WechatGlyph /></g>
-      : facet === 'interest' ? <path d="M16 26 5 15C-2 5 11 0 16 8c5-8 18-3 11 7Z" stroke="currentColor" strokeWidth="2" />
-      : facet === 'visit' ? <><path d="M16 27s10-9 10-16a10 10 0 0 0-20 0c0 7 10 16 10 16Z" stroke="currentColor" strokeWidth="2" /><circle cx="16" cy="11" r="3" stroke="currentColor" strokeWidth="2" /></>
-      : <><rect x="5" y="5" width="22" height="25" rx="3" stroke="currentColor" strokeWidth="2" /><rect x="11" y="2" width="10" height="6" rx="2" fill="var(--color-card,white)" stroke="currentColor" strokeWidth="2" /></>}
-    {facet !== 'assessment' && facet !== 'interest' ? <circle cx="25" cy="25" r="7" fill="var(--color-card,white)" /> : null}
-    <text x={facet === 'assessment' || facet === 'interest' ? 16 : 25} y={facet === 'assessment' || facet === 'interest' ? 23 : 30}
-      textAnchor="middle" fill="currentColor" fontWeight="700" fontSize={symbol.length > 2 ? 10 : 14}>{symbol}</text>
-  </svg>;
+export function StatusGlyph({ facet }: { facet: StatusFacet }) {
+  if (facet === 'wechat') return <svg viewBox="0 0 24 24" width={14} height={14} className="shrink-0" aria-hidden="true" focusable="false"><WechatGlyph /></svg>;
+  const Icon = facet === 'interest' ? HeartPulse : facet === 'visit' ? MapPin : ClipboardList;
+  return <Icon size={14} strokeWidth={2} className="shrink-0" aria-hidden="true" focusable="false" />;
+}
+
+function statusStyle(facet: StatusFacet, value: string, review: boolean) {
+  if (review) return LEARNING_CHECK_STATUS_STYLE.imitated.active;
+  if (value === 'unknown') return LEARNING_CHECK_STATUS_STYLE.unchecked.active;
+  if (['no', 'not_promised', 'C', 'x_plus', 'below_a'].includes(value)) return LEARNING_CHECK_STATUS_STYLE.incomplete.active;
+  if (value === 'B' || value === 'g_plus') return LEARNING_CHECK_STATUS_STYLE.prompted.active;
+  if (facet === 'visit' && value === 'promised') return LEARNING_CHECK_STATUS_STYLE.explained.active;
+  return LEARNING_CHECK_STATUS_STYLE.independent.active;
 }
 
 export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; locale: string }) {
@@ -27,14 +30,15 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
     : { wechat: '微信', interest: '意向', visit: '到访', assessment: '测评' };
   const values: Record<string,string> = en ? { yes:'Added', no:'Not added', unknown:'Not recorded', conflicting:'Needs review', complete:'Completed', promised:'Promised', arrived:'Visited', not_promised:'Not promised' }
     : { yes:'已加微信', no:'未加微信', unknown:'未记录', conflicting:'有矛盾，待核对', complete:'已完成', promised:'已诺访', arrived:'已到访', not_promised:'未诺访' };
-  return <div className="flex items-center gap-2" data-record-status-icons onClick={event => event.stopPropagation()}>
+  Object.assign(values, { x_plus:'X+', below_a:'X+', g_plus:'G+', a:'A', a_plus:'A+', s:'S', c:'C' });
+  return <div className="flex items-center gap-1" data-record-status-icons onClick={event => event.stopPropagation()}>
     {(['wechat','interest','visit','assessment'] as const).map(facet => {
       const status = resolveStatusEvidence(row.statusEvidence ?? [],facet);
       const label = `${labels[facet]} · ${status.review ? (en ? 'Needs review' : '待核对') : values[status.value] ?? status.value}`;
       return <Popover key={facet}><PopoverTrigger asChild><button type="button" aria-label={label} title={label}
-        className={cn('rounded-md p-0.5 transition-colors hover:bg-line/30 focus-visible:outline-2 focus-visible:outline-crater',
-          status.review ? 'text-amber-600' : status.value === 'unknown' ? 'text-muted/45' : ['no','not_promised','C'].includes(status.value) ? 'text-rose-deep' : 'text-leaf-deep')}>
-        <StatusGlyph facet={facet} value={status.value} review={status.review} />
+        className={cn('inline-flex size-6 shrink-0 items-center justify-center rounded-md border p-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater',
+          statusStyle(facet, status.value, status.review))}>
+        <StatusGlyph facet={facet} />
       </button></PopoverTrigger><PopoverContent align="start" className="w-96 max-w-[calc(100vw-2rem)] text-sm">
         <div className="mb-2 font-medium">{label}</div>
         <div className="max-h-72 space-y-3 overflow-y-auto">
