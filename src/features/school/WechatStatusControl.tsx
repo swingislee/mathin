@@ -12,7 +12,7 @@ type WechatStatusControlProps = {
   disabled?: boolean;
 };
 
-function WechatGlyph() {
+export function WechatGlyph() {
   return <>
     <path fill="currentColor" fillRule="evenodd" d="M10 3C5.3 3 2 5.9 2 9.4c0 2 1.1 3.8 3 5L4.2 17l3.1-1.6c.7.2 1.5.3 2.3.3-.5-.9-.8-2-.8-3.1 0-3.6 3.4-6.4 7.6-6.4l.7.1C15.7 4.3 13 3 10 3ZM6.5 7.4a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm5.4 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z" />
     <path fill="currentColor" fillRule="evenodd" d="M16.4 7.7c-3.4 0-6.1 2.2-6.1 4.9s2.7 4.9 6.1 4.9c.6 0 1.2-.1 1.8-.2l2.3 1.3-.6-2c1.6-.9 2.6-2.4 2.6-4 0-2.7-2.7-4.9-6.1-4.9Zm-2.3 2.7a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Zm4.4 0a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Z" />

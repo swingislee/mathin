@@ -4,8 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { STUDENT_RECONTACT_REASONS, STUDENT_STAGE_TABS, type StudentStageData, type StudentStageFilters, type StudentStageRow, type StudentStageSaved } from "./student-stage-contract";
 import { INVITATION_KINDS, INVITATION_STATES } from "./invitation-contract";
 import { schoolParticipantSchema, schoolGroupSchema } from "./school-collaboration-contract";
+import { statusEvidenceSchema } from './record-status/contract';
 
 export const studentStageRowSchema = z.object({
+  statusEvidence: z.array(statusEvidenceSchema).optional(),
   key: z.string(), studentId: z.string().nullable(), leadId: z.string().nullable(), name: z.string(), phone: z.string(),
   grade: z.number().nullable(), gradeText: z.string(), ownerId: z.string().nullable(), ownerName: z.string(),
   teacherId: z.string().nullable().optional(), teacherName: z.string().optional(),

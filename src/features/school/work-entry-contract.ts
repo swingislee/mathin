@@ -18,7 +18,7 @@ export function currentWorkEntryHref(href: string): string {
   } else if (path === "/dashboard/teaching") {
     path = "/dashboard/classes"; if (!query.has("view")) query.set("view", "records");
   } else if (path.startsWith("/dashboard/teaching/")) path = path.replace("/dashboard/teaching/", "/dashboard/classes/");
-  else if (path === "/dashboard/invitations") path = "/dashboard/communication/worklists";
+  else if (path === "/dashboard/invitations" || path === "/dashboard/communication/worklists" || path === "/dashboard/communication/lists") path = "/dashboard/communication";
   else if (path === "/dashboard/opportunities") {
     path = "/dashboard/communication"; query.set("stage", "awaiting_enrollment");
   } else if (path === "/dashboard/coordination") {

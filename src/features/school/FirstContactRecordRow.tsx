@@ -21,6 +21,7 @@ export interface FirstContactRecord {
   person: Omit<ComponentProps<typeof FollowupPersonCell>, "selection" | "expanded" | "detailsId" | "onToggle">;
   status: { label: string; tone: FollowupTone; context: string; contextTitle?: string };
   contactFacts?: FirstContactFacts;
+  statusContent?: ReactNode;
   pendingChanges?: boolean;
   updated: string;
   countLabel?: string;
@@ -77,7 +78,8 @@ export function FirstContactRecordRow({
         <TableCell mobileLabel={fields.grade} className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>
         <TableCell mobileLabel={fields.owner} className="px-2 py-1.5"><p className="truncate text-xs" title={record.person.owner}>{record.person.owner || "—"}</p></TableCell>
         <TableCell mobileSpan="secondary" className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <>
-          <FirstContactStatusTags label={record.status.label} tone={record.status.tone} facts={record.contactFacts} locale={locale} dirty={record.pendingChanges} />
+          <FirstContactStatusTags label={record.status.label} tone={record.status.tone} facts={record.statusContent ? undefined : record.contactFacts} locale={locale} dirty={record.pendingChanges} />
+          {record.statusContent}
           {record.state === "historical" ? <HistoricalRecordBadge locale={locale} /> : null}
         </>}</TableCell>
         <TableCell mobileLabel={fields.notes} mobileEmpty={!historicalSummary && (record.missingFirstContact || !record.note)} className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={record.missingFirstContact ? undefined : record.note}>

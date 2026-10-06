@@ -3,6 +3,41 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "COMMUNICATION-UNIFIED-20261006",
+      "title": "统一沟通三阶段与有依据的 SVG 状态",
+      "agent": "codex",
+      "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-UNIFIED-20261006.md",
+      "writePaths": [
+        ".ai/tasks/COMMUNICATION-UNIFIED-20261006.md",
+        ".tmp/communication-unified-20261006/",
+        "src/features/school/source-worklist/",
+        "src/features/school/record-status/",
+        "scripts/lib/source-status-evidence.mjs",
+        "src/app/[locale]/dashboard/communication/",
+        "src/app/[locale]/dashboard/leads/page.tsx",
+        "supabase/migrations/20261006150000_communication_stage_workspace.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/StudentStagePage.tsx",
+        "src/features/school/student-stage-contract.ts",
+        "src/features/school/StudentStageWorkspace.tsx",
+        "src/features/school/work-entry-contract.ts",
+        "src/features/school/WechatStatusControl.tsx",
+        "docs/workflows/school-operations.md",
+        "src/features/school/student-stage-data.ts",
+        "src/features/school/FirstContactRecordRow.tsx",
+        "src/features/school/LeadFirstContactWorkbench.tsx",
+        "src/features/school/InvitationCoordinationWorkbench.tsx"
+      ],
+      "checkpoint": null,
+      "next": "开发端三阶段沟通、线索首联和有依据的 SVG 状态已可验收；14 人依据完成测评备注归入待报名。页面、权限与定向检查通过，待实际使用反馈，生产未改动。"
+    },
+    {
       "id": "BASE-WORKLIST-GROUPS-20261006",
       "title": "补齐 Base 工作名单月份与分组层级",
       "agent": "codex",

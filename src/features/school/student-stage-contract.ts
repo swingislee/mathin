@@ -1,4 +1,5 @@
 import { STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
+import type { StatusEvidence } from './record-status/contract';
 import type { InvitationDraft } from "./invitation-contract";
 import type { InvitationActivityOption, InvitationAssessorOption } from "./invitation-contract";
 import type { Phase3EnrollmentOptions } from "./phase3-enrollment-contract";
@@ -22,6 +23,7 @@ export type StudentStageAssignment = { key: string; subject: StudentStageRow | n
 export type StudentStageAssignee = { userId: string; displayName: string };
 
 export interface StudentStageRow {
+  statusEvidence?: StatusEvidence[];
   key: string; studentId: string | null; leadId: string | null;
   name: string; phone: string; grade: number | null; gradeText: string;
   ownerId: string | null; ownerName: string; stage: StudentStage; detail: string;

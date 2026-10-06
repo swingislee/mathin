@@ -3,6 +3,7 @@
 import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/FollowupTableRecord";
 import { FirstContactRecordRow } from './FirstContactRecordRow';
 import { FirstContactStatusTags } from './FirstContactStatusTags';
+import { RecordStatusIcons } from './record-status/RecordStatusIcons';
 import { firstContactRowMessages } from './first-contact-row-messages';
 import { businessRecordMessages } from './business-record-state-contract';
 import type { HistoricalFirstContactRow } from './historical-first-contact-contract';
@@ -816,8 +817,10 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const { active, expanded, selected = false, pending = false } = rowState;
     const canonicalKey = communicationRowKey(row);
     const historicalSummary = historicalSummaryFor(row);
+    const statusRow = firstContactRows?.find(subject => subject.key === canonicalKey || (row.source === 'contact' && subject.leadId === row.value.id));
     if (row.source === 'profile') return <FirstContactRecordRow key={canonicalKey} locale={locale} record={{
-      key: canonicalKey, state: 'historical', missingFirstContact: true,
+      key: canonicalKey, state: firstContactOnly ? 'current' : 'historical', missingFirstContact: true,
+      statusContent: statusRow ? <RecordStatusIcons row={statusRow} locale={locale} /> : undefined,
       person: { name: row.value.name, phone: row.value.phone, grade: gradeOf(row) || t('gradePending'),
         subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
       status: { label: stateOf(row), tone: 'neutral', context: '' },
@@ -828,6 +831,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     if (row.source === "contact") {
       const previous = row.previousInvitation;
       return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
+        statusRow={statusRow}
         active={active} onActivate={setActiveContactId}
         selected={selected}
         onSaved={saveContact} onReminderSaved={saveContactReminder} onAdvance={() => advanceAfter(canonicalKey)}
@@ -896,7 +900,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         </>}
       </FollowupInlineDetails>
     </Fragment>;
-  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, rowM.grade, rowM.notes, rowM.owner, rowM.phone, rowM.updated, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
+  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, firstContactOnly, firstContactRows, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, rowM.grade, rowM.notes, rowM.owner, rowM.phone, rowM.updated, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
 
 
   return <SchoolSupportTableEntry workspace="communication" enabled={canContact} columns={["name","phone","grade","blank","blank","note","blank"]} initialWork={{date:workday?.date??worklist?.date,worklistId:worklist?.id??null}}><DashboardTableShell data-followup-workbench data-communication-scroll>

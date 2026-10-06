@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupContactFacts } from "./FollowupContactFacts";
 import { FirstContactRecordRow } from "./FirstContactRecordRow";
+import { RecordStatusIcons } from './record-status/RecordStatusIcons';
+import type { StudentStageRow } from './student-stage-contract';
 import { firstContactRowMessages } from "./first-contact-row-messages";
 import { invitationForAdvance, invitationHasStageInformation, leadContactInput, leadWechatValue, type LeadContactDraft } from "./followup-entry-contract";
 import { addStudentFollowUp } from "./actions/followups";
@@ -96,8 +98,10 @@ export function LeadContactEntryRow({
   detailsFirst = false,
   historicalSummary,
   historicalEntryLabel,
+  statusRow,
 }: {
   lead: LeadPoolRow;
+  statusRow?: StudentStageRow;
   formatAt: (value: string) => string;
   active: boolean;
   selected?: boolean;
@@ -307,6 +311,7 @@ export function LeadContactEntryRow({
   );
 
   return <FirstContactRecordRow record={{
+      statusContent: statusRow ? <RecordStatusIcons row={statusRow} locale={locale} /> : undefined,
       key: layout === "communication" ? `lead:${lead.id}` : lead.id,
       visitCommitted: leadHasCommittedVisit(lead),
       person: { name: lead.provisionalStudentName, phone: lead.phone, owner: lead.ownerName || t("unassignedOwner"),
