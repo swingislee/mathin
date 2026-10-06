@@ -16,26 +16,31 @@ import { cn } from "@/lib/utils";
 export function DashboardBackLink({
   href,
   label,
+  iconOnly = false,
   className,
 }: {
   href: string;
   label: string;
+  iconOnly?: boolean;
   className?: string;
 }) {
   return (
     <Link
       href={href}
       data-dashboard-back-link
+      aria-label={iconOnly ? label : undefined}
+      title={iconOnly ? label : undefined}
       className={cn(
         // w-fit 已经是 min(max-content, 可用宽度)，不需要再补 max-w-full——
         // 那条还会撞上 doc21 §23 "页面骨架不得出现 max-w-*" 的防回退检查。
         "inline-flex w-fit items-center gap-1 rounded text-xs text-muted transition hover:text-ink",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-crater/60 focus-visible:ring-offset-2 focus-visible:ring-offset-paper",
+        iconOnly && "size-8 shrink-0 justify-center",
         className,
       )}
     >
       <ArrowLeft size={14} className="shrink-0" />
-      <span className="min-w-0 truncate">{label}</span>
+      <span className={iconOnly ? "sr-only" : "min-w-0 truncate"}>{label}</span>
     </Link>
   );
 }

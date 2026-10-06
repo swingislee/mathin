@@ -17,6 +17,7 @@ import type { DashboardPageProps } from "./dashboard-page.types";
 export function DashboardPage({
   title,
   eyebrow,
+  description,
   meta,
   breadcrumbs,
   backHref,
@@ -36,13 +37,18 @@ export function DashboardPage({
         <DashboardPageHeader
           title={title}
           eyebrow={eyebrow}
-          meta={meta}
+          description={description}
           breadcrumbs={breadcrumbs}
           backHref={backHref}
           backLabel={backLabel}
+          commandPanel={commandPanel}
         />
-        {commandPanel}
-        {summary ? <DashboardPageSummary className="pb-2 [&>div]:min-h-0 [&>div]:bg-transparent [&>div]:py-1">{summary}</DashboardPageSummary> : null}
+        {meta || summary ? (
+          <DashboardPageSummary className="py-1 [&>div]:min-h-0 [&>div]:bg-transparent [&>div]:py-1">
+            {meta ? <div data-dashboard-page-meta className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted">{meta}</div> : null}
+            {summary}
+          </DashboardPageSummary>
+        ) : null}
       </DashboardPageChrome>
 
       <DashboardPageBody density={density} className={bodyClassName}>

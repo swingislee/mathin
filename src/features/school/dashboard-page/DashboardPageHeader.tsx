@@ -3,13 +3,14 @@ import { GlobalFloatingControlsSafeArea, MainFloatingControlSafeArea } from "@/c
 
 import { cn } from "@/lib/utils";
 import { DashboardPageIdentity } from "./DashboardPageIdentity";
+import { DashboardPageHeaderLayout } from "./DashboardPageHeaderLayout";
 import type { DashboardPageBreadcrumb } from "./dashboard-page.types";
+import styles from "./DashboardPageHeader.module.css";
 
 /**
- * 普通 Dashboard 页面的页头（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §11）。
- *
- * 左右两侧是真实参与 Grid 的透明占位，而不是写死的 pl-20 / pr-32 / lg:pr-24。
- * 因此标题区可用范围 = C − 右上悬浮控件安全区，悬浮控件怎么变都不用回来改页面。
+ * 标题、视图与主操作共用一行，筛选按实际工作区宽度移到下一行。
+ * 命令组件保留原挂载位置与业务状态；CSS 将其槽位接入同一个网格。
+ * 只有首行避让两侧悬浮入口，筛选与摘要继续使用完整正文宽度。
  */
 export function DashboardPageHeader({
   title,
@@ -19,6 +20,7 @@ export function DashboardPageHeader({
   breadcrumbs,
   backHref,
   backLabel,
+  commandPanel,
   className,
 }: {
   title: ReactNode;
@@ -28,12 +30,12 @@ export function DashboardPageHeader({
   breadcrumbs?: DashboardPageBreadcrumb[];
   backHref?: string;
   backLabel?: string;
+  commandPanel?: ReactNode;
   className?: string;
 }) {
   return (
-    <header data-dashboard-page-header className={cn("w-full min-w-0 border-b border-line/60", className)}>
-      {/* items-end：标题贴着行底，与下方命令面板成组；面包屑/eyebrow 往上长，不推动标题基线。 */}
-      <div className="grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-x-2 py-2.5 @2xl/chrome:min-h-[76px] @2xl/chrome:py-3">
+    <header data-dashboard-page-header className={cn("w-full min-w-0 border-b border-line/60", styles.header, className)}>
+      <DashboardPageHeaderLayout className={styles.layout}>
         <MainFloatingControlSafeArea />
         <DashboardPageIdentity
           title={title}
@@ -43,9 +45,11 @@ export function DashboardPageHeader({
           breadcrumbs={breadcrumbs}
           backHref={backHref}
           backLabel={backLabel}
+          compact
         />
+        {commandPanel ? <div data-dashboard-page-commands className={styles.commands}>{commandPanel}</div> : null}
         <GlobalFloatingControlsSafeArea />
-      </div>
+      </DashboardPageHeaderLayout>
     </header>
   );
 }

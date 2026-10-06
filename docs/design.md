@@ -8,7 +8,8 @@
 
 Dashboard、Classroom、Whiteboard、Courseware Studio **默认使用连续工作区，不用 Card 拼装页面**：
 
-- 页面身份放 DashboardPage／ObjectBar，搜索与业务动作放 DashboardCommandPanel；页面按钮和批量按钮使用 actions／selection 槽，表格外壳直接从 Table 开始。
+- 普通 Dashboard 页的标题、视图标签、主操作与悬浮入口安全区共用紧凑页头；搜索筛选沿用 DashboardCommandPanel，在可用宽度不足时移到下一行。标题使用同一档字号，不按屏幕高度切换两套布局；返回入口紧邻标题，说明收进标题旁的信息入口，元信息归只读摘要。对象详情继续使用 ObjectBar。
+- 页面按钮和批量按钮使用 DashboardCommandPanel 的 actions／selection 槽，表格外壳直接从 Table 开始。
 - 全选放选择列表头；数据列在表头筛选、排序，命令区保留跨列搜索与页面筛选。滚动时固定表头。分页放表格下方，显示当前页／总页数、总行数和每页数量；改每页数量回第一页并保留筛选。
 - 正文、栏位、目录、筛选集合、统计摘要与表格外层透明，以对齐、留白和结构线区分；标题、说明、表单、只读摘要和空状态各归所属区域。空状态保留原区域尺寸和边界。
 - 分栏工作台是一块连续画布，只在并存栏位之间分隔。每条线由一个结构拥有者绘制：表格外边界归 DashboardTableShell，表头与行线归 Table；section 不再叠加边框。

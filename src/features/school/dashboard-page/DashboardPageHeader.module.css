@@ -1,0 +1,153 @@
+.header {
+  --dashboard-header-gap: 0.75rem;
+}
+
+/* 保留服务器/客户端命令组件及其状态，只让槽位参加同一条页头的排布。 */
+.layout {
+  display: grid;
+  grid-template-columns: auto minmax(0, max-content) minmax(0, 1fr) auto auto;
+  grid-template-rows: minmax(2.75rem, auto);
+  align-items: center;
+  column-gap: var(--dashboard-header-gap);
+  row-gap: 0.5rem;
+  min-width: 0;
+  padding-top: max(1rem, calc(var(--global-floating-controls-safe-block-size, 5rem) - 3.5rem));
+  padding-bottom: 0.5rem;
+}
+
+.commands,
+.commands > [data-dashboard-command-panel] {
+  display: contents;
+}
+
+.layout > [data-main-floating-control-safe-area] {
+  grid-column: 1;
+  grid-row: 1;
+  margin-inline-end: calc(var(--dashboard-header-gap) * -1);
+}
+
+.layout > [data-dashboard-page-identity] {
+  grid-column: 2;
+  grid-row: 1;
+  max-inline-size: min(18rem, 28cqi);
+}
+
+.layout > [data-global-floating-controls-safe-area] {
+  grid-column: 5;
+  grid-row: 1;
+}
+
+.commands > [data-dashboard-command-panel] > [data-dashboard-command-slot] {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="state"] {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="actions"] {
+  grid-column: 4;
+  grid-row: 1;
+  justify-self: end;
+  justify-content: flex-end;
+  margin-inline-start: 0;
+}
+
+.commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="filters"] {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="selection"] {
+  grid-column: 3 / 5;
+  grid-row: 1;
+}
+
+/* 空槽不占行；异步命令面板的骨架和非标准子节点保留完整的一行。 */
+.commands > [data-dashboard-command-panel] > [data-dashboard-command-slot]:empty {
+  display: none;
+}
+
+.commands > [data-dashboard-command-panel] > :not([data-dashboard-command-slot]) {
+  grid-column: 3 / 5;
+}
+
+/* 外壳按控件是否完整放得下选择同行，避免按一个固定断点挤压不同页面。 */
+@container chrome (min-width: 40rem) {
+  .layout[data-dashboard-header-fit="inline"] {
+    grid-template-columns: auto minmax(0, max-content) auto minmax(0, 1fr) auto auto;
+  }
+
+  .layout[data-dashboard-header-fit="inline"] > [data-global-floating-controls-safe-area] {
+    grid-column: 6;
+  }
+
+  .layout[data-dashboard-header-fit="inline"] .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="filters"] {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .layout[data-dashboard-header-fit="inline"] .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="actions"] {
+    grid-column: 5;
+  }
+
+  .layout[data-dashboard-header-fit="inline"] .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="selection"],
+  .layout[data-dashboard-header-fit="inline"] .commands > [data-dashboard-command-panel] > :not([data-dashboard-command-slot]) {
+    grid-column: 3 / 6;
+  }
+
+}
+
+/* 手机将业务操作放到全局入口下方，完整保留标签和按钮，避免相互覆盖。 */
+@container chrome (max-width: 39.999rem) {
+  .layout {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .layout > [data-dashboard-page-identity] {
+    max-inline-size: 100%;
+  }
+
+  .layout > [data-global-floating-controls-safe-area] {
+    grid-column: 3;
+  }
+
+  .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="state"] {
+    grid-column: 1 / 3;
+    grid-row: 2;
+  }
+
+  .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="actions"] {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="filters"] {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="selection"],
+  .commands > [data-dashboard-command-panel] > :not([data-dashboard-command-slot]) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+@container chrome (max-width: 27.999rem) {
+  .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="state"] {
+    grid-column: 1 / -1;
+  }
+
+  .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="actions"] {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .commands > [data-dashboard-command-panel] > [data-dashboard-command-slot="filters"] {
+    grid-row: 4;
+  }
+}

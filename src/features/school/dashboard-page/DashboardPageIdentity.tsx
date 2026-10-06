@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { Info } from "lucide-react";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { DashboardBackLink } from "./DashboardBackLink";
@@ -19,6 +21,7 @@ export function DashboardPageIdentity({
   breadcrumbs,
   backHref,
   backLabel,
+  compact = false,
   className,
 }: {
   title: ReactNode;
@@ -28,8 +31,35 @@ export function DashboardPageIdentity({
   breadcrumbs?: DashboardPageBreadcrumb[];
   backHref?: string;
   backLabel?: string;
+  compact?: boolean;
   className?: string;
 }) {
+  if (compact) {
+    const parent = breadcrumbs?.filter(item => item.href).at(-1);
+    const returnHref = backHref ?? parent?.href;
+    const information = description || eyebrow;
+    return (
+      <div data-dashboard-page-identity className={cn("flex min-w-0 items-center gap-2", className)}>
+        {returnHref ? <DashboardBackLink href={returnHref} label={backLabel ?? parent?.label ?? ""} iconOnly /> : null}
+        <h1 className="min-w-0 truncate font-display text-lg leading-tight" title={typeof title === "string" ? title : undefined}>{title}</h1>
+        {information ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="inline-flex size-7 shrink-0 items-center justify-center rounded text-muted hover:bg-moon/20 hover:text-ink">
+                <Info size={15} aria-hidden="true" />
+                <span className="sr-only">{information}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-72 space-y-1 text-sm">
+              {eyebrow ? <p className="text-xs text-crater">{eyebrow}</p> : null}
+              {description ? <div className="text-muted">{description}</div> : null}
+            </PopoverContent>
+          </Popover>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div data-dashboard-page-identity className={cn("flex min-w-0 flex-col justify-center", className)}>
       {backHref ? <DashboardBackLink href={backHref} label={backLabel ?? ""} className="mb-1" /> : null}
