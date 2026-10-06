@@ -13,3 +13,9 @@
 - 全库 TypeScript 检查对本批文件无诊断，但仍有 6 条其他文件诊断：DashboardShell 的 Button ref 类型 2 条、ParentRegistrationSettings 的错误字段 3 条、request-body-limits 测试的 RequestInit 类型 1 条；全库类型检查未通过。
 - 本机 3130 服务可响应；未登录请求正常进入登录页。未运行浏览器自动化，未进行生产部署。
 - 开发入口：<http://192.168.5.213:3130/zh/dashboard/schedule>；请在常用笔记本上确认首行、筛选换行及正文可用高度，也可切换班级和学服页面确认共享效果。
+
+## 标签外观反馈
+
+- 产品负责人指出测评页的工作范围和工作队列丢失了既定的 shadcn Tabs 观感。定位到 FollowupPrimaryFilter 使用独立的透明底圆胶囊样式。
+- 工作筛选改为与现有 Tabs 共用样式来源，恢复整组浅底、圆角矩形选项、选中底色及阴影；保留筛选单选、禁用、键盘交互和偏好状态，紧凑页头继续使用。
+- 修改同时覆盖测评、沟通、首联、报名、续班等复用该筛选的入口；开发验收：<http://192.168.5.213:3130/zh/dashboard/assessments>。

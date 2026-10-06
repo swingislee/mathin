@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { tabsListClassName, tabsTriggerClassName } from "@/components/ui/tabs-styles";
+import { cn } from "@/lib/utils";
 import { useDashboardPreference } from "./dashboard-page/DashboardPreferenceScope";
 
-/** 标题栏工作队列：按内容横排，整项换行；与行内登记选择器分开。 */
+/** 工作队列沿用 shadcn Tabs 的分组外观，保留单选筛选的交互与整项换行。 */
 export function FollowupPrimaryFilter({ label, value, options, onValueChange, disabled }: {
   label: string;
   value: string;
@@ -14,9 +16,9 @@ export function FollowupPrimaryFilter({ label, value, options, onValueChange, di
 }) {
   return <ToggleGroup type="single" orientation="horizontal" aria-label={label} value={value}
     disabled={disabled} onValueChange={next => { if (next && next !== value) onValueChange(next); }}
-    data-followup-primary-filter className="w-fit max-w-full flex-none flex-wrap justify-start gap-1" size="sm">
+    data-followup-primary-filter className={cn(tabsListClassName, "h-auto min-h-9 w-fit max-w-full flex-none flex-wrap justify-start gap-x-0.5 gap-y-1")} size="sm">
     {options.map(option => <ToggleGroupItem key={option.value} value={option.value} disabled={option.disabled}
-      className="h-8 flex-none whitespace-nowrap rounded-full border border-transparent px-3 text-xs text-muted data-[state=on]:border-crater/60 data-[state=on]:bg-moon/40 data-[state=on]:text-ink">
+      className={cn(tabsTriggerClassName, "h-8 flex-none")}>
       {option.label}
     </ToggleGroupItem>)}
   </ToggleGroup>;
