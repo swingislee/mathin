@@ -1,0 +1,12 @@
+.marker {
+  --classification-color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--classification-color) 65%, var(--line));
+  background: color-mix(in srgb, var(--classification-color) 11%, var(--card));
+  color: var(--ink);
+}
+.marker[data-color='yellow'] { --classification-color: #b48716; }
+.marker[data-color='lime'] { --classification-color: #88a444; }
+.marker[data-color='green'] { --classification-color: #26805c; }
+.marker[data-color='purple'] { --classification-color: #9560b2; }
+.marker[data-color='blue'] { --classification-color: #4281b6; }
+.dot { background: var(--classification-color); }

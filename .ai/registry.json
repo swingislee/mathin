@@ -3,6 +3,69 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "BASE-DEV-WORKLIST-20261006",
+      "title": "开发端 Base 工作名单与颜色分类",
+      "agent": "codex",
+      "threadId": "01a09e59-524e-7810-9aa2-5fb811957bb8",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/BASE-DEV-WORKLIST-20261006.md",
+      "writePaths": [
+        ".ai/tasks/BASE-DEV-WORKLIST-20261006.md",
+        ".tmp/base-dev-20261006/",
+        "src/features/school/source-worklist/",
+        "src/app/[locale]/dashboard/communication/lists/",
+        "scripts/lib/base-worklist-layout.mjs",
+        "supabase/migrations/20261006110000_source_worklists.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/StudentStagePage.tsx",
+        "src/features/school/StudentStageEntry.tsx"
+      ],
+      "checkpoint": null,
+      "next": "开发业务副本已清理并按最新 Base 重建；工作名单可用，按任务精简信息并保留分组、顺序、颜色与接续位置。导入、权限和保存链路检查通过，待产品负责人实际验收，生产未改动。"
+    },
+    {
+      "id": "BASE-VIEW-DIAGNOSIS-20261005",
+      "title": "Base 工作视图与学生阶段差异核对",
+      "agent": "codex",
+      "threadId": "01a09e59-524e-7810-9aa2-5fb811957bb8",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/BASE-VIEW-DIAGNOSIS-20261005.md",
+      "writePaths": [
+        ".tmp/base-view-alignment-20261005/",
+        ".ai/tasks/BASE-VIEW-DIAGNOSIS-20261005.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "67f4ba60",
+      "next": "已按产品负责人澄清修正方向：承接熟悉的分组、顺序与接续位置，按首联／后续沟通／测评／报后任务精简操作，统一学生整体情况；Base 视图用于理解功能，不复刻列或全部视图。"
+    },
+    {
+      "id": "BASE-INCREMENTAL-20261005",
+      "title": "10 月 5 日 Base 生产增量",
+      "agent": "codex",
+      "threadId": "01a09e59-524e-7810-9aa2-5fb811957bb8",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/BASE-INCREMENTAL-20261005.md",
+      "writePaths": [
+        ".tmp/base-incremental-20261005/",
+        ".ai/tasks/BASE-INCREMENTAL-20261005.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "694812e7",
+      "next": "替换 Base 的 19 表 5,379 行及 31 仪表盘内容一致；原增量已写入生产，逐项核对通过。保留 4 条身份疑义待业务核对，正式班级及人工修订完整。"
+    },
+    {
       "id": "DASHBOARD-SIDEBAR-RESIZE-20261005",
       "title": "Dashboard 侧栏拖动宽度与独立收起",
       "agent": "codex",

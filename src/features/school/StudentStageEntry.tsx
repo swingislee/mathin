@@ -44,11 +44,12 @@ function storeDraft(key: string, draft: Draft | null) {
   try { if (draft) sessionStorage.setItem(key, JSON.stringify(draft)); else sessionStorage.removeItem(key); } catch { /* 会话存储不可用时，保持当前行内草稿。 */ }
 }
 
-export function StudentStageEntry({ row, requestedMode, locale, currentUserId, canEnroll, onSaved, onBusyChange, canAdvance, outcomeRequest, enrollmentContext, ref }: {
+export function StudentStageEntry({ row, requestedMode, locale, currentUserId, canEnroll, onSaved, onBusyChange, canAdvance, outcomeRequest, enrollmentContext, contactContext = "first_contact", ref }: {
   row: StudentStageRow; requestedMode: StudentEntryMode; locale: string; currentUserId: string; canEnroll: boolean;
   onSaved: (saved: StudentStageSaved, advance: boolean) => void; onBusyChange: (busy: boolean) => void; canAdvance: boolean;
   outcomeRequest: { value: "" | "unreachable" | "connected" | "declined" | "invalid_number" } | null;
   enrollmentContext?: {type:"new"|"renewal"|"reactivate";courseId:string|null;termId:string|null};
+  contactContext?: "first_contact" | "followup";
   ref?: Ref<{ save: () => void }>;
 }) {
   const m = studentStageMessages(locale);
@@ -154,7 +155,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
     <Tabs value={mode} onValueChange={switchMode}>
       <TabsList className="h-auto flex-wrap justify-start gap-1">
         {row.studentId ? <TabsTrigger value="note" disabled={pending}>{m.note}</TabsTrigger> : null}
-        {row.stage === "awaiting_first_contact" && row.canContact ? <TabsTrigger value="contact" disabled={pending}>{m.contact}</TabsTrigger> : null}
+        {(row.stage === "awaiting_first_contact" || contactContext === "followup") && row.canContact ? <TabsTrigger value="contact" disabled={pending}>{contactContext === "followup" ? (locale.startsWith("en") ? "Contact record" : "记录联系") : m.contact}</TabsTrigger> : null}
         {row.canContact ? <TabsTrigger value="invitation" disabled={pending}>{m.invitation}</TabsTrigger> : null}
         {row.studentId ? <TabsTrigger value="enrollment" disabled={pending}>{enrollmentLabel}</TabsTrigger> : null}
       </TabsList>
@@ -162,7 +163,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
     <FollowupEntryFields id={`student-stage-${row.key}`} note={draft.note} onNoteChange={note => change({ note })}
       pending={pending} disabled={!row.canWrite} saveDisabled={!valid} onSave={advance => { void save(advance); }} canAdvance={canAdvance}
       reminder={reminderAllowed ? { value: draft.nextContactAt, onChange: nextContactAt => change({ nextContactAt }) } : undefined}
-      noteLabel={m.note} hint={error ? <span role="alert" className="text-rose">{error}</span> : mode === "contact" ? m.firstContactHint : m.noteHint}
+      noteLabel={m.note} hint={error ? <span role="alert" className="text-rose">{error}</span> : mode === "contact" && contactContext === "first_contact" ? m.firstContactHint : m.noteHint}
       tools={draft.note || draft.invitation || draft.paymentEvidence ? <Button size="sm" variant="ghost" disabled={pending} onClick={() => {
         storeDraft(storageKey, null); setDraft(readDraft(storageKey, row)); setError("");
       }}>{m.discard}</Button> : undefined}>

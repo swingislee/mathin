@@ -59,7 +59,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
     canPlan={permissions.has("followup.write") && permissions.has("followup.view")}
     canPlanOthers={canAssign && permissions.has("student.view.all")}
     canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
-    canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} now={now} actions={presentation === "communication" ? <Link href="/dashboard/communication/worklists" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{m.worklists}</Link> : <>
+    canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} now={now} actions={presentation === "communication" ? <><Link href="/dashboard/communication/lists" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{locale.startsWith("en") ? "Working lists" : "工作名单"}</Link><Link href="/dashboard/communication/worklists" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{m.worklists}</Link></> : <>
       <Link href="/dashboard/students/groups" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{schoolCollaborationMessages(locale).title}</Link>
       {!permissions.has("followup.write") && permissions.has("student.create") ? <NewStudentDialog /> : null}
       {permissions.has("student.import") ? <Link href="/dashboard/students/import" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{t("import")}</Link> : null}
