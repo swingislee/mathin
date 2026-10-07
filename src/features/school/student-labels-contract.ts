@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { databaseUuid } from "@/lib/database-uuid";
+import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
 
 export const STUDENT_LABELS = ["A", "B", "C", "D"] as const;
 export const studentLabelSchema = z.enum(STUDENT_LABELS);
@@ -26,10 +27,10 @@ export interface StudentLabelsClient {
 }
 
 export const studentLabelColors: Record<StudentLabel, string> = {
-  A: "bg-leaf-deep text-white",
-  B: "bg-yellow-400 text-yellow-950",
-  C: "bg-orange-600 text-white",
-  D: "bg-rose-deep text-white",
+  A: LEARNING_CHECK_STATUS_STYLE.independent.active,
+  B: LEARNING_CHECK_STATUS_STYLE.prompted.active,
+  C: LEARNING_CHECK_STATUS_STYLE.imitated.active,
+  D: LEARNING_CHECK_STATUS_STYLE.incomplete.active,
 };
 
 export function studentLabelMessages(locale: string) {

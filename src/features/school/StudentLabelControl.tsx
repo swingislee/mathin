@@ -31,8 +31,8 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
     if (enrollmentId) onOpenChange?.(enrollmentId, value);
   };
   if (!current || !current.label && !current.canEdit) return null;
-  const badgeClass = cn("flex size-3.5 shrink-0 items-center justify-center rounded-sm text-[10px] font-semibold leading-none",
-    current.label ? studentLabelColors[current.label] : "border border-dashed border-muted/60 bg-card text-muted");
+  const badgeClass = cn("flex size-3.5 shrink-0 items-center justify-center rounded-sm border text-[10px] font-semibold leading-none",
+    current.label ? studentLabelColors[current.label] : "border-dashed border-muted/60 bg-card text-muted");
   const badge = <span className={badgeClass} aria-hidden="true">{current.label ?? <Tag className="size-2.5" />}</span>;
 
   const save = async (label: StudentLabel | null) => {
@@ -65,7 +65,7 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
         <div role="group" aria-label={m.title} className="flex gap-2">
           {STUDENT_LABELS.map(label => <button key={label} type="button" disabled={pending} aria-pressed={current.label === label}
             aria-label={m.read(studentName, label)} onClick={() => void save(label)}
-            className={cn("flex size-9 items-center justify-center rounded-md text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater disabled:opacity-50", studentLabelColors[label], current.label === label && "ring-2 ring-ink ring-offset-2 ring-offset-card")}>
+            className={cn("flex size-9 items-center justify-center rounded-md border text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater disabled:opacity-50", studentLabelColors[label], current.label === label && "ring-2 ring-ink ring-offset-2 ring-offset-card")}>
             {label}
           </button>)}
         </div>
