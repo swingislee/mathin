@@ -44,7 +44,7 @@ begin
   end loop;
   insert into public.classrooms(id, owner_id, name, invite_code, purpose, offering_type, operational_status, course_id, term_id) values
     (class_a, current_setting('test.label.teacher')::uuid, 'Label assertion A', class_a::text, 'production', 'long_term_formal', 'active', course_id, term_id),
-    (class_b, current_setting('test.label.other')::uuid, 'Label assertion B', class_b::text, 'production', 'long_term_formal', 'active', course_id, term_id);
+    (class_b, current_setting('test.label.other')::uuid, 'Label assertion B', class_b::text, 'production', 'long_term_formal', 'active', null, term_id);
   insert into public.classroom_members(classroom_id, user_id, role) values
     (class_a, current_setting('test.label.teacher')::uuid, 'teacher'), (class_b, current_setting('test.label.other')::uuid, 'teacher');
   insert into public.classroom_staff_assignments(classroom_id, user_id, responsibility) values
@@ -93,6 +93,18 @@ begin
     perform pg_temp.expect_label_error(format('select public.set_class_student_label(%L,%L)', member_id, 'A'), 'FORBIDDEN');
     perform pg_temp.expect_label_error(format('select public.set_class_student_label(%L,null)', member_id), 'FORBIDDEN');
   end loop;
+  -- Course-pending rosters retain shared visibility and teacher-only editing.
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', current_setting('test.label.other'), 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  state := public.get_enrollment_placement_board();
+  perform pg_temp.assert_label(exists(select 1 from jsonb_array_elements(state->'options'->'classrooms') c
+    where c->>'id' = current_setting('test.label.class_b') and c->'courseId' = 'null'::jsonb), 'COURSE_PENDING_CLASS_MISSING');
+  perform public.set_class_student_label(current_setting('test.label.member_b')::uuid, 'A');
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', current_setting('test.label.teacher'), 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  state := public.get_class_student_labels(array[current_setting('test.label.class_b')::uuid]);
+  perform pg_temp.assert_label(state @> jsonb_build_array(jsonb_build_object('enrollmentId', current_setting('test.label.member_b')::uuid,
+    'label', 'A', 'canEdit', false)), 'COURSE_PENDING_SHARED_LABEL_MISSING');
+  perform set_config('request.jwt.claims', jsonb_build_object('sub', current_setting('test.label.other'), 'role', 'authenticated', 'aal', 'aal2')::text, true);
+  perform public.set_class_student_label(current_setting('test.label.member_b')::uuid, null);
   -- An assistant with a current teaching assignment can edit without enrollment-management rights.
   perform set_config('request.jwt.claims', jsonb_build_object('sub', current_setting('test.label.assistant'), 'role', 'authenticated', 'aal', 'aal2')::text, true);
   perform public.set_class_student_label(member_id, 'C');

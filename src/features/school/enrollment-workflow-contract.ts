@@ -30,7 +30,9 @@ export const enrollmentWorkflowOptionsSchema = z.object({
   courses: z.array(z.object({ id: databaseUuid, title: z.string(), productCode: z.string().nullable(), grade: z.number(), classType: z.string() })),
   terms: z.array(z.object({ id: databaseUuid, name: z.string(), isCurrent: z.boolean(), startsOn: z.string().nullable(), endsOn: z.string().nullable() })),
   classrooms: z.array(z.object({
-    id: databaseUuid, name: z.string(), courseId: databaseUuid, termId: databaseUuid, capacity: z.number().int().nonnegative().nullable(),
+    id: databaseUuid, name: z.string(), courseId: nullableId, termId: databaseUuid, capacity: z.number().int().nonnegative().nullable(),
+    grade: z.number().nullable().optional(), businessClassType: z.string().nullable().optional(),
+    source: z.object({ teacherLabel: z.string(), scheduleLabel: z.string(), campusId: nullableId, campusLabel: z.string() }).nullable().optional(),
     activeCount: z.number().int().nonnegative(), operationalStatus: z.enum(["planning", "active"]), teacherNames: z.string(),
     teachers: z.array(z.object({ id: databaseUuid, name: z.string() })).optional(),
     location: z.object({ campusId: nullableId, campusName: z.string().nullable(), roomName: z.string().nullable() }).optional(),
@@ -126,11 +128,11 @@ export function placementStudents(board: EnrollmentPlacementBoard): PlacementStu
   const members: PlacementStudent[] = board.members.flatMap((member) => {
     const classroom = classrooms.get(member.classroomId);
     if (!classroom) return [];
-    const course = courses.get(classroom.courseId);
+    const course = courses.get(classroom.courseId ?? "");
     return [{
-      ...member, key: member.membershipId, courseId: classroom.courseId, courseTitle: course?.title ?? "",
+      ...member, key: member.membershipId, courseId: classroom.courseId ?? "", courseTitle: course?.title ?? "",
       seat: member.seat ?? null, status: member.status ?? "active",
-      termId: classroom.termId, grade: course?.grade ?? 0,
+      termId: classroom.termId, grade: classroom.grade ?? course?.grade ?? 0,
     }];
   });
   return [...members, ...board.enrollments.filter((row) => !linked.has(row.id)).map((row) => ({
@@ -145,6 +147,7 @@ export function placementStudents(board: EnrollmentPlacementBoard): PlacementStu
 
 export function placementDestinationError(student: PlacementStudent, classroom: PlacementClassroom | null, members: readonly PlacementStudent[], allowMismatch = false): string | null {
   if (student.status === "withdrawn") return "ENROLLMENT_CANCELLED";
+  if (!student.courseId || (classroom && !classroom.courseId)) return "CLASS_TARGET_MISMATCH";
   if (!classroom) return null;
   if (classroom.id === student.classroomId) return null;
   if (!allowMismatch && (classroom.termId !== student.termId || classroom.courseId !== student.courseId)) return "CLASS_TARGET_MISMATCH";
@@ -182,7 +185,7 @@ export function placementStudentBackground(health: ReturnType<typeof placementHe
 export function classWeeklyScheduleLabel(classroom: PlacementClassroom, locale: string) {
   const dayTime = new Intl.DateTimeFormat(locale, { weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Shanghai" });
   const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Shanghai" });
-  return [...new Set(classroom.sessions.map((session) => `${dayTime.format(new Date(session.at))}–${time.format(new Date(Date.parse(session.at) + session.duration * 60000))}`))].join(" / ");
+  return [...new Set(classroom.sessions.map((session) => `${dayTime.format(new Date(session.at))}–${time.format(new Date(Date.parse(session.at) + session.duration * 60000))}`))].join(" / ") || classroom.source?.scheduleLabel || "";
 }
 
 export function classScheduleLabel(classroom: PlacementClassroom, locale: string): string {

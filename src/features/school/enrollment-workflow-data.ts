@@ -31,6 +31,7 @@ export async function loadEnrollmentWorkflowOptions() {
 export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacementBoard> {
   const board = z.object({ access: placementAccessSchema.optional(), options: enrollmentWorkflowOptionsSchema, enrollments: z.array(enrollmentSchema), members: z.array(placementMemberSchema) })
     .parse(await enrollmentWorkflowRpc("get_enrollment_placement_board"));
+  board.options.classrooms = board.options.classrooms.map(row => ({ ...row, teacherNames: row.teacherNames || row.source?.teacherLabel || "" }));
   const supabase = await createClient();
   const locationsTask = loadPlacementLocations(supabase, board.options.classrooms);
   const labelsTask = loadClassStudentLabels(board.options.classrooms.map(row => row.id));
@@ -75,7 +76,13 @@ async function loadPlacementLocations(supabase: Awaited<ReturnType<typeof create
     roomName: row.default_room?.name ?? (row.room || null),
   }]));
   return {
-    classrooms: classrooms.map(row => ({ ...row, location: locations.get(row.id) })),
+    classrooms: classrooms.map(row => {
+      const location = locations.get(row.id);
+      return { ...row, location: location ? { ...location,
+        campusId: location.campusId ?? row.source?.campusId ?? null,
+        campusName: location.campusName || row.source?.campusLabel || null,
+      } : undefined };
+    }),
     failed: Boolean(result.error || classrooms.some(row => !locations.has(row.id))),
   };
 }

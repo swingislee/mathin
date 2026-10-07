@@ -3,6 +3,32 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "BASE-CLASS-ROSTER-20261007",
+      "title": "按最新 Base 补齐开发端秋季班级名册",
+      "agent": "codex",
+      "threadId": "01a1142c-85b4-7031-9295-c05c3aaa2a11",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/BASE-CLASS-ROSTER-20261007.md",
+      "writePaths": [
+        "src/features/school/enrollment-workflow-contract.ts",
+        "src/features/school/enrollment-workflow-data.ts",
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "src/features/school/placement-table-fields.ts",
+        "supabase/migrations/20261007020000_roster_without_course.sql",
+        "supabase/migrations/20261007021000_roster_labels_without_course.sql",
+        "supabase/migrations/20261007022000_roster_source_context.sql",
+        "supabase/tests/class_student_labels.sql",
+        ".ai/tasks/BASE-CLASS-ROSTER-20261007.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端已补入 Base 本轮 26 个秋季班、165 人名册；18 班任课身份已关联，8 班及教材待确认，评级由任课老师填写。名册读取与标签权限检查通过，待产品负责人使用确认。"
+    },
+    {
       "id": "CLASS-STUDENT-LABELS-20261007",
       "title": "班级学生 A/B/C/D 颜色角标",
       "agent": "codex",

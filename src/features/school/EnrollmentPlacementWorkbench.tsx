@@ -86,7 +86,7 @@ function rosterRows(board: EnrollmentPlacementBoard, students: PlacementStudent[
     return groups.get(key)!;
   };
   for (const classroom of board.options.classrooms) {
-    groupFor(classroom.termId, board.options.courses.find((course) => course.id === classroom.courseId)?.grade ?? 0).classrooms.push(classroom);
+    groupFor(classroom.termId, classroom.grade ?? board.options.courses.find((course) => course.id === classroom.courseId)?.grade ?? 0).classrooms.push(classroom);
   }
   for (const student of students) groupFor(student.termId, student.grade).students.push(student);
   return [...groups.entries()].flatMap(([group, value]) => [
@@ -300,7 +300,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       const blocker=reserved(target)?'TEMPORARY_SEAT_RESERVED':placementSeatTargetError(student,classroom,target,students,true);
       setPlacementChange({student,target:{classroom,seat},mismatch:{
         source:[student.courseTitle,locale==='en'?`Grade ${student.grade}`:`${student.grade}年级`,terms.get(student.termId)].filter(Boolean).join(' · '),
-        destination:[classroom.name,courses.get(classroom.courseId),locale==='en'?`Grade ${target.grade}`:`${target.grade}年级`,difficulties.get(classroom.courseId),terms.get(classroom.termId)].filter(Boolean).join(' · '),
+        destination:[classroom.name,courses.get(classroom.courseId ?? ''),locale==='en'?`Grade ${target.grade}`:`${target.grade}年级`,difficulties.get(classroom.courseId ?? ''),terms.get(classroom.termId)].filter(Boolean).join(' · '),
       },blocked:blocker?(blocker==='TEMPORARY_SEAT_RESERVED'?placementChangeError(blocker,locale==='en'):t(enrollmentErrorKey(blocker))):undefined});return;
     }
     if (error) { toast.error(t(enrollmentErrorKey(error))); return; }
@@ -371,7 +371,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     return <div role="status" data-placement-drag-preview className="pointer-events-none fixed z-50 w-64 max-w-[calc(100vw-2rem)] space-y-1 rounded-md border border-crater bg-card px-3 py-2 text-xs shadow-lg"
       style={{left:Math.max(8,Math.min(drag.clientX+16,window.innerWidth-272)),top:Math.max(8,Math.min(drag.clientY+16,window.innerHeight-160))}}>
       <p className="font-medium">{student?.name}{classroom?` → ${classroom.name}`:''}</p>
-      {classroom?<><p className="text-muted">{[courses.get(classroom.courseId),difficulties.get(classroom.courseId)].filter(Boolean).join(' · ')}</p><p className="text-muted">{classroom.teacherNames||'—'} · {schedule(classroom)}</p></>:null}
+      {classroom?<><p className="text-muted">{[courses.get(classroom.courseId ?? ''),difficulties.get(classroom.courseId ?? '') ?? classroom.businessClassType].filter(Boolean).join(' · ')}</p><p className="text-muted">{classroom.teacherNames||'—'} · {schedule(classroom)}</p></>:null}
       <p className={error?'text-rose':'text-crater'}>{message}</p>
     </div>;
   };
@@ -382,7 +382,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     const signals = student.placement ? board.health?.[student.studentId ?? ""] ?? [] : [];
     const health = student.placement ? placementHealth(signals) : null;
     const renewed = Boolean(student.placement?.membershipId && renewedMembershipIds.has(student.placement.membershipId));
-    const movable = Boolean(student.placement && student.status !== "withdrawn" && !pending && !hasSessionDraft && !placementChange);
+    const movable = Boolean(student.placement?.courseId && student.status !== "withdrawn" && !pending && !hasSessionDraft && !placementChange);
     const temporary=(board.sessionTransfers??[]).filter(t=>t.membershipId===student.placement?.membershipId);
     const swapping = Boolean(student.placement && selected && selected.key !== student.key && target && accepts(selected, target));
     return <Tooltip key={student.key} open={!dragging&&tooltipKey===student.key} onOpenChange={open=>setTooltipKey(current=>open&&!dragging?student.key:current===student.key?null:current)}><TooltipTrigger asChild><span
@@ -569,13 +569,14 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
             {!scope.historical && section.rows.some(row => row.key === `${group}:pending`) ? pendingRow(scope) : null}
             {classrooms.map((row) => {
               const classroom = row.classroom;
+              const canAddToClass = canAdd && Boolean(classroom?.courseId);
               const fact = row.historical;
               const className = classroom?.name ?? fact?.class_label ?? recordM.unknown;
               const teacher = classroom?.teacherNames ?? fact?.teacher_label ?? recordM.unknown;
               const time = classroom ? schedule(classroom) : fact?.schedule_label || recordM.unknown;
-              const courseTitle = classroom ? courses.get(classroom.courseId) : fact?.period_label;
+              const courseTitle = classroom ? courses.get(classroom.courseId ?? '') ?? (locale === 'en' ? 'Materials pending' : '教材待确认') : fact?.period_label;
               const gradeLabel = row.grade ? t("grade", { grade: row.grade }) : t("gradePending");
-              const level = classroom ? difficulties.get(classroom.courseId) || "—" : "—";
+              const level = classroom ? difficulties.get(classroom.courseId ?? '') ?? classroom.businessClassType ?? "—" : "—";
               const rosterKey = `${group}:${row.key}`;
               const rosterId = `class-roster-members-${encodeURIComponent(rosterKey)}`;
               const rosterOpen = !expandedSessionRow && (mobileRosters[rosterKey] ?? Boolean(focusStudentId && (row.students.some(student => student.studentId === focusStudentId)
@@ -629,7 +630,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                   const eligible = accepts(selected, target);
                   const reservations=(board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom.id&&t.seat===seat);
                   return <div key={seat} {...registerTarget(key, classTarget)} data-placement-drop-state={dropState(key,classTarget)} className={cn(PLACEMENT_CELL_HOVER,"relative min-w-0 border-b border-line")}>
-                    {student ? studentTile(studentTileRecord(student), target) : reservations.length?<button type="button" className="min-h-9 w-full bg-moon/30 px-1 text-[10px] text-crater" title={reservations.map(r=>`${r.name} · ${r.lectureNo??""} · ${r.title}`).join("\n")} onClick={()=>{const origin=students.find(s=>s.membershipId===reservations[0].membershipId);if(origin)setPlacementChange({student:origin});}}>{[...new Set(reservations.map(r=>r.name))].join("、")}<span className="ml-0.5 text-[9px]">{locale==="en"?"Temp":"临"}</span></button>: <button type="button" data-placement-vacancy className="group/seat relative flex min-h-9 w-full items-center justify-center gap-1 bg-card px-1 text-[10px] tabular-nums text-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater" disabled={selected ? !eligible : !canAdd} title={vacancyLabel} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : canAdd ? (locale === "en" ? `Add student · ${classroom.name} · Seat ${seat}` : `补入学生 · ${classroom.name} · ${seat} 号位`) : `${vacancyLabel} · ${t("emptySeatNumber", { seat })}`} onClick={() => { if (selected) move(selected, target); else setSeatEntry({classroom,seat}); }}><span>{vacancyLabel}</span>{eligible || canAdd ? <Plus data-placement-vacancy-icon className="absolute left-1/2 top-1/2 z-20 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0.5 text-crater opacity-0 transition-opacity group-hover/seat:opacity-100 group-focus-visible/seat:opacity-100" /> : null}</button>}
+                    {student ? studentTile(studentTileRecord(student), target) : reservations.length?<button type="button" className="min-h-9 w-full bg-moon/30 px-1 text-[10px] text-crater" title={reservations.map(r=>`${r.name} · ${r.lectureNo??""} · ${r.title}`).join("\n")} onClick={()=>{const origin=students.find(s=>s.membershipId===reservations[0].membershipId);if(origin)setPlacementChange({student:origin});}}>{[...new Set(reservations.map(r=>r.name))].join("、")}<span className="ml-0.5 text-[9px]">{locale==="en"?"Temp":"临"}</span></button>: <button type="button" data-placement-vacancy className="group/seat relative flex min-h-9 w-full items-center justify-center gap-1 bg-card px-1 text-[10px] tabular-nums text-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-crater" disabled={selected ? !eligible : !canAddToClass} title={vacancyLabel} aria-label={selected ? t("placeInSeat", { name: selected.name, classroom: classroom.name, seat }) : canAddToClass ? (locale === "en" ? `Add student · ${classroom.name} · Seat ${seat}` : `补入学生 · ${classroom.name} · ${seat} 号位`) : `${vacancyLabel} · ${t("emptySeatNumber", { seat })}`} onClick={() => { if (selected) move(selected, target); else setSeatEntry({classroom,seat}); }}><span>{vacancyLabel}</span>{eligible || canAddToClass ? <Plus data-placement-vacancy-icon className="absolute left-1/2 top-1/2 z-20 size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-card p-0.5 text-crater opacity-0 transition-opacity group-hover/seat:opacity-100 group-focus-visible/seat:opacity-100" /> : null}</button>}
                   </div>;
                 }) : null}<span data-class-desktop data-class-roster-count className="flex min-h-9 items-center justify-center px-1 text-center text-[10px] tabular-nums text-muted">{classroom ? `${classroom.activeCount}/${classroom.capacity ?? "∞"}` : row.sourceEnrollments?.length}</span></div>}</TableCell>
               </>;
@@ -650,7 +651,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         <div ref={progressScrollbar} data-teaching-progress-scrollbar tabIndex={progressMode ? 0 : -1} role="region" aria-label={locale.startsWith("en") ? "Scroll lesson progress" : "横向滚动课次进度"}><div data-teaching-progress-scroll-track /></div>
       </div>}
       {placementChange?<EnrollmentPlacementChangeDialog {...placementChange} transfers={(board.sessionTransfers??[]).filter(t=>t.membershipId===placementChange.student.membershipId)} onClose={()=>setPlacementChange(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setPlacementChange(null);setSelectedKey(null);window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));router.refresh();}}/>:null}
-      {seatEntry?<SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/>:null}
+      {seatEntry?.classroom.courseId?<SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/>:null}
       {sourceEnrollment?<SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/>:null}
       {dragPreview()}
     </div>
