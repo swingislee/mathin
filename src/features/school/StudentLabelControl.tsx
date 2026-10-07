@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
-import { Tag } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
@@ -31,9 +30,9 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
     if (enrollmentId) onOpenChange?.(enrollmentId, value);
   };
   if (!current || !current.label && !current.canEdit) return null;
-  const badgeClass = cn("flex size-3.5 shrink-0 items-center justify-center rounded-sm border text-[10px] font-semibold leading-none",
-    current.label ? studentLabelColors[current.label] : "border-dashed border-muted/60 bg-card text-muted");
-  const badge = <span className={badgeClass} aria-hidden="true">{current.label ?? <Tag className="size-2.5" />}</span>;
+  const badgeClass = cn("block size-2 shrink-0 rounded-full border",
+    current.label ? studentLabelColors[current.label] : "border-muted/50 bg-transparent", "shadow-none");
+  const badge = <span className={badgeClass} aria-hidden="true" />;
 
   const save = async (label: StudentLabel | null) => {
     if (!state || saving.current) return;
