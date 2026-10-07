@@ -529,6 +529,33 @@
       ],
       "checkpoint": null,
       "next": "开发端年级和来源表分组已可操作，等待产品负责人验收；无需重复已通过检查。"
+    },
+    {
+      "id": "ASSESSMENT-STAGE-FOCUS-20261007",
+      "title": "测评页模块加载与阶段小标签",
+      "agent": "codex",
+      "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ASSESSMENT-STAGE-FOCUS-20261007.md",
+      "writePaths": [
+        ".ai/tasks/ASSESSMENT-STAGE-FOCUS-20261007.md",
+        ".tmp/assessment-stage-focus-20261007/",
+        "src/features/school/source-worklist/contract.ts",
+        "src/features/school/source-worklist/grouping.ts",
+        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
+        "src/features/school/source-worklist/SourceGroupedRows.tsx",
+        "src/features/school/source-worklist/Workspace.tsx",
+        "src/features/school/record-status/RecordStatusIcons.tsx",
+        "docs/workflows/school-operations.md",
+        "src/features/school/record-status/stage-focus.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "测评页开发服务已恢复，阶段小标签和中间状态已可操作；定向静态与页面读取通过，待实际使用确认。生产未改动。"
     }
   ]
 }

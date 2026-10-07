@@ -1,6 +1,6 @@
 'use client';
 
-import { ClipboardList, HeartPulse, MapPin } from 'lucide-react';
+import { BookOpen, CalendarCheck, CalendarClock, CalendarX, Check, CirclePause, ClipboardList, GraduationCap, HeartPulse, Hourglass, MapPin, MessageCircle, Ticket, UserRound, UsersRound, Wallet } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { Student360Trigger } from '../Student360Sheet';
@@ -8,6 +8,11 @@ import { WechatGlyph } from '../WechatStatusControl';
 import { LEARNING_CHECK_STATUS_STYLE } from '../session-learning-visual';
 import type { StudentStageRow } from '../student-stage-contract';
 import { resolveStatusEvidence, type StatusFacet } from './contract';
+import { recordStageFocus, type ProgressGlyph } from './stage-focus';
+
+const PROGRESS_ICONS = { calendar: CalendarClock, calendarCheck: CalendarCheck, calendarX: CalendarX, teacher: GraduationCap, parent: UserRound,
+  activity: Ticket, assessment: ClipboardList, message: MessageCircle, hourglass: Hourglass, payment: Wallet, check: Check, pause: CirclePause, class: UsersRound, book: BookOpen } satisfies Record<ProgressGlyph, typeof CalendarClock>;
+const buttonClass = 'inline-flex size-6 shrink-0 items-center justify-center rounded-md border p-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater';
 
 export function StatusGlyph({ facet }: { facet: StatusFacet }) {
   if (facet === 'wechat') return <svg viewBox="0 0 24 24" width={14} height={14} className="shrink-0" aria-hidden="true" focusable="false"><WechatGlyph /></svg>;
@@ -25,6 +30,7 @@ function statusStyle(facet: StatusFacet, value: string, review: boolean) {
 }
 
 export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; locale: string }) {
+  const { facets, progress } = recordStageFocus(row,locale);
   const en = locale.startsWith('en');
   const labels = en ? { wechat: 'WeChat', interest: 'Interest', visit: 'Visit', assessment: 'Assessment' }
     : { wechat: '微信', interest: '意向', visit: '到访', assessment: '测评' };
@@ -34,12 +40,26 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
   const interestValues: Record<string,string> = en ? { A: 'High (A)', B: 'Medium (B)', C: 'Low (C)' }
     : { A: '高（A）', B: '中（B）', C: '低（C）' };
   const valueLabel = (type: string, value: string) => (type === 'interest' ? interestValues[value] : undefined) ?? values[value] ?? value;
+  const visible = facets.flatMap(facet => {
+    const status = resolveStatusEvidence(row.statusEvidence ?? [],facet);
+    if (status.value === 'unknown' && !status.review) return [];
+    if (row.stage === 'awaiting_first_contact' && facet === 'visit' && !status.review && !['promised','arrived'].includes(status.value)) return [];
+    return [{ facet, status }];
+  });
+  if (!progress && !visible.length) return null;
+  const ProgressIcon = progress ? PROGRESS_ICONS[progress.glyph] : null;
   return <div className="flex items-center gap-1" data-record-status-icons onClick={event => event.stopPropagation()}>
-    {(['wechat','interest','visit','assessment'] as const).map(facet => {
-      const status = resolveStatusEvidence(row.statusEvidence ?? [],facet);
+    {progress && ProgressIcon ? <Popover><PopoverTrigger asChild><button type="button" aria-label={progress.label} title={progress.label} data-stage-progress={progress.key}
+      className={cn(buttonClass,LEARNING_CHECK_STATUS_STYLE[progress.tone].active)}><ProgressIcon size={14} strokeWidth={2} aria-hidden="true" /></button></PopoverTrigger>
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] text-sm">
+        <p className="font-medium">{progress.label}</p>
+        {progress.context.map((line,index) => <p key={index} className="mt-2 whitespace-pre-wrap text-xs text-muted">{line}</p>)}
+        <div className="mt-3 border-t border-line pt-2"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{en ? 'View related records' : '查看相关记录'}</Student360Trigger></div>
+      </PopoverContent></Popover> : null}
+    {visible.map(({ facet, status }) => {
       const label = `${labels[facet]} · ${status.review ? (en ? 'Needs review' : '待核对') : valueLabel(facet,status.value)}`;
       return <Popover key={facet}><PopoverTrigger asChild><button type="button" aria-label={label} title={label}
-        className={cn('inline-flex size-6 shrink-0 items-center justify-center rounded-md border p-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater',
+        data-status-facet={facet} className={cn(buttonClass,
           statusStyle(facet, status.value, status.review))}>
         <StatusGlyph facet={facet} />
       </button></PopoverTrigger><PopoverContent align="start" className="w-96 max-w-[calc(100vw-2rem)] text-sm">

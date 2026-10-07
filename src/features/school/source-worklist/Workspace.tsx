@@ -19,7 +19,8 @@ import { StudentStageOwnerControl } from '../StudentStageAssignmentControl';
 import { studentStageMessages } from '../student-stage-messages';
 import { communicationEntryMode } from '../work-entry-contract';
 import type { StudentEntryMode, StudentStageSaved, StudentStageAssignee, StudentStageAssignment } from '../student-stage-contract';
-import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, sourceGroupLabels, sourceGroupPath, type WorkPage, type WorkQuery, type WorkRow } from './contract';
+import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, type WorkPage, type WorkQuery, type WorkRow } from './contract';
+import { sourceGroupLabels, sourceGroupPath } from './grouping';
 import { RecordStatusIcons } from '../record-status/RecordStatusIcons';
 import { SourceLayoutFilters } from './SourceLayoutFilters';
 

@@ -2,7 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-styles';
-import { sourceGroupLabels, workMessages, type PeriodField, type SourceLayout, type SourcePlacement } from './contract';
+import { workMessages, type PeriodField, type SourceLayout, type SourcePlacement } from './contract';
+import { sourceGroupLabels } from './grouping';
 
 export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled, onChange, actions }: {
   data: SourceLayout; kind: SourcePlacement['kind']; periodFields: PeriodField[]; locale: string; disabled?: boolean;

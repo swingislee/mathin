@@ -18,21 +18,6 @@ export const sourceLayoutSchema = z.object({
   groups: z.array(z.object({ key: z.string(), count: z.number() })),
 });
 export type SourceLayout = z.infer<typeof sourceLayoutSchema>;
-export function sourceGroupLabels(kind: SourcePlacement['kind'], locale: string) {
-  const en = locale.startsWith('en');
-  return kind === 'service' ? { group: en ? 'Teacher' : '授课老师', subgroup: en ? 'Class' : '班序' }
-    : kind === 'assessment' ? { group: en ? 'Support teacher' : '学服老师', subgroup: '' }
-    : { group: en ? 'Group' : '小组', subgroup: en ? 'Contact person' : '确认 / 跟进人员' };
-}
-export function sourceGroupPath(placement: SourcePlacement, allMonths: boolean, locale: string) {
-  const labels = sourceGroupLabels(placement.kind, locale);
-  const month = placement.period === 'unknown' ? (locale.startsWith('en') ? 'Month not recorded' : '月份未填') : placement.period;
-  return [
-    ...(allMonths ? [{ key: `month:${placement.period}`, label: month }] : []),
-    { key: JSON.stringify(['group',placement.period,placement.group]), label: `${labels.group} · ${placement.group}` },
-    ...(placement.subgroup ? [{ key: JSON.stringify(['person',placement.period,placement.group,placement.subgroup]), label: `${labels.subgroup} · ${placement.subgroup}` }] : []),
-  ];
-}
 export interface WorkQuery { stage: WorkTask; scope: 'all' | 'mine' | 'group' | 'unassigned'; q: string; group: string; marker: string; periodField: PeriodField; period: string; page: number; pageSize: 20 | 50 | 100; lead: string; students: string }
 export interface WorkPage { rows: WorkRow[]; count: number; page: number; pageSize: 20 | 50 | 100; totalPages: number;
   periodField: PeriodField; period: string; group: string; periods: Array<{ key: string; count: number }>;

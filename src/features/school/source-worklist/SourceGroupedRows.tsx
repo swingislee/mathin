@@ -2,7 +2,8 @@
 
 import { Fragment, type ReactNode } from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
-import { sourceGroupPath, type SourcePlacement } from './contract';
+import type { SourcePlacement } from './contract';
+import { sourceGroupPath } from './grouping';
 
 /** 在数据库已排好的一页中延续原表层级；不重排、合并或截断业务行。 */
 export function SourceGroupedRows<Row>({ rows, placementFor, rowKey, renderRow, allMonths, locale, colSpan }: {
