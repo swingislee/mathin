@@ -66,6 +66,9 @@ import { useFollowupPagination } from "./useFollowupPagination";
 import { assessmentSearchRows, type AssessmentWorkbenchPage } from "./assessment-workbench-page";
 import type { DashboardFieldQuery } from "./dashboard-page/dashboard-table-field-contract";
 import type { FollowupPageSize } from "./followup-table-page";
+import { SourceGroupedRows } from './source-worklist/SourceGroupedRows';
+import { SourceLayoutFilters } from './source-worklist/SourceLayoutFilters';
+import type { SourceLayout } from './source-worklist/contract';
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
@@ -122,6 +125,7 @@ export function AssessmentUnifiedWorkbench({
   now?: number;
   pageControl?: { data: AssessmentWorkbenchPage; pending: boolean; q: string; state: StateFilter; fields: DashboardFieldQuery;
     onSearch: (query: string) => void; onState: (state: StateFilter) => void; onFields: (query: DashboardFieldQuery) => void;
+    onSourceLayout: (change: Partial<Pick<SourceLayout,'periodField' | 'period' | 'group'>>) => void;
     onPage: (page: number, pageSize: FollowupPageSize) => void };
 }) {
   const t = useTranslations("school.supportAssessment");
@@ -173,7 +177,8 @@ export function AssessmentUnifiedWorkbench({
     context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery,
     server: pageControl ? { ...pageControl.data.fieldView, query: pageControl.fields, onChange: pageControl.onFields } : undefined,
     sourceSort: ASSESSMENT_SOURCE_SORT });
-  const filterKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort, pageControl?.data.page, pageControl?.data.pageSize]);
+  const filterKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort, pageControl?.data.page, pageControl?.data.pageSize,
+    pageControl?.data.sourceLayout?.periodField, pageControl?.data.sourceLayout?.period, pageControl?.data.sourceLayout?.group]);
   if (retainedView && retainedView.key !== filterKey) setRetainedView(null);
   const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
   const orderedVisibleRows = useMemo(() => retainedView?.key === filterKey
@@ -187,7 +192,7 @@ export function AssessmentUnifiedWorkbench({
   const retainCurrentView = useCallback(() => setRetainedView((current) => current?.key === filterKey ? current : { key: filterKey, ids: orderedVisibleRows.map((row) => row.id) }), [filterKey, orderedVisibleRows]);
   const saveRow = useCallback((saved: AssessmentWorkbenchRow) => {
     retainCurrentView();
-    setRows((current) => current.map((row) => row.id === saved.id ? saved
+    setRows((current) => current.map((row) => row.id === saved.id ? { ...saved, worklist: row.worklist }
       : saved.registrationId && row.registrationId === saved.registrationId ? { ...row, workflow: saved.workflow, participationStatus: saved.participationStatus } : row));
   }, [retainCurrentView]);
   const saveQuickFollowUp = useCallback((row: AssessmentWorkbenchRow, content: string, createdAt: string) => {
@@ -418,6 +423,7 @@ export function AssessmentUnifiedWorkbench({
         </FollowupCommandPanel>
       )}
     >
+      {pageControl?.data.sourceLayout ? <SourceLayoutFilters data={pageControl.data.sourceLayout} kind="assessment" periodFields={['arrived','confirmed','enrolled']} locale={locale} disabled={pageControl.pending} onChange={pageControl.onSourceLayout} /> : null}
       {
         <SchoolSupportTableEntry workspace="assessments" enabled={canSupport} columns={["name","blank","blank","blank","blank","blank","blank"]}><DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll aria-busy={pageControl?.pending}>
           <Table mobileLayout="stacked" className="w-full min-w-[68rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
@@ -434,7 +440,8 @@ export function AssessmentUnifiedWorkbench({
             </TableHeader>
             <FollowupTableBody onNavigate={(id) => { setActiveId(id); return true; }}>
               <SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="assessments" colSpan={7} />
-              {visibleRows.map((row) => <FollowupTableRecord key={row.id} row={row} active={activeId === row.id} expanded={expandedId === row.id} retained={visitedDetails.has(row.id)} render={renderRow} />)}
+              <SourceGroupedRows rows={visibleRows} placementFor={row => row.worklist} rowKey={row => row.id} allMonths={pageControl?.data.sourceLayout?.period === 'all'} locale={locale} colSpan={7}
+                renderRow={row => <FollowupTableRecord row={row} active={activeId === row.id} expanded={expandedId === row.id} retained={visitedDetails.has(row.id)} render={renderRow} />} />
               {visibleRows.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>
               ) : null}

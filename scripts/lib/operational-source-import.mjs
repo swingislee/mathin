@@ -1,5 +1,5 @@
 import {createImportUuid} from './import-uuid.mjs';
-import {normalizeGradeLabel} from '../../src/lib/grade-format.mjs';
+import {normalizeGradeLabel,parseSchoolGrade} from '../../src/lib/grade-format.mjs';
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
@@ -14,7 +14,7 @@ const originalNotes=(r,names)=>mergeSourceNotes(...names.map(name=>field(r,name)
 const normalizedName=name=>name.normalize('NFKC').replace(/\s+/gu,'').toLocaleLowerCase('zh');
 const phone=r=>r.record_data.phones.find(value=>/^\d{6,20}$/.test(value.replace(/\D/g,'')))?.replace(/\D/g,'')??'';
 const name=r=>r.record_data.names[0]??'';
-const grade=r=>{const v=field(r,'年级');return r.record_data.tableName==='2026秋季在读学员表格'&&/^(?:[1-9]|1[0-2])$/.test(v)?Number(v):null;};
+const grade=r=>parseSchoolGrade(field(r,'年级')||field(r,'年级/25级'));
 const provenance=r=>({source_record_id:r.id,source_field_ids:r.record_data.cells.filter(c=>c.kind!=='system'&&c.text.trim()).map(c=>c.fieldId)});
 const validDate=(r,...fields)=>fields.map(f=>historicalDate(field(r,f))).find(Boolean)??null;
 

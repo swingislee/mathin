@@ -39,6 +39,8 @@ import { useFollowupServerFields } from "./useFollowupServerFields";
 import { useFirstContactFacets } from "./useFirstContactFacets";
 import { firstContactTableFields, FIRST_CONTACT_TABLE_COLUMNS } from "./first-contact-table-fields";
 import type { StudentStageRow } from "./student-stage-contract";
+import { SourceGroupedRows } from './source-worklist/SourceGroupedRows';
+import type { WorkRow } from './source-worklist/contract';
 import {
   clearInvitationDraftSession,
   InvitationDraftFields,
@@ -538,7 +540,7 @@ function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
 
-export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, firstContactRows, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage, firstContactOnly = false }: {
+export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, firstContactRows, sourceLayout, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage, firstContactOnly = false }: {
   rows: InvitationCoordinationRow[]; activities: InvitationActivityOption[]; assessors: InvitationAssessorOption[]; locale: string;
   queue?: InvitationQueue; coordinationStage?: InvitationCoordinationStage | null; stageCounts?: InvitationQueueCounts["stages"];
   searchQuery?: string; currentUserId: string; canManageInvitation: boolean; postActivityRows?: ActivityEnrollmentContext[];
@@ -549,6 +551,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   historicalFirstContacts?:HistoricalFirstContactRow[];
   fieldView?: FollowupServerFields; timeZone?: string; now?: number;
   firstContactRows?: StudentStageRow[];
+  sourceLayout?: { rows: WorkRow[]; allMonths: boolean };
   emptyMessage?: string; firstContactOnly?: boolean;
 }) {
   const t = useTranslations("school.invitations");
@@ -924,7 +927,9 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         const next = currentSession.facts.get(key);
         setActiveContactId(next?.source === "contact" ? next.value.id : null);
         return true;
-      }}><SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="communication" colSpan={7} />{visibleRows.map((row) => <FollowupTableRecord key={communicationRowKey(row)} row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />)}{!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</FollowupTableBody>
+      }}><SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="communication" colSpan={7} /><SourceGroupedRows rows={visibleRows} rowKey={communicationRowKey} allMonths={sourceLayout?.allMonths ?? false} locale={locale} colSpan={7}
+        placementFor={row => sourceLayout?.rows.find(subject => subject.key === communicationRowKey(row) || (row.source === 'contact' && subject.leadId === row.value.id))?.worklist}
+        renderRow={row => <FollowupTableRecord row={row} active={activeId === communicationRowKey(row) || (row.source === "contact" && activeContactId === row.value.id)} expanded={activeId === communicationRowKey(row)} selected={workSelection.selectedKeys.has(communicationRowKey(row))} pending={savingIds.has(row.id)} render={renderRow} />} />{!visibleRows.length ? <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted">{emptyMessage ?? tableT("filteredEmpty")}</TableCell></TableRow> : null}</FollowupTableBody>
     </Table>
   </DashboardTableShell></SchoolSupportTableEntry>;
 }

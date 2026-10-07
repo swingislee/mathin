@@ -19,15 +19,16 @@ import { StudentStageOwnerControl } from '../StudentStageAssignmentControl';
 import { studentStageMessages } from '../student-stage-messages';
 import { communicationEntryMode } from '../work-entry-contract';
 import type { StudentEntryMode, StudentStageSaved, StudentStageAssignee, StudentStageAssignment } from '../student-stage-contract';
-import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, type PeriodField, type WorkPage, type WorkQuery, type WorkRow } from './contract';
+import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, sourceGroupLabels, sourceGroupPath, type WorkPage, type WorkQuery, type WorkRow } from './contract';
 import { RecordStatusIcons } from '../record-status/RecordStatusIcons';
+import { SourceLayoutFilters } from './SourceLayoutFilters';
 
 const Entry = dynamic(() => import('../StudentStageEntryLoader').then(m => m.StudentStageEntryLoader));
 const QUERY_KEYS = ['stage','scope','group','marker','periodField','period','page','pageSize'];
 const monthKey = (row: WorkRow) => `month:${row.worklist.period}`;
 const parentKey = (row: WorkRow) => JSON.stringify(['group',row.worklist.period,row.worklist.group]);
 const childKey = (row: WorkRow) => JSON.stringify(['person',row.worklist.period,row.worklist.group,row.worklist.subgroup]);
-const collapseKeys = (row: WorkRow, allMonths: boolean) => [...(allMonths ? [monthKey(row)] : []),parentKey(row),...(row.worklist.subgroup ? [childKey(row)] : [])];
+const collapseKeys = (row: WorkRow, allMonths: boolean) => sourceGroupPath(row.worklist,allMonths,'zh').map(group => group.key);
 const startingCollapsed = (rows: WorkRow[], allMonths: boolean) => {
   const first = new Set(rows[0] ? collapseKeys(rows[0],allMonths) : []);
   return new Set(rows.flatMap(row => collapseKeys(row,allMonths)).filter(key => !first.has(key)));
@@ -167,32 +168,11 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
       </DashboardCommandActions>
     </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref={firstContact ? "/dashboard/leads" : "/dashboard/communication"} currentPage={data.page} totalPages={data.totalPages}
       totalCount={data.count} pageSize={data.pageSize} disabled={busy} onPageChange={(page,pageSize) => navigate({ page,pageSize })} />}>
-      <div className="flex min-w-0 flex-wrap items-center gap-2 border-b border-line py-2">
-        {query.stage !== 'former_student' ? <>
-          <select aria-label={m.periodBasis} value={query.periodField} disabled={busy} onChange={event => navigate({ periodField: event.target.value as PeriodField, period: '', group: '', marker: '' })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
-            {taskPeriodFields(query.stage).map(field => <option key={field} value={field}>{m.periods[field]}</option>)}
-          </select>
-          <nav aria-label={m.periods[query.periodField]} className={`${tabsListClassName} h-auto max-w-full justify-start overflow-x-auto gap-1`}>
-            {data.periods.map(period => <button key={period.key} type="button" disabled={busy} className={`${tabsTriggerClassName} gap-1.5 px-2 text-xs`} data-state={query.period === period.key ? 'active' : 'inactive'} aria-current={query.period === period.key ? 'page' : undefined} onClick={() => navigate({ period: period.key, group: '', marker: '' })}>
-              {periodLabel(period.key)}<span className="text-[10px] tabular-nums text-muted">{period.count}</span>
-            </button>)}
-            <button type="button" disabled={busy} className={`${tabsTriggerClassName} px-2 text-xs`} data-state={query.period === 'all' ? 'active' : 'inactive'} aria-current={query.period === 'all' ? 'page' : undefined} onClick={() => navigate({ period: 'all', group: '', marker: '' })}>{m.allPeriods}</button>
-          </nav>
-        </> : <span className="text-xs text-muted">{m.groupByTask.former_student} → {m.subgroupByTask.former_student}</span>}
-        {!firstContactContent ? <div className="ml-auto flex items-center gap-1">
+      <SourceLayoutFilters data={data} kind={query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'} periodFields={taskPeriodFields(query.stage)} locale={locale} disabled={busy}
+        onChange={change => navigate({ ...change, marker: '' })} actions={<>{!firstContactContent ? <div className="ml-auto flex items-center gap-1">
           <Button size="sm" variant="ghost" className="size-7 p-0" title={m.collapseAll} aria-label={m.collapseAll} disabled={busy} onClick={() => { const next = new Set(rows.flatMap(row => collapseKeys(row,allMonths))); setCollapsed(next); setActive(null); remember(focused,next); }}><ChevronsDownUp className="size-3.5" /></Button>
           <Button size="sm" variant="ghost" className="size-7 p-0" title={m.expandAll} aria-label={m.expandAll} disabled={busy} onClick={() => { const next = new Set<string>(); setCollapsed(next); remember(focused,next); }}><ChevronsUpDown className="size-3.5" /></Button>
-        </div> : null}
-      </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2 border-b border-line py-1.5">
-        <span className="shrink-0 text-xs text-muted">{m.groupByTask[query.stage]}</span>
-        <nav aria-label={m.groupByTask[query.stage]} className={`${tabsListClassName} h-auto max-w-full justify-start overflow-x-auto gap-1`}>
-          <button type="button" disabled={busy} className={`${tabsTriggerClassName} px-2 text-xs`} data-state={query.group === 'all' ? 'active' : 'inactive'} aria-current={query.group === 'all' ? 'page' : undefined} onClick={() => navigate({ group: 'all', marker: '' })}>{m.allGroups}</button>
-          {data.groups.map(group => <button key={group.key} type="button" disabled={busy} className={`${tabsTriggerClassName} gap-1.5 px-2 text-xs`} data-state={query.group === group.key ? 'active' : 'inactive'} aria-current={query.group === group.key ? 'page' : undefined} onClick={() => navigate({ group: group.key, marker: '' })}>
-            {group.key}<span className="text-[10px] tabular-nums text-muted">{group.count}</span>
-          </button>)}
-        </nav>
-      </div>
+        </div> : null}</>} />
       {firstContactContent ?? <DashboardTableShell><Table mobileLayout="stacked" className="table-fixed text-xs [&_th]:px-2 [&_td]:px-2">
         <TableHeader className="sticky top-0 z-20"><TableRow>
           <TableHead className="w-40">{m.name}</TableHead><TableHead className="w-28">{m.phone}</TableHead>
@@ -205,10 +185,11 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
             const topHidden = allMonths && collapsed.has(monthKey(first));
             const parentHidden = topHidden || collapsed.has(parentKey(first));
             const count = data.groups.find(g => g.key === first.worklist.group);
+            const labels = sourceGroupLabels(first.worklist.kind ?? (query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'),locale);
             return <Fragment key={group.key}>
             {allMonths && (!previous || monthKey(previous) !== monthKey(first)) ? groupHeader(monthKey(first),periodLabel(first.worklist.period),data.periods.find(p => p.key === first.worklist.period)?.count,0) : null}
-            {!previous || parentKey(previous) !== parentKey(first) ? groupHeader(parentKey(first),`${m.groupByTask[query.stage]} · ${first.worklist.group}`,allMonths ? undefined : count?.count,allMonths ? 1 : 0,topHidden) : null}
-            {first.worklist.subgroup ? groupHeader(childKey(first),`${m.subgroupByTask[query.stage]} · ${first.worklist.subgroup}`,allMonths ? undefined : count?.subgroups.find(s => s.key === first.worklist.subgroup)?.count,allMonths ? 2 : 1,parentHidden) : null}
+            {!previous || parentKey(previous) !== parentKey(first) ? groupHeader(parentKey(first),`${labels.group} · ${first.worklist.group}`,allMonths ? undefined : count?.count,allMonths ? 1 : 0,topHidden) : null}
+            {first.worklist.subgroup ? groupHeader(childKey(first),`${labels.subgroup} · ${first.worklist.subgroup}`,allMonths ? undefined : count?.subgroups.find(s => s.key === first.worklist.subgroup)?.count,allMonths ? 2 : 1,parentHidden) : null}
             {group.rows.map(row => {
               const placement = row.worklist, expanded = !hidden(row) && active?.id === placement.id;
               const nextAt = row.nextContactAt && Number.isFinite(Date.parse(row.nextContactAt)) ? row.nextContactAt : null;
@@ -225,7 +206,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
                 summary={<>
                   <TableCell mobileSpan="primary"><div className="flex items-center gap-1.5"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{row.name}</Student360Trigger>
                     {handled.has(placement.id) ? <Check aria-label={m.handled} className="size-3.5 text-leaf-deep" /> : null}</div>
-                    <span className="text-[11px] text-muted">{row.gradeText || (row.grade ? `${row.grade}${locale.startsWith('en') ? '' : ' 年级'}` : '')}</span>
+                    <span className="text-[11px] text-muted">{row.grade != null ? `${row.grade}${locale.startsWith('en') ? '' : ' 年级'}` : row.gradeText}</span>
                     <div className="max-w-36 text-[11px] text-muted">{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} /> : row.ownerName || stages.unassigned}</div></TableCell>
                   <TableCell mobileLabel={m.phone}>{row.phone || '—'}</TableCell>
                   <TableCell mobileLabel={m.stage}><div className="mb-1 text-[11px] text-muted">{stages.stages[row.stage]} · {stages.details[row.detail] ?? row.detail}</div>

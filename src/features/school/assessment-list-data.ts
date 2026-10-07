@@ -9,8 +9,10 @@ import { studentListFacets, studentListFieldLabels, studentListRpcQuery } from "
 import { dashboardFieldMessages } from "./dashboard-page/dashboard-field-messages";
 import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table-field-contract";
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
+import { sourceLayoutSchema } from './source-worklist/contract';
 
 const pageSchema = z.object({
+  sourceLayout: sourceLayoutSchema.optional(),
   rows: z.array(z.object({ id: z.string(), name: z.string(), listSummary: z.literal(true) }).passthrough()),
   count: z.number().int().nonnegative(), page: z.number().int().positive(), totalPages: z.number().int().positive(),
   pageSize: z.union([z.literal(20), z.literal(50), z.literal(100)]),
@@ -22,6 +24,12 @@ export async function loadAssessmentWorkbenchPage(fields: DashboardFieldDefiniti
   context: DashboardDateContext): Promise<AssessmentWorkbenchPage> {
   const filters = assessmentPageFilters(raw);
   const query = parseFollowupFieldQuery(fields, filters.fields);
+  const pick = (key: string) => typeof raw[key] === 'string' ? raw[key] : '';
+  const sourceLayout = {
+    periodField: ['arrived','confirmed','enrolled'].includes(pick('periodField')) ? pick('periodField') : 'arrived',
+    period: /^(all|unknown|([1-9]|1[0-2])月)$/.test(pick('period')) ? pick('period') : '',
+    group: pick('group').slice(0,320),
+  };
   const labels = { ...studentListFieldLabels(fields),
     grade: Object.fromEntries(Array.from({ length: 12 }, (_, i) => {
       const value = String(i + 1);
@@ -32,7 +40,7 @@ export async function loadAssessmentWorkbenchPage(fields: DashboardFieldDefiniti
   const rpc = (client.rpc as unknown as (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>).bind(client);
   const response = await rpc("list_assessment_workbench_page", {
     p_state: filters.state, p_search: filters.q.trim(), p_page: filters.page, p_page_size: filters.pageSize,
-    p_query: studentListRpcQuery(query), p_locale: context.locale.startsWith("en") ? "en" : "zh", p_labels: labels,
+    p_query: { ...studentListRpcQuery(query), sourceLayout }, p_locale: context.locale.startsWith("en") ? "en" : "zh", p_labels: labels,
   });
   if (response.error) throw new Error(response.error.message);
   const { facets, rows, ...page } = pageSchema.parse(response.data);

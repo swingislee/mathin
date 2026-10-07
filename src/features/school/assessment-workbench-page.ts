@@ -3,6 +3,7 @@ import { businessRecordStateFilter, matchesBusinessRecordState } from "./busines
 import { followupFieldPage, followupPageSize, parseFollowupFieldQuery } from "./followup-table-page";
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
 import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table-field-contract";
+import type { SourceLayout } from './source-worklist/contract';
 
 export type AssessmentPageQuery = Record<string, string | string[] | undefined>;
 
@@ -39,4 +40,4 @@ export function assessmentWorkbenchFieldPage(rows: readonly AssessmentWorkbenchR
   return { ...result, fieldView: { ...result.fieldView, query }, q: filters.q, state: filters.state };
 }
 
-export type AssessmentWorkbenchPage = ReturnType<typeof assessmentWorkbenchFieldPage>;
+export type AssessmentWorkbenchPage = ReturnType<typeof assessmentWorkbenchFieldPage> & { sourceLayout?: SourceLayout };

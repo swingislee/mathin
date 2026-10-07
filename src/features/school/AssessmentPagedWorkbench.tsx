@@ -40,6 +40,7 @@ export function AssessmentPagedWorkbench({ data, ...props }: Props & { data: Ass
       onSearch: q => { setDraft(current => ({ ...current, q })); navigate({ q, page: "" }, 250); },
       onState: state => { setDraft(current => ({ ...current, state })); navigate({ state, page: "" }); },
       onFields: fields => { setDraft(current => ({ ...current, fields })); navigate({ fields: JSON.stringify(fields), page: "" }, 180); },
+      onSourceLayout: change => navigate({ ...change, page: '' }),
       onPage: (page, pageSize) => navigate({ page: String(page), pageSize: String(pageSize) }),
     }} />;
 }
