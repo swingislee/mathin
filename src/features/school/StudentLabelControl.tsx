@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocale } from "next-intl";
 import { Tag } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -10,8 +10,9 @@ import { setClassStudentLabelAction } from "./student-labels-actions";
 import { STUDENT_LABELS, studentLabelColors, studentLabelMessages, type StudentLabel, type StudentLabelState } from "./student-labels-contract";
 
 /** A separate control beside the name preserves its existing profile and drag actions. */
-export function StudentLabelControl({ state, studentName, disabled = false, className }: {
+export function StudentLabelControl({ state, studentName, disabled = false, className, onOpenChange }: {
   state?: StudentLabelState; studentName: string; disabled?: boolean; className?: string;
+  onOpenChange?: (enrollmentId: string, open: boolean) => void;
 }) {
   const m = studentLabelMessages(useLocale());
   const router = useRouter();
@@ -21,6 +22,14 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
   const saving = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const current = saved && saved.base === state ? saved.value : state;
+  const enrollmentId = state?.enrollmentId;
+  useEffect(() => () => {
+    if (enrollmentId) onOpenChange?.(enrollmentId, false);
+  }, [enrollmentId, onOpenChange]);
+  const changeOpen = (value: boolean) => {
+    setOpen(value);
+    if (enrollmentId) onOpenChange?.(enrollmentId, value);
+  };
   if (!current || !current.label && !current.canEdit) return null;
   const badgeClass = cn("flex size-3.5 shrink-0 items-center justify-center rounded-sm text-[10px] font-semibold leading-none",
     current.label ? studentLabelColors[current.label] : "border border-dashed border-muted/60 bg-card text-muted");
@@ -28,7 +37,7 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
 
   const save = async (label: StudentLabel | null) => {
     if (!state || saving.current) return;
-    if (label === current.label) { setOpen(false); return; }
+    if (label === current.label) { changeOpen(false); return; }
     saving.current = true; setPending(true); setError(null);
     try {
       const result = await setClassStudentLabelAction({ enrollmentId: current.enrollmentId, label });
@@ -38,14 +47,14 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
         return;
       }
       setSaved({ base: state, value: result.data });
-      setOpen(false);
+      changeOpen(false);
       router.refresh();
     } catch { setError(m.error); }
     finally { saving.current = false; setPending(false); }
   };
 
   return <span data-placement-action className={cn("absolute right-0 top-0 z-30", className)} onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}>
-    {current.canEdit ? <Popover open={open} onOpenChange={value => { if (!saving.current) { setOpen(value); setError(null); } }}>
+    {current.canEdit ? <Popover open={open} onOpenChange={value => { if (!saving.current) { changeOpen(value); setError(null); } }}>
       <PopoverTrigger asChild><button type="button" disabled={disabled || pending}
         aria-label={m.edit(studentName, current.label)} title={m.edit(studentName, current.label)} aria-busy={pending}
         className="flex size-6 items-start justify-end rounded-sm p-0.5 focus-visible:outline-2 focus-visible:outline-crater disabled:opacity-50">

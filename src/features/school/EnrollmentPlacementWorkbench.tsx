@@ -189,6 +189,11 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [tooltipKey,setTooltipKey]=useState<string|null>(null);
+  const [labelEditorId, setLabelEditorId] = useState<string | null>(null);
+  const onLabelOpenChange = useCallback((enrollmentId: string, open: boolean) => {
+    setTooltipKey(null);
+    setLabelEditorId(current => open ? enrollmentId : current === enrollmentId ? null : current);
+  }, []);
   const [pending, startMoving] = useTransition();
   const [seatEntry,setSeatEntry]=useState<{classroom:PlacementClassroom;seat:number}|null>(null);
   const [sourceEnrollment,setSourceEnrollment]=useState<HistoricalEnrollment|null>(null);
@@ -385,7 +390,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     const movable = Boolean(student.placement?.courseId && student.status !== "withdrawn" && !pending && !hasSessionDraft && !placementChange);
     const temporary=(board.sessionTransfers??[]).filter(t=>t.membershipId===student.placement?.membershipId);
     const swapping = Boolean(student.placement && selected && selected.key !== student.key && target && accepts(selected, target));
-    return <Tooltip key={student.key} open={!dragging&&tooltipKey===student.key} onOpenChange={open=>setTooltipKey(current=>open&&!dragging?student.key:current===student.key?null:current)}><TooltipTrigger asChild><span
+    return <span key={student.key}
       data-placement-student={student.key}
       data-placement-renewed={renewed}
       data-placement-health={health?.tone}
@@ -404,19 +409,22 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", hasLabelControl && "pr-4", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}
     >
+      <Tooltip open={!dragging&&!labelEditorId&&tooltipKey===student.key} onOpenChange={open=>setTooltipKey(current=>open&&!dragging&&!labelEditorId?student.key:current===student.key?null:current)}>
+      <TooltipTrigger asChild><span className="flex min-w-0 flex-1 self-stretch items-center">
       {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:student.placement?.canViewDetails===false?<span className="w-full truncate py-1 text-xs">{student.name}</span>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal",movable&&"pointer-events-none")}>
         <span className="max-w-full truncate">{student.name}</span>
         {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
       </Student360Trigger>}
-      <StudentLabelControl state={labelState} studentName={student.name} disabled={pending || hasSessionDraft || Boolean(placementChange)} />
-      {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className={cn("absolute right-0 flex w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater", hasLabelControl ? "bottom-0 h-3" : "top-0 h-full")} onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
-      {temporary.length>0&&student.placement?<button type="button" data-placement-action aria-label={locale==='en'?`${student.name} temporary transfers`:`${student.name}的临时调班`} className="absolute bottom-0 left-0 rounded-sm bg-moon px-0.5 text-[9px] text-crater" onClick={()=>setPlacementChange({student:student.placement!})}>{locale==='en'?'T':'临'}</button>:null}
-    </span></TooltipTrigger><TooltipContent className="pointer-events-none max-w-80 space-y-1 text-xs leading-5">
+      </span></TooltipTrigger><TooltipContent className="pointer-events-none max-w-80 space-y-1 text-xs leading-5">
       <p className="font-medium">{student.name}{student.status && student.status !== "active" ? t(`status_${student.status}`) : ""}</p><p>{student.courseTitle}</p>{target?.seat ? <p>{t("capacitySlot", { count: target.seat })}</p> : null}
       {student.phone ? <p>{student.phone}</p> : null}{student.recommendation ? <p>{student.recommendation}</p> : null}{student.note ? <p>{student.note}</p> : null}
       {health ? <p>{t(`health_${health.tone}`)}</p> : null}{signals.filter((signal) => signal.level === "observed" || signal.level === "attention").map((signal) => <p key={signal.key}>{healthT(signal.key)} · {healthT(signal.level)}{signal.total ? ` (${signal.count ?? 0}/${signal.total})` : ""}</p>)}
       <p>{student.placement ? t("studentInteraction") : recordM.viewStudent}</p>
-    </TooltipContent></Tooltip>;
+      </TooltipContent></Tooltip>
+      <StudentLabelControl state={labelState} studentName={student.name} disabled={pending || hasSessionDraft || Boolean(placementChange)} onOpenChange={onLabelOpenChange} />
+      {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className={cn("absolute right-0 flex w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater", hasLabelControl ? "bottom-0 h-3" : "top-0 h-full")} onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
+      {temporary.length>0&&student.placement?<button type="button" data-placement-action aria-label={locale==='en'?`${student.name} temporary transfers`:`${student.name}的临时调班`} className="absolute bottom-0 left-0 rounded-sm bg-moon px-0.5 text-[9px] text-crater" onClick={()=>setPlacementChange({student:student.placement!})}>{locale==='en'?'T':'临'}</button>:null}
+    </span>;
   };
   const retiredRow = (retired: PlacementStudent[], label: string) => retired.length ? <TableRow className="hover:bg-transparent"><TableCell colSpan={4} className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1 text-[11px] text-muted">{label}</TableCell><TableCell flush>{progressMode ? <p className="px-2 py-2 text-xs text-muted">{progressM.noLinkedLessons}</p> : <div className={NAME_GRID}>{retired.map((student) => studentTile(studentTileRecord(student)))}</div>}</TableCell></TableRow> : null;
   const pendingStudentsFor = (scope: RosterRow) => scope.students.filter(student => !student.classroomId && student.status !== "withdrawn" && enumMatches("course", student.courseId));
