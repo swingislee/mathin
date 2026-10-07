@@ -50,6 +50,9 @@ import { TeachingProgressCells, TeachingProgressDetails, TeachingProgressHeader,
 import { teachingMatrixColumns, teachingMatrixMessages, type TeachingProgressMatrixData } from "./teaching-workbench/teaching-progress-matrix-contract";
 import { placementChangeError } from './enrollment-placement-change-contract';
 import { StudentLabelControl } from "./StudentLabelControl";
+import { adjacentStudentLabel, focusStudentLabel, openStudentLabelDetails, studentLabelDirection, studentLabelTriggers } from "./student-label-keyboard";
+import { studentLabelMessages } from "./student-labels-contract";
+import rosterStyles from "./class-roster-layout.module.css";
 
 interface SeatTarget {
   classroom: PlacementClassroom | null;
@@ -124,6 +127,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const healthT = useTranslations("school.renewals.poolV2");
   const locale = useLocale();
   const workM = workEntryMessages(locale);
+  const labelM = studentLabelMessages(locale);
   const teachingT = useTranslations("school.teachingWorkbench");
   const groupBy = teachingGrouping(workspaceQuery.group);
   const [clockNow] = useState(() => now ?? Date.now());
@@ -384,6 +388,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const studentTile = (student: StudentTileRecord, target?: SeatTarget) => {
     const labelState = student.placement?.membershipId ? board.studentLabels?.[student.placement.membershipId] : undefined;
     const hasLabelControl = Boolean(labelState?.label || labelState?.canEdit);
+    const canEnterLabel = Boolean(labelState?.canEdit && !pending && !hasSessionDraft && !placementChange);
     const signals = student.placement ? board.health?.[student.studentId ?? ""] ?? [] : [];
     const health = student.placement ? placementHealth(signals) : null;
     const renewed = Boolean(student.placement?.membershipId && renewedMembershipIds.has(student.placement.membershipId));
@@ -392,6 +397,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     const swapping = Boolean(student.placement && selected && selected.key !== student.key && target && accepts(selected, target));
     return <span key={student.key}
       data-placement-student={student.key}
+      data-student-label-entry
       data-placement-renewed={renewed}
       data-placement-health={health?.tone}
       data-placement-focus={student.studentId === focusStudentId}
@@ -402,16 +408,25 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         }
       }}
       onClickCapture={(event) => {
-        if (!swapping || (event.target as HTMLElement).closest("[data-placement-select],[data-placement-action]")) return;
-        event.preventDefault(); event.stopPropagation();
-        if (selected && target) move(selected, target);
+        if (event.detail === 0 || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey
+          || (event.target as HTMLElement).closest("[data-placement-select],[data-placement-action]")) return;
+        if (swapping && selected && target) {
+          event.preventDefault(); event.stopPropagation(); move(selected, target);
+        } else if (canEnterLabel) {
+          event.preventDefault(); event.stopPropagation();
+          focusStudentLabel(event.currentTarget.querySelector<HTMLButtonElement>("[data-student-label-trigger]"));
+        }
+      }}
+      onDoubleClick={event => {
+        if (!canEnterLabel || (event.target as HTMLElement).closest("[data-placement-select],[data-placement-action]")) return;
+        event.preventDefault(); event.stopPropagation(); openStudentLabelDetails(event.currentTarget);
       }}
       className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}
     >
-      <span className={cn("relative inline-flex min-w-0 max-w-full items-center has-[:focus-visible]:rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-crater", hasLabelControl && "pr-3")}>
+      <span className={cn("relative inline-flex min-w-0 max-w-full items-center", rosterStyles.studentName, hasLabelControl && "pr-3")}>
       <Tooltip open={!dragging&&!labelEditorId&&tooltipKey===student.key} onOpenChange={open=>setTooltipKey(current=>open&&!dragging&&!labelEditorId?student.key:current===student.key?null:current)}>
-      <TooltipTrigger asChild><span className="flex min-w-0 items-center">
+      <TooltipTrigger asChild><span data-student-label-details className="flex min-w-0 items-center">
       {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:student.placement?.canViewDetails===false?<span className="w-full truncate py-1 text-xs">{student.name}</span>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal",movable&&"pointer-events-none")}>
         <span className="max-w-full truncate">{student.name}</span>
         {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
@@ -420,9 +435,9 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       <p className="font-medium">{student.name}{student.status && student.status !== "active" ? t(`status_${student.status}`) : ""}</p><p>{student.courseTitle}</p>{target?.seat ? <p>{t("capacitySlot", { count: target.seat })}</p> : null}
       {student.phone ? <p>{student.phone}</p> : null}{student.recommendation ? <p>{student.recommendation}</p> : null}{student.note ? <p>{student.note}</p> : null}
       {health ? <p>{t(`health_${health.tone}`)}</p> : null}{signals.filter((signal) => signal.level === "observed" || signal.level === "attention").map((signal) => <p key={signal.key}>{healthT(signal.key)} · {healthT(signal.level)}{signal.total ? ` (${signal.count ?? 0}/${signal.total})` : ""}</p>)}
-      <p>{student.placement ? t("studentInteraction") : recordM.viewStudent}</p>
+      <p>{canEnterLabel ? labelM.entryHint : student.placement ? t("studentInteraction") : recordM.viewStudent}</p>
       </TooltipContent></Tooltip>
-      <StudentLabelControl state={labelState} studentName={student.name} disabled={pending || hasSessionDraft || Boolean(placementChange)} className="top-1" onOpenChange={onLabelOpenChange} />
+      <StudentLabelControl state={labelState} studentName={student.name} disabled={pending || hasSessionDraft || Boolean(placementChange)} className="top-1" onOpenChange={onLabelOpenChange} canOpenDetails={Boolean(student.studentId) && student.placement?.canViewDetails !== false} />
       </span>
       {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className={cn("absolute right-0 flex w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater", hasLabelControl ? "bottom-0 h-3" : "top-0 h-full")} onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
       {temporary.length>0&&student.placement?<button type="button" data-placement-action aria-label={locale==='en'?`${student.name} temporary transfers`:`${student.name}的临时调班`} className="absolute bottom-0 left-0 rounded-sm bg-moon px-0.5 text-[9px] text-crater" onClick={()=>setPlacementChange({student:student.placement!})}>{locale==='en'?'T':'临'}</button>:null}
@@ -548,7 +563,29 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     {sessionsFailed && <p role="alert" className="text-xs text-rose">{sessionM.failed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {board.locationsFailed && <p role="alert" className="text-xs text-rose">{rosterM.locationsFailed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {!sessionsFailed && focusSessionId && !sessions.some(session => session.id === focusSessionId) && <p role="status" className="text-xs text-muted">{sessionM.noAccess}</p>}
-    <div ref={root} data-student-label-scope className="flex min-h-0 flex-1 flex-col" onScrollCapture={event => {
+    <div ref={root} data-student-label-scope className="flex min-h-0 flex-1 flex-col"
+      onFocus={event => {
+        if (event.target instanceof HTMLElement && event.target.matches("[data-student-label-trigger]")) {
+          setActiveRecordKey(null); setSelectedKey(null); setTooltipKey(null);
+        }
+      }}
+      onKeyDownCapture={event => {
+        const direction = studentLabelDirection(event.key);
+        if (!direction || progressMode || pending || hasSessionDraft || placementChange || event.defaultPrevented
+          || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229
+          || !(event.target instanceof HTMLElement) || !event.currentTarget.contains(event.target)
+          || event.target.closest('[data-student-label-trigger], input, textarea, select, [contenteditable], [role="dialog"], [role="listbox"], [role="combobox"], [data-class-session-editor]')) return;
+        const row = event.target.closest<HTMLElement>("tr[data-placement-record]");
+        if (!row) return;
+        const entry = event.target.closest<HTMLElement>("[data-student-label-entry]");
+        const controls = studentLabelTriggers(entry ?? row);
+        const current = controls[0];
+        const next = entry && current ? adjacentStudentLabel(current, direction) ?? current
+          : direction === "left" ? controls.at(-1) : current;
+        if (!next) return;
+        event.preventDefault(); event.stopPropagation(); focusStudentLabel(next);
+      }}
+      onScrollCapture={event => {
       const source = event.target;
       if (source instanceof HTMLElement && source.matches("[data-teaching-progress-viewport], [data-teaching-progress-scrollbar]")) syncProgressScroll(source);
     }} onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>

@@ -7,11 +7,13 @@ import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { setClassStudentLabelAction } from "./student-labels-actions";
 import { STUDENT_LABELS, studentLabelColors, studentLabelMessages, type StudentLabel, type StudentLabelState } from "./student-labels-contract";
+import { adjacentStudentLabel, focusStudentLabel, openStudentLabelDetails, studentLabelDirection } from "./student-label-keyboard";
 
 /** A separate control beside the name preserves its existing profile and drag actions. */
-export function StudentLabelControl({ state, studentName, disabled = false, className, onOpenChange }: {
+export function StudentLabelControl({ state, studentName, disabled = false, className, onOpenChange, canOpenDetails = false }: {
   state?: StudentLabelState; studentName: string; disabled?: boolean; className?: string;
   onOpenChange?: (enrollmentId: string, open: boolean) => void;
+  canOpenDetails?: boolean;
 }) {
   const m = studentLabelMessages(useLocale());
   const router = useRouter();
@@ -38,26 +40,13 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
   const badge = <span className={badgeClass} aria-hidden="true" />;
 
   const hasFocus = () => document.activeElement === trigger.current || Boolean(content.current?.contains(document.activeElement));
-  const adjacentTrigger = (direction: -1 | 1) => {
-    const scope = trigger.current?.closest("[data-student-label-scope]");
-    if (!scope || !trigger.current) return null;
-    const controls = Array.from(scope.querySelectorAll<HTMLButtonElement>("[data-student-label-trigger]:not(:disabled)"))
-      .filter(button => button.closest("[data-student-label-scope]") === scope && button.getClientRects().length > 0
-        && (button === trigger.current || button.getAttribute("aria-disabled") !== "true")
-        && !button.closest('[hidden], [inert], [aria-hidden="true"]'));
-    const index = controls.indexOf(trigger.current);
-    return index < 0 ? null : controls[index + direction] ?? null;
-  };
   const closeAndFocus = (target: HTMLButtonElement | null) => {
     if (open) skipCloseFocus.current = true;
     changeOpen(false);
-    if (target?.isConnected && !target.disabled) {
-      target.focus({ preventScroll: true });
-      target.scrollIntoView({ block: "nearest", inline: "nearest" });
-    } else if (hasFocus() && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    if (!focusStudentLabel(target) && hasFocus() && document.activeElement instanceof HTMLElement) document.activeElement.blur();
   };
   const finishSave = (keyboard: boolean, label: StudentLabel | null) => {
-    if (keyboard && hasFocus()) closeAndFocus((label ? adjacentTrigger(1) : null) ?? trigger.current);
+    if (keyboard && hasFocus()) closeAndFocus((label && trigger.current ? adjacentStudentLabel(trigger.current, "next") : null) ?? trigger.current);
     else changeOpen(false);
   };
   const save = async (label: StudentLabel | null, keyboard = false) => {
@@ -78,18 +67,25 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
     } catch { setError(m.error); if (keyboard && hasFocus()) changeOpen(true); }
     finally { saving.current = false; setPending(false); }
   };
+  const openDetails = () => {
+    if (!canOpenDetails || !trigger.current || saving.current) return;
+    closeAndFocus(trigger.current);
+    openStudentLabelDetails(trigger.current);
+  };
   const keyboardInput = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229
       || (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'))) return;
     const key = event.key.toUpperCase();
     const label = STUDENT_LABELS.find((value, index) => value === key || String(index + 1) === key);
-    const direction = ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : null;
+    const direction = studentLabelDirection(event.key);
     const clear = event.key === "Delete" || event.key === "Backspace";
-    if (!label && !direction && !clear && event.key !== "Escape") return;
+    const details = !open && canOpenDetails && event.key === "Enter";
+    if (!label && !direction && !clear && !details && event.key !== "Escape") return;
     event.preventDefault(); event.stopPropagation();
     if (event.repeat || saving.current || disabled || !current.canEdit) return;
+    if (details) { openDetails(); return; }
     if (event.key === "Escape") { closeAndFocus(null); return; }
-    if (direction) { closeAndFocus(adjacentTrigger(direction) ?? trigger.current); return; }
+    if (direction) { closeAndFocus((trigger.current ? adjacentStudentLabel(trigger.current, direction) : null) ?? trigger.current); return; }
     // Keep focus while the save disables the menu choices; errors stay on this student.
     event.currentTarget.focus();
     void save(label ?? null, true);
@@ -98,7 +94,7 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
   return <span data-placement-action className={cn("absolute right-0 top-0 z-30", className)} onClick={event => event.stopPropagation()} onPointerDown={event => event.stopPropagation()}>
     {current.canEdit ? <Popover open={open} onOpenChange={value => { if (!saving.current) { changeOpen(value); setError(null); } }}>
       <PopoverTrigger asChild><button ref={trigger} type="button" data-student-label-trigger disabled={disabled} aria-disabled={pending || undefined}
-        onKeyDown={keyboardInput} aria-keyshortcuts="A B C D 1 2 3 4 ArrowLeft ArrowRight ArrowUp ArrowDown Delete Backspace Escape"
+        onKeyDown={keyboardInput} aria-keyshortcuts={`A B C D 1 2 3 4 ArrowLeft ArrowRight ArrowUp ArrowDown Delete Backspace Escape${canOpenDetails ? " Enter" : ""}`}
         aria-label={m.edit(studentName, current.label)} title={`${m.edit(studentName, current.label)} · ${m.keyboardHint}`} aria-busy={pending}
         className="flex h-6 w-3 items-start justify-end rounded-sm p-0.5 focus-visible:outline-2 focus-visible:outline-crater disabled:opacity-50">
         {badge}
@@ -115,7 +111,10 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
             {label}
           </button>)}
         </div>
-        <button type="button" disabled={pending || current.label === null} onClick={() => void save(null)} className="min-h-8 text-xs text-muted underline underline-offset-4 disabled:opacity-40">{m.clear}</button>
+        <div className="flex items-center justify-between gap-4">
+          <button type="button" disabled={pending || current.label === null} onClick={() => void save(null)} className="min-h-8 text-xs text-muted underline underline-offset-4 disabled:opacity-40">{m.clear}</button>
+          {canOpenDetails && <button type="button" disabled={pending} onClick={openDetails} className="min-h-8 text-xs text-muted underline underline-offset-4 disabled:opacity-40">{m.details}</button>}
+        </div>
         <p className="max-w-64 text-[11px] leading-4 text-muted">{m.keyboardHint}</p>
         {pending && <p role="status" className="text-xs text-muted">{m.saving}</p>}
         {error && <p role="alert" className="text-xs text-rose">{error}</p>}

@@ -11,6 +11,21 @@
 .workspace [data-class-identity-column="grade"] [data-dashboard-table-menu] > svg { width: 0.625rem; height: 0.625rem; }
 .workspace [data-class-column="grade"] { padding-inline: 0.125rem; }
 
+/* 标签录入只标出当前姓名；班级行用浅底色承接键盘入口。 */
+.studentName:has([data-student-label-trigger]:focus) {
+  border-radius: 2px;
+  background-color: var(--followup-edit);
+  box-shadow: inset 0 -1px var(--followup-outline);
+}
+.studentName [data-student-label-trigger]:focus { outline: none; }
+.workspace [data-class-identity-table] > tbody > tr[data-placement-classroom]:is([data-followup-active="true"], :focus-visible) {
+  --followup-top: transparent;
+  --followup-bottom: transparent;
+  --followup-side: transparent;
+  background-color: var(--followup-hover);
+}
+.workspace [data-class-identity-table] > tbody > tr[data-placement-classroom]:focus-visible > td:first-child button[aria-expanded] { outline: none; }
+
 /* 名册单元格保留原宽度，讲次表头与记录共享底部滚动条。 */
 .progressViewport { width: 0; min-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .progressViewport::-webkit-scrollbar { display: none; }

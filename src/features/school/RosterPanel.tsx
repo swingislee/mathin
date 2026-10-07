@@ -26,6 +26,7 @@ import { DashboardInlineEntry } from "./dashboard-page/DashboardInlineEntry";
 import { QuickFollowUpEntry, type QuickFollowUpSaved } from "./QuickFollowUpEntry";
 import { useStudentFollowUpBatch } from "./use-student-followup-batch";
 import { StudentLabelControl } from "./StudentLabelControl";
+import rosterStyles from "./class-roster-layout.module.css";
 
 /** 角色默认列（doc19 §13.4）：教师看出勤/作业/学习异常，学服看请假/欠费，主管看综合异常，其余角色沿用既有教务列。 */
 function RosterSignalColumns({ role, signals }: { role: RosterViewerRole; signals: RosterSignals | undefined }) {
@@ -162,11 +163,11 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
             return <li key={row.studentId} className="min-w-0 py-2.5 text-sm">
               <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
-                <span className={cn("relative inline-flex max-w-full has-[:focus-visible]:rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-crater", (row.labelState?.label || row.labelState?.canEdit) && "pr-3")}>
-                  <Link href={withReturnTo(`/dashboard/students/${row.studentId}`, returnTo)} className="min-w-0 truncate hover:text-crater hover:underline">
+                <span data-student-label-entry className={cn("relative inline-flex max-w-full", rosterStyles.studentName, (row.labelState?.label || row.labelState?.canEdit) && "pr-3")}>
+                  <Link data-student-label-details href={withReturnTo(`/dashboard/students/${row.studentId}`, returnTo)} className="min-w-0 truncate hover:text-crater hover:underline">
                     {row.studentName}
                   </Link>
-                  <StudentLabelControl state={row.labelState} studentName={row.studentName} disabled={pending} />
+                  <StudentLabelControl state={row.labelState} studentName={row.studentName} disabled={pending} canOpenDetails />
                 </span>
               </div>
               {!row.hasAccount && <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("noAccount")}</span>}
