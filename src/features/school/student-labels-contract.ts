@@ -27,7 +27,7 @@ export interface StudentLabelsClient {
 
 export const studentLabelColors: Record<StudentLabel, string> = {
   A: "bg-leaf-deep text-white",
-  B: "bg-sky-600 text-white",
+  B: "bg-yellow-400 text-yellow-950",
   C: "bg-orange-600 text-white",
   D: "bg-rose-deep text-white",
 };
