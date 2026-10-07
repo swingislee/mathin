@@ -50,7 +50,7 @@ import { TeachingProgressCells, TeachingProgressDetails, TeachingProgressHeader,
 import { teachingMatrixColumns, teachingMatrixMessages, type TeachingProgressMatrixData } from "./teaching-workbench/teaching-progress-matrix-contract";
 import { placementChangeError } from './enrollment-placement-change-contract';
 import { StudentLabelControl } from "./StudentLabelControl";
-import { adjacentStudentLabel, focusStudentLabel, openStudentLabelDetails, studentLabelDirection, studentLabelTriggers } from "./student-label-keyboard";
+import { adjacentStudentLabel, focusStudentLabel, studentLabelDirection, studentLabelTriggers } from "./student-label-keyboard";
 import { studentLabelMessages } from "./student-labels-contract";
 import rosterStyles from "./class-roster-layout.module.css";
 
@@ -412,14 +412,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           || (event.target as HTMLElement).closest("[data-placement-select],[data-placement-action]")) return;
         if (swapping && selected && target) {
           event.preventDefault(); event.stopPropagation(); move(selected, target);
-        } else if (canEnterLabel) {
-          event.preventDefault(); event.stopPropagation();
-          focusStudentLabel(event.currentTarget.querySelector<HTMLButtonElement>("[data-student-label-trigger]"));
         }
-      }}
-      onDoubleClick={event => {
-        if (!canEnterLabel || (event.target as HTMLElement).closest("[data-placement-select],[data-placement-action]")) return;
-        event.preventDefault(); event.stopPropagation(); openStudentLabelDetails(event.currentTarget);
       }}
       className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}

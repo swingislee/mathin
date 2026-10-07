@@ -43,7 +43,7 @@ export function studentLabelMessages(locale: string) {
     read: (name: string, label: StudentLabel) => en ? `${name} · Label ${label}` : `${name} · ${label} 标签`,
     clear: en ? "Clear label" : "清除标签",
     details: en ? "View student" : "查看学生",
-    entryHint: en ? "Click to enter labels · Enter / double-click for student details" : "单击录入标签 · Enter / 双击查看学生",
+    entryHint: en ? "Click the name for student details · Click the color dot to enter labels" : "单击姓名查看学情 360 · 点击颜色灯录入标签",
     keyboardHint: en
       ? "A–D / 1–4: save and next · ← →: student · ↑ ↓: row · Delete: clear · Esc: exit"
       : "A–D / 1–4：保存并下一位 · ← →：学生 · ↑ ↓：上下行 · Delete：清除 · Esc：退出",
