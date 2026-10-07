@@ -19,7 +19,7 @@ export function FollowupEntryFields({
   id, note, onNoteChange, placeholder, disabled = false, pending = false,
   reminder, hint, children, tools, saveDisabled = false, onSave, canAdvance = false,
   readOnly = false, noteLabel, noteMaxLength = 2000,
-  layout = "standalone", reminderContent, saveLabel, stageHeader,
+  layout = "standalone", reminderContent, saveLabel, stageHeader, compact = false,
 }: {
   id: string;
   note: string;
@@ -41,6 +41,7 @@ export function FollowupEntryFields({
   reminderContent?: ReactNode;
   saveLabel?: string;
   stageHeader?: ReactNode;
+  compact?: boolean;
 }) {
   const t = useTranslations("school.followupEntry");
   const Layout = layout === "stage" ? "div" : FollowupEntryLayout;
@@ -54,7 +55,7 @@ export function FollowupEntryFields({
     }
   }}>
     {layout === "stage" ? stageHeader : null}
-    <div data-followup-business className={cn("min-w-0 space-y-5", layout === "stage" && "col-start-1 row-start-2")}>{children}</div>
+    <div data-followup-business className={cn("min-w-0", compact ? "space-y-2" : "space-y-5", layout === "stage" && "col-start-1 row-start-2")}>{children}</div>
     <aside data-followup-notes className={cn("min-w-0 space-y-3 @[50rem]/followup-entry:sticky @[50rem]/followup-entry:top-2",
       layout === "stage" && "col-start-1 row-start-3 @[50rem]/followup-entry:col-start-2 @[50rem]/followup-entry:row-start-1 @[50rem]/followup-entry:row-span-3")}>
       <div className="space-y-1.5">
@@ -64,7 +65,7 @@ export function FollowupEntryFields({
           placeholder={placeholder ?? t("notePlaceholder")}
           className="min-h-28 resize-y bg-card text-sm leading-6" />}
       </div>
-      <div data-followup-reminder-slot className="min-h-18">
+      <div data-followup-reminder-slot hidden={compact && !reminderContent && !reminder} className={compact ? undefined : "min-h-18"}>
         {reminderContent ?? (!readOnly && reminder ? <NextContactReminderField id={`${id}-reminder`} value={reminder.value}
           onChange={reminder.onChange} disabled={disabled || pending || reminder.disabled}
           compact className="w-full max-w-72" /> : null)}

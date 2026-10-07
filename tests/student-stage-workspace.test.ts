@@ -50,7 +50,7 @@ describe("student stage navigation and row continuity", () => {
     expect(rows).toHaveLength(3);
     expect(replaceSavedStudent(result, row.key, { ...row, stage: "awaiting_renewal" })[0].stage).toBe("awaiting_renewal");
     expect(defaultStudentEntryMode(lead)).toBe("contact");
-    expect(defaultStudentEntryMode(row)).toBe("note");
+    expect(defaultStudentEntryMode(row)).toBe("invitation");
   });
   it("keeps a reconnect search and its reason separate from the current roster", () => {
     const filters = parseStudentStageFilters({ population: "recontact", reason: "former", q: "姓名", page: "2" });

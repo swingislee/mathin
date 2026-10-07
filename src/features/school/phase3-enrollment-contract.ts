@@ -114,7 +114,7 @@ export interface Phase3TermOption {
 export interface Phase3ClassroomOption {
   id: string;
   name: string;
-  courseId: string;
+  courseId: string | null;
   termId: string;
   capacity: number | null;
   activeCount: number;

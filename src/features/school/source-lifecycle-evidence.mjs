@@ -3,6 +3,11 @@ import { normalizeSourceAssessmentBand, normalizeSourceBoolean, normalizeSourceC
 const emptyContact = /^(?:无|暂无结果|暂无|待补|待联系|待沟通|待确认|未联系|未沟通|不详|未知|[-—/？?])+$/u;
 const failedContact = /未接通|未接听|无人接听|无人接|未通|没接通|没接|不接|未接|空号|停机|关机|号码无效|无效号码|忙线|占线|拒接|打不通|无法接通|挂断|挂掉|秒挂|无人说话|无人应答/gu;
 
+/** 明确拒绝课程需求可作为低意向证据；联络方式、资料需求和反问保留原意。 */
+export function sourceInterestEvidence(value) {
+  return /(?:^|[，,。；;：:\s]|但是|不过|但)(?:(?:家长|妈妈|爸爸|父母|对方)(?:明确)?(?:表示|说|回复|反馈|觉得)?[：:]?)?(?:目前|现在|暂时|暂|明确)?(?:不需要|没有需求|没需求|暂无需求|不感兴趣|没有兴趣|没兴趣|不考虑|没有意向|没意向|无意向|意向(?:较)?低)(?:了|课程|课外班|培训|补习|辅导|报名|测评|活动)?(?:$|[，,。；;！!])/u.test(value.trim()) ? 'C' : null;
+}
+
 /** 通话备注中的“加V”是已发生结果；计划、申请中和未通过仍保留各自含义。 */
 export function sourceWechatEvidence(value) {
   const text = value.trim();

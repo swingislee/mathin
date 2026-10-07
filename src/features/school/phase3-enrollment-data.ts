@@ -120,7 +120,7 @@ const optionsSchema = z.object({
   classrooms: z.array(z.object({
     id: databaseUuid,
     name: z.string(),
-    courseId: databaseUuid,
+    courseId: databaseUuid.nullable(),
     termId: databaseUuid,
     capacity: z.number().int().nullable(),
     activeCount: z.number().int().nonnegative(),

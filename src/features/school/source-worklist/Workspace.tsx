@@ -17,6 +17,7 @@ import { LeadPoolPagination } from '../LeadPoolPagination';
 import { Student360Trigger } from '../Student360Sheet';
 import { StudentStageOwnerControl } from '../StudentStageAssignmentControl';
 import { studentStageMessages } from '../student-stage-messages';
+import { communicationEntryMode } from '../work-entry-contract';
 import type { StudentEntryMode, StudentStageSaved, StudentStageAssignee, StudentStageAssignment } from '../student-stage-contract';
 import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, type PeriodField, type WorkPage, type WorkQuery, type WorkRow } from './contract';
 import { RecordStatusIcons } from '../record-status/RecordStatusIcons';
@@ -83,7 +84,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
     memory.save({ focused: id, rank: row?.worklist.rank, groupKey: row?.worklist.groupKey, collapsed: [...groups], handled: [...processed] });
   };
   const focus = (id: string) => { if (!busy) { setFocused(id); remember(id); } };
-  const modeFor = (row: WorkRow): StudentEntryMode => row.canContact ? 'contact' : 'note';
+  const modeFor = communicationEntryMode;
   const assigned = (result: StudentStageAssignment[]) => {
     const updated = new Map(result.map(item => [item.key, item.subject]));
     setRows(current => current.flatMap(row => {
@@ -216,7 +217,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
               const recentDate = communication?.latestAt && Number.isFinite(Date.parse(communication.latestAt))
                 ? date(communication.latestAt) : communication?.latestDateLabel;
               return <FollowupRecordRow key={placement.id} rowKey={placement.id} detailsId={`worklist-${placement.id}`} title={row.name} colSpan={columnCount}
-                active={focused === placement.id && !hidden(row)} expanded={expanded} keepMounted={visited.has(placement.id)} pending={busy} focusOnActivate
+                active={focused === placement.id && !hidden(row)} expanded={expanded} keepMounted={visited.has(placement.id)} pending={busy} focusOnActivate hideTitle
                 onActivate={() => focus(placement.id)} onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
                 onSave={row.canWrite ? () => entryRefs.current.get(placement.id)?.save() : undefined}
                 onOutcomeChange={query.stage === 'awaiting_first_contact' && row.canContact ? value => { open(row,'contact'); setOutcome({ id: placement.id,value }); } : undefined}
@@ -243,11 +244,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
                     {query.stage === 'awaiting_enrollment' && row.registrationId && canAssess ? <Link className="rounded px-2 py-1 text-primary hover:underline" href={`/dashboard/assessments/${row.registrationId}`}>{m.assessment}</Link> : null}
                   </div></TableCell>
                 </>}>
-                {() => <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">{row.canContact ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => open(row,'invitation')}>{m.invitation}</Button> : null}
-                    {row.studentId && row.canWrite ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => open(row,'enrollment')}>{m.enrollment}</Button> : null}
-                    <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{m.open}</Student360Trigger>
-                  </div>
+                {() => <div className="space-y-2">
                   {row.canWrite ? <Entry row={row} requestedMode={active?.id === placement.id ? active.mode : modeFor(row)} locale={locale} currentUserId={currentUserId} canEnroll={canEnroll}
                     contactContext={firstContact ? 'first_contact' : 'followup'}
                     ref={entry => { if (entry) entryRefs.current.set(placement.id,entry); else entryRefs.current.delete(placement.id); }}

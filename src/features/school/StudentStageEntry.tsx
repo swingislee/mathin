@@ -22,7 +22,7 @@ import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import { studentStageMessages } from "./student-stage-messages";
 import { saveStudentStageEntryAction, type getStudentStageOptionsAction } from "./student-stage-actions";
 import { readDashboardDetail } from "./dashboard-page/readDashboardDetail";
-import type { StudentEntryMode, StudentStageEntryInput, StudentStageOptions, StudentStageRow, StudentStageSaved } from "./student-stage-contract";
+import { defaultStudentEntryMode, type StudentEntryMode, type StudentStageEntryInput, type StudentStageOptions, type StudentStageRow, type StudentStageSaved } from "./student-stage-contract";
 
 const draftSchema = z.object({
   requestId: z.string().uuid(), note: z.string().max(2000), nextContactAt: z.string().nullable(),
@@ -53,15 +53,18 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
   ref?: Ref<{ save: () => void }>;
 }) {
   const m = studentStageMessages(locale);
+  const firstContact = row.stage === "awaiting_first_contact";
+  const compact = row.stage === "awaiting_assessment" || contactContext === "followup";
   const storageKey = `mathin:student-stage:v1:${currentUserId}:${row.key}${enrollmentContext ? `:${enrollmentContext.type}:${enrollmentContext.courseId ?? ''}:${enrollmentContext.termId ?? ''}` : ''}`;
   const [draft, setDraft] = useState(() => {
     const draft=readDraft(storageKey,row);
     return enrollmentContext ? {...draft,courseId:draft.courseId||enrollmentContext.courseId||'',termId:draft.termId||enrollmentContext.termId||''} : draft;
   });
-  const [mode, setMode] = useState(requestedMode);
+  const [chosenMode, setMode] = useState(requestedMode);
+  const mode = chosenMode === "contact" && !firstContact ? defaultStudentEntryMode(row) : chosenMode;
   const [acceptedMode, setAcceptedMode] = useState(requestedMode);
   const [acceptedOutcome, setAcceptedOutcome] = useState<typeof outcomeRequest>(null);
-  if (outcomeRequest && outcomeRequest !== acceptedOutcome) {
+  if (firstContact && outcomeRequest && outcomeRequest !== acceptedOutcome) {
     setAcceptedOutcome(outcomeRequest);
     setMode("contact");
     setDraft(current => ({ ...current, outcome: outcomeRequest.value || null, requestId: newId() }));
@@ -70,9 +73,9 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
     setMode(requestedMode); setAcceptedMode(requestedMode);
     setDraft(current => ({ ...current, requestId: newId() }));
   }
-  const [options, setOptions] = useState<StudentStageOptions | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [optionsByMode, setOptionsByMode] = useState<Partial<Record<StudentEntryMode, StudentStageOptions>>>({});
+  const options = optionsByMode[mode] ?? null;
+  const [failedMode, setFailedMode] = useState<StudentEntryMode | null>(null);
   const [revision, setRevision] = useState(0);
   const [pending, setPending] = useState(false);
   const saving = useRef(false);
@@ -82,19 +85,21 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
     const next = { ...current, ...patch, requestId: newId() }; storeDraft(storageKey, next); return next;
   });
   const needsOptions = mode === "invitation" || mode === "enrollment";
+  const loadError = failedMode === mode;
+  const loading = needsOptions && !options && !loadError;
   useEffect(() => {
     if (!needsOptions || options) return;
     let active = true;
     const controller = new AbortController();
     void readDashboardDetail<Awaited<ReturnType<typeof getStudentStageOptionsAction>>>(
-      `/${locale}/dashboard/students/entry-options`, { studentId: row.studentId, leadId: row.leadId }, controller.signal,
+      `/${locale}/dashboard/students/entry-options`, { studentId: row.studentId, leadId: row.leadId, mode }, controller.signal,
     ).then(result => {
       if (!active) return;
-      if (result.ok) { setOptions(result.data); setLoadError(false); } else setLoadError(true);
-      setLoading(false);
-    }).catch(() => { if (active) { setLoadError(true); setLoading(false); } });
+      if (result.ok) { setOptionsByMode(current => ({ ...current, [mode]: result.data })); setFailedMode(null); }
+      else setFailedMode(mode);
+    }).catch(() => { if (active) setFailedMode(mode); });
     return () => { active = false; controller.abort(); };
-  }, [row.studentId, row.leadId, revision, needsOptions, options, locale]);
+  }, [row.studentId, row.leadId, revision, needsOptions, options, locale, mode]);
   const enrollmentType = enrollmentContext?.type ?? (row.stage === "awaiting_renewal" ? "renewal" : row.stage === "former_student" ? "reactivate" : "new");
   const matchingOpportunity = options?.opportunities.find(o => o.course_id === draft.courseId && o.term_id === draft.termId && o.opportunity_type === enrollmentType);
   const reminderAllowed = mode === "contact" ? draft.outcome === "unreachable" || draft.outcome === "declined"
@@ -137,13 +142,13 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
         ...(mode === "enrollment" ? { paymentEvidence: "", result: "considering" as const } : {}) };
       setDraft(next); storeDraft(storageKey, next);
       if (result.data.subject.key !== row.key) { storeDraft(storageKey, null); storeDraft(`mathin:student-stage:v1:${currentUserId}:${result.data.subject.key}`, next); }
-      if (mode === "contact" && result.data.subject.studentId) setMode("note");
-      setOptions(current => current ? { ...current, row: result.data.subject,
+      if (mode === "contact" && result.data.subject.studentId) setMode(defaultStudentEntryMode(result.data.subject));
+      setOptionsByMode(current => !current[mode] ? current : { ...current, [mode]: { ...current[mode], row: result.data.subject,
         opportunities: mode === "enrollment" && result.data.opportunityId ? [
-          ...current.opportunities.filter(o => o.id !== result.data.opportunityId),
+          ...current[mode].opportunities.filter(o => o.id !== result.data.opportunityId),
           { id: result.data.opportunityId, course_id: draft.courseId, term_id: draft.termId, opportunity_type: enrollmentType,
             stage: result.data.enrollmentId ? "enrolled" : input.enrollment!.stage, updated_at: result.data.savedAt },
-        ] : current.opportunities } : current);
+        ] : current[mode].opportunities } });
       window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT)); toast.success(m.saved); onSaved(result.data, advance);
     } catch { setError(m.saveFailed); toast.error(m.saveFailed); }
     finally { saving.current = false; setPending(false); onBusyChange(false); }
@@ -151,19 +156,21 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
   useImperativeHandle(ref, () => ({ save: () => { void save(false); } }));
   const switchMode = (value: string) => { if (!pending) { setMode(value as StudentEntryMode); change({}); setError(""); } };
   const enrollmentLabel = row.stage === "awaiting_renewal" ? m.renewal : row.stage === "former_student" ? m.reactivate : m.enrollment;
-  return <div className="space-y-4" data-student-stage-entry={row.key}>
-    <Tabs value={mode} onValueChange={switchMode}>
-      <TabsList className="h-auto flex-wrap justify-start gap-1">
+  const modeCount = Number(Boolean(row.studentId)) * 2 + Number(firstContact && row.canContact) + Number(row.canContact);
+  return <div className={compact ? "space-y-2" : "space-y-4"} data-student-stage-entry={row.key}>
+    {modeCount > 1 ? <Tabs value={mode} onValueChange={switchMode}>
+      <TabsList className={compact ? "h-auto flex-wrap justify-start gap-0.5 [&>button]:h-7 [&>button]:px-2 [&>button]:text-xs" : "h-auto flex-wrap justify-start gap-1"}>
         {row.studentId ? <TabsTrigger value="note" disabled={pending}>{m.note}</TabsTrigger> : null}
-        {(row.stage === "awaiting_first_contact" || contactContext === "followup") && row.canContact ? <TabsTrigger value="contact" disabled={pending}>{contactContext === "followup" ? (locale.startsWith("en") ? "Contact record" : "记录联系") : m.contact}</TabsTrigger> : null}
+        {firstContact && row.canContact ? <TabsTrigger value="contact" disabled={pending}>{m.contact}</TabsTrigger> : null}
         {row.canContact ? <TabsTrigger value="invitation" disabled={pending}>{m.invitation}</TabsTrigger> : null}
         {row.studentId ? <TabsTrigger value="enrollment" disabled={pending}>{enrollmentLabel}</TabsTrigger> : null}
       </TabsList>
-    </Tabs>
+    </Tabs> : null}
     <FollowupEntryFields id={`student-stage-${row.key}`} note={draft.note} onNoteChange={note => change({ note })}
+      compact={compact}
       pending={pending} disabled={!row.canWrite} saveDisabled={!valid} onSave={advance => { void save(advance); }} canAdvance={canAdvance}
       reminder={reminderAllowed ? { value: draft.nextContactAt, onChange: nextContactAt => change({ nextContactAt }) } : undefined}
-      noteLabel={m.note} hint={error ? <span role="alert" className="text-rose">{error}</span> : mode === "contact" && contactContext === "first_contact" ? m.firstContactHint : m.noteHint}
+      noteLabel={m.note} hint={error ? <span role="alert" className="text-rose">{error}</span> : mode === "contact" && firstContact ? m.firstContactHint : compact ? undefined : m.noteHint}
       tools={draft.note || draft.invitation || draft.paymentEvidence ? <Button size="sm" variant="ghost" disabled={pending} onClick={() => {
         storeDraft(storageKey, null); setDraft(readDraft(storageKey, row)); setError("");
       }}>{m.discard}</Button> : undefined}>
@@ -180,7 +187,7 @@ export function StudentStageEntry({ row, requestedMode, locale, currentUserId, c
           interest={draft.interestLevel ?? ""} onInterestChange={value => change({ interestLevel: value || null })} disabled={disabled} /> : null}
       </div> : null}
       {mode === "invitation" || mode === "enrollment" ? loading ? <p role="status" className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="size-4 animate-spin" />{m.loading}</p>
-        : loadError ? <p className="text-sm text-muted">{m.loadFailed}<Button variant="ghost" size="sm" onClick={() => { setLoading(true); setRevision(v => v + 1); }}>{m.retry}</Button></p> : null : null}
+        : loadError ? <p className="text-sm text-muted">{m.loadFailed}<Button variant="ghost" size="sm" onClick={() => { setFailedMode(null); setRevision(v => v + 1); }}>{m.retry}</Button></p> : null : null}
       {mode === "invitation" && options ? <div className="space-y-3">
         {row.invitation ? <p className="text-xs text-muted">{m.activeInvitation}</p> : null}
         {publishedInvitation ? <div className="space-y-2 text-xs">

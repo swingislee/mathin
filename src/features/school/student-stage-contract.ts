@@ -108,7 +108,9 @@ export function studentRecordTableStage(filters: StudentStageFilters): StudentSt
 }
 
 export function defaultStudentEntryMode(row: StudentStageRow): StudentEntryMode {
-  return row.stage === "awaiting_first_contact" && row.canContact ? "contact" : "note";
+  if (row.stage === "awaiting_first_contact" && row.canContact) return "contact";
+  if (row.stage === "awaiting_assessment" && row.canContact) return "invitation";
+  return "note";
 }
 
 export interface StudentStageEntryInput {

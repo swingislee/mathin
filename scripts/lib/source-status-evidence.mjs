@@ -1,5 +1,5 @@
 import { normalizeSourceAssessmentBand, normalizeSourceBoolean } from '../../src/features/school/business-source-contract.ts';
-import { sourceWechatEvidence } from '../../src/features/school/source-lifecycle-evidence.mjs';
+import { sourceInterestEvidence, sourceWechatEvidence } from '../../src/features/school/source-lifecycle-evidence.mjs';
 
 const normalizeName = name => name.replace(/^A:\s*/, '').trim();
 const monthDate = text => {
@@ -31,6 +31,8 @@ export function extractSourceStatusEvidence(source) {
     if (parts.some(part => /^(?:未加V|未加微信|未加微|未加|加不上)$/iu.test(part))) add('wechat','no',field,read(field),90);
     if (parts.some(part => /^(?:已沟通|已联系|加V|诺访|暂缓|下次联系|下期次再联系)$/u.test(part))) add('contact','reached',field,read(field),90);
     if (parts.includes('诺访')) add('visit','promised',field,read(field),90);
+    const interest = sourceInterestEvidence(read(field));
+    if (interest) add('interest',interest,field,read(field),90);
   }
   if (/^(?:是|已|诺访|已诺访)$/u.test(read('诺访与否'))) add('visit','promised','诺访与否',read('诺访与否'),110);
   if (/^(?:已到|是|已到访)$/u.test(read('到访与否'))) add('visit','arrived','到访与否',read('到访与否'),120);
@@ -62,6 +64,10 @@ export function extractSourceStatusEvidence(source) {
       if (/(?:已(?:经)?|今天)(?:到访|到店)|来过(?:校区|我们)/u.test(clause) && !future.test(clause)) add('visit','arrived',field,clause,60);
       const interest = clause.match(/(?:意向(?:分类)?|意向等级)\s*[:：为是]?\s*([ABC])(?:类|级)?/u);
       if (interest) add('interest',interest[1],field,clause,60);
+      else {
+        const inferredInterest = sourceInterestEvidence(clause);
+        if (inferredInterest) add('interest',inferredInterest,field,clause,60);
+      }
     }
   }
   return facts.filter((fact,index) => facts.findIndex(other => other.type===fact.type && other.value===fact.value && other.field===fact.field && other.excerpt===fact.excerpt) === index);

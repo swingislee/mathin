@@ -468,6 +468,38 @@
       ],
       "checkpoint": null,
       "next": "查询超时已修复并应用开发端；同快照四阶段完整结果一致，实际 20/50/100 条分页及页面读取通过，待实际使用确认。生产未改动。"
+    },
+    {
+      "id": "COMMUNICATION-INVITATION-20261007",
+      "title": "待测评邀约入口与意向标签",
+      "agent": "codex",
+      "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-INVITATION-20261007.md",
+      "writePaths": [
+        ".ai/tasks/COMMUNICATION-INVITATION-20261007.md",
+        ".tmp/communication-invitation-20261007/",
+        "src/features/school/source-worklist/Workspace.tsx",
+        "src/features/school/StudentStageEntry.tsx",
+        "src/features/school/student-stage-contract.ts",
+        "src/features/school/student-stage-actions.ts",
+        "src/features/school/FollowupEntryFields.tsx",
+        "scripts/lib/source-status-evidence.mjs",
+        "src/features/school/source-lifecycle-evidence.mjs",
+        "src/features/school/record-status/RecordStatusIcons.tsx",
+        "src/features/school/StudentStageWorkspace.tsx",
+        "src/features/school/phase3-enrollment-data.ts",
+        "src/features/school/phase3-enrollment-contract.ts",
+        "tests/student-stage-workspace.test.ts",
+        "docs/workflows/school-operations.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "待测评统一直接进入邀约，首联四选一仅待首联显示；低意向证据已补齐、展开密度收紧，邀约及报名加载恢复。定向静态和实际接口通过，待使用确认，生产未改动。"
     }
   ]
 }

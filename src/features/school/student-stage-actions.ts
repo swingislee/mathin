@@ -79,13 +79,16 @@ export async function getStudentStageSubjectAction(subject: { studentId: string 
   }
 }
 
-export async function getStudentStageOptionsAction(subject: { studentId: string | null; leadId: string | null }): Promise<ActionResult<StudentStageOptions>> {
+export async function getStudentStageOptionsAction(subject: { studentId: string | null; leadId: string | null; mode?: "invitation" | "enrollment" }): Promise<ActionResult<StudentStageOptions>> {
   try {
     const value = parse(subjectSchema, subject);
+    const mode = parse(z.enum(["invitation", "enrollment"]).default("invitation"), subject.mode);
     const { supabase } = await authorizedClient("followup.write");
     const row = await readStudentStageSubject(supabase, value);
     const [invitations, enrollment, opportunities] = await Promise.all([
-      listInvitationOptions(), loadPhase3EnrollmentOptions(), row.studentId
+      mode === "invitation" ? listInvitationOptions() : Promise.resolve({ activities: [], assessors: [] }),
+      mode === "enrollment" ? loadPhase3EnrollmentOptions() : Promise.resolve({ courses: [], terms: [], classrooms: [] }),
+      mode === "enrollment" && row.studentId
         ? supabase.from("course_opportunities").select("id,course_id,term_id,opportunity_type,stage,updated_at")
           .eq("student_id", row.studentId).order("created_at", { ascending: false })
         : Promise.resolve({ data: [], error: null }),

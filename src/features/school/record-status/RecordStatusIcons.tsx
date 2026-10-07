@@ -31,10 +31,13 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
   const values: Record<string,string> = en ? { yes:'Added', no:'Not added', unknown:'Not recorded', conflicting:'Needs review', complete:'Completed', promised:'Promised', arrived:'Visited', not_promised:'Not promised' }
     : { yes:'已加微信', no:'未加微信', unknown:'未记录', conflicting:'有矛盾，待核对', complete:'已完成', promised:'已诺访', arrived:'已到访', not_promised:'未诺访' };
   Object.assign(values, { x_plus:'X+', below_a:'X+', g_plus:'G+', a:'A', a_plus:'A+', s:'S', c:'C' });
+  const interestValues: Record<string,string> = en ? { A: 'High (A)', B: 'Medium (B)', C: 'Low (C)' }
+    : { A: '高（A）', B: '中（B）', C: '低（C）' };
+  const valueLabel = (type: string, value: string) => (type === 'interest' ? interestValues[value] : undefined) ?? values[value] ?? value;
   return <div className="flex items-center gap-1" data-record-status-icons onClick={event => event.stopPropagation()}>
     {(['wechat','interest','visit','assessment'] as const).map(facet => {
       const status = resolveStatusEvidence(row.statusEvidence ?? [],facet);
-      const label = `${labels[facet]} · ${status.review ? (en ? 'Needs review' : '待核对') : values[status.value] ?? status.value}`;
+      const label = `${labels[facet]} · ${status.review ? (en ? 'Needs review' : '待核对') : valueLabel(facet,status.value)}`;
       return <Popover key={facet}><PopoverTrigger asChild><button type="button" aria-label={label} title={label}
         className={cn('inline-flex size-6 shrink-0 items-center justify-center rounded-md border p-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater',
           statusStyle(facet, status.value, status.review))}>
@@ -44,7 +47,7 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
         <div className="max-h-72 space-y-3 overflow-y-auto">
           {status.facts.length ? status.facts.map((fact,index) => <div key={`${fact.recordId ?? fact.sourceId ?? ''}:${fact.field}:${index}`} className="border-t border-line pt-2">
             <p className="text-xs text-muted">{fact.field}{fact.date ? ` · ${fact.date.slice(0,10)}` : ''}{fact.certainty === 'review' ? ` · ${en ? 'Needs review' : '待核对'}` : ''}</p>
-            <p className="my-1 font-medium">{values[fact.value] ?? fact.value}</p>
+            <p className="my-1 font-medium">{valueLabel(fact.type,fact.value)}</p>
             {fact.excerpt ? <p className="whitespace-pre-wrap break-words text-xs leading-5">{fact.excerpt}</p> : null}
           </div>) : <p className="text-xs text-muted">{en ? 'No explicit fact has been recorded.' : '现有记录中没有明确填写这一项。'}</p>}
         </div>
