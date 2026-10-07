@@ -409,7 +409,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}
     >
-      <span className={cn("relative inline-flex min-w-0 max-w-full items-center", hasLabelControl && "pr-3")}>
+      <span className={cn("relative inline-flex min-w-0 max-w-full items-center has-[:focus-visible]:rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-crater", hasLabelControl && "pr-3")}>
       <Tooltip open={!dragging&&!labelEditorId&&tooltipKey===student.key} onOpenChange={open=>setTooltipKey(current=>open&&!dragging&&!labelEditorId?student.key:current===student.key?null:current)}>
       <TooltipTrigger asChild><span className="flex min-w-0 items-center">
       {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:student.placement?.canViewDetails===false?<span className="w-full truncate py-1 text-xs">{student.name}</span>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal",movable&&"pointer-events-none")}>
@@ -548,7 +548,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
     {sessionsFailed && <p role="alert" className="text-xs text-rose">{sessionM.failed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {board.locationsFailed && <p role="alert" className="text-xs text-rose">{rosterM.locationsFailed}<Button variant="ghost" size="sm" onClick={() => router.refresh()}>{sessionM.retry}</Button></p>}
     {!sessionsFailed && focusSessionId && !sessions.some(session => session.id === focusSessionId) && <p role="status" className="text-xs text-muted">{sessionM.noAccess}</p>}
-    <div ref={root} className="flex min-h-0 flex-1 flex-col" onScrollCapture={event => {
+    <div ref={root} data-student-label-scope className="flex min-h-0 flex-1 flex-col" onScrollCapture={event => {
       const source = event.target;
       if (source instanceof HTMLElement && source.matches("[data-teaching-progress-viewport], [data-teaching-progress-scrollbar]")) syncProgressScroll(source);
     }} onPointerMove={pointer.onPointerMove} onPointerUp={pointer.onPointerUp} onPointerCancel={pointer.onPointerCancel} onLostPointerCapture={pointer.onLostPointerCapture} onClickCapture={pointer.onClickCapture} onKeyDown={(event) => { if (event.key === "Escape" && !event.defaultPrevented) { pointer.cancel(); setSelectedKey(null); } }}>

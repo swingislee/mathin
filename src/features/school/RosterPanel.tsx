@@ -152,7 +152,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
       {roster.length === 0 ? (
         <p className="mt-4 text-sm text-muted">{t("emptyRoster")}</p>
       ) : (
-        <ul className="mt-4 divide-y divide-line">
+        <ul data-student-label-scope className="mt-4 divide-y divide-line">
           {roster.map((row, index) => {
             const active = activeStudentId === row.studentId;
             const detailId = `roster-followup-${classroomId}-${row.studentId}`;
@@ -162,7 +162,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
             return <li key={row.studentId} className="min-w-0 py-2.5 text-sm">
               <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
-                <span className={cn("relative inline-flex max-w-full", (row.labelState?.label || row.labelState?.canEdit) && "pr-3")}>
+                <span className={cn("relative inline-flex max-w-full has-[:focus-visible]:rounded-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-crater", (row.labelState?.label || row.labelState?.canEdit) && "pr-3")}>
                   <Link href={withReturnTo(`/dashboard/students/${row.studentId}`, returnTo)} className="min-w-0 truncate hover:text-crater hover:underline">
                     {row.studentName}
                   </Link>

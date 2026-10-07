@@ -42,6 +42,9 @@ export function studentLabelMessages(locale: string) {
       : `${name} · ${label ? `${label} 标签` : "未标记"} · 设置标签`,
     read: (name: string, label: StudentLabel) => en ? `${name} · Label ${label}` : `${name} · ${label} 标签`,
     clear: en ? "Clear label" : "清除标签",
+    keyboardHint: en
+      ? "A–D / 1–4: save and next · Arrows: previous/next · Delete: clear · Esc: exit"
+      : "A–D / 1–4：保存并下一位 · 方向键：换人 · Delete：清除 · Esc：退出",
     saving: en ? "Saving…" : "保存中…",
     saved: en ? "Label saved" : "标签已保存",
     error: en ? "Could not save. Please try again." : "保存失败，请重试。",
