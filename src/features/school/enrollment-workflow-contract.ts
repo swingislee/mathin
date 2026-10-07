@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { databaseUuid } from "@/lib/database-uuid";
 import type { RenewalHealthSignal } from "./renewal-health-contract";
+import type { StudentLabelStates } from "./student-labels-contract";
 
 const nullableId = databaseUuid.nullable();
 export const CONTACT_ROUTES = ["continue_follow_up", "await_product", "closed", "enrollment_pending"] as const;
@@ -81,6 +82,7 @@ export const placementAccessSchema = z.object({
 });
 
 export interface EnrollmentPlacementBoard {
+  studentLabels?: StudentLabelStates;
   locationsFailed?: boolean;
   access?: z.infer<typeof placementAccessSchema>;
   sessionTransfers?: import('./enrollment-placement-change-contract').SessionTransfer[];

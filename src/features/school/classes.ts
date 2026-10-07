@@ -26,6 +26,8 @@ import type {
 import type { WorkItemRow } from "./stage/types";
 import type { SupportTaskKind } from "./support-tasks";
 import type { LearningResultStatus } from "./learning-results";
+import { loadClassStudentLabels } from "./student-labels-read";
+import type { StudentLabelState } from "./student-labels-contract";
 
 export interface StaffOption {
   id: string;
@@ -56,6 +58,7 @@ export interface RosterRow {
   status: string | null;
   hasAccount: boolean;
   isMember: boolean;
+  labelState?: StudentLabelState;
 }
 
 export interface SessionRow {
@@ -253,6 +256,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     { data: memberRows, error: memberError },
     { data: sessionRows, error: sessionError },
     perms,
+    studentLabels,
   ] = await Promise.all([
     supabase
       .from("classroom_staff_assignments")
@@ -277,6 +281,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
       .order("scheduled_at", { ascending: true, nullsFirst: false })
       .returns<SessionQueryRow[]>(),
     getMyPerms(user.id),
+    loadClassStudentLabels([id]),
   ]);
   if (assignmentError) throw new Error(assignmentError.message);
   if (enrollmentError) throw new Error(enrollmentError.message);
@@ -325,6 +330,7 @@ export async function getClassroomDetailForScope(id: string): Promise<ClassroomD
     status: row.status,
     hasAccount: Boolean(row.students?.user_id),
     isMember: Boolean(row.students?.user_id && memberUserIds.has(row.students.user_id)),
+    labelState: studentLabels[row.id],
   }));
 
   const sessions: SessionRow[] = (sessionRows ?? []).map((row) => buildSessionRow(row, {

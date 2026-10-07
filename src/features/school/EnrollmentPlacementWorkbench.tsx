@@ -49,6 +49,7 @@ import { readClassSessionResource } from "./class-session-resource";
 import { TeachingProgressCells, TeachingProgressDetails, TeachingProgressHeader, TeachingProgressHelp } from "./teaching-workbench/TeachingProgressCells";
 import { teachingMatrixColumns, teachingMatrixMessages, type TeachingProgressMatrixData } from "./teaching-workbench/teaching-progress-matrix-contract";
 import { placementChangeError } from './enrollment-placement-change-contract';
+import { StudentLabelControl } from "./StudentLabelControl";
 
 interface SeatTarget {
   classroom: PlacementClassroom | null;
@@ -376,6 +377,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   };
 
   const studentTile = (student: StudentTileRecord, target?: SeatTarget) => {
+    const labelState = student.placement?.membershipId ? board.studentLabels?.[student.placement.membershipId] : undefined;
+    const hasLabelControl = Boolean(labelState?.label || labelState?.canEdit);
     const signals = student.placement ? board.health?.[student.studentId ?? ""] ?? [] : [];
     const health = student.placement ? placementHealth(signals) : null;
     const renewed = Boolean(student.placement?.membershipId && renewedMembershipIds.has(student.placement.membershipId));
@@ -398,14 +401,15 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         event.preventDefault(); event.stopPropagation();
         if (selected && target) move(selected, target);
       }}
-      className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
+      className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", hasLabelControl && "pr-4", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}
     >
       {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:student.placement?.canViewDetails===false?<span className="w-full truncate py-1 text-xs">{student.name}</span>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal",movable&&"pointer-events-none")}>
         <span className="max-w-full truncate">{student.name}</span>
         {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
       </Student360Trigger>}
-      {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className="absolute right-0 top-0 flex h-full w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater" onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
+      <StudentLabelControl state={labelState} studentName={student.name} disabled={pending || hasSessionDraft || Boolean(placementChange)} />
+      {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className={cn("absolute right-0 flex w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater", hasLabelControl ? "bottom-0 h-3" : "top-0 h-full")} onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
       {temporary.length>0&&student.placement?<button type="button" data-placement-action aria-label={locale==='en'?`${student.name} temporary transfers`:`${student.name}的临时调班`} className="absolute bottom-0 left-0 rounded-sm bg-moon px-0.5 text-[9px] text-crater" onClick={()=>setPlacementChange({student:student.placement!})}>{locale==='en'?'T':'临'}</button>:null}
     </span></TooltipTrigger><TooltipContent className="pointer-events-none max-w-80 space-y-1 text-xs leading-5">
       <p className="font-medium">{student.name}{student.status && student.status !== "active" ? t(`status_${student.status}`) : ""}</p><p>{student.courseTitle}</p>{target?.seat ? <p>{t("capacitySlot", { count: target.seat })}</p> : null}

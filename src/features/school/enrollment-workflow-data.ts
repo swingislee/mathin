@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sessionTransferSchema } from './enrollment-placement-change-contract';
 import { createClient } from "@/lib/supabase/server";
 import { readSchoolQueryBatches } from "./school-query-pages";
+import { loadClassStudentLabels } from "./student-labels-read";
 import { renewalHealthSignals, type RenewalHealthFacts } from "./renewal-health-contract";
 import {
   enrollmentSchema, activityEnrollmentContextSchema, enrollmentWorkflowOptionsSchema, placementMemberSchema, placementAccessSchema,
@@ -32,13 +33,14 @@ export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacemen
     .parse(await enrollmentWorkflowRpc("get_enrollment_placement_board"));
   const supabase = await createClient();
   const locationsTask = loadPlacementLocations(supabase, board.options.classrooms);
+  const labelsTask = loadClassStudentLabels(board.options.classrooms.map(row => row.id));
   if (board.access?.canManageEnrollments === false) {
-    const [locations, sessionTransfers] = await Promise.all([locationsTask,
-      enrollmentWorkflowRpc('get_enrollment_session_transfers').then(data => z.array(sessionTransferSchema).parse(data))]);
-    return { ...board, options: { ...board.options, classrooms: locations.classrooms }, locationsFailed: locations.failed, sessionTransfers };
+    const [locations, sessionTransfers, studentLabels] = await Promise.all([locationsTask,
+      enrollmentWorkflowRpc('get_enrollment_session_transfers').then(data => z.array(sessionTransferSchema).parse(data)), labelsTask]);
+    return { ...board, options: { ...board.options, classrooms: locations.classrooms }, locationsFailed: locations.failed, sessionTransfers, studentLabels };
   }
   const ids = [...new Set([...board.enrollments.map((row) => row.studentId), ...board.members.map((row) => row.studentId)])];
-  const [teachers, renewalEntries, health, sessionTransfers, locations] = await Promise.all([
+  const [teachers, renewalEntries, health, sessionTransfers, locations, studentLabels] = await Promise.all([
     readSchoolQueryBatches(board.options.classrooms.map(row => row.id), (batch, start, end) =>
       supabase.from("classroom_staff_assignments").select("classroom_id,user_id,profiles!classroom_staff_assignments_user_id_fkey(display_name)")
         .in("classroom_id", batch).in("responsibility", ["primary_teacher", "assistant_teacher"])
@@ -49,6 +51,7 @@ export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacemen
     loadPlacementHealth(supabase, ids),
     enrollmentWorkflowRpc('get_enrollment_session_transfers').then(data => z.array(sessionTransferSchema).parse(data)),
     locationsTask,
+    labelsTask,
   ]);
   if (teachers.error) throw new Error("PLACEMENT_TEACHER_FIELDS_READ");
   board.options.classrooms = locations.classrooms.map(row => ({ ...row, teachers: (teachers.data ?? [])
@@ -57,7 +60,7 @@ export async function loadEnrollmentPlacementBoard(): Promise<EnrollmentPlacemen
   const renewedOpportunities = new Set(board.enrollments.filter(row => row.status === "active").map(row => row.opportunityId));
   const renewedMembershipIds = [...new Set((renewalEntries.data ?? []).filter(row => row.opportunity_id && renewedOpportunities.has(row.opportunity_id))
     .map(row => row.source_class_membership_id))];
-  return { ...board, locationsFailed: locations.failed, health, renewedMembershipIds, sessionTransfers };
+  return { ...board, locationsFailed: locations.failed, health, renewedMembershipIds, sessionTransfers, studentLabels };
 }
 
 /** 仅补齐名册已经授权的班级地点；默认教室与历史课次地点各自保留权威。 */

@@ -3,6 +3,35 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "CLASS-STUDENT-LABELS-20261007",
+      "title": "班级学生 A/B/C/D 颜色角标",
+      "agent": "codex",
+      "threadId": "01a1142c-85b4-7031-9295-c05c3aaa2a11",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/CLASS-STUDENT-LABELS-20261007.md",
+      "writePaths": [
+        "src/features/school/student-labels-contract.ts",
+        "src/features/school/student-labels-read.ts",
+        "src/features/school/student-labels-actions.ts",
+        "src/features/school/StudentLabelControl.tsx",
+        "src/features/school/classes.ts",
+        "src/features/school/RosterPanel.tsx",
+        "src/features/school/enrollment-workflow-contract.ts",
+        "src/features/school/enrollment-workflow-data.ts",
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "supabase/migrations/20261007010000_class_student_labels.sql",
+        "supabase/tests/class_student_labels.sql",
+        ".ai/tasks/CLASS-STUDENT-LABELS-20261007.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "班级总名册及单班（含短期班）标签已在开发端可用；静态与任课权限检查通过，待产品负责人实际使用确认。生产未部署。"
+    },
+    {
       "id": "SHORT-COURSES-20261006",
       "title": "短期班独立工作入口与数独四讲批量排课",
       "agent": "codex",
