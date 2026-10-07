@@ -22,7 +22,7 @@ export function StatusGlyph({ facet }: { facet: StatusFacet }) {
 
 function statusStyle(facet: StatusFacet, value: string, review: boolean) {
   if (review) return LEARNING_CHECK_STATUS_STYLE.imitated.active;
-  if (value === 'unknown') return LEARNING_CHECK_STATUS_STYLE.unchecked.active;
+  if (value === 'unknown') return cn(LEARNING_CHECK_STATUS_STYLE.unchecked.active, 'border-dashed');
   if (['no', 'not_promised', 'C', 'x_plus', 'below_a'].includes(value)) return LEARNING_CHECK_STATUS_STYLE.incomplete.active;
   if (value === 'B' || value === 'g_plus') return LEARNING_CHECK_STATUS_STYLE.prompted.active;
   if (facet === 'visit' && value === 'promised') return LEARNING_CHECK_STATUS_STYLE.explained.active;
@@ -39,10 +39,24 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
   Object.assign(values, { x_plus:'X+', below_a:'X+', g_plus:'G+', a:'A', a_plus:'A+', s:'S', c:'C' });
   const interestValues: Record<string,string> = en ? { A: 'High (A)', B: 'Medium (B)', C: 'Low (C)' }
     : { A: '高（A）', B: '中（B）', C: '低（C）' };
+  const unknownLabels: Record<StatusFacet,string> = en
+    ? { wechat: 'To confirm', interest: 'To ask about', visit: 'To confirm', assessment: 'Details to complete' }
+    : { wechat: '待确认', interest: '待了解', visit: '待确认', assessment: '资料待补齐' };
+  const unknownHints: Record<StatusFacet,string> = en ? {
+    wechat: 'Confirm whether the parent has been added on WeChat.',
+    interest: 'Ask about their current interest during the next conversation and record their response.',
+    visit: 'Confirm whether a visit has been promised or has already taken place.',
+    assessment: 'Check the existing assessment records and complete the result or evaluation details.',
+  } : {
+    wechat: '确认是否已添加家长微信。',
+    interest: '下次沟通时了解当前意向，按实际回应登记。',
+    visit: '确认是否已答应到访，或已经实际到访。',
+    assessment: '查看已有测评记录，补齐结果或评价资料。',
+  };
   const valueLabel = (type: string, value: string) => (type === 'interest' ? interestValues[value] : undefined) ?? values[value] ?? value;
   const visible = facets.flatMap(facet => {
     const status = resolveStatusEvidence(row.statusEvidence ?? [],facet);
-    if (status.value === 'unknown' && !status.review) return [];
+    // 当前阶段关注项保留未知提示；首联额外展示已有的诺访／到访事实。
     if (row.stage === 'awaiting_first_contact' && facet === 'visit' && !status.review && !['promised','arrived'].includes(status.value)) return [];
     return [{ facet, status }];
   });
@@ -57,19 +71,21 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
         <div className="mt-3 border-t border-line pt-2"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{en ? 'View related records' : '查看相关记录'}</Student360Trigger></div>
       </PopoverContent></Popover> : null}
     {visible.map(({ facet, status }) => {
-      const label = `${labels[facet]} · ${status.review ? (en ? 'Needs review' : '待核对') : valueLabel(facet,status.value)}`;
+      const unknown = status.value === 'unknown' && !status.review;
+      const label = `${labels[facet]} · ${status.review ? (en ? 'Needs review' : '待核对') : unknown ? unknownLabels[facet] : valueLabel(facet,status.value)}`;
       return <Popover key={facet}><PopoverTrigger asChild><button type="button" aria-label={label} title={label}
         data-status-facet={facet} className={cn(buttonClass,
           statusStyle(facet, status.value, status.review))}>
         <StatusGlyph facet={facet} />
       </button></PopoverTrigger><PopoverContent align="start" className="w-96 max-w-[calc(100vw-2rem)] text-sm">
         <div className="mb-2 font-medium">{label}</div>
+        {unknown ? <p className="mb-3 text-xs leading-5 text-muted">{unknownHints[facet]}</p> : null}
         <div className="max-h-72 space-y-3 overflow-y-auto">
           {status.facts.length ? status.facts.map((fact,index) => <div key={`${fact.recordId ?? fact.sourceId ?? ''}:${fact.field}:${index}`} className="border-t border-line pt-2">
             <p className="text-xs text-muted">{fact.field}{fact.date ? ` · ${fact.date.slice(0,10)}` : ''}{fact.certainty === 'review' ? ` · ${en ? 'Needs review' : '待核对'}` : ''}</p>
             <p className="my-1 font-medium">{valueLabel(fact.type,fact.value)}</p>
             {fact.excerpt ? <p className="whitespace-pre-wrap break-words text-xs leading-5">{fact.excerpt}</p> : null}
-          </div>) : <p className="text-xs text-muted">{en ? 'No explicit fact has been recorded.' : '现有记录中没有明确填写这一项。'}</p>}
+          </div>) : unknown ? null : <p className="text-xs text-muted">{en ? 'No explicit fact has been recorded.' : '现有记录中没有明确填写这一项。'}</p>}
         </div>
         <div className="mt-3 border-t border-line pt-2"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{en ? 'Open this student’s records' : '查看此人的全部记录'}</Student360Trigger></div>
       </PopoverContent></Popover>;
