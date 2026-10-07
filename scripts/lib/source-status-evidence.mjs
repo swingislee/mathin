@@ -1,4 +1,5 @@
 import { normalizeSourceAssessmentBand, normalizeSourceBoolean } from '../../src/features/school/business-source-contract.ts';
+import { sourceWechatEvidence } from '../../src/features/school/source-lifecycle-evidence.mjs';
 
 const normalizeName = name => name.replace(/^A:\s*/, '').trim();
 const monthDate = text => {
@@ -47,10 +48,9 @@ export function extractSourceStatusEvidence(source) {
     const field = normalizeName(cell.fieldName);
     if (!/备注|情况|信息|沟通|反馈|观察|总结/u.test(field) || /加V情况/u.test(field)) continue;
     for (const clause of (cell.text ?? '').split(/[。；;\n]/u).map(text => text.trim()).filter(Boolean)) {
-      const noWechat = /(?:未|没(?:有)?|尚未|不愿|拒绝)(?:能|成功)?加(?:上|到|了)?(?:家长|妈妈|爸爸)?(?:微信|[Vv微])|加不[上到](?:微信|[Vv微])|微信(?:没|未)通过|(?:微信.{0,4}(?:拉黑|删除)|(?:拉黑|删除).{0,4}微信)/u.test(clause);
-      const yesWechat = /(?:已(?:经)?加(?:上|好|了)?|互加(?:了)?)(?:家长|妈妈|爸爸)?(?:微信|[Vv微])|微信(?:已)?通过|(?:通过|在)微信(?:上)?(?:沟通|联系|交流)/u.test(clause);
-      if (noWechat || yesWechat) add('wechat',noWechat && yesWechat ? 'conflicting' : noWechat ? 'no' : 'yes',field,clause,60,noWechat && yesWechat ? 'review' : 'confirmed');
-      else if (/加.{0,4}(?:微信|[Vv微])/u.test(clause)) add('wechat','unspecified',field,clause,20,'review');
+      const wechat = sourceWechatEvidence(clause);
+      if (wechat) add('wechat',wechat === 'review' ? 'unspecified' : wechat,field,clause,wechat === 'review' ? 20 : 60,
+        wechat === 'review' || wechat === 'conflicting' ? 'review' : 'confirmed');
       const completed = /已(?:经)?(?:做|完成|参加)?(?:过|了)?测评|测评(?:已经)?(?:完毕|完成|结束|过)|做过测评|测过评|只测评未随堂|(?:暑假|之前|年前|上次).{0,10}测评后|测评后直接报名/u.test(clause);
       const bandMatch = clause.match(/(?:思维测评|测评(?:结果|等级)?|思维等级|学习力(?:测评)?(?:等级)?)\s*[:：为是]?\s*(未达A|[XG][+＋]|A[+＋]?|S|C)(?![A-Za-z+＋−-])/u);
       if ((completed || bandMatch) && !future.test(clause)) {

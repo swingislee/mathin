@@ -654,7 +654,7 @@ function Student360TimelineEvent({
       )} />
       <article className="min-w-0 border-b border-line/80 pb-5 last:border-b-0 last:pb-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          {event.occurredAt ? <time className="text-[11px] tabular-nums text-muted" dateTime={event.occurredAt}>{event.occurredAt.length === 10 ? event.occurredAt : day.format(new Date(event.occurredAt))}</time> : <span className="text-[11px] text-muted">{recordM.dateUnknown}</span>}
+          {event.occurredAt ? <time className="text-[11px] tabular-nums text-muted" dateTime={event.occurredAt}>{event.occurredAt.length === 10 ? event.occurredAt : day.format(new Date(event.occurredAt))}</time> : <span className="text-[11px] text-muted">{event.sourceDateLabel || recordM.dateUnknown}</span>}
           <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">{t(`phase_${event.phase}`)}</span>
           <span className="text-xs font-medium text-ink">{t(`event_${event.kind}`)}</span>
           {event.recordState === 'historical' ? <HistoricalRecordBadge locale={locale} /> : null}

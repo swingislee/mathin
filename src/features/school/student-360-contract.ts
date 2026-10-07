@@ -119,6 +119,8 @@ export interface Student360Event {
   phase: Student360Phase;
   kind: Student360EventKind;
   occurredAt: string | null;
+  sourceDateLabel?: string | null;
+  orderKey?: string;
   recordState?: BusinessRecordState;
   title: string;
   status: string | null;
@@ -177,7 +179,7 @@ export interface Student360Snapshot {
 export function sortStudent360Events(events: readonly Student360Event[]): Student360Event[] {
   return [...events].sort((left, right) => {
     const byTime = (right.occurredAt ?? '').localeCompare(left.occurredAt ?? '');
-    return byTime || left.id.localeCompare(right.id);
+    return byTime || (right.orderKey ?? '').localeCompare(left.orderKey ?? '') || left.id.localeCompare(right.id);
   });
 }
 

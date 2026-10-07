@@ -62,7 +62,7 @@ type InterestRow = Pick<TableRow<"lead_interest_selections">,
 type CommunicationRow = Pick<TableRow<"lead_communications">,
   "id" | "lead_id" | "channel" | "outcome" | "note" | "wechat_added" |
   "visit_committed" | "interest_level" | "recorded_by" | "occurred_at" | "occurred_on"
->;
+> & { recorded_by_name: string; source_date_label: string | null; sort_key: string };
 type NextActionRow = Pick<TableRow<"lead_next_actions">,
   "id" | "lead_id" | "kind" | "due_at" | "status" | "created_by" |
   "completed_by" | "completed_at" | "created_at"
@@ -258,10 +258,9 @@ export async function getStudent360Snapshot(
       .select("id,lead_id,source_record_id,label,category,created_at")
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<InterestRow[]>()) : Promise.resolve([]),
-    leadIds.length ? readRows(supabase.from("lead_communications")
-      .select("id,lead_id,channel,outcome,note,wechat_added,visit_committed,interest_level,recorded_by,occurred_at,occurred_on")
-      .in("lead_id", leadIds).order("occurred_at", { ascending: false }).limit(READ_LIMIT)
-      .returns<CommunicationRow[]>()) : Promise.resolve([]),
+    leadIds.length ? readRows((supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<ReadResult<CommunicationRow[]>>)(
+      "school_record_contact_events", { p_student_id: studentId, p_lead_id: directLead?.id ?? leadIds[0] ?? null },
+    )) : Promise.resolve([]),
     leadIds.length ? readRows(supabase.from("lead_next_actions")
       .select("id,lead_id,kind,due_at,status,created_by,completed_by,completed_at,created_at")
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
@@ -480,9 +479,11 @@ export async function getStudent360Snapshot(
     phase: "contact",
     kind: "contact",
     occurredAt: row.occurred_at ?? row.occurred_on,
+    sourceDateLabel: row.source_date_label,
+    orderKey: row.sort_key,
     title: "",
     status: `contact.${row.outcome}`,
-    actorName: nameOf(row.recorded_by),
+    actorName: row.recorded_by_name || nameOf(row.recorded_by),
     facts: compact([
       fact("channel", row.channel, "code"),
       row.interest_level ? fact("interest", row.interest_level) : null,

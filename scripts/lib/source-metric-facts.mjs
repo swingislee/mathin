@@ -1,5 +1,5 @@
 import {historicalDate,historyFieldName} from './student-business-history.mjs';
-import {sourceContactEvidence,sourceContactFlags,sourceHasAssessmentResult,sourceNoteIsEffective} from '../../src/features/school/source-lifecycle-evidence.mjs';
+import {sourceContactEvidence,sourceContactFlags,sourceContactSummary,sourceHasAssessmentResult,sourceNoteIsEffective} from '../../src/features/school/source-lifecycle-evidence.mjs';
 
 const field=(source,name)=>source.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text?.trim()??'';
 const monthNumber=value=>{const match=/^(?:\d{4}[-年/])?\s*(1[0-2]|[1-9])\s*月?$/.exec(value);return match?Number(match[1]):null;};
@@ -41,10 +41,14 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
   if(table==='获客&私域信息登记表1.0-总'){
     facts.scope='acquisition';
     const read=name=>field(source,name),contact=sourceContactEvidence(read,phase),flags=sourceContactFlags(read);
-    facts.effectiveContact=contact.effective||phase==='confirmation'&&(flags.wechatAdded===true||flags.visitCommitted===true||/(?:已加V|已加|加V)/u.test(read('获客加V情况')));
+    const acquiredWechat=read('获客加V情况').split(/[、,，]/u).some(value=>['已加V','已加','加V','已加微信'].includes(value.trim()));
+    facts.effectiveContact=contact.effective||phase==='confirmation'&&(flags.wechatAdded===true||flags.visitCommitted===true||acquiredWechat);
     facts.phase=phase;
+    facts.contactAttempt=contact.attempted;
+    facts.communicationNote=sourceContactSummary(read,phase);
     if(phase==='project')facts.scope='activity';
     const prefix=phase==='confirmation'?'确认':phase==='followup'?'跟进':'沟通';
+    facts.communicationDate=field(source,`${prefix}日期`)||null;
     put('contacts',phase!=='project'&&contact.effective,`${prefix}月份`,phase==='confirmation'?'确认人员':phase==='followup'?'跟进人':'沟通人员',contact.evidence,{fallback:true});
     facts.months.contacts=sourceContactReportingMonth(field(source,`${prefix}月份`),field(source,`${prefix}日期`),version);
     facts.staff.contacts=field(source,phase==='confirmation'?'确认人员':phase==='followup'?'跟进人':'沟通人员');

@@ -38,6 +38,8 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
 }) {
   const m = workMessages(locale), stages = studentStageMessages(locale);
   const firstContact = query.stage === 'awaiting_first_contact';
+  const showContext = query.stage === 'awaiting_enrollment' || query.stage === 'former_student';
+  const columnCount = showContext ? 6 : 5;
   const tasks = firstContact ? ['awaiting_first_contact' as const] : COMMUNICATION_STAGES;
   const allMonths = query.stage !== 'former_student' && query.period === 'all';
   const router = useRouter();
@@ -81,7 +83,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
     memory.save({ focused: id, rank: row?.worklist.rank, groupKey: row?.worklist.groupKey, collapsed: [...groups], handled: [...processed] });
   };
   const focus = (id: string) => { if (!busy) { setFocused(id); remember(id); } };
-  const modeFor = (row: WorkRow): StudentEntryMode => row.canContact && (query.stage === 'awaiting_first_contact' || !row.studentId) ? 'contact' : 'note';
+  const modeFor = (row: WorkRow): StudentEntryMode => row.canContact ? 'contact' : 'note';
   const assigned = (result: StudentStageAssignment[]) => {
     const updated = new Map(result.map(item => [item.key, item.subject]));
     setRows(current => current.flatMap(row => {
@@ -89,7 +91,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
       const subject = updated.get(row.key);
       if (!subject || query.scope === 'mine' && !(subject.isParticipant ?? subject.ownerId === currentUserId)
         || query.scope === 'group' && !subject.inMyGroups || query.scope === 'unassigned' && subject.ownerId !== null) return [];
-      return [{ ...subject, worklist: row.worklist }];
+      return [{ ...subject, communication: subject.communication ?? row.communication, worklist: row.worklist }];
     }));
     setActive(null); setVisited(new Set());
   };
@@ -112,7 +114,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
   const groups = [...new Set(rows.map(childKey))].map(key => ({ key, rows: rows.filter(row => childKey(row) === key) }));
   const periodLabel = (period: string) => period === 'unknown' ? m.unknownPeriod : period === 'all' ? m.allPeriods : locale.startsWith('en') ? `${Number(period.replace('月',''))}` : period;
   const groupHeader = (key: string, label: string, count: number | undefined, depth: number, invisible = false) =>
-    <TableRow hidden={invisible} data-followup-group="true" className={depth === 0 ? 'bg-line/20' : 'bg-card'}><TableCell colSpan={6} className="py-1.5 font-medium">
+    <TableRow hidden={invisible} data-followup-group="true" className={depth === 0 ? 'bg-line/20' : 'bg-card'}><TableCell colSpan={columnCount} className="py-1.5 font-medium">
       <button disabled={busy} aria-expanded={!collapsed.has(key)} style={{ paddingInlineStart: depth * 18 }} className="flex w-full items-center gap-2 text-left" onClick={() => {
         const next = new Set(collapsed); if (next.has(key)) next.delete(key); else next.add(key); setCollapsed(next);
         const activeRow = rows.find(row => row.worklist.id === active?.id);
@@ -127,7 +129,9 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
     const priority = query.stage === 'awaiting_enrollment' ? ['学员情况','培养重点&核心期待&共识点','家长情况','思维测评等级','学习力测评等级']
       : query.stage === 'awaiting_assessment' ? ['跟进信息','确认信息备注','沟通情况','跟进结果','确认结果'] : [];
     const rank = (label: string) => priority.includes(label) ? priority.indexOf(label) : priority.length;
-    return [...row.worklist.context].sort((a,b) => rank(a.label)-rank(b.label)).slice(0, query.stage === 'former_student' ? 4 : 2).map(c => `${c.label}：${c.value}`).join(' · ');
+    const recent = row.communication?.latestNote ?? row.note;
+    return [...new Set([...row.worklist.context].sort((a,b) => rank(a.label)-rank(b.label))
+      .map(c => c.value.trim()).filter(value => value && !recent.includes(value)))].slice(0, query.stage === 'former_student' ? 4 : 2).join(' · ');
   };
   const returnFromSearch = () => {
     if (busy) return;
@@ -191,8 +195,8 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
       {firstContactContent ?? <DashboardTableShell><Table mobileLayout="stacked" className="table-fixed text-xs [&_th]:px-2 [&_td]:px-2">
         <TableHeader className="sticky top-0 z-20"><TableRow>
           <TableHead className="w-40">{m.name}</TableHead><TableHead className="w-28">{m.phone}</TableHead>
-          <TableHead className="w-48">{m.stage}</TableHead><TableHead>{m.contextByTask[query.stage]}</TableHead>
-          <TableHead>{m.recent}</TableHead><TableHead className="w-36 text-right">{m.work}</TableHead>
+          <TableHead className="w-36">{m.stage}</TableHead>{showContext ? <TableHead>{m.contextByTask[query.stage]}</TableHead> : null}
+          <TableHead>{m.recent}</TableHead><TableHead className="w-24 text-right">{m.work}</TableHead>
         </TableRow></TableHeader>
         <FollowupTableBody onNavigate={id => { if (busy) return false; focus(id); return true; }}>
           {groups.map((group,index) => {
@@ -207,7 +211,11 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
             {group.rows.map(row => {
               const placement = row.worklist, expanded = !hidden(row) && active?.id === placement.id;
               const nextAt = row.nextContactAt && Number.isFinite(Date.parse(row.nextContactAt)) ? row.nextContactAt : null;
-              return <FollowupRecordRow key={placement.id} rowKey={placement.id} detailsId={`worklist-${placement.id}`} title={row.name} colSpan={6}
+              const communication = row.communication;
+              const recentNote = communication?.latestNote ?? row.note;
+              const recentDate = communication?.latestAt && Number.isFinite(Date.parse(communication.latestAt))
+                ? date(communication.latestAt) : communication?.latestDateLabel;
+              return <FollowupRecordRow key={placement.id} rowKey={placement.id} detailsId={`worklist-${placement.id}`} title={row.name} colSpan={columnCount}
                 active={focused === placement.id && !hidden(row)} expanded={expanded} keepMounted={visited.has(placement.id)} pending={busy} focusOnActivate
                 onActivate={() => focus(placement.id)} onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
                 onSave={row.canWrite ? () => entryRefs.current.get(placement.id)?.save() : undefined}
@@ -221,9 +229,15 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
                   <TableCell mobileLabel={m.phone}>{row.phone || '—'}</TableCell>
                   <TableCell mobileLabel={m.stage}><div className="mb-1 text-[11px] text-muted">{stages.stages[row.stage]} · {stages.details[row.detail] ?? row.detail}</div>
                     <RecordStatusIcons row={row} locale={locale} /></TableCell>
-                  <TableCell mobileLabel={m.contextByTask[query.stage]}><p className="line-clamp-2 leading-5" title={contextText(row)}>{contextText(row) || m.noContext}</p></TableCell>
-                  <TableCell mobileLabel={m.recent}><p className="line-clamp-2 leading-5" title={row.note}>{row.note || m.noNote}</p>
-                    {nextAt ? <span className={Date.parse(nextAt) < now ? 'text-rose-deep' : 'text-muted'}>{date(nextAt)}</span> : null}</TableCell>
+                  {showContext ? <TableCell mobileLabel={m.contextByTask[query.stage]}><p className="line-clamp-2 leading-5" title={contextText(row)}>{contextText(row) || '—'}</p></TableCell> : null}
+                  <TableCell mobileLabel={m.recent}>
+                    <p className="line-clamp-2 leading-5" title={recentNote}>{recentNote || (communication?.count ? m.noContactNote : m.noNote)}</p>
+                    {communication?.count ? <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted">
+                      {recentDate ? <span>{recentDate}</span> : null}
+                      <span>{communication.latestOutcome ? m.contactOutcomes[communication.latestOutcome] : m.unknownOutcome}</span>
+                      <Student360Trigger className="font-normal text-muted" subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{m.contactCount(communication.count)}</Student360Trigger>
+                    </div> : null}
+                    {nextAt ? <span className={Date.parse(nextAt) < now ? 'text-rose-deep' : 'text-muted'}>{m.nextContact} · {date(nextAt)}</span> : null}</TableCell>
                   <TableCell mobileLabel={m.work} data-table-mobile-actions><div className="flex flex-wrap justify-end gap-1">
                     {row.canWrite ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => open(row)}>{m.recordByTask[query.stage]}</Button> : <span className="text-muted">{m.noWrite}</span>}
                     {query.stage === 'awaiting_enrollment' && row.registrationId && canAssess ? <Link className="rounded px-2 py-1 text-primary hover:underline" href={`/dashboard/assessments/${row.registrationId}`}>{m.assessment}</Link> : null}
@@ -244,7 +258,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
               </FollowupRecordRow>;
             })}
           </Fragment>; })}
-          {!rows.length ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted">{m.empty}</TableCell></TableRow> : null}
+          {!rows.length ? <TableRow><TableCell colSpan={columnCount} className="h-32 text-center text-muted">{m.empty}</TableCell></TableRow> : null}
         </FollowupTableBody>
       </Table></DashboardTableShell>}
     </DashboardPage></>;

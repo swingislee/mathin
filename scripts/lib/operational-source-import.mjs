@@ -5,7 +5,7 @@ import {historyPayloadHash} from './history-import-trial.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
 import {observeSourceFields} from './source-field-coverage.mjs';
 import {buildBaseBusinessPlan} from './base-business-fields.mjs';
-import {sourceContactEvidence,sourceContactFlags} from '../../src/features/school/source-lifecycle-evidence.mjs';
+import {sourceContactEvidence,sourceContactFlags,sourceWechatEvidence} from '../../src/features/school/source-lifecycle-evidence.mjs';
 import {normalizeSourceAssessmentBand,sourceAssessmentNote,normalizeSourceContact,sourceScore,mergeSourceNotes,sourceVisitKinds,resolveSourceStaffId,sourceEnrollmentFacts,sourceVisitParticipation,sourceSupportLabel} from '../../src/features/school/business-source-contract.ts';
 
 export const OPERATIONAL_TABLES=['leads','lead_communications','activities','activity_registrations','assessment_results','course_opportunities','course_enrollments','course_enrollment_assignments'];
@@ -78,19 +78,19 @@ export function buildOperationalSourceImport(payload,snapshot) {
         const result=field(r,resultField),mapped=normalizeSourceContact(result);
         const metricFacts=buildSourceMetricFacts(r,{phase});
         const evidence=sourceContactEvidence(name=>field(r,name),phase),flags=sourceContactFlags(name=>field(r,name));
-        const confirmedContact=evidence.effective;
         const interest=field(r,'意向分类');
         const note=mergeSourceNotes(originalNotes(r,noteFields),mapped.note,originalNotes(r,['到访与否','报名与否','当下状态']));
-        if(!confirmedContact&&!mapped.outcome&&!originalNotes(r,noteFields.filter(f=>!['跟进人','确认人员','沟通人员'].includes(f)))&&!(phase==='confirmation'&&metricFacts.effectiveContact))continue;
+        if(!evidence.attempted&&!(phase==='confirmation'&&metricFacts.effectiveContact))continue;
         const key=`operation-contact:${logical(r)}:${phase}`;
         const previous=(snapshot.lead_communications??[]).find(c=>sameSource(c.source_record_id,r)&&c.source_key?.endsWith(`:${phase}`));
         if(previous&&(snapshot.communication_record_revisions??[]).some(v=>v.event_id===previous.id)){emitted.push(['lead_communications',previous.id]);continue;}
-        if(previous?.source_metric_facts?.effectiveContact)metricFacts.effectiveContact=true;
         const contactId=previous?.id??id(key);
-        const failed=['unreachable','invalid_number'].includes(mapped.outcome);
-        rows.lead_communications.push({id:contactId,lead_id:leadId,source_record_id:r.id,source_key:previous?.source_key??key,channel:'other',outcome:mapped.outcome??(confirmedContact?'connected':null),source_metric_facts:metricFacts,
+        const failed=['unreachable','invalid_number'].includes(evidence.outcome);
+        const noteWechat=sourceWechatEvidence(field(r,noteFields[0]));
+        const phaseWechat=mapped.wechatAdded??(noteWechat==='yes'?true:noteWechat==='no'?false:null);
+        rows.lead_communications.push({id:contactId,lead_id:leadId,source_record_id:r.id,source_key:previous?.source_key??key,channel:'other',outcome:evidence.outcome,source_metric_facts:metricFacts,
           note,occurred_at:null,occurred_on:validDate(r,dateField),recorded_by:staff(r,phase==='followup'?'跟进人':phase==='project'?'沟通人员':'确认人员'),owner_id_at_contact:support(r),
-          wechat_added:failed?null:phase==='confirmation'?flags.wechatAdded??mapped.wechatAdded:mapped.wechatAdded,
+          wechat_added:failed?null:phase==='confirmation'?flags.wechatAdded??phaseWechat:phaseWechat,
           visit_committed:failed?null:phase==='confirmation'?flags.visitCommitted??mapped.visitCommitted:mapped.visitCommitted,
           interest_level:phase==='confirmation'&&['A','B','C'].includes(interest)?interest:null});
         emitted.push(['lead_communications',contactId]);

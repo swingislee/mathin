@@ -36,8 +36,8 @@ export function normalizeSourceContact(value: string): {
   const unreachable = parts.some(part => ['未通', '未接通'].includes(part));
   const declined = parts.some(part => ['下期次再联系', '暂缓', '下次联系'].includes(part));
   const invalid = parts.some(part => ['号码无效', '无效号码'].includes(part));
-  const contradictory = Number(connected) + Number(unreachable) + Number(declined) + Number(invalid) > 1;
-  const outcome = contradictory ? null : connected ? 'connected' : unreachable ? 'unreachable' : declined ? 'declined' : invalid ? 'invalid_number' : null;
+  const contradictory = Number(connected || declined) + Number(unreachable) + Number(invalid) > 1;
+  const outcome = contradictory ? null : declined ? 'declined' : connected ? 'connected' : unreachable ? 'unreachable' : invalid ? 'invalid_number' : null;
   return { outcome, wechatAdded: parts.includes('加V') ? true : null, visitCommitted: parts.includes('诺访') ? true : null,
     note: value.trim() && (!outcome || parts.some(part => !['加V', '诺访', '已沟通', '已联系', '未通', '未接通', '下期次再联系', '暂缓', '下次联系', '号码无效', '无效号码'].includes(part))) ? `原联系结果：${value.trim()}` : '' };
 }

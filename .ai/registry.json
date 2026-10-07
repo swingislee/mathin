@@ -3,6 +3,42 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "COMMUNICATION-RECORDS-20261007",
+      "title": "统一逐次沟通与精简摘要，修正来源状态",
+      "agent": "codex",
+      "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-RECORDS-20261007.md",
+      "writePaths": [
+        ".ai/tasks/COMMUNICATION-RECORDS-20261007.md",
+        ".tmp/communication-records-20261007/",
+        "src/features/school/source-worklist/",
+        "src/features/school/record-status/",
+        "src/features/school/source-lifecycle-evidence.mjs",
+        "scripts/lib/source-status-evidence.mjs",
+        "scripts/lib/operational-source-import.mjs",
+        "scripts/lib/source-metric-facts.mjs",
+        "supabase/migrations/20261007030000_communication_record_facts.sql",
+        "src/features/school/business-source-contract.ts",
+        "src/features/school/student-360.ts",
+        "src/features/school/student-360-contract.ts",
+        "src/features/school/Student360Sheet.tsx",
+        "supabase/migrations/20261007031000_communication_summary_scope.sql",
+        "supabase/migrations/20261007032000_communication_summary_batch.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/student-stage-contract.ts",
+        "src/features/school/student-stage-data.ts",
+        "src/features/school/StudentStageEntry.tsx",
+        "docs/workflows/school-operations.md"
+      ],
+      "checkpoint": null,
+      "next": "开发端已修正微信与有效联系判断，统一逐次记录并精简列表；441人回到待首联，默认20条读取和权限检查通过，待实际验收。已停课大分页性能另行处理，生产未改动。"
+    },
+    {
       "id": "BASE-CLASS-ROSTER-20261007",
       "title": "按最新 Base 补齐开发端秋季班级名册",
       "agent": "codex",

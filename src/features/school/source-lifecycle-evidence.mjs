@@ -1,12 +1,29 @@
 import { normalizeSourceAssessmentBand, normalizeSourceBoolean, normalizeSourceContact, sourceScore } from './business-source-contract.ts';
 
+const emptyContact = /^(?:无|暂无结果|暂无|待补|待联系|待沟通|待确认|未联系|未沟通|不详|未知|[-—/？?])+$/u;
+const failedContact = /未接通|未接听|无人接听|无人接|未通|没接通|没接|不接|未接|空号|停机|关机|号码无效|无效号码|忙线|占线|拒接|打不通|无法接通|挂断|挂掉|秒挂|无人说话|无人应答/gu;
+
+/** 通话备注中的“加V”是已发生结果；计划、申请中和未通过仍保留各自含义。 */
+export function sourceWechatEvidence(value) {
+  const text = value.trim();
+  const notAccepted = /(?:微信|加[微Vv]).{0,6}(?:没(?:有)?|未)通过/u.test(text);
+  const negative = notAccepted || /(?:未|没(?:有)?|尚未|不愿|拒绝)(?:能|成功)?加(?:上|到|了)?(?:家长|妈妈|爸爸)?(?:微信|[Vv微])|加不[上到](?:微信|[Vv微])|(?:微信.{0,4}(?:拉黑|删除)|(?:拉黑|删除).{0,4}微信)/u.test(text);
+  const pending = /(?:准备|计划|打算|想|希望|可以|尝试|试着|待|需要|让|要求).{0,6}加(?:微信|[Vv微])|加(?:微信|[Vv微]).{0,6}(?:试试|申请|待通过|等通过)|(?:已发|发送).{0,5}(?:微信|好友)申请/u.test(text);
+  const question = /加(?:了|上)?(?:微信|[Vv微]).{0,3}[吗么？?]/u.test(text);
+  const positive = /(?:已(?:经)?加(?:上|好|了)?|互加(?:了)?)(?:家长|妈妈|爸爸)?(?:微信|[Vv微])|微信(?:已)?通过|(?:通过|在)微信(?:上)?(?:沟通|联系|交流)|(?:^|[，,。；;\n])\s*加(?:了|上|好)?(?:微信|[Vv微])(?:了|成功)?(?=[\s，,。；;:：!！]|$)/u.test(text);
+  if (negative) return positive && !notAccepted && !pending && !question ? 'conflicting' : 'no';
+  if (positive && !pending && !question) return 'yes';
+  return /加.{0,4}(?:微信|[Vv微])/u.test(text) ? 'review' : null;
+}
+
 /** 只有失败电话的备注仍属待首联；日期、人员和标点不构成一次成功沟通。 */
 export function sourceNoteIsEffective(value) {
   const text = value.trim();
-  if (!text || /^(?:无|暂无|待补|待联系|待沟通|待确认|未联系|未沟通|不详|未知|[-—/？?])+$/u.test(text)) return false;
+  if (!text || emptyContact.test(text)) return false;
   const remainder = text.replace(/(?:\d{2,4}[-/.年])?\d{1,2}[-/.月]\d{1,2}日?/gu, '')
-    .replace(/(?:多次|一直|再次|电话|拨打|联系|呼叫|家长|妈妈|爸爸|均|仍|都|又|了|暂时|今天|昨天|明天|目前|截至|第[一二三四五六七八九十\d]+次)/gu, '')
-    .replace(/未接通|未接听|无人接听|无人接|未通|没接|不接|未接|空号|停机|关机|号码无效|无效号码|忙线|占线|拒接|稍后再打|下次再打|再联系|再打/gu, '')
+    .replace(failedContact, '')
+    .replace(/稍后再打|下次再打|再联系|再打|待回访|待联系|待沟通|暂未联系|尚未联系|未联系|未沟通|暂无结果|待确认|微信申请已发|等待通过|待通过/gu, '')
+    .replace(/(?:第[一二三四五六七八九十\d]+次|多次|一直|再次|电话|拨打|联系|呼叫|回访|家长|妈妈|爸爸|奶奶|爷爷|直接|均|仍|都|又|了|暂时|今天|昨天|明天|目前|截至|上午|下午|晚上|跟|给|与|向|和|对)/gu, '')
     .replace(/[\s\d，,。.;；:：、\/\-—()（）]+/gu, '');
   return remainder.length > 0;
 }
@@ -18,23 +35,33 @@ export function sourceContactFlags(read) {
   };
 }
 
-/** 首次确认、后续跟进、项目沟通各自保留结果，跨阶段证据仅用于当前标签。 */
+/** 首次确认、后续跟进、项目沟通各自保留结果；月份与经手人不是成功联系证据。 */
 export function sourceContactEvidence(read, phase) {
   const resultField = phase === 'confirmation' ? '确认结果' : phase === 'followup' ? '跟进结果' : '真题拼团沟通';
   const noteField = phase === 'confirmation' ? '确认信息备注' : phase === 'followup' ? '跟进信息' : '沟通情况';
   const result = normalizeSourceContact(read(resultField));
-  const note = sourceNoteIsEffective(read(noteField));
+  const noteText = read(noteField).trim();
+  const note = sourceNoteIsEffective(noteText);
   const negative = ['unreachable', 'invalid_number'].includes(result.outcome ?? '')
     || /未通|未接通|未接听|无人接听|空号|停机|无效号码|号码无效/u.test(read(resultField));
-  const context = phase === 'confirmation' && Boolean((read('确认月份') || read('确认日期')) && read('确认人员'));
   const project = phase === 'project' && /^(?:是|已|已沟通)$/u.test(read(resultField).trim());
-  const onlyFailedNote = Boolean(read(noteField).trim()) && !note;
-  const inferred = note || project || context && !negative && !onlyFailedNote;
-  const effective = result.outcome === 'connected' || result.outcome === 'declined' || inferred;
-  return { outcome: result.outcome ?? (inferred ? 'connected' : null), effective,
-    evidence: [result.outcome && effective ? resultField : '', note ? noteField : '', project ? resultField : '',
-      context && !negative && !onlyFailedNote ? '确认月份／确认日期＋确认人员' : ''].filter(Boolean),
+  const inferred = !negative && (note || project);
+  const failedNote = !note && /未接通|未接听|无人接|未通|没接|不接|未接|忙线|占线|拒接|打不通|无法接通|停机|关机|挂断|挂掉|秒挂|无人说话|无人应答/u.test(noteText);
+  const invalidNote = !note && /空号|号码无效|无效号码/u.test(noteText);
+  const outcome = result.outcome ?? (inferred ? 'connected' : invalidNote ? 'invalid_number' : failedNote ? 'unreachable' : null);
+  const effective = outcome === 'connected' || outcome === 'declined';
+  const attempted = Boolean(result.outcome || project || noteText && !emptyContact.test(noteText));
+  return { outcome, effective, attempted,
+    evidence: [result.outcome && effective ? resultField : '', note && !negative ? noteField : '', project ? resultField : ''].filter(Boolean),
     conflicting: negative && note };
+}
+
+/** 列表只读沟通内容，原字段、经手人和占位结果留在来源记录中。 */
+export function sourceContactSummary(read, phase) {
+  const noteField = phase === 'confirmation' ? '确认信息备注' : phase === 'followup' ? '跟进信息' : '沟通情况';
+  const resultField = phase === 'confirmation' ? '确认结果' : phase === 'followup' ? '跟进结果' : '真题拼团沟通';
+  const values = [read(noteField).trim(), read(resultField).trim()].filter(value => value && !emptyContact.test(value));
+  return [...new Set(values)].filter((value,index) => !values.some((other,otherIndex) => otherIndex < index && other.includes(value))).join('；');
 }
 
 export function sourceHasAssessmentResult(read) {

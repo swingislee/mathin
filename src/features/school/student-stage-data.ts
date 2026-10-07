@@ -8,6 +8,11 @@ import { statusEvidenceSchema } from './record-status/contract';
 
 export const studentStageRowSchema = z.object({
   statusEvidence: z.array(statusEvidenceSchema).optional(),
+  communication: z.object({
+    count: z.number().int().nonnegative(), effectiveCount: z.number().int().nonnegative(), latestNote: z.string(),
+    latestOutcome: z.enum(['connected','unreachable','declined','invalid_number']).nullable(),
+    latestAt: z.string().nullable(), latestDateLabel: z.string().nullable(), latestActor: z.string(),
+  }).optional(),
   key: z.string(), studentId: z.string().nullable(), leadId: z.string().nullable(), name: z.string(), phone: z.string(),
   grade: z.number().nullable(), gradeText: z.string(), ownerId: z.string().nullable(), ownerName: z.string(),
   teacherId: z.string().nullable().optional(), teacherName: z.string().optional(),

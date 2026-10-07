@@ -24,6 +24,11 @@ export type StudentStageAssignee = { userId: string; displayName: string };
 
 export interface StudentStageRow {
   statusEvidence?: StatusEvidence[];
+  communication?: {
+    count: number; effectiveCount: number; latestNote: string;
+    latestOutcome: 'connected' | 'unreachable' | 'declined' | 'invalid_number' | null;
+    latestAt: string | null; latestDateLabel: string | null; latestActor: string;
+  };
   key: string; studentId: string | null; leadId: string | null;
   name: string; phone: string; grade: number | null; gradeText: string;
   ownerId: string | null; ownerName: string; stage: StudentStage; detail: string;
