@@ -5,8 +5,8 @@ import type { StatusFacet } from './contract';
 
 const FACETS: Record<StudentStageRow['stage'], readonly StatusFacet[]> = {
   awaiting_first_contact: ['wechat','interest','visit'],
-  awaiting_assessment: ['interest','visit'],
-  awaiting_enrollment: ['assessment','interest'],
+  awaiting_assessment: ['wechat','interest','visit'],
+  awaiting_enrollment: ['assessment','wechat','interest'],
   awaiting_renewal: [],
   former_student: [],
 };
