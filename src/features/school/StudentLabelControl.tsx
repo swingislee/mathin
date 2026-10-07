@@ -56,7 +56,7 @@ export function StudentLabelControl({ state, studentName, disabled = false, clas
     {current.canEdit ? <Popover open={open} onOpenChange={value => { if (!saving.current) { changeOpen(value); setError(null); } }}>
       <PopoverTrigger asChild><button type="button" disabled={disabled || pending}
         aria-label={m.edit(studentName, current.label)} title={m.edit(studentName, current.label)} aria-busy={pending}
-        className="flex size-6 items-start justify-end rounded-sm p-0.5 focus-visible:outline-2 focus-visible:outline-crater disabled:opacity-50">
+        className="flex h-6 w-3 items-start justify-end rounded-sm p-0.5 focus-visible:outline-2 focus-visible:outline-crater disabled:opacity-50">
         {badge}
       </button></PopoverTrigger>
       <PopoverContent data-placement-action align="end" sideOffset={2} className="w-auto max-w-72 space-y-2 p-3" aria-label={`${studentName} · ${m.title}`}>

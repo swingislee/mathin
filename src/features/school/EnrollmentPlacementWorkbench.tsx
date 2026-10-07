@@ -406,11 +406,12 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
         event.preventDefault(); event.stopPropagation();
         if (selected && target) move(selected, target);
       }}
-      className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", hasLabelControl && "pr-4", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
+      className={cn("group relative flex min-h-9 min-w-0 select-none items-center justify-center px-1", movable && "touch-pan-y lg:touch-none cursor-grab active:cursor-grabbing", selectedKey === student.key && "ring-2 ring-inset ring-crater", student.studentId === focusStudentId && "outline-2 -outline-offset-2 outline-leaf-deep", student.placement && !matches(student.placement) && "opacity-35")}
       style={{ background: placementStudentBackground(health, renewed) }}
     >
+      <span className={cn("relative inline-flex min-w-0 max-w-full items-center", hasLabelControl && "pr-3")}>
       <Tooltip open={!dragging&&!labelEditorId&&tooltipKey===student.key} onOpenChange={open=>setTooltipKey(current=>open&&!dragging&&!labelEditorId?student.key:current===student.key?null:current)}>
-      <TooltipTrigger asChild><span className="flex min-w-0 flex-1 self-stretch items-center">
+      <TooltipTrigger asChild><span className="flex min-w-0 items-center">
       {student.sourceEnrollment?<button type="button" onClick={()=>setSourceEnrollment(student.sourceEnrollment!)} className="w-full truncate py-1 text-xs hover:underline">{student.name}</button>:student.placement?.canViewDetails===false?<span className="w-full truncate py-1 text-xs">{student.name}</span>:<Student360Trigger subject={{ studentId: student.studentId, leadId: null }} fallback={{ name: student.name, phone: student.phone, grade: student.grade || null }} className={cn("flex w-full min-w-0 flex-col items-center justify-center py-1 text-xs font-normal",movable&&"pointer-events-none")}>
         <span className="max-w-full truncate">{student.name}</span>
         {student.status && student.status !== "active" ? <span className="whitespace-nowrap text-[9px] leading-3 text-muted">{t(`status_${student.status}`)}</span> : null}
@@ -421,7 +422,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       {health ? <p>{t(`health_${health.tone}`)}</p> : null}{signals.filter((signal) => signal.level === "observed" || signal.level === "attention").map((signal) => <p key={signal.key}>{healthT(signal.key)} · {healthT(signal.level)}{signal.total ? ` (${signal.count ?? 0}/${signal.total})` : ""}</p>)}
       <p>{student.placement ? t("studentInteraction") : recordM.viewStudent}</p>
       </TooltipContent></Tooltip>
-      <StudentLabelControl state={labelState} studentName={student.name} disabled={pending || hasSessionDraft || Boolean(placementChange)} onOpenChange={onLabelOpenChange} />
+      <StudentLabelControl state={labelState} studentName={student.name} disabled={pending || hasSessionDraft || Boolean(placementChange)} className="top-1" onOpenChange={onLabelOpenChange} />
+      </span>
       {movable ? <button type="button" data-placement-select aria-label={t("selectStudent", { name: student.name })} aria-pressed={selectedKey === student.key} className={cn("absolute right-0 flex w-3 items-center justify-center bg-card/70 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-crater", hasLabelControl ? "bottom-0 h-3" : "top-0 h-full")} onClick={() => setSelectedKey((value) => value === student.key ? null : student.key)}><GripVertical className="size-3" /></button> : null}
       {temporary.length>0&&student.placement?<button type="button" data-placement-action aria-label={locale==='en'?`${student.name} temporary transfers`:`${student.name}的临时调班`} className="absolute bottom-0 left-0 rounded-sm bg-moon px-0.5 text-[9px] text-crater" onClick={()=>setPlacementChange({student:student.placement!})}>{locale==='en'?'T':'临'}</button>:null}
     </span>;

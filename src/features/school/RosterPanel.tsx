@@ -162,11 +162,11 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
             return <li key={row.studentId} className="min-w-0 py-2.5 text-sm">
               <div className="flex flex-wrap items-center gap-3">
               <div className="min-w-0 flex-1">
-                <span className={cn("relative inline-flex max-w-full", (row.labelState?.label || row.labelState?.canEdit) && "pr-5")}>
+                <span className={cn("relative inline-flex max-w-full", (row.labelState?.label || row.labelState?.canEdit) && "pr-3")}>
                   <Link href={withReturnTo(`/dashboard/students/${row.studentId}`, returnTo)} className="min-w-0 truncate hover:text-crater hover:underline">
                     {row.studentName}
                   </Link>
-                  <StudentLabelControl state={row.labelState} studentName={row.studentName} disabled={pending} className="-top-1" />
+                  <StudentLabelControl state={row.labelState} studentName={row.studentName} disabled={pending} />
                 </span>
               </div>
               {!row.hasAccount && <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("noAccount")}</span>}
