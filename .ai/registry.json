@@ -445,6 +445,27 @@
       ],
       "checkpoint": null,
       "next": "本批完成：16 处旧构建产物约 3.39 GiB 已移除；工具扫描排除范围补齐；23 个本地依赖包缺失已修复。源码、工作区、数据、生产备份与此前恢复材料保留，后续从具体业务任务继续。"
+    },
+    {
+      "id": "COMMUNICATION-TIMEOUT-20261007",
+      "title": "沟通页读取超时修复",
+      "agent": "codex",
+      "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-TIMEOUT-20261007.md",
+      "writePaths": [
+        ".ai/tasks/COMMUNICATION-TIMEOUT-20261007.md",
+        ".tmp/communication-timeout-20261007/",
+        "supabase/migrations/20261007041000_communication_read_performance.sql",
+        ".ai/tasks/COMMUNICATION-RECORDS-20261007.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "查询超时已修复并应用开发端；同快照四阶段完整结果一致，实际 20/50/100 条分页及页面读取通过，待实际使用确认。生产未改动。"
     }
   ]
 }
