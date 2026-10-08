@@ -3,6 +3,29 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "OPS-RELEASE-V040-20261008",
+      "title": "v0.4.0 主线生产发布与团队版本说明",
+      "agent": "codex",
+      "threadId": "01a0b885-a6ac-7e23-94b4-dab4753acd35",
+      "status": "in_progress",
+      "checkout": "worktree",
+      "branch": "codex/release-v040-codex",
+      "card": ".ai/tasks/OPS-RELEASE-V040-20261008.md",
+      "writePaths": [
+        ".tmp/release-v040-20261008/",
+        ".ai/tasks/OPS-RELEASE-V040-20261008.md",
+        "docs/releases/v0.4.0.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "CHANGELOG.md",
+        "package.json",
+        "docs/current.md"
+      ],
+      "checkpoint": null,
+      "next": "从已提交主线构建，识别生产迁移并发布；其他任务未提交修改保持原状。"
+    },
+    {
       "id": "COMMUNICATION-RECORDS-20261007",
       "title": "统一逐次沟通与精简摘要，修正来源状态",
       "agent": "codex",
