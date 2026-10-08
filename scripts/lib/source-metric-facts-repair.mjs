@@ -3,6 +3,7 @@ import {createImportUuid} from './import-uuid.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
 import {historicalDate,historyFieldName} from './student-business-history.mjs';
 import {resolveSourceStaffId} from '../../src/features/school/business-source-contract.ts';
+import {sourceContactSummary,sourceContactEvidence} from '../../src/features/school/source-lifecycle-evidence.mjs';
 
 export const SOURCE_METRIC_TABLES=['activity_registrations','course_enrollments','lead_communications'];
 const field=(source,name)=>source.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text?.trim()??'';
@@ -14,10 +15,12 @@ export function buildSourceMetricFactsRepair(snapshot){
   const patch=(table,row,changes)=>{if(Object.entries(changes).some(([key,value])=>!isDeepStrictEqual(row[key]??null,value)))patches.push({table,id:row.id,before:row,changes});};
   for(const table of SOURCE_METRIC_TABLES){for(const row of snapshot[table]){
     if(row.source_metric_facts?.supersededProjection)continue;
+    if(row.history_revision>0||(snapshot.communication_record_revisions??[]).some(r=>r.event_id===row.id)
+      ||table==='activity_registrations'&&(row.assessment_started_at||row.assessment_completed_at||(snapshot.assessment_reports??[]).some(r=>r.registration_id===row.id)))continue;
     const source=sourceById.get(row.source_record_id);if(!source)continue;
     const phase=table==='lead_communications'&&row.source_key?.endsWith(':followup')?'followup':row.source_key?.endsWith(':project')?'project':'confirmation';
     const facts=buildSourceMetricFacts(source,{phase});
-    if(row.source_metric_facts?.effectiveContact)facts.effectiveContact=true;
+    if(facts?.contactReview)continue;
     const changes={source_metric_facts:facts};
     if(table==='lead_communications'&&!row.outcome&&facts?.confirmed.contacts)changes.outcome='connected';
     patch(table,row,changes);
@@ -31,7 +34,7 @@ export function buildSourceMetricFactsRepair(snapshot){
     if(!previous||buildSourceMetricFacts(source).sourceVersion>buildSourceMetricFacts(previous).sourceVersion)latest.set(canonical(source),source);
   }
   for(const source of latest.values()){
-    const facts=buildSourceMetricFacts(source);if(facts?.scope!=='acquisition'||!facts.confirmed.contacts)continue;
+    const facts=buildSourceMetricFacts(source);if(facts?.scope!=='acquisition'||!facts.confirmed.contacts||facts.contactReview)continue;
     if(!source.record_data.names?.length){excluded.push({sourceId:source.id,reason:'unnamed_source_not_imported'});continue;}
     const key=`operation-contact:${source.id}:confirmation`;if(originalByKey.has(key))continue;
     if(snapshot.lead_communications.some(c=>c.source_key?.endsWith(':confirmation')&&sourceById.has(c.source_record_id)&&canonical(sourceById.get(c.source_record_id))===canonical(source)))continue;
@@ -44,7 +47,8 @@ export function buildSourceMetricFactsRepair(snapshot){
     const distinct=[...new Set(candidates)];
     if(distinct.length!==1){unresolved.push({sourceId:source.id,reason:distinct.length?'multiple_existing_leads':'missing_existing_lead'});continue;}
     inserts.push({table:'lead_communications',row:{id:id(key),lead_id:distinct[0],source_record_id:source.id,source_key:key,
-      channel:'other',outcome:'connected',note:`来源业务确认：${facts.evidence.join('、')}。`,occurred_at:null,
+      channel:'other',outcome:sourceContactEvidence(name=>field(source,name),'confirmation').outcome,
+      note:sourceContactSummary(name=>field(source,name),'confirmation'),occurred_at:null,
       occurred_on:historicalDate(field(source,'确认日期')),
       recorded_by:resolveSourceStaffId(field(source,'确认人员'),snapshot.profiles),owner_id_at_contact:null,
       wechat_added:null,visit_committed:null,interest_level:null,source_metric_facts:facts}});

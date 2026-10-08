@@ -16,16 +16,16 @@ describe('来源确认标签',()=>{
     expect(plan.patches).toHaveLength(0);expect(plan.inserts).toHaveLength(0);
   });
   it('后续导入自动写入确认标签，袋鼠保留活动标签',()=>{
-    const contact=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲'});
+    const contact=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲','确认结果':'已沟通'});
     const kangaroo=source('袋鼠报名与备考信息表',{'报名日期':'2026-03-12'},{id:'kangaroo',source_record_id:'kangaroo'});
     const plan=buildOperationalSourceImport({records:[contact,kangaroo],payloadHash:'test',batchKey:'test'},{});
     expect(plan.rows.lead_communications).toHaveLength(1);
     expect(plan.rows.lead_communications[0]).toMatchObject({outcome:'connected',occurred_on:null,source_metric_facts:{confirmed:{contacts:true},months:{contacts:'2026-09'}}});
     expect(plan.rows.activity_registrations[0]).toMatchObject({source_metric_facts:{scope:'activity',confirmed:{activityRegistrations:true}}});
   });
-  it('按已确认的月份与人员补有效沟通，保留明确失败结果和日期精度',()=>{
+  it('月份与人员不补造有效沟通，保留明确结果和日期精度',()=>{
     const positive=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲'});
-    expect(buildSourceMetricFacts(positive)).toMatchObject({confirmed:{contacts:true},months:{contacts:'2026-09'},staff:{contacts:'学服甲'}});
+    expect(buildSourceMetricFacts(positive)).toMatchObject({confirmed:{contacts:false},months:{contacts:'2026-09'},staff:{contacts:'学服甲'}});
     expect(readSourceMetricFacts(buildSourceMetricFacts(positive,{phase:'followup'}))!.confirmed.contacts).toBe(false);
     for(const result of ['未接通','空号'])expect(readSourceMetricFacts(buildSourceMetricFacts(source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲','确认结果':result})))!.confirmed.contacts).toBe(false);
     expect(sourceReportingMonth('12月','2026-09-07')).toBe('2025-12');
@@ -51,25 +51,32 @@ describe('来源确认标签',()=>{
     expect(buildSourceMetricFacts(original)).toMatchObject({confirmed:{contacts:true},months:{contacts:'2026-09'},staff:{contacts:''}});
     const plan=buildSourceMetricFactsRepair({history_import_records:[original],leads:[{id:'lead'}],profiles:[],activity_registrations:[],course_enrollments:[],lead_communications:[]});
     expect(plan.inserts[0].row).toMatchObject({occurred_on:null,occurred_at:null,source_metric_facts:{months:{contacts:'2026-09'}}});
-    for(const result of ['未通','暂无结果',''])expect(readSourceMetricFacts(buildSourceMetricFacts(source('获客&私域信息登记表1.0-总',{'确认日期':'8.21','确认人员':'学服乙','确认结果':result})))!.confirmed.contacts).toBe(result!=='未通');
+    for(const result of ['未通','暂无结果',''])expect(readSourceMetricFacts(buildSourceMetricFacts(source('获客&私域信息登记表1.0-总',{'确认日期':'8.21','确认人员':'学服乙','确认结果':result})))!.confirmed.contacts).toBe(false);
     expect(sourceContactReportingMonth('','8.21','2026-09-07')).toBe('2026-08');
     expect(sourceContactReportingMonth('','2025/9/5','2026-09-07')).toBe('2025-09');
     expect(sourceContactReportingMonth('8月','9.5','2026-09-07')).toBe('2026-08');
     for(const date of ['2.30','13.1','202509',''])expect(sourceContactReportingMonth('',date,'2026-09-07')).toBeNull();
   });
-  it('到访确认作为沟通依据保存在原登记，不另造通话记录',()=>{
+  it('到访确认元信息保存在原登记，不另造通话或成功联系',()=>{
     const original=source('到访数据与信息表1.0-总',{'确认月份':'9月','确认日期':'2026-09-03','学服老师':'学服乙'},{lead_id:'lead'});
     const plan=buildSourceMetricFactsRepair({history_import_records:[original],leads:[{id:'lead'}],profiles:[],activity_registrations:[{id:'registration',source_record_id:'source'}],course_enrollments:[],lead_communications:[]});
     expect(plan.inserts).toEqual([]);expect(plan.unresolved).toEqual([]);
-    expect(plan.patches[0].changes.source_metric_facts).toMatchObject({confirmed:{contacts:true},months:{contacts:'2026-09'},staff:{contacts:'学服乙'}});
+    expect(plan.patches[0].changes.source_metric_facts).toMatchObject({confirmed:{contacts:false,invitations:false},months:{contacts:'2026-09'},staff:{contacts:'学服乙'}});
   });
   it('旧沟通补标、缺失确认补建后重跑无变更',()=>{
-    const original=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲'},{lead_id:'lead'});
+    const original=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲','确认结果':'已沟通'},{lead_id:'lead'});
     const snapshot={history_import_records:[original],leads:[{id:'lead'}],profiles:[],activity_registrations:[],course_enrollments:[],lead_communications:[]};
     const plan=buildSourceMetricFactsRepair(snapshot);
     expect(plan.unresolved).toEqual([]);expect(plan.inserts).toHaveLength(1);
     expect(plan.inserts[0].row).toMatchObject({lead_id:'lead',outcome:'connected',occurred_on:null,occurred_at:null});
     const next=buildSourceMetricFactsRepair({...snapshot,lead_communications:plan.inserts.map((r:{row:unknown})=>r.row)});
     expect(next.patches).toEqual([]);expect(next.inserts).toEqual([]);
+  });
+  it('补标签保留老师修订，元信息不补造缺失通话',()=>{
+    const original=source('获客&私域信息登记表1.0-总',{'确认月份':'9月','确认人员':'学服甲'},{lead_id:'lead'});
+    const base={history_import_records:[original],leads:[{id:'lead'}],profiles:[],activity_registrations:[],course_enrollments:[],lead_communications:[]};
+    expect(buildSourceMetricFactsRepair(base).inserts).toEqual([]);
+    const revised={id:'contact',source_record_id:'source',source_key:'base-contact:table:row:confirmation',source_metric_facts:{effectiveContact:true}};
+    expect(buildSourceMetricFactsRepair({...base,lead_communications:[revised],communication_record_revisions:[{event_id:'contact'}]}).patches).toEqual([]);
   });
 });

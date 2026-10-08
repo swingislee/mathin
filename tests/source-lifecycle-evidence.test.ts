@@ -11,7 +11,7 @@ describe('来源阶段证据', () => {
     for(const value of ['9.5未接通','电话多次无人接听','今天未接，明天再打','未通','待联系']) {
       expect(sourceNoteIsEffective(value)).toBe(false);
     }
-    expect(sourceContactEvidence(read({确认月份:'9月',确认人员:'学服甲'}),'confirmation').effective).toBe(true);
+    expect(sourceContactEvidence(read({确认月份:'9月',确认人员:'学服甲'}),'confirmation').effective).toBe(false);
     expect(sourceContactEvidence(read({确认月份:'9月',确认人员:'学服甲',确认信息备注:'电话多次未接通'}),'confirmation').effective).toBe(false);
     expect(sourceContactEvidence(read({确认信息备注:'想周末来体验'}),'confirmation').effective).toBe(true);
   });

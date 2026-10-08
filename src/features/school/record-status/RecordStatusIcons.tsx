@@ -9,6 +9,7 @@ import { LEARNING_CHECK_STATUS_STYLE } from '../session-learning-visual';
 import type { StudentStageRow } from '../student-stage-contract';
 import { resolveStatusEvidence, type StatusFacet } from './contract';
 import { recordStageFocus, type ProgressGlyph } from './stage-focus';
+import { SourceCommunicationFacts } from './SourceCommunicationFacts';
 
 const PROGRESS_ICONS = { calendar: CalendarClock, calendarCheck: CalendarCheck, calendarX: CalendarX, teacher: GraduationCap, parent: UserRound,
   activity: Ticket, assessment: ClipboardList, message: MessageCircle, hourglass: Hourglass, payment: Wallet, check: Check, pause: CirclePause, class: UsersRound, book: BookOpen } satisfies Record<ProgressGlyph, typeof CalendarClock>;
@@ -37,8 +38,8 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
   const values: Record<string,string> = en ? { yes:'Added', no:'Not added', unknown:'Not recorded', conflicting:'Needs review', complete:'Completed', promised:'Promised', arrived:'Visited', not_promised:'Not promised' }
     : { yes:'已加微信', no:'未加微信', unknown:'未记录', conflicting:'有矛盾，待核对', complete:'已完成', promised:'已诺访', arrived:'已到访', not_promised:'未诺访' };
   Object.assign(values, { x_plus:'X+', below_a:'X+', g_plus:'G+', a:'A', a_plus:'A+', s:'S', c:'C' });
-  const interestValues: Record<string,string> = en ? { A: 'High (A)', B: 'Medium (B)', C: 'Low (C)' }
-    : { A: '高（A）', B: '中（B）', C: '低（C）' };
+  const interestValues: Record<string,string> = en ? { A: 'High (A)', B: 'Medium (B)', C: 'Low (C)', interested: 'Interested; level not recorded' }
+    : { A: '高（A）', B: '中（B）', C: '低（C）', interested: '有意向，未分级' };
   const unknownLabels: Record<StatusFacet,string> = en
     ? { wechat: 'To confirm', interest: 'To ask about', visit: 'To confirm', assessment: 'Details to complete' }
     : { wechat: '待确认', interest: '待了解', visit: '待确认', assessment: '资料待补齐' };
@@ -60,7 +61,6 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
     if (row.stage === 'awaiting_first_contact' && facet === 'visit' && !status.review && !['promised','arrived'].includes(status.value)) return [];
     return [{ facet, status }];
   });
-  if (!progress && !visible.length) return null;
   const ProgressIcon = progress ? PROGRESS_ICONS[progress.glyph] : null;
   return <div className="flex items-center gap-1" data-record-status-icons onClick={event => event.stopPropagation()}>
     {progress && ProgressIcon ? <Popover><PopoverTrigger asChild><button type="button" aria-label={progress.label} title={progress.label} data-stage-progress={progress.key}
@@ -90,5 +90,6 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
         <div className="mt-3 border-t border-line pt-2"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{en ? 'Open this student’s records' : '查看此人的全部记录'}</Student360Trigger></div>
       </PopoverContent></Popover>;
     })}
+    <SourceCommunicationFacts facts={row.statusEvidence??[]} locale={locale} />
   </div>;
 }

@@ -581,6 +581,38 @@
       ],
       "checkpoint": null,
       "next": "测评页开发服务已恢复，阶段小标签和中间状态已可操作；定向静态与页面读取通过，待实际使用确认。生产未改动。"
+    },
+    {
+      "id": "BASE-PRODUCTION-RECONCILE-20261008",
+      "title": "BASE 与生产历史业务深度整理",
+      "agent": "codex",
+      "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/BASE-PRODUCTION-RECONCILE-20261008.md",
+      "writePaths": [
+        ".ai/tasks/BASE-PRODUCTION-RECONCILE-20261008.md",
+        ".tmp/base-production-reconcile-20261008/",
+        "scripts/lib/source-status-evidence.mjs",
+        "scripts/lib/source-incremental-merge.mjs",
+        "src/features/school/source-lifecycle-evidence.mjs",
+        "scripts/lib/source-metric-facts.mjs",
+        "src/features/school/record-status/",
+        "tests/source-lifecycle-evidence.test.ts",
+        "supabase/migrations/20261008013000_source_evidence_current.sql",
+        "scripts/lib/operational-source-import.mjs",
+        "tests/source-semantic-evidence.test.ts",
+        "scripts/lib/source-metric-facts-repair.mjs",
+        "tests/source-metric-facts.test.ts",
+        "tests/operational-source-import.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/workflows/school-operations.md"
+      ],
+      "checkpoint": null,
+      "next": "来源逐项核对完成；语义标签与开发迁移可验收，生产更新清单和恢复材料准备中，尚未写入生产。"
     }
   ]
 }

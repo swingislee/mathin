@@ -1,5 +1,5 @@
 import {historicalDate,historyFieldName} from './student-business-history.mjs';
-import {sourceContactEvidence,sourceContactFlags,sourceContactSummary,sourceHasAssessmentResult,sourceNoteIsEffective} from '../../src/features/school/source-lifecycle-evidence.mjs';
+import {sourceContactEvidence,sourceContactFlags,sourceContactSummary,sourceHasAssessmentResult,sourceNoteIsEffective,sourceWechatEvidence} from '../../src/features/school/source-lifecycle-evidence.mjs';
 
 const field=(source,name)=>source.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text?.trim()??'';
 const monthNumber=value=>{const match=/^(?:\d{4}[-年/])?\s*(1[0-2]|[1-9])\s*月?$/.exec(value);return match?Number(match[1]):null;};
@@ -41,11 +41,14 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
   if(table==='获客&私域信息登记表1.0-总'){
     facts.scope='acquisition';
     const read=name=>field(source,name),contact=sourceContactEvidence(read,phase),flags=sourceContactFlags(read);
-    const acquiredWechat=read('获客加V情况').split(/[、,，]/u).some(value=>['已加V','已加','加V','已加微信'].includes(value.trim()));
+    const acquiredWechat=sourceWechatEvidence(read('获客加V情况'))==='yes';
     facts.effectiveContact=contact.effective||phase==='confirmation'&&(flags.wechatAdded===true||flags.visitCommitted===true||acquiredWechat);
     facts.phase=phase;
     facts.contactAttempt=contact.attempted;
     facts.communicationNote=sourceContactSummary(read,phase);
+    facts.semanticVersion=2;
+    facts.contactConflict=contact.conflicting;
+    facts.contactReview=contact.review;
     if(phase==='project')facts.scope='activity';
     const prefix=phase==='confirmation'?'确认':phase==='followup'?'跟进':'沟通';
     facts.communicationDate=field(source,`${prefix}日期`)||null;
@@ -55,12 +58,15 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
   }else if(table==='到访数据与信息表1.0-总'){
     facts.scope='selection';
     const arrived=field(source,'到访与否')==='已到';
-    facts.effectiveContact=arrived||Boolean(field(source,'确认日期'))
-      || Boolean(field(source,'确认月份')&&field(source,'学服老师'))
-      || ['学员情况','学员情况2','家长情况','家长情况2','家长沟通信息总结（附整理文档）'].some(name=>sourceNoteIsEffective(field(source,name)));
-    put('contacts',Boolean(field(source,'确认日期')),'确认月份','学服老师',['确认日期','学服老师']);
+    const assessment=sourceHasAssessmentResult(name=>field(source,name));
+    const contactFields=['家长情况','家长情况2','家长沟通信息总结（附整理文档）'].filter(name=>sourceNoteIsEffective(field(source,name)));
+    facts.effectiveContact=arrived||assessment||contactFields.length>0;
+    facts.semanticVersion=2;
+    put('contacts',facts.effectiveContact,'确认月份','学服老师',contactFields.length?contactFields:arrived?['到访与否']:assessment?['思维测评等级','学习力测评等级','测评成绩（分数）']:[]);
     facts.months.contacts=sourceContactReportingMonth(field(source,'确认月份'),field(source,'确认日期'),version);
-    put('invitations',Boolean(field(source,'确认日期')),'确认月份','学服老师',['确认月份','确认日期']);
+    const arranged=arrived||assessment||['是','诺访','已诺访'].includes(field(source,'诺访与否'))
+      || Boolean(historicalDate(field(source,'到访日期'))&&field(source,'参与内容'));
+    put('invitations',arranged,'确认月份','学服老师',['到访日期','参与内容','到访与否']);
     put('arrivals',arrived,'到访月份','学服老师',['到访月份','到访与否']);
     put('assessments',sourceHasAssessmentResult(name=>field(source,name)),'到访月份','学服老师',['思维测评等级','学习力测评等级','测评成绩（分数）']);
     put('enrollments',field(source,'报名与否')==='已报名','报名月份','学服老师',['报名月份','报名与否']);

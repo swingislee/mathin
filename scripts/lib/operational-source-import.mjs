@@ -84,6 +84,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
         const key=`operation-contact:${logical(r)}:${phase}`;
         const previous=(snapshot.lead_communications??[]).find(c=>sameSource(c.source_record_id,r)&&c.source_key?.endsWith(`:${phase}`));
         if(previous&&(snapshot.communication_record_revisions??[]).some(v=>v.event_id===previous.id)){emitted.push(['lead_communications',previous.id]);continue;}
+        if(evidence.review){if(previous)emitted.push(['lead_communications',previous.id]);continue;}
         const contactId=previous?.id??id(key);
         const failed=['unreachable','invalid_number'].includes(evidence.outcome);
         const noteWechat=sourceWechatEvidence(field(r,noteFields[0]));

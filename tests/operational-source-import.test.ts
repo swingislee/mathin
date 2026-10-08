@@ -20,7 +20,7 @@ describe('来源记录衔接当前业务模型',()=>{
     expect(repeated.rows.lead_communications[0]).toMatchObject({id:initial.rows.lead_communications[0].id,source_record_id:'new-version',lead_id:initial.rows.leads[0].id});
     const failed={...second,record_data:{...second.record_data,cells:source('x','获客&私域信息登记表1.0-总',{'确认结果':'未通'}).record_data.cells}};
     const next=buildOperationalSourceImport(payload([failed]),{...initial.rows,history_import_records:[first]});
-    expect(next.rows.lead_communications[0]).toMatchObject({outcome:'unreachable',source_metric_facts:{effectiveContact:true}});
+    expect(next.rows.lead_communications[0]).toMatchObject({outcome:'unreachable',source_metric_facts:{effectiveContact:false}});
     const revised=buildOperationalSourceImport(payload([second]),{...initial.rows,history_import_records:[first],communication_record_revisions:[{event_id:initial.rows.lead_communications[0].id}]});
     expect(revised.rows.lead_communications).toHaveLength(0);
   });
@@ -103,7 +103,7 @@ describe('来源记录衔接当前业务模型',()=>{
     expect(p.rows.assessment_results[0]).toMatchObject({assessment_band:'x_plus',score:null,score_max:null});
     expect(p.rows.assessment_results[0].strengths).toContain('原测评等级：未达A');
     expect(p.rows.assessment_results[0].strengths).toContain('学习力测评等级：A+');
-    expect(p.rows.leads[0]).toMatchObject({phone:'',phone_normalized:null,grade_hint:null});
+    expect(p.rows.leads[0]).toMatchObject({phone:'',phone_normalized:null,grade_hint:3});
   });
   it('首联未知结果不生成联系事件；明确加V事实进入当前联系字段',()=>{
     const p=buildOperationalSourceImport(payload([
