@@ -3,9 +3,9 @@ do $migration$
 declare original text; anchor text; authority text;
 begin
   select pg_get_functiondef('public.business_source_is_authoritative(text)'::regprocedure) into authority;
-  if position('p_record_id is null or exists' in authority)=0
-    or position('r.id=p_record_id and r.source_data->>''format''=''feishu-base''' in authority)=0
-    or position('NOT COALESCE((lead_communications.source_metric_facts -> ''supersededProjection''::text) = ''true''::jsonb, false)' in pg_get_viewdef('public.business_lead_communications'::regclass,true))=0 then
+  -- pg_get_viewdef 在不同版本中可能省略表名前缀；规范化后核对完整定义。
+  if md5(authority)<>'6f00dd0f248084fe1598262c2a460d5d'
+    or md5(replace(pg_get_viewdef('public.business_lead_communications'::regclass,true),'lead_communications.',''))<>'013180eff860d25cf38a702620f25311' then
     raise exception 'COMMUNICATION_SOURCE_CONTRACT_CHANGED';
   end if;
   select pg_get_functiondef('public.student_record_index_for_population(text,text,public.business_course_enrollment_subjects[],boolean)'::regprocedure) into original;
