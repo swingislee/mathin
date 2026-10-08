@@ -610,7 +610,8 @@
         "supabase/migrations/20261008015000_source_evidence_subject_reads.sql",
         "supabase/migrations/20261008016000_source_assessment_candidates.sql",
         "supabase/migrations/20261008017000_source_revision_read_scope.sql",
-        "supabase/migrations/20261008018000_communication_evidence_batch.sql"
+        "supabase/migrations/20261008018000_communication_evidence_batch.sql",
+        "supabase/migrations/20261008019000_communication_index_read_once.sql"
       ],
       "sharedPaths": [
         ".ai/registry.json",
@@ -618,7 +619,7 @@
         "docs/current.md"
       ],
       "checkpoint": "7a24ede8aa8ff7c08b7536f95cf56a8d3bafbbf8",
-      "next": "生产标签界面已发布；按用户反馈修复待测评9月100条分页的来源证据重复读取超时，保留权限和事实。"
+      "next": "20人与100人分页修复已在本地完成；20条数据库读取0.81–0.84秒，100条1.27秒，完整阶段及页面内容对比一致。生产两项查询迁移等待明确授权，原网站和数据保留。"
     }
   ]
 }
