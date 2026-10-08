@@ -3,7 +3,7 @@ import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
-import type { Account, ParentWechatAuthResult, ParentWechatAuthStatus, Session } from "../contracts/parent-api/portal";
+import type { Account, WechatAuthResult, WechatAuthStatus, Session } from "../contracts/participant-api/portal";
 
 type Request = {
   url: string; data: Record<string, unknown>; header: Record<string, string>;
@@ -11,8 +11,8 @@ type Request = {
 };
 type Login = { success: (result: { code?: string }) => void; fail: () => void };
 type Api = {
-  wechatAuthStatus: () => Promise<ParentWechatAuthStatus>;
-  loginWithWechat: () => Promise<ParentWechatAuthResult>;
+  wechatAuthStatus: () => Promise<WechatAuthStatus>;
+  loginWithWechat: () => Promise<WechatAuthResult>;
   bindWechat: (password: string) => Promise<void>;
   saveSession: (value: Session) => void;
   clearSession: () => void;
@@ -45,7 +45,7 @@ type Page = {
   data: {
     authenticated: boolean; identifier: string; password: string; busy: boolean; wantsWechatBinding: boolean;
     sheet: string; error: string; info: string; account: Account | null;
-    wechat: ParentWechatAuthStatus | null; wechatLoading: boolean; wechatStatusFailed: boolean;
+    wechat: WechatAuthStatus | null; wechatLoading: boolean; wechatStatusFailed: boolean;
   };
   setData: (patch: Record<string, unknown>) => void;
   onShow: () => void; onHide: () => void;
@@ -63,7 +63,7 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
   const api = {
     ApiError: ClientError, session: () => null,
     wechatAuthStatus: vi.fn(async () => ({ available: true, linked: null, canBind: false })),
-    get: vi.fn(async () => ({ id: "parent", displayName: "Demo parent", participants: [] })),
+    get: vi.fn(async () => ({ id: "account", displayName: "Demo account", participants: [] })),
     ...overrides,
   };
   const cache = new Map<string, Record<string, unknown>>();
@@ -121,9 +121,9 @@ describe("小程序微信鉴权传输", () => {
     const pending = run.api.loginWithWechat();
     run.logins[0].success({ code: "temporary-code" });
     await vi.waitFor(() => expect(run.requests).toHaveLength(1));
-    run.requests[0].success({ statusCode: 200, data: { state: "authenticated", session: active("parent") } });
+    run.requests[0].success({ statusCode: 200, data: { state: "authenticated", session: active("account") } });
     await pending;
-    expect(run.current()?.accessToken).toBe("parent");
+    expect(run.current()?.accessToken).toBe("account");
   });
 
   it("取得code期间退出或切换会话，终止旧登录", async () => {
@@ -190,7 +190,7 @@ describe("小程序微信登录与明确绑定", () => {
     let linked = false, signedIn = false;
     const bindWechat = vi.fn(async () => { linked = true; });
     const run = pageRuntime({
-      session: () => signedIn ? active("parent") : null,
+      session: () => signedIn ? active("account") : null,
       login: vi.fn(async () => { signedIn = true; }), bindWechat,
       loginWithWechat: vi.fn(async () => ({ state: "binding_required" })),
       wechatAuthStatus: vi.fn(async () => ({ available: true, linked: signedIn ? linked : null, canBind: signedIn && !linked })),
@@ -218,7 +218,7 @@ describe("小程序微信登录与明确绑定", () => {
       wechatAuthStatus: vi.fn(async () => ({ available: true, linked: false, canBind: false })),
     }, "en_US");
     run.page.onShow();
-    run.page.setData({ account: { id: "parent", displayName: "Demo", participants: [] }, password: "example-password",
+    run.page.setData({ account: { id: "account", displayName: "Demo", participants: [] }, password: "example-password",
       wechat: { available: true, linked: false, canBind: true }, sheet: "bind", wantsWechatBinding: true });
     await run.page.confirmWechatBinding();
     expect(run.page.data.error).toContain("security verification");
@@ -229,7 +229,7 @@ describe("小程序微信登录与明确绑定", () => {
 
   it("绑定可跳过，继续使用已有账号和原业务入口", () => {
     const run = pageRuntime();
-    run.page.setData({ account: { id: "parent", displayName: "Demo", participants: [] }, password: "example-password", sheet: "bind", wantsWechatBinding: true });
+    run.page.setData({ account: { id: "account", displayName: "Demo", participants: [] }, password: "example-password", sheet: "bind", wantsWechatBinding: true });
     run.page.skipWechatBinding();
     expect(run.page.data.wantsWechatBinding).toBe(false);
     expect(run.page.data.password).toBe("");
@@ -237,8 +237,8 @@ describe("小程序微信登录与明确绑定", () => {
   });
 
   it("离开页面后丢弃旧能力响应", async () => {
-    let resolve!: (value: ParentWechatAuthStatus) => void;
-    const run = pageRuntime({ wechatAuthStatus: () => new Promise<ParentWechatAuthStatus>(done => { resolve = done; }) });
+    let resolve!: (value: WechatAuthStatus) => void;
+    const run = pageRuntime({ wechatAuthStatus: () => new Promise<WechatAuthStatus>(done => { resolve = done; }) });
     const pending = run.page.loadWechat();
     run.page.onHide();
     resolve({ available: true, linked: true, canBind: false });

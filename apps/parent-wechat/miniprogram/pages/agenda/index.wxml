@@ -1,15 +1,15 @@
-<view class="portal-page timetable-page">
-  <app-nav title="{{participants[selected].name ? participants[selected].name + copy.childTimetable : title}}" back />
+<view class="portal-page agenda-page">
+  <app-nav title="{{participants[selected].name ? participants[selected].name + copy.participantAgenda : title}}" back />
   <view class="portal-content">
-    <picker wx:if="{{participants.length > 1}}" class="timetable-member" range="{{participants}}" range-key="name" value="{{selected}}" bindchange="participant"><view class="text-link">{{copy.switchChild}} ▾</view></picker>
+    <picker wx:if="{{participants.length > 1}}" class="agenda-member" range="{{participants}}" range-key="name" value="{{selected}}" bindchange="participant"><view class="text-link">{{copy.switchParticipant}} ▾</view></picker>
     <view class="calendar-panel"><view class="calendar-toolbar"><text class="calendar-title">{{month}}</text><view class="calendar-actions"><button class="calendar-arrow" data-offset="-1" bindtap="changeMonth" aria-label="{{copy.previousMonth}}">‹</button><button class="calendar-arrow" data-offset="1" bindtap="changeMonth" aria-label="{{copy.nextMonth}}">›</button></view></view>
       <view class="calendar-grid"><text wx:for="{{weekdays}}" wx:key="key" class="weekday">{{item.label}}</text><button wx:for="{{days}}" wx:key="key" class="calendar-day {{item.selected ? 'selected' : ''}} {{item.today ? 'today' : ''}}" data-date="{{item.date}}" bindtap="day" disabled="{{!item.date}}" aria-label="{{item.date}} · {{item.count}}"><text class="calendar-day-label">{{item.today ? copy.todayShort : item.day}}</text><view wx:if="{{item.count}}" class="calendar-dot"></view></button></view>
     </view>
-    <view class="card-heading timetable-heading"><text class="section-title">{{copy.daySchedule}}</text><button class="text-link" bindtap="today">{{copy.today}}</button></view>
-    <button wx:if="{{!authenticated}}" class="primary" bindtap="login">{{copy.loginCourses}}</button>
+    <view class="card-heading agenda-heading"><text class="section-title">{{copy.dayArrangements}}</text><button class="text-link" bindtap="today">{{copy.today}}</button></view>
+    <button wx:if="{{!authenticated}}" class="primary" bindtap="login">{{copy.loginCalendar}}</button>
     <text wx:elif="{{loading}}" class="loading-line">{{copy.loading}}</text>
-    <empty-state wx:elif="{{loaded && !dayEvents.length && !error}}" label="{{participants.length ? copy.noDaySchedule : copy.noLinkNote}}" compact />
-    <view wx:for="{{dayEvents}}" wx:key="key" class="lesson-card {{item.phase === 'ended' ? 'lesson-ended' : ''}}"><view class="lesson-time"><text class="lesson-status">{{copy[item.phase]}}</text><text class="lesson-start">{{item.startTime}}</text><text wx:if="{{item.endTime}}" class="lesson-end">~{{item.endTime}}</text></view><view class="lesson-content"><text class="lesson-title">{{item.title}}</text><text class="lesson-meta">{{item.detail || (item.kind === 'activity' ? copy.locationPending : '')}}{{item.teacher ? ' | ' + item.teacher : ''}}</text><text wx:if="{{item.kind === 'activity'}}" class="lesson-kind">{{copy.activityArrangement}}</text></view></view>
+    <empty-state wx:elif="{{loaded && !dayEvents.length && !error}}" label="{{participants.length ? copy.noDayArrangements : copy.noLinkNote}}" compact />
+    <view wx:for="{{dayEvents}}" wx:key="key" class="entry-card {{item.phase === 'ended' ? 'entry-ended' : ''}}"><view class="entry-time"><text class="entry-status">{{copy[item.phase]}}</text><text class="entry-start">{{item.startTime}}</text><text wx:if="{{item.endTime}}" class="entry-end">~{{item.endTime}}</text></view><view class="entry-content"><text class="entry-title">{{item.title}}</text><text class="entry-meta">{{item.detail || (item.kind === 'activity' ? copy.locationPending : '')}}{{item.facilitator ? ' | ' + item.facilitator : ''}}</text><text wx:if="{{item.kind === 'activity'}}" class="entry-kind">{{copy.activityArrangement}}</text></view></view>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="retry" disabled="{{loading}}">{{copy.retry}}</button></view>
   </view>
 </view>

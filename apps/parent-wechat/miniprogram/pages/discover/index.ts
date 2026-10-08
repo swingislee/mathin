@@ -1,2 +1,2 @@
-import { registerCourseCatalogPage } from "../../lib/course-catalog-page";
-registerCourseCatalogPage(false);
+import { registerActivityCatalogPage } from "../../lib/activity-catalog-page";
+registerActivityCatalogPage(false);

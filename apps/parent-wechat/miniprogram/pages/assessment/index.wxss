@@ -1,5 +1,5 @@
 .assessment-page .location-options { margin-top: 52rpx; margin-bottom: 40rpx; }
-.assessment-page .teacher-options { margin: 32rpx 0 40rpx; }
+.assessment-page .facilitator-options { margin: 32rpx 0 40rpx; }
 .assessment-page .location-options .option-pill { min-height: 64rpx; }
 .assessment-page button.option-pill[disabled] { background: var(--quiet); border-color: var(--line); color: var(--muted); opacity: .65; }
 .assessment-page .slot-heading { gap: 16rpx; margin-top: 28rpx; margin-bottom: 28rpx; }
@@ -19,8 +19,8 @@
 .selection-hint { margin: 28rpx 0; font-size: 25rpx; line-height: 1.6; }
 .assessment-sheet { padding-top: 34rpx; }
 .assessment-sheet .sheet-heading { margin-bottom: 36rpx; }
-.assessment-sheet .grade-scroll { height: 460rpx; }
-.subject-sheet .sheet-heading { margin-bottom: 8rpx; }
-.subject-sheet .option-grid { margin: 34rpx 0 44rpx; }
-.subject-sheet .primary { margin: 0; }
+.assessment-sheet .stage-scroll { height: 460rpx; }
+.topic-sheet .sheet-heading { margin-bottom: 8rpx; }
+.topic-sheet .option-grid { margin: 34rpx 0 44rpx; }
+.topic-sheet .primary { margin: 0; }
 .multi-select-note { color: var(--rose); font-size: 27rpx; margin-left: 8rpx; }

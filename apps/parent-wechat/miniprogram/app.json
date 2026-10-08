@@ -1,21 +1,21 @@
 {
   "pages": [
     "pages/discover/index",
-    "pages/courses/index",
+    "pages/calendar/index",
     "pages/account/index",
     "pages/reservations/index",
     "pages/agenda/index",
-    "pages/mistakes/index",
-    "pages/homework/index",
+    "pages/reflections/index",
+    "pages/records/index",
     "pages/register/index",
     "pages/activity/index",
-    "pages/course-catalog/index",
-    "pages/course-detail/index",
-    "pages/course-select/index",
-    "pages/course-applications/index",
-    "pages/advisor/index",
+    "pages/activity-catalog/index",
+    "pages/activity-detail/index",
+    "pages/activity-signup/index",
+    "pages/activity-requests/index",
+    "pages/service/index",
     "pages/assessment/index",
-    "pages/practice/index"
+    "pages/task/index"
   ],
   "window": {
     "navigationBarTitleText": "格致未来思维",
@@ -36,14 +36,14 @@
         "selectedIconPath": "assets/tabs/discover-active.png"
       },
       {
-        "pagePath": "pages/courses/index",
-        "text": "课程",
-        "iconPath": "assets/tabs/courses.png",
-        "selectedIconPath": "assets/tabs/courses-active.png"
+        "pagePath": "pages/calendar/index",
+        "text": "日历",
+        "iconPath": "assets/tabs/calendar.png",
+        "selectedIconPath": "assets/tabs/calendar-active.png"
       },
       {
         "pagePath": "pages/account/index",
-        "text": "家长",
+        "text": "我的",
         "iconPath": "assets/tabs/account.png",
         "selectedIconPath": "assets/tabs/account-active.png"
       }

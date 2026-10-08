@@ -1,18 +1,18 @@
 import { ApiError, bindWechat, get, login, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
-import type { Account, ParentWechatAuthStatus } from "../../lib/api-types";
+import type { Account, WechatAuthStatus } from "../../lib/api-types";
 import { clearNavigation, hasReturn, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
-import { courseCopy } from "../../lib/course-catalog";
+import { activityCopy } from "../../lib/activity-catalog";
 
 Page({
-  data: { ...pageData("account"), courseCopy: courseCopy.zh, authenticated: false, identifier: "", password: "", busy: false,
+  data: { ...pageData("account"), activityCopy: activityCopy.zh, authenticated: false, identifier: "", password: "", busy: false,
     account: null as Account | null, sheet: "", info: "", wantsWechatBinding: false,
-    wechat: null as ParentWechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
+    wechat: null as WechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
   loadVersion: 0,
   statusVersion: 0,
   onShow() {
     syncPage(this, "account");
-    this.setData({ courseCopy: courseCopy[currentLocale()] });
+    this.setData({ activityCopy: activityCopy[currentLocale()] });
     const authenticated = Boolean(session());
     this.setData({ authenticated: Boolean(session()), account: null, error: "", password: "", loading: false,
       sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && hasReturn() ? "login" : "" });
@@ -23,7 +23,7 @@ Page({
   identifierInput(e: WechatMiniprogram.Input) { this.setData({ identifier: e.detail.value }); },
   passwordInput(e: WechatMiniprogram.Input) { this.setData({ password: e.detail.value }); },
   showAccount() { this.setData({ sheet: this.data.authenticated ? "account" : "login", error: "", info: "" }); },
-  showChildren() { this.setData({ sheet: this.data.authenticated ? "children" : "login" }); },
+  showParticipants() { this.setData({ sheet: this.data.authenticated ? "participants" : "login" }); },
   closeSheet() {
     if (this.data.busy) return;
     if (this.data.sheet === "bind") this.skipWechatBinding();
@@ -127,7 +127,7 @@ Page({
   participant(e: WechatMiniprogram.TouchEvent) {
     const id = String(e.currentTarget.dataset.id);
     if (!this.data.account?.participants.some(row => row.id === id)) return;
-    selectParticipant(id); this.setData({ sheet: "" }); wx.switchTab({ url: "/pages/courses/index" });
+    selectParticipant(id); this.setData({ sheet: "" }); wx.switchTab({ url: "/pages/calendar/index" });
   },
   privacy() { wx.showModal({ title: this.data.copy.privacyEntry, content: this.data.copy.privacySummary, showCancel: false }); },
 });

@@ -1,5 +1,5 @@
 <view class="portal-page">
-  <app-nav title="{{formTitle || copy.intakeTitle}}" back />
+  <app-nav title="{{formTitle || copy.registrationTitle}}" back />
   <view class="portal-content has-fixed-actions">
     <view wx:if="{{submitted}}" class="surface booking-success"><text class="success-symbol">✓</text><text class="row-title">{{copy.registrationReceipt}}</text><button class="primary" bindtap="explore">{{copy.seeActivities}}</button></view>
     <block wx:else>

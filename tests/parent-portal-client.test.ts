@@ -2,7 +2,7 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 import ts from "typescript";
 import {describe, expect, it, vi} from "vitest";
-import type {Session, Media} from "../contracts/parent-api/portal";
+import type {Session, Media} from "../contracts/participant-api/portal";
 
 type Pending = {url:string; success:(result:{statusCode:number;data:unknown})=>void};
 function runtime(initial:Session) {
@@ -35,7 +35,7 @@ const active=(label:string):Session=>({accessToken:label,refreshToken:label+"-re
 describe("小程序会话与异步返回",()=>{
   it("并发读取共用一次刷新，并以刷新后的令牌继续",async()=>{
     const run=runtime({...active("old"),expiresAt:0});
-    const first=run.api.get("account"), second=run.api.get("practices");
+    const first=run.api.get("account"), second=run.api.get("tasks");
     expect(run.requests).toHaveLength(1);
     expect(run.requests[0].url).toContain("/auth");
     run.requests[0].success({statusCode:200,data:active("fresh")});

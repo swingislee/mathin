@@ -6,27 +6,28 @@ import vm from "node:vm";
 import ts from "typescript";
 import { describe, expect, it, vi } from "vitest";
 import type { CatalogClass, CourseOffer } from "../contracts/parent-api/portal";
-import { courseCard, filterCourseOffers } from "../apps/parent-wechat/miniprogram/lib/course-catalog";
-import type { CourseApplicationCommand } from "../contracts/parent-api/portal";
+import { activityCard, filterActivityOffers } from "../apps/parent-wechat/miniprogram/lib/activity-catalog";
+import type { ActivityOffer } from "../contracts/participant-api/portal";
+import type { ActivityRequestCommand } from "../contracts/participant-api/portal";
 
 const room: CatalogClass = { id: "class-a", name: "A class", familyId: "family", familyTitle: "Logic", courseId: "course", grade: 4, subject: "逻辑思维", level: "A", termId: "fall", termName: "秋季",
   campusId: "campus-a", campusName: "东校区", roomName: "101", remaining: 3, teachers: [{ id: "teacher-a", name: "Teacher A" }],
   sessions: [{ at: "2030-10-03T00:30:00Z", duration: 150 }, { at: "2030-10-10T00:30:00Z", duration: 150 }] };
 const classOffer: CourseOffer = { id: room.id, kind: "class", activity: null, title: "真实班级", description: "", priceCents: null, bookingClosesAt: "2030-12-01T00:00:00Z", revision: 1, classes: [room] };
-const offer: CourseOffer = { ...classOffer, id: "activity-a", kind: "activity", title: "公益讲座", classes: [],
-  activity: { id: "activity-a", targetGrades: [4], location: "活动室", startsAt: "2030-10-03T00:30:00Z", durationMinutes: 60, remaining: null } };
+const offer: ActivityOffer = { ...classOffer, id: "activity-a", kind: "activity", title: "公益讲座", topic: null,
+  activity: { id: "activity-a", targetStages: [4], location: "活动室", startsAt: "2030-10-03T00:30:00Z", durationMinutes: 60, remaining: null } };
 describe("published Mini Program activities", () => {
   it("shows only activities for the selected grade and registration period", () => {
-    expect(filterCourseOffers([classOffer, offer], "g4", 0)).toEqual([offer]);
-    expect(filterCourseOffers([offer], "g3", 0)).toEqual([]);
-    expect(filterCourseOffers([offer], "", Date.parse("2031-01-01"))).toEqual([]);
+    expect(filterActivityOffers([classOffer as unknown as ActivityOffer, offer], "g4", "", 0)).toEqual([offer]);
+    expect(filterActivityOffers([offer], "g3", "", 0)).toEqual([]);
+    expect(filterActivityOffers([offer], "", "", Date.parse("2031-01-01"))).toEqual([]);
   });
   it("keeps an unknown target grade distinct from an unrestricted activity", () => {
-    const unknown = { ...offer, activity: { ...offer.activity!, targetGrades: null } };
-    const unrestricted = { ...offer, activity: { ...offer.activity!, targetGrades: [] } };
-    expect(filterCourseOffers([unknown], "g4", 0)).toEqual([]);
-    expect(filterCourseOffers([unrestricted], "g4", 0)).toEqual([unrestricted]);
-    expect(courseCard(offer, "zh")).toMatchObject({ priceLabel: "公益活动", startLabel: "2030.10.03", meta: "活动室" });
+    const unknown = { ...offer, activity: { ...offer.activity!, targetStages: null } };
+    const unrestricted = { ...offer, activity: { ...offer.activity!, targetStages: [] } };
+    expect(filterActivityOffers([unknown], "g4", "", 0)).toEqual([]);
+    expect(filterActivityOffers([unrestricted], "g4", "", 0)).toEqual([unrestricted]);
+    expect(activityCard(offer, "zh")).toMatchObject({ priceLabel: "公益活动", startLabel: "2030.10.03", meta: "活动室" });
   });
 });
 
@@ -36,14 +37,14 @@ function deferred<T>() {
   return { promise, resolve };
 }
 class TestApiError extends Error { constructor(public code: string) { super(code); } }
-function selectionPage(command: (input: CourseApplicationCommand) => Promise<{ id?: string }>, modal: Promise<{ confirm: boolean }>) {
+function selectionPage(command: (input: ActivityRequestCommand) => Promise<{ id?: string }>, modal: Promise<{ confirm: boolean }>) {
   type SelectionPage = { data: Record<string, unknown>; setData: (patch: Record<string, unknown>) => void; submit: () => Promise<void>; onHide: () => void };
   let page!: SelectionPage;
   const storage = new Map<string, unknown>();
   const wx = { getAppBaseInfo: () => ({ language: "zh_CN" }), getStorageSync: (key: string) => storage.get(key),
     setStorageSync: (key: string, value: unknown) => storage.set(key, value), removeStorageSync: (key: string) => storage.delete(key),
     showModal: vi.fn(() => modal) };
-  const api = { ApiError: TestApiError, courseCommand: command, requestId: vi.fn(() => "stable-request"), session: () => ({}) };
+  const api = { ApiError: TestApiError, activityCommand: command, requestId: vi.fn(() => "stable-request"), session: () => ({}) };
   const root = path.resolve("apps/parent-wechat/miniprogram");
   const cache = new Map<string, Record<string, unknown>>();
   function load(file: string): Record<string, unknown> {
@@ -56,7 +57,7 @@ function selectionPage(command: (input: CourseApplicationCommand) => Promise<{ i
       Page: (value: SelectionPage) => { page = value; page.setData = patch => Object.assign(page.data, patch); } });
     return exports;
   }
-  load(path.join(root, "pages/course-select/index.ts"));
+  load(path.join(root, "pages/activity-signup/index.ts"));
   page.setData({ authenticated: true, accountId: "account-a", offer, id: offer.id, participants: [{ id: "child-a", name: "Child A" }], selected: 0 });
   return { page, storage, api, wx };
 }
@@ -69,7 +70,7 @@ describe("activity application submission", () => {
     expect(post).not.toHaveBeenCalled();
     modal.resolve({ confirm: true });
     await vi.waitFor(() => expect(post).toHaveBeenCalledTimes(1));
-    expect(post).toHaveBeenCalledWith({ action: "apply", kind: "activity", id: "stable-request", publicationId: offer.id, revision: offer.revision, classroomId: null, participantId: "child-a" });
+    expect(post).toHaveBeenCalledWith({ action: "apply", kind: "activity", id: "stable-request", publicationId: offer.id, revision: offer.revision, participantId: "child-a" });
     result.resolve({ id: "stable-request" }); await first;
     expect(run.page.data.sent).toBe(true); expect(run.storage.size).toBe(0);
   });
@@ -78,7 +79,7 @@ describe("activity application submission", () => {
     const run = selectionPage(post, Promise.resolve({ confirm: true }));
     await run.page.submit();
     const pending = run.page.data.pending;
-    expect(pending).toMatchObject({ id: "stable-request", participantId: "child-a", classroomId: null });
+    expect(pending).toMatchObject({ id: "stable-request", participantId: "child-a" });
     expect(run.storage.size).toBe(1);
     await run.page.submit();
     expect(post.mock.calls[0][0]).toEqual(post.mock.calls[1][0]);

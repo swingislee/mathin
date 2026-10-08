@@ -1,4 +1,4 @@
-/** 三端共用的业务 DTO；微信副本由 sync-parent-contract.mjs 生成。 */
+/** 既有客户端的业务 DTO；小程序专用命名见 contracts/participant-api/portal.ts。 */
 export type Locale = "zh" | "en";
 export type LocalizedText = { zh: string; en: string };
 export type FormField = {

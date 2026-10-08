@@ -3,8 +3,8 @@ import type {IntakeForm} from "../../lib/api-types";
 import {pageData,syncPage,text,errorText} from "../../lib/page";
 type FieldView={id:string;type:string;label:string;required:boolean;value:string;index:number;options:{id:string;label:string;checked:boolean}[]};
 Page({
-  data:{...pageData("courses"),slug:"welcome",source:"",requestId:"",form:null as IntakeForm|null,formTitle:"",formDescription:"",privacy:"",fields:[] as FieldView[],answers:{} as Record<string,string|string[]>,consent:false,busy:false,submitted:false,optionField:-1},
-  onLoad(query:Record<string,string>){this.setData({slug:query.form||"welcome",source:(query.source||query.scene||"").slice(0,120),requestId:requestId()});syncPage(this,"courses","source");void this.load();},
+  data:{...pageData("calendar"),slug:"welcome",source:"",requestId:"",form:null as IntakeForm|null,formTitle:"",formDescription:"",privacy:"",fields:[] as FieldView[],answers:{} as Record<string,string|string[]>,consent:false,busy:false,submitted:false,optionField:-1},
+  onLoad(query:Record<string,string>){this.setData({slug:query.form||"welcome",source:(query.source||query.scene||"").slice(0,120),requestId:requestId()});syncPage(this,"calendar","source");void this.load();},
   showOptions(e:WechatMiniprogram.TouchEvent){if(!this.data.busy)this.setData({optionField:Number(e.currentTarget.dataset.index)});},
   closeOptions(){this.setData({optionField:-1});},
   noop(){},

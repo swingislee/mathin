@@ -1,6 +1,6 @@
 import { config } from "../config.local";
-import type { CourseOffer, CourseApplication, CourseApplicationCommand } from "./api-types";
-import type { Session, Media, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest, AssessmentAvailability, AssessmentSubject, AssessmentCommand, ParentWechatAuthStatus, ParentWechatAuthResult } from "./api-types";
+import type { ActivityOffer, ActivityRequest, ActivityRequestCommand } from "./api-types";
+import type { Session, Media, ParticipantCalendar, AssessmentOverview, AssessmentRequest, AssessmentAvailability, AssessmentTopic, AssessmentCommand, WechatAuthStatus, WechatAuthResult } from "./api-types";
 
 const sessionKey="gezhi.session.v1";
 let refreshing:Promise<Session>|null=null;
@@ -13,7 +13,7 @@ export function configured(){return Boolean(config.apiOrigin);}
 function origin(){const value=String(config.apiOrigin);if(!value)throw new ApiError("CONFIG_REQUIRED");return value.replace(/\/$/,"");}
 function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Promise<T> {
   return new Promise((resolve,reject)=>{
-    wx.request({url:origin()+"/api/v1/parent/"+path,method,data,timeout:20000,
+    wx.request({url:origin()+"/api/v1/participant/"+path,method,data,timeout:20000,
       header:{"content-type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},
       success:result=>{
         if(token&&session()?.accessToken!==token){reject(new ApiError("UNAUTHENTICATED"));return;}
@@ -40,35 +40,35 @@ export async function get<T>(resource:string,query="",authenticated=true):Promis
 export async function post<T>(data:object,authenticated=true):Promise<T>{
   return send<T>("portal","POST",data,authenticated?await accessToken():undefined);
 }
-export async function advisorContacts(): Promise<import("./api-types").AdvisorContact[]> {
-  return send("advisors", "GET");
+export async function serviceContacts(): Promise<import("./api-types").ServiceContact[]> {
+  return send("services", "GET");
 }
-export async function courseCatalog(): Promise<CourseOffer[]> {
-  return send<CourseOffer[]>("activities", "GET");
+export async function activityCatalog(): Promise<ActivityOffer[]> {
+  return send<ActivityOffer[]>("activities", "GET");
 }
-export async function courseApplications(): Promise<CourseApplication[]> {
-  return send<CourseApplication[]>("activities?resource=applications", "GET", undefined, await accessToken());
+export async function activityRequests(): Promise<ActivityRequest[]> {
+  return send<ActivityRequest[]>("activities?resource=applications", "GET", undefined, await accessToken());
 }
-export async function courseCommand(data: CourseApplicationCommand): Promise<{ id?: string; ok?: boolean }> {
+export async function activityCommand(data: ActivityRequestCommand): Promise<{ id?: string; ok?: boolean }> {
   return send("activities", "POST", data, await accessToken());
 }
-export async function learning(participant:string,range:{from:string;to:string}):Promise<ParentLearning>{
+export async function participantCalendar(participant:string,range:{from:string;to:string}):Promise<ParticipantCalendar>{
   const query=`participant=${encodeURIComponent(participant)}&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
-  return send<ParentLearning>("learning?"+query,"GET",undefined,await accessToken());
+  return send<ParticipantCalendar>("calendar?"+query,"GET",undefined,await accessToken());
 }
-export async function getAssessments(participant:string):Promise<ParentAssessmentOverview>{
-  return send<ParentAssessmentOverview>("assessments?participant="+encodeURIComponent(participant),"GET",undefined,await accessToken());
+export async function getAssessments(participant:string):Promise<AssessmentOverview>{
+  return send<AssessmentOverview>("assessments?participant="+encodeURIComponent(participant),"GET",undefined,await accessToken());
 }
-export async function postAssessment(data:AssessmentCommand):Promise<ParentAssessmentRequest>{
-  return send<ParentAssessmentRequest>("assessments","POST",data,await accessToken());
+export async function postAssessment(data:AssessmentCommand):Promise<AssessmentRequest>{
+  return send<AssessmentRequest>("assessments","POST",data,await accessToken());
 }
-export async function getAssessmentSlots(participant: string, subjects: AssessmentSubject[], grade: number): Promise<AssessmentAvailability> {
-  const query = `participant=${encodeURIComponent(participant)}&subjects=${encodeURIComponent(subjects.join(","))}&grade=${grade}`;
+export async function getAssessmentSlots(participant: string, topics: AssessmentTopic[], stageNumber: number): Promise<AssessmentAvailability> {
+  const query = `participant=${encodeURIComponent(participant)}&topics=${encodeURIComponent(topics.join(","))}&stageNumber=${stageNumber}`;
   return send<AssessmentAvailability>("assessment-slots?" + query, "GET", undefined, await accessToken());
 }
 export async function login(identifier:string,password:string){const value=await send<Session>("auth","POST",{action:"login",identifier,password});saveSession(value);}
-export async function wechatAuthStatus():Promise<ParentWechatAuthStatus>{
-  return send<ParentWechatAuthStatus>("auth/wechat","GET",undefined,session()?await accessToken():undefined);
+export async function wechatAuthStatus():Promise<WechatAuthStatus>{
+  return send<WechatAuthStatus>("auth/wechat","GET",undefined,session()?await accessToken():undefined);
 }
 function wechatCode():Promise<string>{
   return new Promise((resolve,reject)=>wx.login({timeout:10000,
@@ -76,11 +76,11 @@ function wechatCode():Promise<string>{
     fail:()=>reject(new ApiError("UNAUTHENTICATED","WECHAT_CODE_INVALID")),
   }));
 }
-export async function loginWithWechat():Promise<ParentWechatAuthResult>{
+export async function loginWithWechat():Promise<WechatAuthResult>{
   const version=sessionVersion;
   const code=await wechatCode();
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
-  const result=await send<ParentWechatAuthResult>("auth/wechat","POST",{action:"login",code});
+  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"login",code});
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
   if(result.state==="authenticated")saveSession(result.session);
   return result;
@@ -89,14 +89,14 @@ export async function bindWechat(password:string):Promise<void>{
   const token=await accessToken();
   const code=await wechatCode();
   if(session()?.accessToken!==token)throw new ApiError("UNAUTHENTICATED");
-  const result=await send<ParentWechatAuthResult>("auth/wechat","POST",{action:"bind",code,password,confirm:true},token);
+  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"bind",code,password,confirm:true},token);
   if(result.state!=="bound")throw new ApiError("UNAVAILABLE");
 }
 export async function logout(){try{await send("auth","POST",{action:"logout"},await accessToken());}finally{clearSession();}}
-export function upload(filePath:string,assignmentId:string,participantId:string,onProgress:(progress:number)=>void):Promise<Media>{
+export function upload(filePath:string,taskId:string,participantId:string,onProgress:(progress:number)=>void):Promise<Media>{
   return accessToken().then(token=>new Promise<Media>((resolve,reject)=>{
-    const task=wx.uploadFile({url:origin()+"/api/v1/parent/media",filePath,name:"file",timeout:120000,
-      header:{Authorization:"Bearer "+token,"x-assignment-id":assignmentId,"x-participant-id":participantId},
+    const task=wx.uploadFile({url:origin()+"/api/v1/participant/media",filePath,name:"file",timeout:120000,
+      header:{Authorization:"Bearer "+token,"x-task-id":taskId,"x-participant-id":participantId},
       success:result=>{if(session()?.accessToken!==token){reject(new ApiError("UNAUTHENTICATED"));return;}try{const body=JSON.parse(result.data);if(result.statusCode>=200&&result.statusCode<300)resolve(body as Media);else reject(new ApiError(body.code||"UNAVAILABLE"));}catch{reject(new ApiError("UNAVAILABLE"));}},
       fail:()=>reject(new ApiError("NETWORK")),
     });task.onProgressUpdate(event=>onProgress(event.progress));

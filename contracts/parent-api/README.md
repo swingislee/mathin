@@ -1,6 +1,6 @@
 # 家长端接口规范
 
-当前接口版本为 `0.7.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。微信、iOS 和 Android 使用同一份 HTTP 合同，各端按自己的页面接入已实现能力。
+当前接口版本为 `0.7.0`。可调用能力以 [OpenAPI](openapi.json) 的 paths 为准，业务 DTO 维护在 [portal.ts](portal.ts)。iOS、Android 和既有客户端继续使用本合同。小程序自 2026-10-08 使用[参与人接口](../participant-api/README.md)，服务端转换命名并复用本合同对应的权限和业务处理。
 
 ## 接入方式
 
@@ -145,4 +145,4 @@
 
 错误沿用 `{ "code": "..." }`：输入无效为 `VALIDATION` / 400，登录缺失为 `UNAUTHENTICATED` / 401，账号安全门或参与人授权失败为 `ACCOUNT_SECURITY` / `FORBIDDEN` / 403，不存在或不可见的邀约为 `NOT_FOUND` / 404。申请资格变化、时段变化、版本冲突和 `IDEMPOTENCY_CONFLICT` 对外统一为 `CONFLICT` / 409；RPC 缺失或不可用为 `UNAVAILABLE` / 503。冲突或网络结果不明时先刷新 overview 核对当前事实，保留原申请 ID；重试沿用原始输入，不换 ID 自动重复提交。
 
-OpenAPI 使用相对 server URL，各端本地配置选择 origin。`node scripts/sync-parent-contract.mjs` 生成微信 DTO 副本；接口变化时同步实际使用的 DTO。后端配置与本机验收步骤见[小程序业务配置说明](../../apps/parent-wechat/docs/portal.md)。
+OpenAPI 使用相对 server URL，各端本地配置选择 origin。`node scripts/sync-participant-contract.mjs` 从参与人合同生成微信 DTO；原脚本名称保留为兼容入口。接口变化时同步实际使用的 DTO。后端配置与本机验收步骤见[小程序业务配置说明](../../apps/parent-wechat/docs/portal.md)。

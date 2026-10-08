@@ -3,6 +3,37 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-PARTICIPANT-NAMING-20261008",
+      "title": "小程序参与人命名、日历与无损接口映射",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-PARTICIPANT-NAMING-20261008.md",
+      "writePaths": [
+        "apps/parent-wechat/",
+        "contracts/participant-api/",
+        "src/features/participant-portal/",
+        "src/app/api/v1/participant/",
+        "scripts/sync-participant-contract.mjs",
+        "scripts/sync-parent-contract.mjs",
+        "tests/parent-course-catalog.test.ts",
+        "tests/parent-discovery-catalog.test.ts",
+        "tests/parent-foundation.test.ts",
+        "tests/parent-portal-client.test.ts",
+        "tests/parent-wechat-auth-client.test.ts",
+        "tests/parent-wechat-discovery.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "contracts/parent-api/README.md",
+        "contracts/parent-api/portal.ts"
+      ],
+      "checkpoint": null,
+      "next": "开发端已统一参与人、日历和我的命名；接口转换保护现有表与 Messaging。小程序类型、模板编译和定向静态检查通过，待实际验收；生产未发布。"
+    },
+    {
       "id": "OPS-RELEASE-V040-20261008",
       "title": "v0.4.0 主线生产发布与团队版本说明",
       "agent": "codex",

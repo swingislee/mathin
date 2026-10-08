@@ -1,7 +1,7 @@
-import { get, learning, session } from "../../lib/api";
-import type { Account, Booking, ParentLearning, Participant } from "../../lib/api-types";
+import { get, participantCalendar, session } from "../../lib/api";
+import type { Account, Booking, ParticipantCalendar, Participant } from "../../lib/api-types";
 import { calendarDays, dateKey, monthRange, shiftMonth } from "../../lib/discovery";
-import { scheduleItems, type ScheduleItem } from "../../lib/schedule";
+import { calendarItems, type CalendarItem } from "../../lib/calendar";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, loginPage } from "../../lib/page";
 
@@ -9,11 +9,11 @@ Page({
   data: { ...pageData("agenda"), authenticated: false, participants: [] as Participant[], selected: 0,
     month: dateKey(new Date()).slice(0, 7), selectedDate: dateKey(new Date()),
     weekdays: [] as { key: number; label: string }[], days: [] as ReturnType<typeof calendarDays>,
-    learning: null as ParentLearning | null, events: [] as ScheduleItem[], dayEvents: [] as ScheduleItem[], loaded: false },
+    participantCalendar: null as ParticipantCalendar | null, events: [] as CalendarItem[], dayEvents: [] as CalendarItem[], loaded: false },
   loadVersion: 0,
   onShow() {
     syncPage(this, "agenda");
-    this.setData({ authenticated: Boolean(session()), participants: [], learning: null, events: [], dayEvents: [],
+    this.setData({ authenticated: Boolean(session()), participants: [], participantCalendar: null, events: [], dayEvents: [],
       loaded: false, error: "", weekdays: this.data.copy.weekdays.split(",").map((label, key) => ({ label, key })) });
     this.renderCalendar();
     if (session()) void this.loadAccount();
@@ -39,22 +39,22 @@ Page({
     selectParticipant(participant.id);
     const version = ++this.loadVersion;
     const month = this.data.month;
-    this.setData({ loading: true, error: "", learning: null, events: [], dayEvents: [], loaded: false });
+    this.setData({ loading: true, error: "", participantCalendar: null, events: [], dayEvents: [], loaded: false });
     this.renderCalendar();
     try {
       // 两类记录独立读取，一项暂不可用时仍显示另一项已确认的安排。
       const results = await Promise.all([
-        learning(participant.id, monthRange(month)).then(value => ({ value, error: "" })).catch(error => ({ value: null, error: errorText(error) })),
+        participantCalendar(participant.id, monthRange(month)).then(value => ({ value, error: "" })).catch(error => ({ value: null, error: errorText(error) })),
         get<Booking[]>("bookings").then(value => ({ value, error: "" })).catch(error => ({ value: [] as Booking[], error: errorText(error) })),
       ]);
       if (version !== this.loadVersion) return;
-      const learningResult = results[0];
+      const calendarResult = results[0];
       const bookingResult = results[1];
-      const info = learningResult.value;
+      const info = calendarResult.value;
       if (info && info.participantId !== participant.id) throw new Error("Unexpected participant");
-      const events = scheduleItems(info?.schedule || [], bookingResult.value, participant.id,
+      const events = calendarItems(info?.calendar || [], bookingResult.value, participant.id,
         monthRange(month), this.data.locale === "en" ? "en" : "zh");
-      this.setData({ learning: info, events, loaded: true, error: learningResult.error || bookingResult.error });
+      this.setData({ participantCalendar: info, events, loaded: true, error: calendarResult.error || bookingResult.error });
       this.renderCalendar();
     } catch (error) { if (version === this.loadVersion) this.setData({ error: errorText(error) }); }
     finally { if (version === this.loadVersion) this.setData({ loading: false, authenticated: Boolean(session()) }); }

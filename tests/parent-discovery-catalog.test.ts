@@ -3,6 +3,7 @@ import vm from "node:vm";
 import ts from "typescript";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { portalGet } from "@/features/parent-portal/server";
+import type { Activity as ParticipantActivity } from "../contracts/participant-api/portal";
 import type { Activity } from "../contracts/parent-api/portal";
 
 const state = vi.hoisted(() => ({ rpc: vi.fn(), admin: vi.fn(), filters: [] as unknown[][] }));
@@ -16,6 +17,7 @@ const now = Date.parse("2026-10-05T00:00:00Z");
 const activity = (id: string, patch: Partial<Activity> = {}): Activity => ({ id,
   title: { zh: "数学活动", en: "Math activity" }, description: { zh: "观察与推理", en: "Observe and reason" },
   location: "开发场地", startsAt: "2026-10-06T06:00:00Z", durationMinutes: 60, remaining: 4, bookable: true, ...patch });
+const participantActivity = (id: string, patch: Partial<ParticipantActivity> = {}): ParticipantActivity => ({ ...activity(id), ...patch });
 const request = () => new Request("https://example.invalid/api/v1/parent/portal?resource=activities");
 
 beforeEach(() => { vi.resetAllMocks(); state.filters = []; });
@@ -55,15 +57,15 @@ describe("发现页公开目录", () => {
     const compiled = ts.transpileModule(readFileSync("apps/parent-wechat/miniprogram/lib/catalog.ts", "utf8"), {
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2017 },
     });
-    const exports: { filterCatalog?: (rows: Activity[], stage: string, subject: string, now: number) => Activity[] } = {};
+    const exports: { filterCatalog?: (rows: ParticipantActivity[], stage: string, topic: string, now: number) => ParticipantActivity[] } = {};
     vm.runInNewContext(compiled.outputText, { exports, Date });
     const rows = [
-      activity("unknown", { targetGrades: null, subject: "math" }),
-      activity("all", { targetGrades: [], subject: "math" }),
-      activity("six", { targetGrades: [6], subject: "math" }),
-      activity("seven", { targetGrades: [7], subject: "math" }),
-      activity("unclassified", { targetGrades: [6], subject: null }),
-      activity("past", { targetGrades: [6], subject: "math", startsAt: "2026-10-04T00:00:00Z" }),
+      participantActivity("unknown", { targetStages: null, topic: "math" }),
+      participantActivity("all", { targetStages: [], topic: "math" }),
+      participantActivity("six", { targetStages: [6], topic: "math" }),
+      participantActivity("seven", { targetStages: [7], topic: "math" }),
+      participantActivity("unclassified", { targetStages: [6], topic: null }),
+      participantActivity("past", { targetStages: [6], topic: "math", startsAt: "2026-10-04T00:00:00Z" }),
     ];
     expect(exports.filterCatalog!(rows, "g6", "math", now).map(row => row.id)).toEqual(["all", "six"]);
     expect(exports.filterCatalog!(rows, "k2", "math", now).map(row => row.id)).toEqual(["all"]);

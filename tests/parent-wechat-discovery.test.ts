@@ -5,12 +5,12 @@ import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Activity, Booking, ParentLearning, ParentAssessmentOverview, ParentAssessmentRequest } from "../contracts/parent-api/portal";
+import type { Activity, Booking, ParticipantCalendar, AssessmentOverview, AssessmentRequest } from "../contracts/participant-api/portal";
 import type { ActivityFilter } from "../apps/parent-wechat/miniprogram/lib/discovery";
 import type * as AssessmentCalendar from "../apps/parent-wechat/miniprogram/lib/assessment-calendar";
 import type * as AssessmentBooking from "../apps/parent-wechat/miniprogram/lib/assessment-booking";
-import type { AssessmentAvailability } from "../contracts/parent-api/portal";
-type PendingRequest = { id: string; teacherId: string; parentTimeOptions: string[] };
+import type { AssessmentAvailability } from "../contracts/participant-api/portal";
+type PendingRequest = { id: string; facilitatorId: string; participantTimeOptions: string[] };
 type AssessmentPending = {
   pendingAssessment: (account: string, participant: string) => PendingRequest | null;
   savePendingAssessment: (account: string, participant: string, value: PendingRequest) => void;
@@ -22,10 +22,10 @@ const miniRoot = path.resolve("apps/parent-wechat/miniprogram");
 type RuntimePage = {
   data: Record<string, unknown> & {
     step: number; booked: boolean; uncertain: boolean; participants: { id: string; name: string }[];
-    events: { key: string; title: string }[]; dayEvents: { title: string }[]; learning: ParentLearning | null;
+    events: { key: string; title: string }[]; dayEvents: { title: string }[]; participantCalendar: ParticipantCalendar | null;
     daySessions: { title: string; participantId: string }[];
-    requests: (ParentAssessmentRequest & { scheduledLabel: string; confirmOptions: { value: string }[] })[];
-    overview: ParentAssessmentOverview | null;
+    requests: (AssessmentRequest & { confirmedTimeLabel: string; confirmOptions: { value: string }[] })[];
+    overview: AssessmentOverview | null;
   };
   setData: (value: Record<string, unknown>) => void;
   book: () => Promise<void>; review: () => Promise<void>; back: () => void; loadMonth: () => Promise<void>;
@@ -36,11 +36,11 @@ type RuntimePage = {
   chooseSlot: (event: { currentTarget: { dataset: { id: string } } }) => void;
   chooseParticipant: (event: { currentTarget: { dataset: { index: number } } }) => void;
   chooseActivity: (event: Touch) => void;
-  openActivity: (event: Touch) => void; openCourse: (event: Touch) => void; chooseTeacher: (event: Touch) => void; chooseTime: (event: Touch) => void;
+  openActivity: (event: Touch) => void; chooseFacilitator: (event: Touch) => void; chooseTime: (event: Touch) => void;
   submit: () => Promise<void>; retryPending: () => Promise<void>; loadParticipant: () => Promise<void>; startOver: () => void;
   renderRequests: () => void; selectConfirmation: (event: Touch) => void; confirm: (event: Touch) => Promise<void>;
-  chooseCampus: (event: Touch) => void; chooseGrade: (event: Touch) => void; chooseMode: () => void;
-  showSheet: (event: Touch) => void; toggleSubject: (event: Touch) => void; confirmSubjects: () => void;
+  chooseCampus: (event: Touch) => void; chooseStage: (event: Touch) => void; chooseMode: () => void;
+  showSheet: (event: Touch) => void; toggleTopic: (event: Touch) => void; confirmTopics: () => void;
   loadAvailability: () => Promise<void>;
 };
 type DiscoveryModule = {
@@ -108,10 +108,10 @@ const activity = (id: string, patch: Partial<Activity> = {}): Activity => ({ id,
   location: "North", startsAt: timestamp(3), durationMinutes: 60, remaining: 3, bookable: true, ...patch });
 const booking = (id: string, patch: Partial<Booking> = {}): Booking => ({ id, activityId: "event", participantId: "member-a",
   participantName: "Member", title: { zh: "活动", en: "Activity" }, startsAt: timestamp(3), location: "North", status: "booked", ...patch });
-const learning = (id: string, title = id): ParentLearning => ({ participantId: id, generatedAt: timestamp(1), range: { from: timestamp(1), to: timestamp(30) },
-  summary: null, courses: [], schedule: [{ id: "session-" + id, participantId: id, classroomId: "group", classroomName: title,
-    title, startsAt: timestamp(3), durationMinutes: 60, teacherName: null }], attendance: [], notifications: [], leaveRequests: [], reports: [], unassignedReportCount: 0,
-  capabilities: { leaveRequests: false, notificationRead: false, chat: false, rescheduling: false, wrongAnswers: false, profileEditing: false, payments: false } });
+const participantCalendar = (id: string, title = id): ParticipantCalendar => ({ participantId: id, generatedAt: timestamp(1), range: { from: timestamp(1), to: timestamp(30) },
+  summary: null, groups: [], calendar: [{ id: "session-" + id, participantId: id, groupId: "group", groupName: title,
+    title, startsAt: timestamp(3), durationMinutes: 60, facilitatorName: null }], attendance: [], notifications: [], leaveRequests: [], reports: [], unassignedReportCount: 0,
+  capabilities: { leaveRequests: false, notificationRead: false, chat: false, rebooking: false, wrongAnswers: false, profileEditing: false, payments: false } });
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 const assessorId = "00000000-0000-4000-8000-000000000002";
 const assessmentId = "00000000-0000-4000-8000-000000000001";
@@ -119,19 +119,19 @@ const assessmentTime = "2026-10-03@14:00";
 const slotId = "00000000-0000-4000-8000-000000000004";
 const campusId = "00000000-0000-4000-8000-000000000005";
 const availability = (): AssessmentAvailability => ({ participantId: "member-a", timeZone: "Asia/Shanghai", from: "2026-10-01", to: "2026-10-14",
-  teachers: [{ id: assessorId, displayName: "Assessor" }], campuses: [{ id: campusId, name: "Campus" }],
-  slots: [{ id: slotId, teacherId: assessorId, campusId, startsAt: "2026-10-03T06:00:00Z", endsAt: "2026-10-03T06:40:00Z", available: true }] });
-const assessmentRequest = (patch: Partial<ParentAssessmentRequest> = {}): ParentAssessmentRequest => ({
-  id: assessmentId, participantId: "member-a", teacher: { id: assessorId, displayName: "Assessor" }, state: "awaiting_teacher",
-  parentTimeOptions: [assessmentTime], teacherTimeOptions: [], sharedTimeOptions: [], proposedStartsAt: null, scheduledAt: null,
+  facilitators: [{ id: assessorId, displayName: "Assessor" }], campuses: [{ id: campusId, name: "Campus" }],
+  slots: [{ id: slotId, facilitatorId: assessorId, campusId, startsAt: "2026-10-03T06:00:00Z", endsAt: "2026-10-03T06:40:00Z", available: true }] });
+const assessmentRequest = (patch: Partial<AssessmentRequest> = {}): AssessmentRequest => ({
+  id: assessmentId, participantId: "member-a", facilitator: { id: assessorId, displayName: "Assessor" }, state: "awaiting_facilitator",
+  participantTimeOptions: [assessmentTime], facilitatorTimeOptions: [], sharedTimeOptions: [], proposedStartsAt: null, confirmedStartsAt: null,
   updatedAt: timestamp(1), canConfirm: false, ...patch,
 });
-const assessmentOverview = (participantId = "member-a", requests: ParentAssessmentRequest[] = []): ParentAssessmentOverview => ({
+const assessmentOverview = (participantId = "member-a", requests: AssessmentRequest[] = []): AssessmentOverview => ({
   participantId, timeZone: "Asia/Shanghai", eligibility: { canRequest: true, reason: null },
-  teachers: [{ id: assessorId, displayName: "Assessor" }], requests,
+  facilitators: [{ id: assessorId, displayName: "Assessor" }], requests,
 });
-const bookedAssessment = () => assessmentRequest({ state: "confirmed", parentTimeOptions: [], scheduledAt: "2026-10-03T06:00:00Z",
-  booking: { slotId, subjects: ["math", "english"], grade: 3, mode: "campus", campus: { id: campusId, name: "Campus" }, endsAt: "2026-10-03T06:40:00Z" } });
+const bookedAssessment = () => assessmentRequest({ state: "confirmed", participantTimeOptions: [], confirmedStartsAt: "2026-10-03T06:00:00Z",
+  booking: { slotId, topics: ["math", "english"], stageNumber: 3, mode: "campus", campus: { id: campusId, name: "Campus" }, endsAt: "2026-10-03T06:40:00Z" } });
 async function assessmentPage(postAssessment: ReturnType<typeof vi.fn>, overview = assessmentOverview()) {
   const getAssessments = vi.fn().mockResolvedValue(overview);
   const getAssessmentSlots = vi.fn().mockResolvedValue(availability());
@@ -139,16 +139,16 @@ async function assessmentPage(postAssessment: ReturnType<typeof vi.fn>, overview
     get: vi.fn().mockResolvedValue({ id: "account", participants: [{ id: "member-a", name: "A" }] }) });
   run.load("pages/assessment/index.ts"); const page = run.page();
   await page.load();
-  page.showSheet({ currentTarget: { dataset: { sheet: "subject" } } });
-  page.toggleSubject({ currentTarget: { dataset: { id: "math" } } });
-  page.toggleSubject({ currentTarget: { dataset: { id: "english" } } }); page.confirmSubjects();
-  page.chooseGrade({ currentTarget: { dataset: { grade: 3 } } }); page.chooseMode();
+  page.showSheet({ currentTarget: { dataset: { sheet: "topic" } } });
+  page.toggleTopic({ currentTarget: { dataset: { id: "math" } } });
+  page.toggleTopic({ currentTarget: { dataset: { id: "english" } } }); page.confirmTopics();
+  page.chooseStage({ currentTarget: { dataset: { stageNumber: 3 } } }); page.chooseMode();
   return { run, page, getAssessments, getAssessmentSlots };
 }
 async function selectAssessment(page: RuntimePage) {
   await page.review();
   page.chooseCampus({ currentTarget: { dataset: { id: campusId } } });
-  page.chooseTeacher({ currentTarget: { dataset: { id: assessorId } } });
+  page.chooseFacilitator({ currentTarget: { dataset: { id: assessorId } } });
   page.chooseTime({ currentTarget: { dataset: { id: slotId } } });
 }
 
@@ -158,7 +158,7 @@ describe("小程序发现与参与合同", () => {
     const { publishedAssessmentGrid } = runtime().load("lib/assessment-booking.ts");
     const data = availability();
     data.slots.push({ ...data.slots[0], id: "occupied", startsAt: "2026-10-04T06:00:00Z", endsAt: "2026-10-04T06:40:00Z", available: false });
-    const grid = publishedAssessmentGrid({ availability: data, campusId, teacherId: assessorId, weekIndex: 0,
+    const grid = publishedAssessmentGrid({ availability: data, campusId, facilitatorId: assessorId, weekIndex: 0,
       selectedSlotId: slotId, weekdays: ["周一", "周二", "周三", "周四", "周五", "周六", "周日"], periods: ["上午", "下午", "晚上"], now });
     expect(grid.days.map(day => day.weekday)).toEqual(["周四", "周五", "周六", "周日", "周一", "周二", "周三"]);
     expect(grid.weeks.map(week => week.label)).toEqual(["10.1~10.7", "10.8~10.14"]);
@@ -171,17 +171,17 @@ describe("小程序发现与参与合同", () => {
   it("科目可多选确认，改年级清除原校区老师时段，迟到的旧时段响应不回填", async () => {
     vi.useFakeTimers({ now });
     const { page, getAssessmentSlots } = await assessmentPage(vi.fn());
-    expect(page.data.selectedSubjects).toEqual(["math", "english"]);
-    expect(page.data.teacherId).toBe("");
+    expect(page.data.selectedTopics).toEqual(["math", "english"]);
+    expect(page.data.facilitatorId).toBe("");
     await selectAssessment(page);
     expect(page.data.selectedSlotId).toBe(slotId);
     const slow = deferred<AssessmentAvailability>();
     getAssessmentSlots.mockReturnValueOnce(slow.promise);
     const old = page.loadAvailability();
-    page.back(); page.chooseGrade({ currentTarget: { dataset: { grade: 4 } } });
+    page.back(); page.chooseStage({ currentTarget: { dataset: { stageNumber: 4 } } });
     slow.resolve(availability()); await old;
     expect(page.data.availability).toBeNull();
-    expect(page.data.campusId).toBe(""); expect(page.data.teacherId).toBe(""); expect(page.data.selectedSlotId).toBe("");
+    expect(page.data.campusId).toBe(""); expect(page.data.facilitatorId).toBe(""); expect(page.data.selectedSlotId).toBe("");
   });
 
   it("在已返回活动中组合语言、地点、日期与名额筛选，保持实际标题", () => {
@@ -242,13 +242,13 @@ describe("小程序发现与参与合同", () => {
 
   it("测评未确认请求按账号与孩子隔离，保留原请求号供恢复重试", () => {
     const { pendingAssessment, savePendingAssessment, clearPendingAssessment } = runtime().load("lib/assessment-pending.ts");
-    const draft = { id: "00000000-0000-4000-8000-000000000001", teacherId: "00000000-0000-4000-8000-000000000002", parentTimeOptions: ["2026-10-03@14:00"] };
-    savePendingAssessment("account-a", "child-a", draft);
-    expect(pendingAssessment("account-a", "child-a")).toEqual(draft);
-    expect(pendingAssessment("account-b", "child-a")).toBeNull();
-    expect(pendingAssessment("account-a", "child-b")).toBeNull();
-    clearPendingAssessment("account-a", "child-a");
-    expect(pendingAssessment("account-a", "child-a")).toBeNull();
+    const draft = { id: "00000000-0000-4000-8000-000000000001", facilitatorId: "00000000-0000-4000-8000-000000000002", participantTimeOptions: ["2026-10-03@14:00"] };
+    savePendingAssessment("account-a", "participant-a", draft);
+    expect(pendingAssessment("account-a", "participant-a")).toEqual(draft);
+    expect(pendingAssessment("account-b", "participant-a")).toBeNull();
+    expect(pendingAssessment("account-a", "participant-b")).toBeNull();
+    clearPendingAssessment("account-a", "participant-a");
+    expect(pendingAssessment("account-a", "participant-a")).toBeNull();
   });
 
   it("登录后返回原活动一次，清除账号时也清除成员选择和返回意图", () => {
@@ -267,16 +267,16 @@ describe("小程序发现与参与合同", () => {
   it("三栏页面使用系统页签，预约与月课表保留二级返回路径", () => {
     const run = runtime();
     const navigation = run.load("lib/navigation.ts");
-    navigation.openPage("/pages/courses/index");
+    navigation.openPage("/pages/calendar/index");
     navigation.openPage("/pages/reservations/index?filter=cancelled");
     navigation.rememberReturn("/pages/agenda/index"); navigation.resumeAfterLogin();
-    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/courses/index" });
+    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/calendar/index" });
     expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/reservations/index?filter=cancelled" }], [{ url: "/pages/agenda/index" }]]);
   });
 
   it("发现页的课程进入课程详情，测评继续使用独立入口", () => {
     const run = runtime(); run.load("pages/discover/index.ts"); const page = run.page();
-    void page.book(); page.openCourse({ currentTarget: { dataset: { id: "course-offer" } } });
+    void page.book(); page.openActivity({ currentTarget: { dataset: { id: "course-offer" } } });
     expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/assessment/index" }], [{ url: "/pages/course-detail/index?id=course-offer" }]]);
     const navigation = run.load("lib/navigation.ts");
     navigation.rememberReturn("/pages/assessment/index?view=history"); navigation.resumeAfterLogin();
@@ -285,17 +285,17 @@ describe("小程序发现与参与合同", () => {
 
   it("测评选好科目年级方式、校区老师和发布时段后只预约一次，显示真实确认", async () => {
     vi.useFakeTimers({ now });
-    const pending = deferred<ParentAssessmentRequest>();
+    const pending = deferred<AssessmentRequest>();
     const post = vi.fn(() => pending.promise);
     const { page } = await assessmentPage(post);
     await page.submit(); expect(post).not.toHaveBeenCalled();
     await selectAssessment(page);
     const first = page.submit(); await page.submit();
-    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "book", id: assessmentId, participantId: "member-a", slotId, subjects: ["math", "english"], grade: 3, mode: "campus" });
+    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "book", id: assessmentId, participantId: "member-a", slotId, topics: ["math", "english"], stageNumber: 3, mode: "campus" });
     pending.resolve(bookedAssessment()); await first;
     expect(page.data.requestSent).toBe(true);
     expect(page.data.requests[0].state).toBe("confirmed");
-    expect(page.data.requests[0].scheduledLabel).toBe("2026.10.03 周六 14:00~14:40");
+    expect(page.data.requests[0].confirmedTimeLabel).toBe("2026.10.03 周六 14:00~14:40");
     expect(page.data.pending).toBeNull();
   });
 
@@ -332,31 +332,31 @@ describe("小程序发现与参与合同", () => {
     await page.submit(); page.startOver(); expect(page.data.pending).not.toBeNull();
     await page.loadParticipant(); page.startOver();
     expect(page.data.pending).toBeNull(); expect(page.data.uncertain).toBe(false);
-    expect(page.data.step).toBe(1); expect(page.data.teacherId).toBe("");
+    expect(page.data.step).toBe(1); expect(page.data.facilitatorId).toBe("");
     expect(post).toHaveBeenCalledTimes(1);
   });
 
   it("测评只确认双方未来具体交集，并携带最新版本，意向时刻不冒充已约", async () => {
     vi.useFakeTimers({ now });
-    const request = assessmentRequest({ state: "awaiting_parent", teacherTimeOptions: [assessmentTime, "2026-10-03@after_school"],
+    const request = assessmentRequest({ state: "awaiting_participant", facilitatorTimeOptions: [assessmentTime, "2026-10-03@after_school"],
       sharedTimeOptions: [assessmentTime, "2026-10-03@after_school"], proposedStartsAt: "2026-10-03T06:00:00Z", canConfirm: true });
-    const post = vi.fn().mockResolvedValue({ ...request, state: "confirmed", canConfirm: false, scheduledAt: "2026-10-03T06:00:00Z" });
+    const post = vi.fn().mockResolvedValue({ ...request, state: "confirmed", canConfirm: false, confirmedStartsAt: "2026-10-03T06:00:00Z" });
     const { page } = await assessmentPage(post, assessmentOverview("member-a", [request]));
-    expect(page.data.requests[0].scheduledLabel).toBe("");
+    expect(page.data.requests[0].confirmedTimeLabel).toBe("");
     expect(page.data.requests[0].confirmOptions.map(option => option.value)).toEqual([assessmentTime]);
     page.selectConfirmation({ currentTarget: { dataset: { id: assessmentId, value: "2026-10-03@after_school" } } });
     await page.confirm({ currentTarget: { dataset: { id: assessmentId } } }); expect(post).not.toHaveBeenCalled();
     page.selectConfirmation({ currentTarget: { dataset: { id: assessmentId, value: assessmentTime } } });
     await page.confirm({ currentTarget: { dataset: { id: assessmentId } } });
     expect(post).toHaveBeenCalledExactlyOnceWith({ action: "confirm", id: assessmentId, participantId: "member-a", timeOption: assessmentTime, expectedUpdatedAt: request.updatedAt });
-    expect(page.data.requests[0].scheduledLabel).toBe("2026.10.03 14:00");
+    expect(page.data.requests[0].confirmedTimeLabel).toBe("2026.10.03 14:00");
   });
 
   it("旧申请结果不明也能确认新读取的另一条真实邀约", async () => {
     vi.useFakeTimers({ now });
     const otherId = "00000000-0000-4000-8000-000000000003";
-    const existing = assessmentRequest({ id: otherId, state: "awaiting_parent", teacherTimeOptions: [assessmentTime], sharedTimeOptions: [assessmentTime], canConfirm: true });
-    const post = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue({ ...existing, state: "confirmed", canConfirm: false, scheduledAt: "2026-10-03T06:00:00Z" });
+    const existing = assessmentRequest({ id: otherId, state: "awaiting_participant", facilitatorTimeOptions: [assessmentTime], sharedTimeOptions: [assessmentTime], canConfirm: true });
+    const post = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue({ ...existing, state: "confirmed", canConfirm: false, confirmedStartsAt: "2026-10-03T06:00:00Z" });
     const { page, getAssessments } = await assessmentPage(post);
     await selectAssessment(page); await page.submit();
     getAssessments.mockResolvedValue({ ...assessmentOverview("member-a", [existing]), eligibility: { canRequest: false, reason: "ACTIVE_INVITATION" } });
@@ -369,7 +369,7 @@ describe("小程序发现与参与合同", () => {
   });
 
   it("测评快速切换孩子时丢弃旧邀约响应", async () => {
-    const slow = deferred<ParentAssessmentOverview>();
+    const slow = deferred<AssessmentOverview>();
     const run = runtime({ getAssessments: vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve(assessmentOverview(id, [assessmentRequest({ participantId: id })]))) });
     run.load("pages/assessment/index.ts"); const page = run.page();
     page.setData({ accountId: "account", participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] });
@@ -408,8 +408,8 @@ describe("小程序发现与参与合同", () => {
   it("同名活动保持独立，满额活动不能暗中换成另一个年级或地点的名额", async () => {
     const post = vi.fn().mockResolvedValue({ id: "booking" });
     const run = runtime({ post }); run.load("pages/activity/index.ts"); const page = run.page();
-    const full = activity("full", { remaining: 0, targetGrades: [3] });
-    const available = activity("south", { location: "South", targetGrades: [6], durationMinutes: 90 });
+    const full = activity("full", { remaining: 0, targetStages: [3] });
+    const available = activity("south", { location: "South", targetStages: [6], durationMinutes: 90 });
     page.setData({ loaded: true, source: [full, available], participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] });
     page.selectActivity(full); page.review(); expect(page.data.step).toBe(1);
     expect(page.data.locations).toEqual(["North"]);
@@ -475,54 +475,54 @@ describe("小程序发现与参与合同", () => {
   });
 
   it("切换同名成员后丢弃旧响应，预约和课表都按稳定 ID 过滤", async () => {
-    const slow = deferred<ParentLearning>();
-    const run = runtime({ learning: vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve(learning(id, "B schedule"))),
+    const slow = deferred<ParticipantCalendar>();
+    const run = runtime({ participantCalendar: vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve(participantCalendar(id, "B calendar"))),
       get: vi.fn().mockResolvedValue([booking("a"), booking("b", { participantId: "member-b" })]) });
     run.load("pages/agenda/index.ts"); const page = run.page();
     page.setData({ participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }], month: "2026-10", selectedDate: "2026-10-03" });
     const old = page.loadMonth();
     page.setData({ selected: 1 }); await page.loadMonth();
     expect(page.data.events.map((row: { key: string }) => row.key).sort()).toEqual(["activity-b", "session-session-member-b"]);
-    slow.resolve(learning("member-a", "A schedule")); await old;
-    expect(page.data.learning?.participantId).toBe("member-b");
-    expect(page.data.dayEvents.map((row: { title: string }) => row.title)).toContain("B schedule");
+    slow.resolve(participantCalendar("member-a", "A calendar")); await old;
+    expect(page.data.participantCalendar?.participantId).toBe("member-b");
+    expect(page.data.dayEvents.map((row: { title: string }) => row.title)).toContain("B calendar");
   });
 
   it("快速换月不会被前一个月份的延迟返回覆盖", async () => {
-    const slow = deferred<ParentLearning>();
-    const request = vi.fn().mockImplementationOnce(() => slow.promise).mockResolvedValue(learning("member-a", "New month"));
-    const run = runtime({ learning: request, get: vi.fn().mockResolvedValue([]) });
+    const slow = deferred<ParticipantCalendar>();
+    const request = vi.fn().mockImplementationOnce(() => slow.promise).mockResolvedValue(participantCalendar("member-a", "New month"));
+    const run = runtime({ participantCalendar: request, get: vi.fn().mockResolvedValue([]) });
     run.load("pages/agenda/index.ts"); const page = run.page();
     page.setData({ participants: [{ id: "member-a", name: "A" }], month: "2026-09" });
     const old = page.loadMonth(); page.setData({ month: "2026-10" }); await page.loadMonth();
-    slow.resolve(learning("member-a", "Old month")); await old;
-    expect(page.data.learning?.schedule[0].title).toBe("New month");
+    slow.resolve(participantCalendar("member-a", "Old month")); await old;
+    expect(page.data.participantCalendar?.calendar[0].title).toBe("New month");
   });
 
   it("周课表切换同名孩子后，保留新孩子的课次并丢弃旧响应", async () => {
-    const slow = deferred<ParentLearning>();
-    const request = vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve({ ...learning(id, "B schedule"),
-      summary: { grade: 8, nextSessionAt: null, weekSessionCount: 1, starTotal: 0 },
-      schedule: [...learning(id, "B schedule").schedule, ...learning("other", "Other schedule").schedule] }));
-    const run = runtime({ learning: request, get: vi.fn().mockResolvedValue([]) }); run.load("pages/courses/index.ts"); const page = run.page();
+    const slow = deferred<ParticipantCalendar>();
+    const request = vi.fn((id: string) => id === "member-a" ? slow.promise : Promise.resolve({ ...participantCalendar(id, "B calendar"),
+      summary: { stageNumber: 8, nextSessionAt: null, weekSessionCount: 1, starTotal: 0 },
+      calendar: [...participantCalendar(id, "B calendar").calendar, ...participantCalendar("other", "Other calendar").calendar] }));
+    const run = runtime({ participantCalendar: request, get: vi.fn().mockResolvedValue([]) }); run.load("pages/calendar/index.ts"); const page = run.page();
     page.setData({ participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }], selectedDate: "2026-10-03" });
     const old = page.loadWeek();
     page.setData({ selected: 1 }); await page.loadWeek();
-    slow.resolve(learning("member-a", "A schedule")); await old;
-    expect(page.data.daySessions.map(row => row.title)).toEqual(["B schedule"]);
+    slow.resolve(participantCalendar("member-a", "A calendar")); await old;
+    expect(page.data.daySessions.map(row => row.title)).toEqual(["B calendar"]);
     expect(page.data.daySessions[0].participantId).toBe("member-b");
-    expect(page.data.gradeLabel).toBe("初二");
+    expect(page.data.stageLabel).toBe("初二");
   });
 
   it("周课表与月课表显示同一天的相同真实安排，按孩子和业务 ID 区分同名记录", async () => {
-    const info = learning("member-a", "同名课程");
+    const info = participantCalendar("member-a", "同名课程");
     const rows = [booking("same-name", { title: { zh: "同名课程", en: "Same title" } }),
-      booking("other-child", { participantId: "member-b" }), booking("cancelled", { status: "cancelled" }),
+      booking("other-participant", { participantId: "member-b" }), booking("cancelled", { status: "cancelled" }),
       booking("previous-month", { startsAt: new Date(2026, 8, 30, 14).toISOString() }),
       booking("next-week", { startsAt: timestamp(5) })];
-    const api = { learning: vi.fn().mockResolvedValue(info), get: vi.fn().mockResolvedValue(rows) };
-    const weekRun = runtime(api); weekRun.load("pages/courses/index.ts"); const week = weekRun.page();
-    week.setData({ participants: [{ id: "member-a", name: "Same" }], selectedDate: "2026-10-03", gradeLabel: "初二" });
+    const api = { participantCalendar: vi.fn().mockResolvedValue(info), get: vi.fn().mockResolvedValue(rows) };
+    const weekRun = runtime(api); weekRun.load("pages/calendar/index.ts"); const week = weekRun.page();
+    week.setData({ participants: [{ id: "member-a", name: "Same" }], selectedDate: "2026-10-03", stageLabel: "初二" });
     await week.loadWeek();
     const monthRun = runtime(api); monthRun.load("pages/agenda/index.ts"); const month = monthRun.page();
     month.setData({ participants: [{ id: "member-a", name: "Same" }], month: "2026-10", selectedDate: "2026-10-03" });
@@ -533,15 +533,15 @@ describe("小程序发现与参与合同", () => {
     expect(week.data.sessions).toEqual(expect.arrayContaining([expect.objectContaining({ key: "activity-previous-month" })]));
     expect(week.data.sessions).not.toEqual(expect.arrayContaining([expect.objectContaining({ key: "activity-next-week" })]));
     expect(month.data.events).not.toEqual(expect.arrayContaining([expect.objectContaining({ key: "activity-previous-month" })]));
-    expect(week.data.gradeLabel).toBe("");
+    expect(week.data.stageLabel).toBe("");
   });
 
-  it.each(["courses", "agenda"])("%s 的课表接口暂不可用时，仍显示已读取的活动并保留重试提示", async pageName => {
-    const run = runtime({ learning: vi.fn().mockRejectedValue(new Error("Unavailable")), get: vi.fn().mockResolvedValue([booking("confirmed")]) });
+  it.each(["calendar", "agenda"])("%s 的课表接口暂不可用时，仍显示已读取的活动并保留重试提示", async pageName => {
+    const run = runtime({ participantCalendar: vi.fn().mockRejectedValue(new Error("Unavailable")), get: vi.fn().mockResolvedValue([booking("confirmed")]) });
     run.load(`pages/${pageName}/index.ts`); const page = run.page();
     page.setData({ participants: [{ id: "member-a", name: "Same" }], month: "2026-10", selectedDate: "2026-10-03" });
-    if (pageName === "courses") await page.loadWeek(); else await page.loadMonth();
-    expect(pageName === "courses" ? page.data.daySessions : page.data.dayEvents).toEqual([
+    if (pageName === "calendar") await page.loadWeek(); else await page.loadMonth();
+    expect(pageName === "calendar" ? page.data.daySessions : page.data.dayEvents).toEqual([
       expect.objectContaining({ key: "activity-confirmed", kind: "activity", participantId: "member-a", endTime: "" }),
     ]);
     expect(page.data.error).toBeTruthy();

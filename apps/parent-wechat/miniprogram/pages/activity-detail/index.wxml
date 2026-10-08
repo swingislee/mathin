@@ -1,0 +1,13 @@
+<view class="portal-page activity-detail-page"><app-nav title="{{t.detail}}" back />
+  <view class="portal-content activity-content">
+    <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
+    <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
+    <block wx:if="{{offer}}"><view class="activity-hero"><image src="/assets/appointment.png" mode="aspectFit" /><text>{{offer.meta}}</text></view>
+      <view class="surface activity-summary"><text class="activity-heading">{{offer.title}}</text><text class="muted block">{{offer.startLabel}}</text><text class="small muted block">{{offer.priceLabel}}</text></view>
+      <view wx:if="{{offer.description}}" class="surface activity-summary"><text class="activity-description">{{offer.description}}</text></view>
+      <text class="small muted block">{{t.submitNote}}</text>
+      <button class="text-link" bindtap="service">{{t.service}}</button>
+    </block>
+  </view>
+  <view class="activity-footer"><button class="text-button" bindtap="applications">{{t.applications}}</button><button class="primary" disabled="{{!offer || !offer.open}}" bindtap="choose">{{offer && !offer.open ? t.full : t.choose}}</button></view>
+</view>

@@ -1,0 +1,6 @@
+<view class="portal-page"><app-nav title="{{t.title}}" back /><view class="portal-content activity-content">
+  <view class="surface activity-summary"><text class="muted small">{{t.stageNumber}}</text><picker mode="selector" range="{{stages}}" range-key="label" value="{{selected}}" bindchange="change"><view class="activity-participant"><text>{{stages[selected].label}}</text><text class="text-link">›</text></view></picker></view>
+  <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view><text wx:elif="{{loading}}" class="loading-line">{{copy.loading}}</text>
+  <view wx:elif="{{contact}}" class="surface activity-summary service-card"><text class="activity-heading">{{contact.facilitatorName || t.service}}</text><image class="service-qr" src="{{contact.qrCodeUrl}}" mode="aspectFit" show-menu-by-longpress bindtap="preview" /><text class="small muted block">{{t.scan}}</text><text class="service-phone">{{contact.phone}}</text><button class="primary" bindtap="phone">{{t.phone}}</button></view>
+  <empty-state wx:else label="{{t.missing}}" spacious />
+</view></view>

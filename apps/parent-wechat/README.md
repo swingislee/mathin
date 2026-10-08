@@ -1,36 +1,25 @@
 # 格致未来思维 · 微信原生小程序
 
-> 2026-10-03 状态核对：三栏业务与账号／数据接入已交付开发端，待人工体验；共用后端已随 v0.3.0 发布，真实小程序微信仍待私有配置及平台往返，客户端平台发布未登记。网站扫码已启用的结果不覆盖小程序。当前完整状态见 [当前状态](../../docs/current.md)，开发运行依据见[集成记录](../../archive/2026-10-04/.ai/tasks/DEV-PARENT-PREVIEW-20261002-INTEGRATION.md)。
+使用原生 TypeScript、WXML、WXSS。2026-10-08 本轮调整已实现，交付开发端供实际体验；生产 API 与小程序平台发布另行办理。
 
-使用原生 TypeScript、WXML、WXSS；不依赖 React 或网页运行时。
+底部入口为“发现、日历、我的”。发现页顶部是“参与者阶段、活动主题”，下方为“一对一诊断”和公益活动；日历页显示本周日历安排，可进入全部安排；我的页面提供关联参与人、参与登记、预约、活动记录及联系服务。原有卡片尺寸、四列服务网格、颜色和间距沿用当前版本。
 
-2026-10-05 开发端校正：按参考图恢复长条按钮、关闭按钮、阶段／科目弹层和家长四列服务网格，发现页使用“班级阶段 + 科目”。测评基础信息为学员、数学／英语多选、年级、线下到校区测试；第二步选择校区、老师及主动发布的两周可约时段。后台入口为 `/zh/dashboard/assessments/availability`，新数据库能力仅应用于本机开发库。视觉与交互待产品负责人验收，平台发布状态沿用上方记录。
+## 开发与对外文案
 
-同日按产品负责人反馈调整：对外展示在具体班级或活动设置，课程产品继续用于教研。发现页分别显示长期班、短期班和活动；报名仅为预报名，由学服线下联系，家长线下缴费。后台学校资料中可按年级设置学服二维码和手机号，小程序提供查看二维码与拨号。1900／1910 迁移已应用本机，生产未部署；需要工作人员填写真实联系方式及选择公开对象。说明见[展示与预报名](docs/portal.md#班级活动的对外展示与预报名)。
+1. 在仓库根目录运行 `corepack pnpm install --frozen-lockfile`，并用微信开发者工具导入当前目录。
+2. 共享 AppID 保持占位；真实 AppID 与本机偏好保存于已忽略的 `project.private.config.json`。
+3. 开发 API 为 `http://192.168.5.213:3130`，写入已忽略的 `miniprogram/config.local.ts`。已有 3130 服务优先复用。
+4. 打开 `pages/discover/index` 查看本轮结果。小程序类型检查入口仍为 `corepack pnpm parents:wechat:typecheck`。
 
-1. 在仓库根目录运行 `corepack pnpm install --frozen-lockfile`。
-2. 微信开发者工具选择“导入项目”，目录指向当前文件夹（包含 project.config.json）。
-3. 共享配置使用 `touristappid`。在已忽略的 `project.private.config.json` 顶层填写自己的 `appid`，并登录具有该小程序开发权限的微信账号；保留已有的 `setting` 等本机偏好。
-4. 启动本机 Next.js 和隔离 Supabase；将 `miniprogram/config.example.ts` 复制为已忽略的 `config.local.ts`，填写开发 API origin。
-5. 使用工具内置 TypeScript 编译，打开“发现、课程、家长”。后台字段设置、接口依赖和验收操作见[业务配置说明](docs/portal.md)。
+品牌固定为“格致未来思维”。文案跟随微信语言：英文使用 en，其余回退中文。公共文案维护在 `lib/locale.ts` 与 `lib/copy.ts`，默认导航同步维护在 `app.json`。诊断用途、真实年级选项、数学／英语、发布资料正文和信息使用说明保留真实含义。
 
-文案跟随微信语言：英文使用 en，其他语言回退中文；页面首次进入或语言变化时同步标题与 tabBar。后台发布内容保留原文，主题跟随系统外观。
+首层路由为 `discover`、`calendar`、`account`；二级路由使用 `agenda`、`records`、`task`、`reflections`、`activity-*` 和 `service`。工程目录与工具命令保留旧路径，以兼容本机配置。
 
-## 对外文案
+## 服务端与数据
 
-小程序对外品牌统一为“格致未来思维”，中英文界面保留这一专有名称。底部入口为“发现、课程、家长”。发现页提供独立测评预约和已发布的班级、活动；课程页显示孩子的本周课表；家长页提供孩子、既有预约、预报名和联系学服。旧活动链接进入新的预报名流程。对象资料、测评结果、老师反馈与练习详情按真实数据展示，中英文同步维护。
+小程序请求 `/api/v1/participant`；DTO 来自 [参与人合同](../../contracts/participant-api/README.md)，由 `node scripts/sync-participant-contract.mjs` 生成。服务端将 `calendar`、`stageNumber`、`facilitatorId`、`topics`、`taskId` 等字段转换到既有处理函数，账号、稳定 ID、范围校验与 RLS 继续复用。本轮无 Supabase 表名或字段改动，无数据库迁移，Messaging 与其他客户端沿用原接口。
 
-家长页提供账号密码入口和微信登录/绑定状态。微信配置就绪后使用真实 `wx.login` 兑换；首次绑定先验证已有账号，再由家长确认，继续使用原有孩子关系。当前 AppSecret 尚未配置，页面保留账号密码登录并说明微信暂未开通。配置与验收步骤见[业务配置说明](docs/portal.md#微信登录与绑定)。
-
-首层路由采用 `discover`、`courses`、`account`；`reservations` 与月课表 `agenda` 为二级页面。`mistakes`、`homework`、`practice` 保留为家长页中的服务入口。公共文案集中维护在 `miniprogram/lib/locale.ts` 和 `copy.ts`，默认中文导航同步维护在 `app.json`。登记字段及公开项目继续由现有 Supabase 数据提供。
-
-周课表与月课表复用 iOS 同批的 `/api/v1/parent/learning` 与版本化 DTO，按参与人 ID 和时间范围读取；不新增小程序专用课程、家庭或预约表。活动预约采用“基础信息 → 选择时间”，按真实场次展示地点与周时段，确认后提交所选场次 ID。`api-types.ts` 由共用合同生成，调整接口时同时核对 Next.js、iOS 和小程序调用方。当前手机端视觉与交互需产品负责人验收。
-
-“测评预约”对应现有 `assessment_1v1`，路由为 `pages/assessment/index`。`/api/v1/parent/assessment-slots` 按孩子、科目、年级读取老师主动发布的可约时段；确认所选时段后，通过 `/api/v1/parent/assessments` 的 `book` 命令写入既有邀约。记录使用 `?view=history`，旧协调申请继续支持查看及共有时段确认。部署该入口时同时满足[测评接口与数据库依赖](../../contracts/parent-api/README.md#1-对-1-测评稳定合同)。
-
-```sh
-corepack pnpm parents:wechat:typecheck
-```
+未确认申请的旧缓存由单独兼容模块读取，新请求保留原申请 ID。活动发布资料尚无独立主题，未分类项目保留在“全部主题”，不会推测成数学；诊断的数学／英语时段来自已有真实配置。具体能力和后台资料位置见[业务配置说明](docs/portal.md)。
 
 ## Codex 与微信开发者工具协同
 
