@@ -587,7 +587,7 @@
       "title": "BASE 与生产历史业务深度整理",
       "agent": "codex",
       "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/BASE-PRODUCTION-RECONCILE-20261008.md",
@@ -618,8 +618,8 @@
         "docs/workflows/school-operations.md",
         "docs/current.md"
       ],
-      "checkpoint": "7a24ede8aa8ff7c08b7536f95cf56a8d3bafbbf8",
-      "next": "20人与100人分页修复已在本地完成；20条数据库读取0.81–0.84秒，100条1.27秒，完整阶段及页面内容对比一致。生产两项查询迁移等待明确授权，原网站和数据保留。"
+      "checkpoint": "22eb0ed7",
+      "next": "生产数据与标签界面已发布，100条分页超时及20条重复读取已修复；网站7a24ede8、迁移head19000。该筛选生产数据库20条1.05–1.17秒、100条1.98–2.02秒，阶段、页面、人工证据与权限检查通过。待实际加载体验验收及391项业务复核。"
     }
   ]
 }
