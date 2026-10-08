@@ -5,6 +5,7 @@ import { learningGet, learningPost } from "@/features/parent-portal/learning-ser
 import { assessmentGet, assessmentPost, assessmentSlotsGet } from "@/features/parent-portal/assessment-server";
 import { courseGet, coursePost } from "@/features/parent-portal/course-server";
 import { parentWechatAuthFailure, parentWechatAuthGet, parentWechatAuthPost } from "@/features/parent-portal/wechat-server";
+import { onboardingPost } from "@/features/parent-portal/onboarding-server";
 import { GET as contactsGet } from "@/app/api/v1/parent/advisors/route";
 import { GET as contactQrGet } from "@/app/api/v1/parent/advisors/qr/route";
 import * as project from "./projection";
@@ -84,6 +85,7 @@ async function post(request: Request, endpoint: string) {
   switch (endpoint) {
     case "auth": return authPost(request);
     case "auth/wechat": return parentWechatAuthPost(request);
+    case "auth/wechat/onboarding": return onboardingPost(request);
     case "portal": {
       const raw = await readJson(request);
       const input = object.parse(raw);
@@ -118,5 +120,5 @@ export async function participantGet(request: Request, endpoint: string) {
 
 export async function participantPost(request: Request, endpoint: string) {
   try { return await post(request, endpoint); }
-  catch (error) { return endpoint === "auth/wechat" ? parentWechatAuthFailure(error) : failure(error); }
+  catch (error) { return endpoint === "auth/wechat" || endpoint === "auth/wechat/onboarding" ? parentWechatAuthFailure(error) : failure(error); }
 }

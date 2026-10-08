@@ -186,30 +186,24 @@ describe("小程序微信登录与明确绑定", () => {
     expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/assessment/index" });
   });
 
-  it("未知微信先密码登录，再等待用户明确绑定，完成后返回原流程", async () => {
-    let linked = false, signedIn = false;
-    const bindWechat = vi.fn(async () => { linked = true; });
+  it("新微信进入手机号授权与家庭开户，不显示密码选择", async () => {
     const run = pageRuntime({
-      session: () => signedIn ? active("account") : null,
-      login: vi.fn(async () => { signedIn = true; }), bindWechat,
-      loginWithWechat: vi.fn(async () => ({ state: "binding_required" })),
-      wechatAuthStatus: vi.fn(async () => ({ available: true, linked: signedIn ? linked : null, canBind: signedIn && !linked })),
+      loginWithWechat: vi.fn(async () => ({ state: "onboarding_required", ticket: "a".repeat(64) })),
     });
     await run.page.loadWechat();
     await run.page.signInWithWechat();
-    expect(run.page.data.wantsWechatBinding).toBe(true);
     expect(run.page.data.authenticated).toBe(false);
-    run.page.setData({ identifier: "example-account", password: "example-password" });
-    await run.page.signIn();
-    expect(run.page.data.sheet).toBe("bind");
-    expect(bindWechat).not.toHaveBeenCalled();
+    expect(run.page.data.wantsWechatBinding).toBe(false);
+    expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/onboarding/index" });
+  });
+
+  it("已有账号提示首次绑定，不自动改成密码登录或创建账号", async () => {
+    const run = pageRuntime({ loginWithWechat: vi.fn(async () => ({ state: "binding_required" })) });
+    await run.page.loadWechat();
+    await run.page.signInWithWechat();
+    expect(run.page.data.wantsWechatBinding).toBe(false);
     expect(run.wx.navigateTo).not.toHaveBeenCalled();
-    run.page.setData({ password: "example-password" });
-    await run.page.confirmWechatBinding();
-    expect(bindWechat).toHaveBeenCalledExactlyOnceWith("example-password");
-    expect(run.page.data.password).toBe("");
-    expect(run.page.data.wechat?.linked).toBe(true);
-    expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/assessment/index" });
+    expect(run.page.data.info).toContain("绑定微信");
   });
 
   it("原密码或MFA被拒绝时不返回业务页，清空密码并显示可理解原因", async () => {

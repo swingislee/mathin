@@ -8,6 +8,8 @@ import { assertMiniappWechatAccount, exchangeMiniappIdentitySession, limitMiniap
 import { findWechatUser, recordWechatConflict } from "@/features/wechat/store";
 import { authorize, failure, PortalError, readJson, response } from "./server";
 import { parentWechatAuthCommandSchema } from "./wechat-contract";
+import { beginFamilyOnboarding, familyOnboardingAvailable, resumePendingFamily } from "./onboarding-server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export function parentWechatAuthFailure(error: unknown) {
   if (!(error instanceof MiniappWechatError)) return failure(error);
@@ -36,14 +38,24 @@ export async function parentWechatAuthPost(request: Request) {
     await limitMiniappWechat(request, "login");
     const identity = await exchangeMiniappWechatCode(config, input.code);
     const userId = await findWechatUser(identity.subject);
-    if (!userId) return response({ state: "binding_required" } satisfies ParentWechatAuthResult);
+    if (!userId) return response(familyOnboardingAvailable(config)
+      ? await beginFamilyOnboarding(identity, input.scene ?? null)
+      : { state: "binding_required" } satisfies ParentWechatAuthResult);
     await assertMiniappWechatAccount(userId);
+    if (familyOnboardingAvailable(config)) {
+      const resumed = await resumePendingFamily(config, identity, userId);
+      if (resumed) return response(resumed);
+    }
     const session = await exchangeMiniappIdentitySession(config, identity, userId);
     try {
       await authorize(new Request(request.url, { headers: { authorization: `Bearer ${session.access_token}` } }));
       const context = await miniappSessionContext(config, session.access_token, userId);
       if (context.mfaRequired) throw new MiniappWechatError("ACCOUNT_SECURITY", "WECHAT_MFA_REQUIRED");
       if (!session.expires_at) throw new MiniappWechatError("UNAVAILABLE");
+      if (input.scene) {
+        const touched = await createAdminClient().rpc("miniapp_record_promotion_touch", { p_scene: input.scene, p_user: userId });
+        if (touched.error) throw new MiniappWechatError("UNAVAILABLE");
+      }
       return response({ state: "authenticated", session: { accessToken: session.access_token,
         refreshToken: session.refresh_token, expiresAt: session.expires_at } } satisfies ParentWechatAuthResult);
     } catch (error) {

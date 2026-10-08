@@ -52,6 +52,12 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, d
       {family && <p className="mt-3 text-sm text-muted">{locale === "en" ? "Sign in to see your child's schedule, feedback and registration." : "登录后查看孩子的安排、学习反馈与班级报名。"}</p>}
     </div>
 
+    <WechatLoginButton locale={locale} next={next} available={wechatAvailable} disabled={busy} />
+    {!wechatAvailable && <p className="mt-3 text-sm text-muted" role="status">{wechat("errors.unavailable")}</p>}
+    {wechatError ? <p role="alert" className="mt-3 text-sm text-rose">{wechat(`errors.${parseWechatError(wechatError)}`)}</p> : null}
+    <details className="mt-6" open={errorCode ? true : undefined}>
+    <summary className="cursor-pointer text-center text-sm text-muted">{locale === "en" ? "First-time linking and sign-in help" : "首次绑定微信与登录帮助"}</summary>
+    <p className="my-4 text-sm text-muted">{locale === "en" ? "For an existing account, sign in once and link WeChat in Account security. Your permissions and records will be kept." : "已有账号首次使用微信时，先登录一次，在“账号安全”中绑定微信，原权限与业务记录会继续保留。"}</p>
     <form action={action} autoComplete="on" aria-busy={busy}>
       <Input type="hidden" name="locale" value={locale} />
       <Input type="hidden" name="presentation" value={dialog ? "dialog" : "page"} />
@@ -86,11 +92,7 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, d
       </Button>
     </form>
 
-    <div className="my-5 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" /><span>{t("or")}</span><span className="h-px flex-1 bg-line" /></div>
-    <div className="grid auto-cols-fr grid-flow-col gap-3" aria-label={t("otherLoginMethods")}>
-      <WechatLoginButton locale={locale} next={next} available={wechatAvailable} disabled={busy} />
-    </div>
-    {wechatError ? <p role="alert" className="mt-3 text-sm text-rose">{wechat(`errors.${parseWechatError(wechatError)}`)}</p> : null}
     <p className="mt-6 text-center text-sm text-muted">{t("haveInvitation")} <Link href="/signup" onNavigate={onNavigate} className="text-ink underline underline-offset-4">{t("activateAccount")}</Link></p>
+    </details>
   </div>;
 }

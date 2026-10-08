@@ -45,10 +45,11 @@ export type Session = { accessToken: string; refreshToken: string; expiresAt: nu
 /** available 表示服务端配置就绪；真实微信往返仍由登录操作核验。 */
 export type WechatAuthStatus = { available: boolean; linked: boolean | null; canBind: boolean };
 export type WechatAuthCommand =
-  | { action: "login"; code: string }
+  | { action: "login"; code: string; scene?: string }
   | { action: "bind"; code: string; password: string; confirm: true };
 export type WechatAuthResult =
   | { state: "authenticated"; session: Session }
+  | { state: "onboarding_required"; ticket: string }
   | { state: "binding_required" }
   | { state: "bound" };
 export type WechatAuthErrorReason = "WECHAT_NOT_CONFIGURED" | "WECHAT_CODE_INVALID"

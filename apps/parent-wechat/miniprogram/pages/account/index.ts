@@ -3,6 +3,7 @@ import type { Account, WechatAuthStatus } from "../../lib/api-types";
 import { clearNavigation, hasReturn, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
 import { activityCopy } from "../../lib/activity-catalog";
+import { onboardingCopy, setOnboardingProof } from "../../lib/onboarding";
 
 Page({
   data: { ...pageData("account"), activityCopy: activityCopy.zh, authenticated: false, identifier: "", password: "", busy: false,
@@ -47,8 +48,11 @@ Page({
     this.setData({ busy: true, error: "", info: "", password: "", wantsWechatBinding: false });
     try {
       const result = await loginWithWechat();
-      if (result.state === "binding_required") {
-        this.setData({ sheet: "login", wantsWechatBinding: true, info: this.data.copy.wechatFirstLink });
+      if (result.state === "onboarding_required") {
+        setOnboardingProof(result.ticket);
+        this.setData({ sheet: "" }); wx.navigateTo({ url: "/pages/onboarding/index" });
+      } else if (result.state === "binding_required") {
+        this.setData({ info: onboardingCopy[currentLocale()].binding });
       } else if (result.state === "authenticated") {
         this.setData({ authenticated: true, sheet: "" });
         await this.load();

@@ -57,3 +57,21 @@ Auth 设置 `GOTRUE_SECURITY_MANUAL_LINKING_ENABLED=true`，严格 redirect allo
 在已授权的部署目标选择 `pg_cron` 或专用 Worker 清理过期票据。使用 Worker 时设置 `R1_JOB_SCOPE=wechat_oauth` 与稳定的 `R1_JOB_WORKER_ID`，运行 `node scripts/r1-job-worker.mjs`；仅需要一次检查时设置 `R1_JOB_ONCE=1`。该 scope 每分钟清理过期票据与限流记录，保留账号、绑定快照和审计；核对失败重启及心跳监测。调用前同样识别实际目标与写入范围。
 
 关闭新授权时先关闭 `WECHAT_OAUTH_ENABLED` 与 provider；需要回切应用或 Auth 时按本次问题选择 previous，并核对兼容性。保留已绑定 identity、原账号、业务事实、审计与过期清理，原有密码登录继续可用。备份与恢复措施按 [操作规则](../agent/operations.md) 的具体风险决定。
+
+## 小程序家庭开户与推广码
+
+首次进入为微信登录、主动授权手机号、填写家庭与孩子信息、建立正式家长账号，然后进入发现。用户选择年级后预设发现页阶段；兴趣、学校、监护关系、性别和本次获准的 GCJ-02 定位保存在登记记录。拒绝定位保留明确状态。手机号只接受微信服务端兑换结果，短期开户凭据只放内存，不通过 URL 或本地缓存传递。
+
+后台 `/zh/dashboard/promotions` 使用 `registration.invite.manage` 权限建立兼职专属小程序码。按已验证家庭手机号核对系统及历史获客；首次归属固定，换孩子姓名、再次扫码或换兼职均不重新计为新增。已有账号需要完成安全绑定；历史学生资料由工作人员核对，开户不自动合并历史学员。
+
+本流程复用 `miniapp_forms` 和 `miniapp_intakes`，迁移为 `20261008110000_miniapp_family_onboarding.sql`。新家长只获得自己新登记孩子的活动权限。后续学习与其他权限继续通过现有明确授权流程办理。清理过期 OAuth 票据不清理正式家庭、学生、获客或推广来源记录。
+
+启用前在私有环境核对：
+
+1. 小程序使用自己的 `WECHAT_MINIPROGRAM_APP_ID` / `WECHAT_MINIPROGRAM_APP_SECRET`，绑定到与网站应用一致的微信开放平台身份体系，保持 namespace 不变。
+2. 按上文完成 Supabase `custom:wechat`、原生身份绑定及纯手机号登录兼容联调，再启用 `WECHAT_MINIPROGRAM_ENABLED`、`WECHAT_AUTH_COMPATIBILITY_VERIFIED`、`WECHAT_PHONE_LINKING_VERIFIED`。服务端出口需要访问微信接口。
+3. 在小程序管理平台核对认证状态、手机号能力与位置接口使用声明、隐私保护指引、HTTPS 服务器合法域名；管局备案通过并不能代替这些接入条件。能力资格和额度以该账号后台显示为准。
+4. 开启 `WECHAT_FAMILY_ONBOARDING_ENABLED` 前在体验版真实手机核对首次开户、定位拒绝、已有账号登录、不同兼职重复扫码及发现页阶段。后台可选择开发版、体验版、正式版小程序码；真实码从微信接口生成。
+5. 按本次授权部署服务端和迁移，再上传小程序、提交平台审核、发布。生产写入和正式发布另按具体任务授权办理。
+
+停用新增开户时只关闭 `WECHAT_FAMILY_ONBOARDING_ENABLED`；保留已建账号及重复获客记录。某兼职停用时，在推广面板停用其码；历史统计继续保留。

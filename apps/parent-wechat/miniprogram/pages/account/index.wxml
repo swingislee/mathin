@@ -43,10 +43,6 @@
       <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
       <button wx:elif="{{wechat.available}}" class="primary" bindtap="signInWithWechat" loading="{{busy}}" disabled="{{busy}}">{{copy.wechatLogin}}</button>
       <text wx:else class="auth-hint">{{copy.wechatUnavailable}}</text>
-      <text class="auth-password-note">{{copy.loginNote}}</text>
-      <label class="field-label">{{copy.identifier}}</label><input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="254" placeholder="{{copy.identifier}}" disabled="{{busy}}" />
-      <label class="field-label">{{copy.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" />
-      <button class="secondary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button>
     </block>
     <block wx:elif="{{sheet === 'bind'}}">
       <text class="account-display-name">{{account.displayName || copy.accountLabel}}</text>

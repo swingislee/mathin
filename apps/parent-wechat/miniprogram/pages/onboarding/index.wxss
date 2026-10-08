@@ -1,0 +1,12 @@
+.onboarding-content { padding-top: 48rpx; padding-bottom: 80rpx; }
+.onboarding-eyebrow { display: block; color: var(--muted); font-size: 26rpx; margin-bottom: 16rpx; }
+.onboarding-title { display: block; font-size: 48rpx; line-height: 1.35; }
+.onboarding-intro { display: block; color: var(--muted); font-size: 28rpx; line-height: 1.7; margin: 20rpx 0 40rpx; }
+.verified-phone { display: block; color: var(--leaf-deep); margin: 24rpx 0; font-size: 28rpx; }
+.picker-input { display: flex; align-items: center; min-height: 80rpx; }
+.interest-options { display: flex; flex-wrap: wrap; gap: 20rpx; margin: 20rpx 0 32rpx; font-size: 28rpx; }
+.interest-options label { display: flex; align-items: center; }
+.location-entry { margin: 32rpx 0; padding: 24rpx 0; border-top: 1rpx solid var(--line); border-bottom: 1rpx solid var(--line); }
+.onboarding-consent { display: flex; align-items: flex-start; font-size: 25rpx; line-height: 1.8; }
+.policy-links { display: flex; flex-wrap: wrap; gap: 12rpx; margin: 12rpx 0 32rpx; }
+.policy-links .text-button { margin: 0; font-size: 25rpx; }

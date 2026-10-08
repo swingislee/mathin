@@ -10,7 +10,7 @@ import { beginWechatLogin } from "./actions";
 function WechatSubmit({ available, disabled }: { available: boolean; disabled: boolean }) {
   const t = useTranslations("wechat");
   const { pending } = useFormStatus();
-  return <Button type="submit" variant="secondary" className="h-11 w-full" disabled={!available || disabled || pending}
+  return <Button type="submit" className="h-11 w-full" disabled={!available || disabled || pending}
     aria-label={t("login")} title={available ? t("login") : t("errors.unavailable")}>
     <WechatLogo className="size-5" />{t("title")}
   </Button>;

@@ -44,11 +44,12 @@ export type Session = { accessToken: string; refreshToken: string; expiresAt: nu
 /** available 表示服务端配置就绪；真实微信往返仍由登录操作核验。 */
 export type ParentWechatAuthStatus = { available: boolean; linked: boolean | null; canBind: boolean };
 export type ParentWechatAuthCommand =
-  | { action: "login"; code: string }
+  | { action: "login"; code: string; scene?: string }
   | { action: "bind"; code: string; password: string; confirm: true };
 export type ParentWechatAuthResult =
   | { state: "authenticated"; session: Session }
   | { state: "binding_required" }
+  | { state: "onboarding_required"; ticket: string }
   | { state: "bound" };
 export type ParentWechatAuthErrorReason = "WECHAT_NOT_CONFIGURED" | "WECHAT_CODE_INVALID"
   | "WECHAT_UNIONID_REQUIRED" | "WECHAT_CREDENTIALS_INVALID" | "WECHAT_MFA_REQUIRED"

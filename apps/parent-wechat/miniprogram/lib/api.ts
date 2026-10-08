@@ -1,4 +1,5 @@
 import { config } from "../config.local";
+import type { FamilyRegistration, PhoneResult, RegistrationResult } from "./onboarding";
 import type { ActivityOffer, ActivityRequest, ActivityRequestCommand } from "./api-types";
 import type { Session, Media, ParticipantCalendar, AssessmentOverview, AssessmentRequest, AssessmentAvailability, AssessmentTopic, AssessmentCommand, WechatAuthStatus, WechatAuthResult } from "./api-types";
 
@@ -13,7 +14,7 @@ export function configured(){return Boolean(config.apiOrigin);}
 function origin(){const value=String(config.apiOrigin);if(!value)throw new ApiError("CONFIG_REQUIRED");return value.replace(/\/$/,"");}
 function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Promise<T> {
   return new Promise((resolve,reject)=>{
-    wx.request({url:origin()+"/api/v1/participant/"+path,method,data,timeout:20000,
+    wx.request({url:origin()+"/api/v1/participant/"+path,method,data,timeout:path === "auth/wechat/onboarding" ? 60000 : 20000,
       header:{"content-type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},
       success:result=>{
         if(token&&session()?.accessToken!==token){reject(new ApiError("UNAUTHENTICATED"));return;}
@@ -76,14 +77,23 @@ function wechatCode():Promise<string>{
     fail:()=>reject(new ApiError("UNAUTHENTICATED","WECHAT_CODE_INVALID")),
   }));
 }
-export async function loginWithWechat():Promise<WechatAuthResult>{
+export async function loginWithWechat(scene?:string):Promise<WechatAuthResult>{
   const version=sessionVersion;
   const code=await wechatCode();
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
-  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"login",code});
+  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"login",code,...(scene ? {scene} : {})});
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
   if(result.state==="authenticated")saveSession(result.session);
   return result;
+}
+export function authorizeWechatPhone(ticket:string,code:string):Promise<PhoneResult>{
+  return send("auth/wechat/onboarding","POST",{action:"phone",ticket,code});
+}
+export async function completeWechatFamily(ticket:string,family:FamilyRegistration):Promise<RegistrationResult>{
+  const version=sessionVersion;
+  const result=await send<RegistrationResult>("auth/wechat/onboarding","POST",{action:"complete",ticket,family});
+  if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
+  saveSession(result.session);return result;
 }
 export async function bindWechat(password:string):Promise<void>{
   const token=await accessToken();
