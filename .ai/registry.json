@@ -605,14 +605,19 @@
         "tests/source-semantic-evidence.test.ts",
         "scripts/lib/source-metric-facts-repair.mjs",
         "tests/source-metric-facts.test.ts",
-        "tests/operational-source-import.test.ts"
+        "tests/operational-source-import.test.ts",
+        "supabase/migrations/20261008014000_source_evidence_subject_links.sql",
+        "supabase/migrations/20261008015000_source_evidence_subject_reads.sql",
+        "supabase/migrations/20261008016000_source_assessment_candidates.sql",
+        "supabase/migrations/20261008017000_source_revision_read_scope.sql"
       ],
       "sharedPaths": [
         ".ai/registry.json",
-        "docs/workflows/school-operations.md"
+        "docs/workflows/school-operations.md",
+        "docs/current.md"
       ],
-      "checkpoint": null,
-      "next": "来源逐项核对完成；语义标签与开发迁移可验收，生产更新清单和恢复材料准备中，尚未写入生产。"
+      "checkpoint": "6cfe5fc2",
+      "next": "生产语义整理及迁移已完成，正式与原生数据保护检查通过；四阶段分页在真实8秒限额下为3.1–4.5秒。标签界面7a24ede8已构建，等待本次网站切换确认；279条来源行的私有复核清单已交付。"
     }
   ]
 }
