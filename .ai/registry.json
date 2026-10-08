@@ -7,14 +7,16 @@
       "title": "v0.4.0 主线生产发布与团队版本说明",
       "agent": "codex",
       "threadId": "01a0b885-a6ac-7e23-94b4-dab4753acd35",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "worktree",
       "branch": "codex/release-v040-codex",
       "card": ".ai/tasks/OPS-RELEASE-V040-20261008.md",
       "writePaths": [
         ".tmp/release-v040-20261008/",
         ".ai/tasks/OPS-RELEASE-V040-20261008.md",
-        "docs/releases/v0.4.0.md"
+        "docs/releases/v0.4.0.md",
+        "src/components/ui/button.tsx",
+        "tests/followup-primary-filter-interaction.test.ts"
       ],
       "sharedPaths": [
         ".ai/registry.json",
@@ -22,8 +24,8 @@
         "package.json",
         "docs/current.md"
       ],
-      "checkpoint": null,
-      "next": "从已提交主线构建，识别生产迁移并发布；其他任务未提交修改保持原状。"
+      "checkpoint": "eb2474c1c953be7fd948f9d773e8a775b48ae78b",
+      "next": "v0.4.0 已部署；必要构建、迁移与上线检查通过。业务与视觉待人工验收，客户端平台发布另行办理。"
     },
     {
       "id": "COMMUNICATION-RECORDS-20261007",
