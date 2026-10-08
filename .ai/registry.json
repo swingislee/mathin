@@ -587,7 +587,7 @@
       "title": "BASE 与生产历史业务深度整理",
       "agent": "codex",
       "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
-      "status": "done",
+      "status": "in_progress",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/BASE-PRODUCTION-RECONCILE-20261008.md",
@@ -609,7 +609,8 @@
         "supabase/migrations/20261008014000_source_evidence_subject_links.sql",
         "supabase/migrations/20261008015000_source_evidence_subject_reads.sql",
         "supabase/migrations/20261008016000_source_assessment_candidates.sql",
-        "supabase/migrations/20261008017000_source_revision_read_scope.sql"
+        "supabase/migrations/20261008017000_source_revision_read_scope.sql",
+        "supabase/migrations/20261008018000_communication_evidence_batch.sql"
       ],
       "sharedPaths": [
         ".ai/registry.json",
@@ -617,7 +618,7 @@
         "docs/current.md"
       ],
       "checkpoint": "7a24ede8aa8ff7c08b7536f95cf56a8d3bafbbf8",
-      "next": "生产数据整理及标签界面已完成发布，网站7a24ede8、迁移head17000；保护、读取及上线检查通过。待实际业务和视觉验收；279条来源行的391个复核项保留原文，按私有清单继续业务确认。"
+      "next": "生产标签界面已发布；按用户反馈修复待测评9月100条分页的来源证据重复读取超时，保留权限和事实。"
     }
   ]
 }
