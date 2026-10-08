@@ -3,6 +3,41 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WECHAT-FAMILY-ONBOARDING-20261008",
+      "title": "微信家庭开户与兼职获客",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-FAMILY-ONBOARDING-20261008.md",
+      "writePaths": [
+        "apps/parent-wechat/miniprogram/pages/onboarding/",
+        "apps/parent-wechat/miniprogram/lib/onboarding.ts",
+        "src/features/parent-portal/onboarding-contract.ts",
+        "src/features/parent-portal/onboarding-server.ts",
+        "src/features/school/promotions/",
+        "src/app/[locale]/dashboard/promotions/",
+        "src/app/api/v1/school/promotions/",
+        "src/features/wechat/miniapp-phone.ts",
+        "supabase/migrations/20261008110000_miniapp_family_onboarding.sql",
+        "supabase/tests/miniapp_family_onboarding.sql",
+        "tests/wechat-family-onboarding.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json",
+        "contracts/parent-api/portal.ts",
+        "contracts/participant-api/portal.ts",
+        "src/features/participant-portal/server.ts",
+        "src/features/school/nav.ts",
+        "src/features/school/dashboard-routes.ts",
+        "src/features/parent-portal/wechat-server.ts"
+      ],
+      "checkpoint": "acda5b63",
+      "next": "开发端开户、推广归属与后台面板可验收；本地迁移、登录安全、页面读取及小程序编译通过。真实微信配置和体验版手机联调待继续，生产未发布。"
+    },
+    {
       "id": "MINI-PARTICIPANT-NAMING-20261008",
       "title": "小程序参与人命名、日历与无损接口映射",
       "agent": "codex",
