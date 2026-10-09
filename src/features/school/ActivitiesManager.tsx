@@ -58,6 +58,7 @@ const empty: ActivityInput = {
   location: "",
   capacity: null,
   remark: "",
+  tags: [],
 };
 
 type RunAction = (
@@ -132,6 +133,7 @@ export function ActivitiesManager({
       filterValues: (activity) => [
         { value: `title:${activity.id}`, label: activity.title, group: tableT("fieldTitle") },
         { value: `kind:${activity.kind}`, label: t(`kind_${activity.kind}`), group: tableT("fieldType") },
+        ...(activity.tags ?? []).map(tag => ({ value: `tag:${tag}`, label: tag, group: t("tags") })),
         {
           value: activity.location ? `location:${activity.location}` : `location:${EMPTY_VALUE}`,
           label: activity.location || tableT("emptyValue"),
@@ -168,7 +170,7 @@ export function ActivitiesManager({
       sortValue: (activity) => activityCounts(activity).awaitingRoute,
     },
   }), [dateFormatter, t, tableT,recordM.unknown]);
-  const visibleActivities=activities.filter(activity=>matchesBusinessRecordState(activity.recordState,recordState)&&[activity.title,activity.remark,...activity.registrations.flatMap(row=>[row.studentName,row.reportedResult??''])].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
+  const visibleActivities=activities.filter(activity=>matchesBusinessRecordState(activity.recordState,recordState)&&[activity.title,activity.remark,...(activity.tags ?? []),...activity.registrations.flatMap(row=>[row.studentName,row.reportedResult??''])].join(' ').toLocaleLowerCase(locale).includes(query.trim().toLocaleLowerCase(locale)));
   const activityTable = useDashboardTableView({ rows: visibleActivities, columns: tableColumns, locale });
   const run: RunAction = (action, successMessage, onSuccess) => startTransition(async () => {
     const result = await action();
@@ -240,6 +242,7 @@ export function ActivitiesManager({
                   </Link> : <span className="font-medium text-ink">{activity.title}</span>}
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                     <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
+                    {(activity.tags ?? []).map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
                     {!current ? <HistoricalRecordBadge locale={locale} /> : null}
                     <span>{activity.location || "—"}</span>
                     <span>{activity.targetGrades == null ? gradeT("unknown") : activity.targetGrades.length
@@ -276,6 +279,7 @@ export function ActivitiesManager({
     </DashboardSection>
     {editing && <ActivityDialog
       initial={editing === "new" ? null : editing}
+      availableTags={[...new Set(activities.filter(activity => isCurrentBusinessRecord(activity.recordState)).flatMap(activity => activity.tags ?? []))]}
       pending={pending}
       close={() => setEditing(null)}
       save={(input) => run(
@@ -305,11 +309,13 @@ export function ActivitiesManager({
 
 function ActivityDialog({
   initial,
+  availableTags,
   pending,
   close,
   save,
 }: {
   initial: ActivityRow | null;
+  availableTags: string[];
   pending: boolean;
   close: () => void;
   save: (input: ActivityInput) => void;
@@ -323,7 +329,11 @@ function ActivityDialog({
     location: initial.location,
     capacity: initial.capacity,
     remark: initial.remark,
+    tags: initial.tags ?? [],
   } : empty);
+  const [tagsText, setTagsText] = useState((initial?.tags ?? []).join("，"));
+  const tags = [...new Set(tagsText.split(/[,，、;；\n]/).map(tag => tag.trim()).filter(Boolean))];
+  const invalidTags = tags.length > 10 || tags.some(tag => tag.length > 40);
   const set = <K extends keyof ActivityInput>(key: K, value: ActivityInput[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
@@ -342,6 +352,14 @@ function ActivityDialog({
         </Label>
         <Label className="grid gap-1 text-xs font-normal text-muted">{t("titleLabel")}<Input value={form.title} onChange={(event) => set("title", event.target.value)} maxLength={100} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
         <p className="rounded-xl bg-paper px-3 py-2 text-xs text-muted sm:col-span-2">{t(`kindHint_${form.kind}`)}</p>
+        <div className="grid gap-1.5 sm:col-span-2">
+          <Label htmlFor="activity-tags" className="text-xs font-normal text-muted">{t("tags")}</Label>
+          <Input id="activity-tags" value={tagsText} onChange={event => setTagsText(event.target.value)} placeholder={t("tagsPlaceholder")} aria-describedby="activity-tags-hint" aria-invalid={invalidTags} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} />
+          <p id="activity-tags-hint" className={`text-xs ${invalidTags ? "text-rose" : "text-muted"}`}>{invalidTags ? t("tagsLimit") : t("tagsHint")}</p>
+          {availableTags.some(tag => !tags.includes(tag)) ? <div className="flex flex-wrap gap-1" aria-label={t("existingTags")}>
+            {availableTags.filter(tag => !tags.includes(tag)).map(tag => <Button key={tag} type="button" variant="outline" size="sm" className="h-6 px-2 text-xs" disabled={tags.length >= 10} onClick={() => setTagsText([...tags, tag].join("，"))}>{tag}</Button>)}
+          </div> : null}
+        </div>
         <Label className="grid gap-1 text-xs font-normal text-muted">{t("time")}<DateTimePicker mode="datetime" value={form.scheduledAt} onValueChange={(value) => set("scheduledAt", value)} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
         <Label className="grid gap-1 text-xs font-normal text-muted">{t("duration")}<Input type="number" min={1} max={32_767} value={form.durationMin ?? ""} onChange={(event) => set("durationMin", event.target.value ? Number(event.target.value) : null)} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
         <Label className="grid gap-1 text-xs font-normal text-muted">{t("location")}<Input value={form.location} onChange={(event) => set("location", event.target.value)} maxLength={100} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
@@ -350,7 +368,7 @@ function ActivityDialog({
       <Textarea value={form.remark} onChange={(event) => set("remark", event.target.value)} placeholder={t("remark")} maxLength={1_000} />
       <DialogFooter>
         <Button size="sm" variant="secondary" onClick={close}>{t("cancel")}</Button>
-        <Button size="sm" disabled={pending || !form.title.trim() || !form.scheduledAt} onClick={() => save(form)}>
+        <Button size="sm" disabled={pending || !form.title.trim() || !form.scheduledAt || invalidTags} onClick={() => save({ ...form, tags })}>
           {pending && <LoaderCircle size={15} className="animate-spin" />}{t("save")}
         </Button>
       </DialogFooter>

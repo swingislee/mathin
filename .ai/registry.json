@@ -3,6 +3,43 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ACTIVITY-TAGS-20261009",
+      "title": "后台维护活动标签与小程序分类",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ACTIVITY-TAGS-20261009.md",
+      "writePaths": [
+        ".ai/tasks/ACTIVITY-TAGS-20261009.md",
+        ".tmp/activity-tags-20261009/",
+        "src/features/school/activity-actions.ts",
+        "src/features/school/activities.ts",
+        "src/features/school/ActivitiesManager.tsx",
+        "src/features/parent-portal/course-contract.ts",
+        "src/features/participant-portal/projection.ts",
+        "contracts/parent-api/portal.ts",
+        "contracts/parent-api/openapi.json",
+        "contracts/participant-api/portal.ts",
+        "apps/parent-wechat/miniprogram/lib/api-types.ts",
+        "apps/parent-wechat/miniprogram/lib/catalog.ts",
+        "apps/parent-wechat/miniprogram/lib/activity-catalog.ts",
+        "apps/parent-wechat/miniprogram/lib/activity-catalog-page.ts",
+        "apps/parent-wechat/miniprogram/lib/copy.ts",
+        "supabase/migrations/20261009180000_activity_tags.sql",
+        "src/lib/database.types.ts",
+        "src/features/participant-portal/server.ts",
+        "contracts/parent-api/README.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": null,
+      "next": "活动标签已接通开发库：新建/编辑可维护并复用标签，小程序按已发布活动标签筛选。保存、权限与公开读取定向核对、小程序类型和源码静态检查通过；开发窗口已刷新。全库类型检查存在依赖错误，生产和手机包未更新，待实际使用验收。"
+    },
+    {
       "id": "MINI-REGISTRATION-REPLAY-20261009",
       "title": "开发版重走登记与定位录制",
       "agent": "codex",

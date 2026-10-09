@@ -15,7 +15,7 @@ export const catalogClassSchema = z.object({
 export const courseOfferSchema = z.object({
   id: uuid, kind: z.enum(["class", "activity"]), title: z.string(), description: z.string(), priceCents: z.number().int().nonnegative().nullable(),
   bookingClosesAt: z.string().datetime({ offset: true }), revision: z.number().int().positive(), classes: z.array(catalogClassSchema),
-  activity: z.object({ id: uuid, targetGrades: z.array(z.number().int()).nullable(), location: z.string(),
+  activity: z.object({ id: uuid, tags: z.array(z.string()).default([]), targetGrades: z.array(z.number().int()).nullable(), location: z.string(),
     startsAt: z.string().datetime({ offset: true }), durationMinutes: z.number().nullable(), remaining: z.number().int().nonnegative().nullable() }).nullable(),
 });
 export const courseApplicationSchema = z.object({

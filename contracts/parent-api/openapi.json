@@ -3972,6 +3972,13 @@
                   "null"
                 ],
                 "minimum": 0
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "创建或编辑活动时维护的分类标签。"
               }
             }
           }

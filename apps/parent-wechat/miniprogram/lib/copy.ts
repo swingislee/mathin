@@ -1,7 +1,7 @@
 import type { Locale } from "./locale";
 const zh={
-  groupStage:"参与阶段",participantPrefix:"参与人：",allTopics:"全部主题",participantStage:"参与者阶段",activityTopic:"活动主题",
-  chooseStageHint:"选择参与者阶段，查看适合的公益活动",chooseTopicHint:"选择活动主题",
+  groupStage:"参与阶段",participantPrefix:"参与人：",allTopics:"全部标签",participantStage:"参与者阶段",activityTopic:"活动标签",
+  chooseStageHint:"选择参与者阶段，查看适合的公益活动",chooseTopicHint:"按活动标签筛选",
   catalogHintBefore:"已为您筛选适合当前",catalogHintAfter:"阶段的活动",catalogDefaultHint:"选择参与者阶段，查看适合的活动",
   catalogTitle:"公益活动",catalogEmpty:"暂无公益活动",discoverAssessment:"一对一诊断",
   wechatLogin:"微信登录",
@@ -99,8 +99,8 @@ const zh={
   welcome:"",welcomeNote:"",register:"初次参与",registerNote:"",start:"开始登记",activities:"近期活动",activityDetail:"活动详情",book:"预约参与",booked:"已预约",full:"名额已满",closed:"预约已结束",places:"剩余名额",unlimited:"开放预约",minutes:"分钟",place:"活动地点",time:"时间",participant:"参与人",chooseParticipant:"选择参与人",noParticipants:"暂未关联参与人，请联系工作人员。",myBookings:"我的预约",cancelBooking:"取消预约",cancelConfirm:"确认取消这次预约？",keep:"保留预约",confirmed:"预约成功",bookingNote:"预约后可在“我的”查看安排。",loginToBook:"登录后预约",noActivities:"暂无活动",noActivitiesNote:"",loading:"正在读取…",retry:"重新读取",login:"登录",loginNote:"使用已有手机号或邮箱账号继续。",identifier:"手机号或邮箱",password:"密码",logout:"退出登录",loggedOut:"已退出登录",account:"我的账号",loginRequired:"登录后查看个人记录",loginRequiredNote:"",noBookings:"暂无预约",noReports:"暂无结果",noReportsNote:"",assessment:"诊断结果",feedback:"活动反馈",strengths:"思维亮点",focusAreas:"可以继续探索",recommendation:"下一步建议",score:"诊断记录",details:"展开查看",collapse:"收起",noTasks:"暂无任务",noTasksNote:"",due:"提交时间",submitted:"已提交",pending:"待提交",taskDetail:"活动记录",instructions:"这次的探索",chooseMedia:"添加照片或视频",mediaHelp:"最多 9 个附件；照片不超过 12 MB，视频不超过 64 MB。",note:"补充你的思路（选填）",submit:"确认提交",submitting:"正在提交…",uploading:"正在上传",uploadFailed:"上传未完成，再点一次可重试。",remove:"移除",preview:"预览",saved:"提交已收到",savedNote:"照片和视频已保存，可重新打开本页查看。",submitAgain:"补充一次记录",registrationDone:"很高兴认识你",registrationDoneNote:"信息已收到，工作人员会根据登记内容与你联系。",seeActivities:"看看近期活动",required:"必填",optional:"选填",select:"请选择",consent:"我已阅读并同意上述信息使用说明",missing:"请填写所有必填项并确认信息使用说明。",needMedia:"请先添加照片或视频。",chooseError:"暂时无法打开相册或相机，请检查微信权限后重试。",mediaTooLarge:"附件超过数量或大小限制，请调整后重试。",network:"连接暂不可用，请稍后重试。",invalid:"请检查填写内容后重试。",forbidden:"当前账号无法进行此操作，请确认参与档案的关联权限。",security:"请先在账号管理网页完成安全设置，再回来登录。",changed:"登记内容已更新，请重新打开表单填写。",conflict:"记录已发生变化，请重新读取后操作。",tooLarge:"附件或存储空间超过限制，请减少附件后重试。",fileType:"请选择 JPG、PNG、WebP、HEIC 照片或 MP4、MOV 视频。",rateLimit:"操作较频繁，请稍后再试。",credentials:"登录未成功，请核对账号和密码。",notFound:"内容暂不可用，请返回后重新读取。",cancelled:"已取消",attended:"已参与",noShow:"未参与",selectHint:"可多选",privacy:"信息使用说明",source:"参与登记",noInstructions:"请按照发布的内容完成本次任务。",openOriginal:"查看附件",attachment:"附件",newRecord:"新的提交会保留此前记录。",
 };
 const en:{[K in keyof typeof zh]:typeof zh[K]}={
-  groupStage:"Participation stage",participantPrefix:"Participant: ",allTopics:"All topics",participantStage:"Participant stage",activityTopic:"Activity topic",
-  chooseStageHint:"Choose a participant stage to find suitable activities",chooseTopicHint:"Choose an activity topic",
+  groupStage:"Participation stage",participantPrefix:"Participant: ",allTopics:"All tags",participantStage:"Participant stage",activityTopic:"Activity tags",
+  chooseStageHint:"Choose a participant stage to find suitable activities",chooseTopicHint:"Filter by activity tag",
   catalogHintBefore:"Activities for ",catalogHintAfter:" participants",catalogDefaultHint:"Choose a stage to find suitable activities",
   catalogTitle:"Community activities",catalogEmpty:"No community activities available yet",discoverAssessment:"One-to-one assessment",
   wechatLogin:"Sign in with WeChat",

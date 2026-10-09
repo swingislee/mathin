@@ -26,10 +26,6 @@ export const stageGroups = [
   ] },
 ];
 
-export const topics = [
-  { id: "math", label: { zh: "数学思维", en: "Mathematical thinking" } },
-  { id: "english", label: { zh: "英语", en: "English" } },
-];
 const stages = stageGroups.reduce((all, group) => all.concat(group.stages), [] as typeof stageGroups[0]["stages"]);
 const preferenceKey = "gezhi.discovery.filters.v1";
 
@@ -41,17 +37,17 @@ export function normalizeFilters(value: unknown) {
   const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
   return {
     stage: stages.some(item => item.id === input.stage) ? String(input.stage) : "",
-    topic: topics.some(item => item.id === input.topic) ? String(input.topic) : "",
+    topic: typeof input.topic === "string" && input.topic.length <= 80 ? input.topic.trim() : "",
   };
 }
 export function readCatalogFilters() { return normalizeFilters(wx.getStorageSync(preferenceKey)); }
 export function saveCatalogFilters(value: { stage: string; topic: string }) { wx.setStorageSync(preferenceKey, normalizeFilters(value)); }
-export function catalogLabels(stage: string, topic: string, locale: Locale) {
+export function catalogLabels(stage: string, topic: string, locale: Locale, topics: { id: string; label: string }[] = []) {
   return {
     stageLabel: stages.find(item => item.id === stage)?.label[locale] || "",
-    topicLabel: topics.find(item => item.id === topic)?.label[locale] || "",
+    topicLabel: topics.find(item => item.id === topic)?.label || "",
     stageGroups: stageGroups.map(group => ({ id: group.id, label: group.label[locale], stages: group.stages.map(item => ({ id: item.id, label: item.label[locale] })) })),
-    topics: topics.map(item => ({ id: item.id, label: item.label[locale] })),
+    topics,
   };
 }
 export function filterCatalog(rows: Activity[], stage: string, topic: string, now = Date.now()) {

@@ -70,7 +70,7 @@ async function get(request: Request, endpoint: string) {
       if (!result.ok) return result;
       const resource = new URL(request.url).searchParams.get("resource") || "catalog";
       if (resource === "applications") return projected(result, project.activityRequests);
-      // Registration publications currently have no explicit topic. Do not infer mathematics from an activity kind or title.
+      // Activity classifications come from tags saved with the published activity.
       return projected(result, project.activityOffers);
     }
     case "services": return projected(await contactsGet(request), project.serviceContacts);

@@ -155,7 +155,9 @@ export type ApiErrorCode = "VALIDATION" | "UNAUTHENTICATED" | "FORBIDDEN" | "ACC
 export type ActivityOffer = {
   id: string; kind: "activity"; title: string; description: string; priceCents: number | null;
   bookingClosesAt: string; revision: number;
-  /** 当前发布资料没有独立主题字段，保留 null；补充真实分类后再按对应主题筛选。 */
+  /** 后台创建或编辑活动时维护的分类标签。旧接口缺省时按未设置处理。 */
+  tags?: string[];
+  /** 兼容旧客户端；活动分类使用 tags。 */
   topic: AssessmentTopic | null;
   activity: { id: string; targetStages: number[] | null; location: string; startsAt: string;
     durationMinutes: number | null; remaining: number | null };

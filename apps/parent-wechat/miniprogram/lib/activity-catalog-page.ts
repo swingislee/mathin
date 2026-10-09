@@ -1,6 +1,6 @@
 import { activityCatalog } from "./api";
 import type { ActivityOffer } from "./api-types";
-import { activityCard, activityCatalogLabels, activityFilters, filterActivityOffers, saveActivityFilters } from "./activity-catalog";
+import { activityCard, activityCatalogLabels, activityFilters, activityTopics, filterActivityOffers, saveActivityFilters } from "./activity-catalog";
 import { pageData, syncPage, errorText, currentLocale } from "./page";
 
 export function registerActivityCatalogPage(full: boolean) {
@@ -11,11 +11,15 @@ export function registerActivityCatalogPage(full: boolean) {
     async load() {
       if (this.data.loading) return;
       this.setData({ loading: true, error: "" });
-      try { const source = await activityCatalog(); this.setData({ source, loaded: true }); this.applyFilters(); }
+      try {
+        const source = await activityCatalog();
+        const topic = activityTopics(source).some(item => item.id === this.data.topic) ? this.data.topic : "";
+        this.setData({ source, topic, loaded: true }); saveActivityFilters(this.data); this.applyFilters();
+      }
       catch (error) { this.setData({ error: errorText(error) }); }
       finally { this.setData({ loading: false }); }
     },
-    applyFilters() { this.setData({ ...activityCatalogLabels(currentLocale(), this.data.stage, this.data.topic), offers: filterActivityOffers(this.data.source, this.data.stage, this.data.topic).map(r => activityCard(r, currentLocale())) }); },
+    applyFilters() { this.setData({ ...activityCatalogLabels(currentLocale(), this.data.stage, this.data.topic, this.data.source), offers: filterActivityOffers(this.data.source, this.data.stage, this.data.topic).map(r => activityCard(r, currentLocale())) }); },
     showFilter(e: WechatMiniprogram.TouchEvent) { this.setData({ sheet: e.currentTarget.dataset.filter === "topic" ? "topic" : "stage" }); },
     closeSheet() { this.setData({ sheet: "" }); }, noop() {},
     chooseFilter(e: WechatMiniprogram.TouchEvent) {

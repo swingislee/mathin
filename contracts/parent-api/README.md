@@ -44,7 +44,7 @@
 
 登记按后端字段 ID 和选项 ID 校验，保存配置快照及同意时间。`requestId` / 提交 `id` 用于重试去重，相同请求号更换内容会返回 `CONFLICT`。既有活动预约保持可读与按原规则取消，新的公开报名统一使用预报名接口。
 
-公开目录由具体班级或活动的“对外展示 / 预报名”设置控制；课程产品用于教研。`CourseOffer.kind=class` 时 `id` 是班级 ID，`classes` 提供该班的真实资料，短期班的课程或学期关联可以为空；`kind=activity` 时 `id` 是活动 ID、`classes=[]`，`activity` 提供年级范围、地点和时间。未分类的活动不推断科目。新公开对象 `priceCents=null`，家长线下缴费。
+公开目录由具体班级或活动的“对外展示 / 预报名”设置控制；课程产品用于教研。`CourseOffer.kind=class` 时 `id` 是班级 ID，`classes` 提供该班的真实资料，短期班的课程或学期关联可以为空；`kind=activity` 时 `id` 是活动 ID、`classes=[]`，`activity` 提供年级范围、地点、时间和 `tags` 标签。标签在新建或编辑活动时维护，保存于 `activities.tags`；小程序筛选选项来自当前已发布活动的标签，旧接口缺省时按空标签读取。未分类的活动不推断科目。新公开对象 `priceCents=null`，家长线下缴费。
 
 申请命令为 `{action:"apply",id,kind,publicationId,revision,classroomId,participantId}`；班级的 `classroomId=publicationId`，活动的 `classroomId=null`。请求保存对象快照，检查真实展示版本、亲子关系及重复请求。状态为 `pending/contacted/declined/cancelled`；旧 `confirmed` 只表示既有正式报名历史。工作人员联系处理不会创建正式报名、分班、活动参与名单或缴费。家长可撤回待联系预报名，正式业务由线下办理。
 

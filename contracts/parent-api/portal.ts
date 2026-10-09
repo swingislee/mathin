@@ -164,7 +164,7 @@ export type CatalogClass = {
 export type CourseOffer = {
   id: string; kind: "class" | "activity"; title: string; description: string; priceCents: number | null;
   bookingClosesAt: string; revision: number; classes: CatalogClass[];
-  activity: { id: string; targetGrades: number[] | null; location: string; startsAt: string;
+  activity: { id: string; tags?: string[]; targetGrades: number[] | null; location: string; startsAt: string;
     durationMinutes: number | null; remaining: number | null } | null;
 };
 export type CourseApplication = {

@@ -19,11 +19,17 @@ export function activityCard(offer: ActivityOffer, locale: Locale) {
 const preferenceKey = "gezhi.activity-catalog.filters.v1";
 export function activityFilters() { return normalizeFilters(wx.getStorageSync(preferenceKey)); }
 export function saveActivityFilters(value: { stage: string; topic: string }) { wx.setStorageSync(preferenceKey, normalizeFilters(value)); }
-export function activityCatalogLabels(locale: Locale, stage = "", topic = "") { return { ...catalogLabels(stage, topic, locale), activityCopy: activityCopy[locale] }; }
+export function activityTopics(rows: ActivityOffer[], now = Date.now()) {
+  return [...new Set(filterActivityOffers(rows, "", "", now).reduce((all, row) => all.concat(row.tags ?? []), [] as string[]))]
+    .map(tag => ({ id: tag, label: tag }));
+}
+export function activityCatalogLabels(locale: Locale, stage = "", topic = "", rows: ActivityOffer[] = []) {
+  return { ...catalogLabels(stage, topic, locale, activityTopics(rows)), activityCopy: activityCopy[locale] };
+}
 export function filterActivityOffers(rows: ActivityOffer[], stage: string, topic = "", now = Date.now()) {
   const stages = stageGroups.reduce((all, g) => all.concat(g.stages), [] as typeof stageGroups[0]["stages"]);
   const stageNumber = stages.find(s => s.id === stage)?.stageNumber;
   return rows.filter(r => r.kind === "activity" && r.activity && Date.parse(r.bookingClosesAt) > now
     && (stageNumber === undefined || (Array.isArray(r.activity.targetStages) && (!r.activity.targetStages.length || r.activity.targetStages.includes(stageNumber)))))
-    .filter(row => !topic || row.topic === topic);
+    .filter(row => !topic || (row.tags ?? []).includes(topic));
 }

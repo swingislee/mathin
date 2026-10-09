@@ -52,6 +52,7 @@ export interface ActivityRow {
   remark: string;
   registrations: ActivityRegistration[];
   targetGrades?: number[] | null;
+  tags?: string[];
 }
 
 export interface ActivityWorkspaceSummary {
@@ -83,6 +84,7 @@ interface ActivityQueryRow {
     students: { name: string; grade: number | null } | null;
   }>;
   target_grades: number[] | null;
+  tags: string[];
 }
 
 interface AssessmentQueryRow {
@@ -132,7 +134,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
   const supabase = await createClient();
   let query = supabase
     .from("business_activities" as "activities")
-    .select("id,kind,title,scheduled_at,occurred_on,record_state,duration_min,location,capacity,remark,target_grades,activity_registrations(id,student_id,status,outcome,registered_on,reported_result,result_link_status,students(name,grade))")
+    .select("id,kind,title,scheduled_at,occurred_on,record_state,duration_min,location,capacity,remark,target_grades,tags,activity_registrations(id,student_id,status,outcome,registered_on,reported_result,result_link_status,students(name,grade))")
     .is("deleted_at", null)
     .order("scheduled_at", { ascending: true });
   if (activityId) query = query.eq("id", activityId).eq("record_state","current");
@@ -177,6 +179,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
     capacity: activity.capacity,
     remark: activity.remark,
     targetGrades: activity.target_grades,
+    tags: activity.tags,
     registrations: activity.activity_registrations
       .map((registration): ActivityRegistration => {
         const assessment = assessments.get(registration.id);

@@ -59,7 +59,7 @@ export function assessmentAvailability(value: Existing.AssessmentAvailability): 
 export function activityOffers(values: Existing.CourseOffer[]): Participant.ActivityOffer[] {
   return values.flatMap(row => row.kind !== "activity" || !row.activity ? [] : [{
     id: row.id, kind: "activity" as const, title: row.title, description: row.description, priceCents: row.priceCents,
-    bookingClosesAt: row.bookingClosesAt, revision: row.revision, topic: null,
+    bookingClosesAt: row.bookingClosesAt, revision: row.revision, topic: null, tags: row.activity.tags ?? [],
     activity: { id: row.activity.id, targetStages: row.activity.targetGrades, location: row.activity.location,
       startsAt: row.activity.startsAt, durationMinutes: row.activity.durationMinutes, remaining: row.activity.remaining },
   }]);

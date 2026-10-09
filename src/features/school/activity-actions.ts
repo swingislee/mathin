@@ -22,6 +22,7 @@ const activityInputSchema = z.object({
   location: text(100),
   capacity: intInRange(1, 32_767).nullable(),
   remark: text(1_000),
+  tags: z.array(z.string().trim().min(1).max(40)).max(10).default([]).transform(tags => [...new Set(tags)]),
 });
 
 const activityResultSchema = z.object({
@@ -55,6 +56,7 @@ export interface ActivityInput {
   location: string;
   capacity: number | null;
   remark: string;
+  tags?: string[];
 }
 
 export interface ActivityAssessmentInput {
@@ -97,10 +99,11 @@ function activityRpcArgs(input: ActivityInput) {
     p_kind: value.kind,
     p_title: value.title,
     p_scheduled_at: value.scheduledAt,
-    p_duration_min: value.durationMin ?? undefined,
+    p_duration_min: value.durationMin,
     p_location: value.location,
-    p_capacity: value.capacity ?? undefined,
+    p_capacity: value.capacity,
     p_remark: value.remark,
+    p_tags: value.tags,
   };
 }
 
@@ -121,22 +124,10 @@ export async function createActivityAction(input: ActivityInput): Promise<Action
   try {
     const value = parse(activityInputSchema, input);
     const supabase = await authorizedActivityClient("activity.manage");
-    const { error } = value.kind === "public_class"
-      ? await rpc(supabase)("create_public_class_event", {
-          p_title: value.title,
-          p_scheduled_at: value.scheduledAt,
-          p_location: value.location,
-          p_capacity: value.capacity ?? undefined,
-          p_remark: value.remark,
-          p_segments: [{
-            kind: "trial_lesson",
-            title: value.title,
-            scheduled_at: value.scheduledAt,
-            duration_min: value.durationMin ?? 60,
-            location: value.location,
-          }],
-        })
-      : await supabase.rpc("create_activity", activityRpcArgs(value));
+    const { error } = await rpc(supabase)("save_activity_with_tags", {
+      p_activity_id: null,
+      ...activityRpcArgs(value),
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   } catch (error) {
@@ -148,7 +139,7 @@ export async function updateActivityAction(id: string, input: ActivityInput): Pr
   try {
     const value = parse(uuid, id);
     const supabase = await authorizedActivityClient("activity.manage");
-    const { error } = await supabase.rpc("update_activity", {
+    const { error } = await rpc(supabase)("save_activity_with_tags", {
       p_activity_id: value,
       ...activityRpcArgs(input),
     });
