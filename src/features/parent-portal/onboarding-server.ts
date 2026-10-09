@@ -31,7 +31,8 @@ function configOrFail() {
 }
 async function newProof(payload: object) {
   const token = randomToken();
-  return issueTicket("guest", payload, token, 900, token);
+  // Keep a margin below the database's 15-minute ceiling for application/database clock skew.
+  return issueTicket("guest", payload, token, 14 * 60, token);
 }
 async function policies() {
   const rows = requireResult(await createAdminClient().from("consent_policies").select("policy_kind,version,document_path").eq("required", true)) ?? [];

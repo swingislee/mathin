@@ -22,14 +22,14 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: h.rpc,
     return { update: (value: unknown) => { h.release(value); return { eq: () => ({ eq: async () => ({ error: null }) }) }; } };
   },
 }) }));
-import { onboardingPost } from "@/features/parent-portal/onboarding-server";
+import { beginFamilyOnboarding, onboardingPost } from "@/features/parent-portal/onboarding-server";
 import { onboardingCommandSchema } from "@/features/parent-portal/onboarding-contract";
 import { verifiedPhone } from "@/features/wechat/miniapp-phone";
 import { PortalError } from "@/features/parent-portal/server";
 
 const userId = "11111111-1111-4111-8111-111111111111", registrationId = "22222222-2222-4222-8222-222222222222";
 const studentId = "33333333-3333-4333-8333-333333333333", ticket = "a".repeat(64);
-const identity = { subject: "example:union", openid: "mini-open", unionid: "union", nickname: "", avatarUrl: null, authorizedAt: 1 };
+const identity = { subject: "example:union", openid: "mini-open", unionid: "union", nickname: "", avatarUrl: null, authorizedAt: "2026-10-09T02:00:00.000Z" };
 const proof = { purpose: "family-registration", identity, phone: "+8619900000001", localPhone: "19900000001", scene: null };
 const family = { parentName: "Fixture parent", relation: "mother", childName: "Fixture child", gender: "", grade: 3,
   school: "", interests: ["math"], location: { status: "declined" }, privacyVersion: "v1", childrenPrivacyVersion: "v1", consent: true };
@@ -66,7 +66,21 @@ describe("verified family onboarding security", () => {
     expect(h.read).toHaveBeenCalledWith("guest", ticket, ticket, expect.anything(), true);
     expect(result).toMatchObject({ state: "family_required", ticket: "b".repeat(64), privacyVersion: "v1", childrenPrivacyVersion: "v1" });
     expect(JSON.stringify(result)).not.toContain(proof.phone); expect(JSON.stringify(result)).not.toContain(identity.subject);
-    expect(h.issue).toHaveBeenCalledWith("guest", expect.objectContaining({ purpose: "family-registration", phone: proof.phone }), expect.any(String), 900, expect.any(String));
+    expect(h.issue).toHaveBeenCalledWith("guest", expect.objectContaining({ purpose: "family-registration", phone: proof.phone }), expect.any(String), expect.any(Number), expect.any(String));
+  });
+  it.each(["wechat", "phone"] as const)("keeps the %s handoff within the database lifetime limit when its clock lags", async step => {
+    const applicationNow = Date.parse("2026-10-09T02:00:00.000Z");
+    const databaseCreatedAt = applicationNow - 1500;
+    h.issue.mockImplementation(async (_kind, _payload, _browser, seconds: number) => {
+      const expiresAt = applicationNow + seconds * 1000;
+      expect(expiresAt).toBeGreaterThan(databaseCreatedAt);
+      expect(expiresAt).toBeLessThanOrEqual(databaseCreatedAt + 15 * 60 * 1000);
+      return ticket;
+    });
+    if (step === "wechat") expect(await beginFamilyOnboarding(identity)).toMatchObject({ state: "onboarding_required", ticket });
+    else expect(await (await onboardingPost(request({ action: "phone", ticket, code: "wx-code" }))).json())
+      .toMatchObject({ state: "family_required", ticket });
+    expect(h.issue).toHaveBeenCalledOnce();
   });
   it.each([{ phone: "+8619900000002" }, { openid: "another" }, { role: "teacher" }, { userId }])("rejects caller-supplied identity fields %j", extra => {
     expect(onboardingCommandSchema.safeParse({ action: "complete", ticket, family, ...extra }).success).toBe(false);

@@ -3,6 +3,27 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-WECHAT-LOGIN-DEV-20261009",
+      "title": "开发端接通真实小程序微信登录",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-WECHAT-LOGIN-DEV-20261009.md",
+      "writePaths": [
+        "src/features/parent-portal/onboarding-server.ts",
+        "tests/wechat-family-onboarding.test.ts",
+        ".ai/tasks/MINI-WECHAT-LOGIN-DEV-20261009.md",
+        ".tmp/mini-wechat-connect-20261009/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端真实微信登录已进入手机号授权；Auth、TLS、原账号登录及凭证有效期检查通过。待本人完成手机号授权与家庭开户验收，生产未部署。"
+    },
+    {
       "id": "WECHAT-FAMILY-ONBOARDING-20261008",
       "title": "微信家庭开户与兼职获客",
       "agent": "codex",
