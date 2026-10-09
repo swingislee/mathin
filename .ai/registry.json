@@ -6,7 +6,7 @@
       "id": "RELEASE-V041-20261009",
       "title": "v0.4.1 生产发布与团队说明",
       "agent": "codex",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/RELEASE-V041-20261009.md",
@@ -21,8 +21,8 @@
         ".ai/registry.json",
         "docs/current.md"
       ],
-      "checkpoint": null,
-      "next": "核对近期提交与生产迁移，构建发布 v0.4.1 并记录团队说明。"
+      "checkpoint": "d18a1e17aa7e4e17e52c2fc36abd74d0b48e702d",
+      "next": "v0.4.1 网站与后端已部署；四项迁移、构建、权限及生产读取检查通过。学服名单待管理员配置，业务实际使用和客户端平台发布分别验收。"
     },
     {
       "id": "SCHOOL-SUPPORT-OWNERS-20261009",
