@@ -2,8 +2,9 @@
   <app-nav />
   <view class="portal-content onboarding-content">
     <text class="onboarding-eyebrow">格致未来思维</text>
-    <text class="onboarding-title">{{stage === 'family' ? formTitle : words.title}}</text>
-    <text class="onboarding-intro">{{stage === 'family' ? formDescription : words.intro}}</text>
+    <view wx:if="{{replay}}" class="replay-notice"><text class="block">{{replayWords.badge}}</text><text>{{replayWords.note}}</text></view>
+    <text class="onboarding-title">{{stage === 'replay-complete' ? replayWords.finished : stage === 'family' ? formTitle : words.title}}</text>
+    <text class="onboarding-intro">{{stage === 'replay-complete' ? replayWords.resultNote : stage === 'family' ? formDescription : words.intro}}</text>
     <block wx:if="{{stage === 'wechat'}}"><text wx:if="{{busy}}" class="auth-hint">{{words.busy}}</text><button wx:else class="primary" bindtap="start">{{words.retry}}</button></block>
     <block wx:elif="{{stage === 'phone'}}">
       <text class="auth-hint">{{words.phoneNote}}</text>
@@ -11,17 +12,28 @@
       <button class="text-button" bindtap="privacy">{{words.privacyButton}}</button>
     </block>
     <block wx:elif="{{stage === 'family'}}">
-      <text class="verified-phone">{{words.verifiedPhone}} · {{maskedPhone}}</text>
+      <text wx:if="{{!replay}}" class="verified-phone">{{words.verifiedPhone}} · {{maskedPhone}}</text>
       <block wx:for="{{fields}}" wx:key="id">
         <label class="field-label">{{item.text}}<text class="field-requirement">{{item.mode === 'required' ? (locale === 'zh' ? '（必填）' : ' (required)') : (locale === 'zh' ? '（选填）' : ' (optional)')}}</text></label>
         <input wx:if="{{item.kind === 'text'}}" class="input" value="{{values[item.id]}}" bindinput="input" data-field="{{item.id}}" maxlength="{{item.id === 'school' ? 120 : 100}}" disabled="{{busy}}" />
         <picker wx:elif="{{item.kind === 'picker'}}" range="{{choices[item.id]}}" value="{{selection[item.id]}}" bindchange="picker" data-field="{{item.id}}" disabled="{{busy}}"><view class="input picker-input">{{choices[item.id][selection[item.id]]}}</view></picker>
         <checkbox-group wx:else bindchange="chooseInterests" class="interest-options"><label wx:for="{{item.choices}}" wx:for-item="option" wx:key="id"><checkbox value="{{option.id}}" checked="{{selectedInterests[option.id]}}" disabled="{{busy}}" />{{option.text}}</label></checkbox-group>
       </block>
-      <checkbox-group bindchange="consent"><label class="onboarding-consent"><checkbox value="yes" checked="{{consent}}" disabled="{{busy}}" /><text>{{words.consent}}</text></label></checkbox-group>
-      <view class="policy-links"><button class="text-button" bindtap="policy" data-kind="privacy">{{words.privacy}}</button><button class="text-button" bindtap="policy" data-kind="children">{{words.childrenPrivacy}}</button></view>
+      <checkbox-group bindchange="consent"><label class="onboarding-consent"><checkbox value="yes" checked="{{consent}}" disabled="{{busy}}" /><text>{{replay ? replayWords.consent : words.consent}}</text></label></checkbox-group>
+      <view wx:if="{{!replay}}" class="policy-links"><button class="text-button" bindtap="policy" data-kind="privacy">{{words.privacy}}</button><button class="text-button" bindtap="policy" data-kind="children">{{words.childrenPrivacy}}</button></view>
+      <view wx:else class="policy-links"><button class="text-button" bindtap="privacy">{{words.privacyButton}}</button></view>
       <text class="auth-hint">{{words.locationNote}}</text>
-      <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{words.complete}}</button>
+      <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{replay ? replayWords.submit : words.complete}}</button>
+    </block>
+    <block wx:elif="{{stage === 'replay-complete'}}">
+      <text class="verified-phone">{{replayResult}}</text>
+      <text wx:if="{{replayCapturedAt}}" class="auth-hint">{{replayWords.capturedAt}} · {{replayCapturedAt}}</text>
+      <button class="primary" bindtap="restartReplay">{{replayWords.again}}</button>
+    </block>
+    <block wx:if="{{replay}}">
+      <button class="text-button" bindtap="replaySettings" disabled="{{busy}}">{{replayWords.settings}}</button>
+      <text class="auth-hint">{{replayWords.settingsHint}}</text>
+      <button class="text-button" bindtap="discover" disabled="{{busy}}">{{replayWords.back}}</button>
     </block>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
   </view>

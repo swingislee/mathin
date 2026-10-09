@@ -2,8 +2,9 @@ import { ApiError, authorizeWechatPhone, completeWechatFamily, loginWithWechat, 
 import { pageData, currentLocale, errorText } from "../../lib/page";
 import { clearNavigation, selectParticipant } from "../../lib/navigation";
 import { onboardingCopy, promotionScene, saveOnboardingPreferences, takeOnboardingProof, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
-import { familyAnswerErrors, type FamilyField, type FamilyForm } from "../../lib/onboarding-form";
+import { DEFAULT_FAMILY_FORM, familyAnswerErrors, type FamilyAnswers, type FamilyField, type FamilyForm } from "../../lib/onboarding-form";
 import { registrationLocation } from "../../lib/registration-location";
+import { registrationReplayAvailable, registrationReplayCopy } from "../../lib/registration-replay";
 import { participantWording } from "../../lib/participant-wording";
 
 type DisplayField = FamilyField & { text: string; kind: "text" | "picker" | "interests"; choices: { id: string; text: string }[] };
@@ -12,19 +13,21 @@ Page({
     values: { parentName: "", childName: "", school: "" }, selection: { relation: 0, gender: 0, grade: 0 },
     choices: {} as Record<string, string[]>, fields: [] as DisplayField[], formTitle: "", formDescription: "",
     interests: [] as string[], selectedInterests: {} as Record<string, boolean>, consent: false,
-    policy: null as PhoneResult | null },
+    policy: null as PhoneResult | null, replay: false, replayWords: registrationReplayCopy.zh, replayResult: "", replayCapturedAt: "" },
   active: true,
+  replayForm: null as FamilyForm | null,
   submissionLocation: null as Promise<RegistrationLocation> | null,
   onLoad(query: Record<string,string | undefined>) {
     this.active = true;
     this.submissionLocation = null;
     const locale = currentLocale(), words = onboardingCopy[locale];
     wx.setNavigationBarTitle({ title: words.navigationTitle });
-    this.setData({ locale, words, choices: {
+    this.setData({ locale, words, replayWords: registrationReplayCopy[locale], choices: {
       relation: [locale === "zh" ? "请选择" : "Choose", ...words.relations], gender: words.genders,
       grade: locale === "zh" ? [words.chooseGrade, "幼中班", "幼大班", "一年级", "二年级", "三年级", "四年级", "五年级", "六年级", "初一", "初二", "初三", "高一", "高二", "高三"]
         : [words.chooseGrade, "K2", "K3", ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`)],
     } });
+    if (query.replay === "1" && registrationReplayAvailable()) { this.restartReplay(); return; }
     const proof = takeOnboardingProof();
     const scene = promotionScene(query.scene || proof?.scene);
     this.setData({ scene });
@@ -32,10 +35,25 @@ Page({
     else if (session() && !scene) this.discover();
     else void this.start();
   },
-  onUnload() { this.active = false; this.submissionLocation = null; this.setData({ ticket: "", policy: null }); },
-  discover() { clearNavigation(); wx.switchTab({ url: "/pages/discover/index" }); },
+  onUnload() { this.active = false; this.submissionLocation = null; this.replayForm = null; this.setData({ ticket: "", policy: null }); },
+  discover() { if (!this.data.replay) clearNavigation(); wx.switchTab({ url: "/pages/discover/index" }); },
+  restartReplay() {
+    if (!this.active || this.data.busy || !registrationReplayAvailable()) return;
+    this.replayForm = { ...DEFAULT_FAMILY_FORM, slug: "family-onboarding", version: 1 };
+    this.submissionLocation = null;
+    this.setData({ replay: true, stage: "family", ticket: "", policy: null, maskedPhone: "", error: "", consent: false,
+      values: { parentName: "", childName: "", school: "" }, selection: { relation: 0, gender: 0, grade: 0 },
+      interests: [], selectedInterests: {}, replayResult: "", replayCapturedAt: "" });
+    this.configureForm(this.replayForm);
+    wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+  },
+  replaySettings() {
+    if (this.data.replay && !this.data.busy && registrationReplayAvailable()) {
+      wx.openSetting({ fail: () => this.setData({ error: this.data.words.unavailable }) });
+    }
+  },
   async start() {
-    if (this.data.busy) return;
+    if (this.data.busy || this.data.replay) return;
     this.setData({ busy: true, error: "", stage: "wechat", ticket: "" });
     try {
       const result = await loginWithWechat(this.data.scene || undefined);
@@ -60,7 +78,7 @@ Page({
     this.setData({ fields, formTitle: text(form.title), formDescription: text(form.description), interests, selectedInterests });
   },
   async phone(event: WechatMiniprogram.CustomEvent<{ code?: string; errMsg?: string }>) {
-    if (this.data.busy || !this.data.ticket) return;
+    if (this.data.busy || this.data.replay || !this.data.ticket) return;
     if (!event.detail.code) { this.setData({ error: this.data.words.denied }); return; }
     this.setData({ busy: true, error: "" });
     try {
@@ -102,22 +120,34 @@ Page({
   },
   async complete() {
     const data = this.data;
-    if (!this.active || data.busy || !data.ticket || !data.policy) return;
+    const replay = data.replay;
+    if (!this.active || data.busy || (replay && (!registrationReplayAvailable() || data.stage !== "family"))) return;
+    const form = replay ? this.replayForm : data.policy?.form;
+    if (!form || (!replay && (!data.ticket || !data.policy))) return;
     const shown = (id: string) => data.fields.some(field => field.id === id);
     const child = { key: "child-1", childName: shown("childName") ? data.values.childName.trim() : "", school: shown("school") ? data.values.school.trim() : "",
       gender: shown("gender") ? (["", "female", "male"] as const)[data.selection.gender] : "" as const,
       grade: shown("grade") && data.selection.grade > 0 ? data.selection.grade - 2 : null, interests: shown("interests") ? data.interests : [] };
-    const family: FamilyRegistration = { parentName: shown("parentName") ? data.values.parentName.trim() : "",
-      relation: shown("relation") ? (["", "mother", "father", "guardian"] as const)[data.selection.relation] : "", ...child, children: [child],
-      formVersion: data.policy.form.version, location: { status: "unavailable" }, consent: true,
-      privacyVersion: data.policy.privacyVersion, childrenPrivacyVersion: data.policy.childrenPrivacyVersion };
-    delete (family as FamilyRegistration & { key?: string }).key;
-    if (!data.consent || familyAnswerErrors(data.policy.form, family).length) { this.setData({ error: data.words.invalid }); return; }
+    const answers: FamilyAnswers = { parentName: shown("parentName") ? data.values.parentName.trim() : "",
+      relation: shown("relation") ? (["", "mother", "father", "guardian"] as const)[data.selection.relation] : "", ...child, children: [child] };
+    delete (answers as FamilyAnswers & { key?: string }).key;
+    if (!data.consent || familyAnswerErrors(form, answers).length) { this.setData({ error: data.words.invalid }); return; }
     this.setData({ busy: true, error: "" });
     try {
       this.submissionLocation ??= registrationLocation();
-      family.location = await this.submissionLocation;
+      const location = await this.submissionLocation;
       if (!this.active) return;
+      if (replay) {
+        this.submissionLocation = null;
+        this.setData({ stage: "replay-complete", replayResult: location.status === "granted" ? data.words.locationReady
+          : location.status === "declined" ? data.words.locationDeclined : data.words.locationUnavailable,
+          replayCapturedAt: location.capturedAt ? new Date(location.capturedAt).toLocaleTimeString() : "" });
+        wx.pageScrollTo({ scrollTop: 0, duration: 0 });
+        return;
+      }
+      const policy = data.policy!;
+      const family: FamilyRegistration = { ...answers, formVersion: policy.form.version, location, consent: true,
+        privacyVersion: policy.privacyVersion, childrenPrivacyVersion: policy.childrenPrivacyVersion };
       const result = await completeWechatFamily(data.ticket, family);
       if (!this.active) return;
       if (result.grade !== null) saveOnboardingPreferences(result.grade);

@@ -3,6 +3,30 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-REGISTRATION-REPLAY-20261009",
+      "title": "开发版重走登记与定位录制",
+      "agent": "codex",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-REGISTRATION-REPLAY-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-REGISTRATION-REPLAY-20261009.md",
+        "apps/parent-wechat/README.md",
+        "apps/parent-wechat/miniprogram/lib/registration-replay.ts",
+        "apps/parent-wechat/miniprogram/lib/activity-catalog-page.ts",
+        "apps/parent-wechat/miniprogram/pages/discover/index.wxml",
+        "apps/parent-wechat/miniprogram/pages/onboarding/",
+        "tests/wechat-registration-location.test.ts",
+        ".tmp/mini-registration-replay-20261009/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "已实现开发版录制入口，类型和定向位置/数据保护检查通过；正在生成手机预览码，待本人录制。"
+    },
+    {
       "id": "MINI-TAB-CONTINUITY-20261009",
       "title": "小程序日历与我的切换保持成员信息",
       "agent": "codex",
