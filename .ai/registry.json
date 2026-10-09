@@ -3,6 +3,27 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-WECHAT-ACCOUNT-COMPLETE-20261009",
+      "title": "微信家庭开户提交失败",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-WECHAT-ACCOUNT-COMPLETE-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-WECHAT-ACCOUNT-COMPLETE-20261009.md",
+        ".tmp/mini-wechat-account-complete-20261009/",
+        "supabase/migrations/20261009133000_miniapp_auth_creation_contract.sql",
+        "supabase/tests/miniapp_auth_creation_contract.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开户插入时序与服务账号线索投影已修复并应用开发库；权限、原身份及重试检查通过。当前填写和登记预留保留，待用户再次提交完成真实开户；生产未改动。"
+    },
+    {
       "id": "SITE-DEV-COLD-START-20261009",
       "title": "整站开发冷启动",
       "agent": "codex",
