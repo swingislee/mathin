@@ -3,6 +3,25 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-WECHAT-LOGIN-DEV-PERF-20261009",
+      "title": "小程序微信登录开发入口耗时",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-WECHAT-LOGIN-DEV-PERF-20261009.md",
+      "writePaths": [
+        "src/app/api/v1/participant/auth/wechat/",
+        "apps/parent-wechat/docs/portal.md",
+        ".ai/tasks/MINI-WECHAT-LOGIN-DEV-PERF-20261009.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端微信入口已拆分，缺失依赖已修复并恢复默认Turbopack；首次状态读取0.54秒、真实微信登录0.31秒，页面及CSS可用。大页面冷启动仍慢，待另批分析；生产未改动。"
+    },
+    {
       "id": "MINI-PROMOTION-WORKSPACE-20261009",
       "title": "组织推广配置与线索共用登记",
       "agent": "codex",
