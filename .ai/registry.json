@@ -1216,7 +1216,7 @@
       "title": "来源关系与沟通查询简化",
       "agent": "codex",
       "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/SOURCE-READ-MODEL-20261009.md",
@@ -1224,14 +1224,16 @@
         ".ai/tasks/SOURCE-READ-MODEL-20261009.md",
         ".tmp/source-read-model-20261009/",
         "supabase/migrations/20261009200000_source_read_relations.sql",
-        "supabase/tests/source_read_relations.sql"
+        "supabase/tests/source_read_relations.sql",
+        "supabase/migrations/20261009201000_communication_read_context.sql",
+        "supabase/tests/communication_read_context.sql"
       ],
       "sharedPaths": [
         ".ai/registry.json",
         "src/lib/database.types.ts"
       ],
-      "checkpoint": null,
-      "next": "整理可索引的来源关系，保持读取结果与权限，先交付开发端及实测耗时。"
+      "checkpoint": "4befadbd",
+      "next": "两个增量已应用开发库：来源关系统一、整页复用证据，结果与身份权限检查通过。20条数据库456–594ms，100条547–1271ms；开发端可验收，100条完整档案仍有优化空间，生产未部署。"
     }
   ]
 }
