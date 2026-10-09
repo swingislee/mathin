@@ -98,6 +98,7 @@ export function useClassBoard(
   useEffect(() => {
     if (!log || log.ephemeral) return;
     let disposed = false;
+    let reconciling = false;
     const scope = log.ephemeral ? "rehearsal" as const : "formal" as const;
     const applyLocal = (pending: PendingBoardCheckpoint, journal: BoardMutationJournal | undefined) => {
       const checkpointItems = flattenCheckpointChunks(pending.chunks, pending.itemCount);
@@ -136,34 +137,54 @@ export function useClassBoard(
       return true;
     };
     const reconcile = async () => {
+      if (disposed || reconciling) return;
+      reconciling = true;
+      const renderVersion = store.getState().renderMutation.version;
+      const isCurrent = () => !disposed && store.getState().renderMutation.version === renderVersion;
+      // Recovery snapshots are an initial base. New local edits, including a clear,
+      // and remote ops received during I/O must not be replaced by that older base.
+      const canRecover = () => isCurrent() && store.getState().revision === 0;
       try {
         const [pending, journal] = await Promise.all([
           getPendingBoardCheckpoint(log.sessionId, boardKey, scope),
           getBoardMutationJournal(log.sessionId, boardKey, scope),
         ]);
+        if (disposed) return;
         if (!pending) {
-          applyJournalOnly(journal);
+          if (canRecover()) applyJournalOnly(journal);
           return;
         }
         flattenCheckpointChunks(pending.chunks, pending.itemCount);
         if (scope === "rehearsal" || !navigator.onLine) {
-          applyLocal(pending, journal);
+          if (canRecover()) applyLocal(pending, journal);
           return;
         }
         const result = await flushPendingBoardCheckpoint(pending);
+        if (disposed) return;
         baseVersionRef.current = Math.max(baseVersionRef.current, result.version);
         if (result.accepted) {
-          const hasJournalTail = applyLocal(pending, journal);
-          if (!disposed && !hasJournalTail) {
-            setCheckpointStatus((current) => ({ ...current, state: "saved", source: "server-v2", version: result.version }));
+          if (canRecover()) {
+            const hasJournalTail = applyLocal(pending, journal);
+            if (!hasJournalTail) {
+              setCheckpointStatus((current) => ({ ...current, state: "saved", source: "server-v2", version: result.version }));
+            }
+          } else if (isCurrent() && pending.sourceRevision === store.getState().revision
+            && !journal?.entries.some((entry) => entry.seq > (pending.journalSeq ?? 0))) {
+            // An upload retry can acknowledge the current writer's checkpoint
+            // without replacing its live canvas or a newer saving status.
+            setCheckpointStatus((current) => current.checkpointId === pending.checkpointId
+              && (current.state === "pending" || current.state === "error")
+              ? { ...current, state: "saved", source: "server-v2", version: result.version, message: null }
+              : current);
           }
           log.sendFx({ scope: "board", payload: { key: boardKey, checkpoint: { version: result.version } } });
           return;
         }
         const server = await fetchBoardCheckpoint(log.sessionId, boardKey);
+        if (disposed) return;
         if (result.status === "conflict") {
           if (server) baseVersionRef.current = Math.max(baseVersionRef.current, server.version);
-          if (!disposed) {
+          if (isCurrent()) {
             setCheckpointStatus({
               state: "error",
               source: "local-v2",
@@ -178,18 +199,20 @@ export function useClassBoard(
           return;
         }
         if (!server) throw new Error("CHECKPOINT_SERVER_STATE_MISSING");
-        if (store.getState().revision === 0) store.getState().replaceItems(server.items);
-        if (!disposed) {
+        if (canRecover()) {
+          store.getState().replaceItems(server.items);
           setCheckpointStatus(savedCheckpointStatus(server));
         }
       } catch (error) {
-        if (!disposed) {
+        if (isCurrent()) {
           setCheckpointStatus((current) => ({
             ...current,
             state: "error",
             message: error instanceof Error ? error.message : "CHECKPOINT_SYNC_FAILED",
           }));
         }
+      } finally {
+        reconciling = false;
       }
     };
     void reconcile();

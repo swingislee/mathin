@@ -21,19 +21,31 @@ export function NotebookSync({ userId, children }: { userId: string; children: R
   const patch = useNotebookStore((state) => state.patch);
   const replaceAll = useNotebookStore((state) => state.replaceAll);
 
-  const refresh = useCallback(async () => {
-    try {
-      replaceAll(await listNoteMetas());
-    } catch {
-      // Focus refresh is a best-effort degradation path.
-    }
-  }, [replaceAll]);
-
   useEffect(() => {
+    let cancelled = false;
+    let latestRequest = 0;
+    const refresh = async () => {
+      const before = useNotebookStore.getState();
+      if (!userId || before.hydratedFor !== userId) return;
+      const request = ++latestRequest;
+      try {
+        const notes = await listNoteMetas();
+        const current = useNotebookStore.getState();
+        // A focus read must not replace another account or edits/broadcasts
+        // that arrived while this older list was in flight.
+        if (!cancelled && request === latestRequest && current.hydratedFor === userId
+          && current.notes === before.notes) replaceAll(notes);
+      } catch {
+        // Focus refresh is a best-effort degradation path.
+      }
+    };
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [refresh]);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [replaceAll, userId]);
 
   useEffect(() => {
     if (!NOTEBOOK_REALTIME_ENABLED || !userId) return;
@@ -42,6 +54,7 @@ export function NotebookSync({ userId, children }: { userId: string; children: R
     const channel = supabase
       .channel(`notes:${userId}`, { config: { private: true, broadcast: { self: false } } })
       .on("broadcast", { event: "note" }, ({ payload }: { payload: NotebookEvent }) => {
+        if (cancelled || useNotebookStore.getState().hydratedFor !== userId) return;
         if (payload.type === "meta") upsert(payload.note);
         if (payload.type === "removed") remove(payload.id);
         if (payload.type === "doc") patch(payload.id, { version: payload.version });

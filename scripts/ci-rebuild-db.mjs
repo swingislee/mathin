@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { assertNonProductionWriteTarget } from "./lib/r1-write-target-policy.mjs";
+import { sanitizedPostgresEnvironment } from "./lib/postgres-process-env.mjs";
 
 /** 在明确要求的隔离空库中重建：平台垫片 → 全部 migration（文件名序）→ 断言夹具。
  *  手动调用并按 docs/ops/data-operations.md 核对目标与破坏性操作范围。 */
@@ -30,11 +31,14 @@ const ciDir = path.join(root, "supabase", "ci");
 const migrationDir = path.join(root, "supabase", "migrations");
 const preFamilySeed = path.join(root, "supabase", "seed", "courses.pre-family.seed.sql");
 const versionedCourseSeed = path.join(root, "supabase", "seed", "courses.seed.sql");
+const childEnvironment = sanitizedPostgresEnvironment(process.env);
 
 const run = (args, label) => {
   const result = spawnSync("psql", [databaseUrl, "-X", "-q", "-v", "ON_ERROR_STOP=1", ...args], {
+    env: childEnvironment,
     stdio: ["inherit", "inherit", "inherit"],
-    shell: process.platform === "win32",
+    shell: false,
+    windowsHide: true,
   });
   if (result.error) {
     console.error(`Unable to run psql: ${result.error.message}`);

@@ -1,34 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ createClient: vi.fn() }));
+vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
 import { getStudentLearning, listStudents } from "@/features/school/students";
 
 type Row = Record<string, unknown>;
-function clientFor(data: Record<string, Row[]>, options: { gate?: Promise<void>; account?: boolean; failure?: string } = {}) {
+function clientFor(data: Record<string, Row[]>, options: { gate?: Promise<void>; account?: boolean; failure?: string; failureOffset?: number } = {}) {
   const started: string[] = [];
   const filters: Array<[string, string, unknown]> = [];
   const selections = new Map<string, string>();
+  const ranges: Array<[string, number, number]> = [];
+  const orders: Array<[string, string]> = [];
   const query = (table: string) => {
     let single = false;
+    let start = 0, end = 999, limit = 1000;
+    const nullFilters: string[] = [];
     const api = {
       select: (columns: string) => { selections.set(table, columns); return api; },
       eq: (column: string, value: unknown) => { filters.push([table, column, value]); return api; },
       in: (column: string, value: unknown) => { filters.push([table, column, value]); return api; },
-      is: () => api, gte: () => api, order: () => api, limit: () => api, range: () => api,
+      is: (column: string, value: unknown) => { filters.push([table, column, value]); if (value === null) nullFilters.push(column); return api; },
+      gte: () => api,
+      order: (column: string) => { orders.push([table, column]); return api; },
+      limit: (value: number) => { limit = value; return api; },
+      range: (from: number, to: number) => { start = from; end = to; ranges.push([table, from, to]); return api; },
       returns: () => api,
       maybeSingle: () => { single = true; return api; },
       then: (resolve: (value: unknown) => unknown, reject: (error: unknown) => unknown) => (async () => {
         started.push(table);
         if (!["class_sessions", "submissions"].includes(table)) await options.gate;
-        if (options.failure === table) return { data: null, error: { message: "read denied" } };
+        if (options.failure === table && start >= (options.failureOffset ?? 0)) return { data: null, error: { message: "read denied" } };
+        const rows = (data[table] ?? []).filter(row => nullFilters.every(column => row[column] == null));
         return { data: table === "get_student_star_total" ? 7
           : table === "students" && single ? { user_id: options.account === false ? null : "account-a" }
-            : data[table] ?? [], error: null, count: data[table]?.length ?? null };
+            : rows.slice(start, Math.min(end + 1, start + limit)), error: null, count: data[table]?.length ?? null };
       })().then(resolve, reject),
     };
     return api;
   };
-  return { client: { from: query, rpc: (name: string, args: unknown) => { filters.push([name, "arguments", args]); return query(name); } }, started, filters, selections };
+  return { client: { from: query, rpc: (name: string, args: unknown) => { filters.push([name, "arguments", args]); return query(name); } }, started, filters, selections, ranges, orders };
 }
 
 beforeEach(() => vi.clearAllMocks());
@@ -80,5 +90,35 @@ describe("student learning read", () => {
     const result = await listStudents({ recycle: false, page: 1 });
     expect(result.students[0]).toMatchObject({ id: "student-a", name: "A", assignedName: "Teacher", grade: 3 });
     expect(state.selections.get("students")).not.toMatch(/bind_code|parent_phone|remark|birthday/);
+  });
+
+  it("counts attendance beyond the REST row limit and rejects partial reads", async () => {
+    const source = { session_attendance: Array.from({ length: 1250 }, (_, index) => ({ status: index < 1000 ? "present" : "absent" })) };
+    const state = clientFor(source, { account: false });
+    mocks.createClient.mockResolvedValue(state.client);
+    expect((await getStudentLearning("student-a")).attendance).toEqual({ present: 1000, absent: 250, late: 0, leave: 0, total: 1250, rate: 0.8 });
+    expect(state.ranges.filter(([table]) => table === "session_attendance")).toEqual([
+      ["session_attendance", 0, 999], ["session_attendance", 1000, 1999],
+    ]);
+    expect(state.orders.filter(([table]) => table === "session_attendance")).toEqual([
+      ["session_attendance", "session_id"], ["session_attendance", "session_id"],
+    ]);
+    mocks.createClient.mockResolvedValue(clientFor(source, { failure: "session_attendance", failureOffset: 1000 }).client);
+    await expect(getStudentLearning("student-a")).rejects.toThrow("read denied");
+  });
+
+  it("excludes cancelled, voided and deleted lessons before limiting upcoming sessions", async () => {
+    const session = { title: "Lesson", scheduled_at: "2099-09-01", classrooms: { name: "A" } };
+    const state = clientFor({
+      enrollments: [{ classroom_id: "class-a", status: "active" }],
+      class_sessions: [
+        ...Array.from({ length: 12 }, (_, index) => ({ ...session, id: `cancelled-${index}`, cancelled_by: "staff-a" })),
+        { ...session, id: "voided", voided_at: "2026-09-01" },
+        { ...session, id: "deleted", deleted_at: "2026-09-01" },
+        { ...session, id: "scheduled" },
+      ],
+    }, { account: false });
+    mocks.createClient.mockResolvedValue(state.client);
+    expect((await getStudentLearning("student-a")).upcomingSessions.map(row => row.sessionId)).toEqual(["scheduled"]);
   });
 });

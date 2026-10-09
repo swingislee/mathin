@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { readLimitedRequestText, RequestBodyTooLargeError } from "@/lib/request-body";
 
 export const runtime = "nodejs";
 
@@ -17,7 +18,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!PROVIDER_PATTERN.test(provider)) return response(404, "NOT_FOUND");
 
   const contentLength = Number(request.headers.get("content-length") || 0);
-  if (!Number.isFinite(contentLength) || contentLength > MAX_BODY_BYTES) return response(413, "PAYLOAD_TOO_LARGE");
+  if (!Number.isFinite(contentLength) || contentLength > MAX_BODY_BYTES) {
+    await request.body?.cancel().catch(() => {});
+    return response(413, "PAYLOAD_TOO_LARGE");
+  }
 
   const eventId = request.headers.get("x-mathin-event-id")?.trim();
   const timestampHeader = request.headers.get("x-mathin-timestamp")?.trim();
@@ -50,8 +54,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const secret = process.env[channel.secret_ref];
   if (!secret) return response(503, "PROVIDER_SECRET_UNAVAILABLE");
 
-  const body = await request.text();
-  if (Buffer.byteLength(body, "utf8") > MAX_BODY_BYTES) return response(413, "PAYLOAD_TOO_LARGE");
+  let body: string;
+  try {
+    body = await readLimitedRequestText(request, MAX_BODY_BYTES);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) return response(413, "PAYLOAD_TOO_LARGE");
+    throw error;
+  }
   const expected = createHmac("sha256", secret).update(`${timestampHeader}.${eventId}.${body}`, "utf8").digest();
   const supplied = Buffer.from(signature, "hex");
   if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {

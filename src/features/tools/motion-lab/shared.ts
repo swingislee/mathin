@@ -48,12 +48,26 @@ export function fmt(v: number): number {
 
 /** 依据总长选择"好看"的刻度间隔（沿用原 demo 算法） */
 export function getTickInterval(value: number): number {
-  const power = Math.floor(Math.log10(Math.abs(value)));
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const power = Math.floor(Math.log10(value));
   const leading = value / Math.pow(10, power);
-  if (leading < 1.4) return Math.pow(10, power - 1);
-  if (leading < 2.8) return 2 * Math.pow(10, power - 1);
-  if (leading < 7) return 5 * Math.pow(10, power - 1);
-  return Math.pow(10, power);
+  const tick = leading < 1.4 ? Math.pow(10, power - 1)
+    : leading < 2.8 ? 2 * Math.pow(10, power - 1)
+      : leading < 7 ? 5 * Math.pow(10, power - 1) : Math.pow(10, power);
+  return tick > 0 ? tick : value;
+}
+
+/** 按相对范围生成刻度；极小长度不使用绝对误差扩展，也不累加浮点步长。 */
+export function getRulerMarks(length: number): { value: number; label: string }[] {
+  if (!Number.isFinite(length) || length <= 0) return [];
+  const tick = getTickInterval(length);
+  const ratio = length / tick;
+  const count = Math.min(16, Math.floor(ratio + Number.EPSILON * ratio * 4) + 1);
+  const decimals = Math.max(0, -Math.floor(Math.log10(tick)));
+  return Array.from({ length: count }, (_, index) => {
+    const value = Math.min(length, index * tick);
+    return { value, label: decimals > 6 ? String(Number(value.toPrecision(12))) : value.toFixed(decimals) };
+  });
 }
 
 /** 已知其中两项，求解 solve 指定的第三项，保持三元组一致 */

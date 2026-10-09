@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readLimitedRequestText } from "@/lib/request-body";
 
 /** CSP Report-Only 的违规收集端点（历史设计：archive/2026-10-04/docs/plan/15-discoverability-and-delivery.md §7.1）。
  *
@@ -9,9 +10,9 @@ import { NextResponse } from "next/server";
 const MAX_BODY_BYTES = 8 * 1024;
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const raw = (await request.text()).slice(0, MAX_BODY_BYTES);
   let report: Record<string, unknown> = {};
   try {
+    const raw = await readLimitedRequestText(request, MAX_BODY_BYTES);
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const nested = parsed["csp-report"];
     report = (nested && typeof nested === "object" ? (nested as Record<string, unknown>) : parsed) ?? {};

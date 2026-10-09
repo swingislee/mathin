@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { POST_PAD, fmt, getTickInterval } from "./shared";
+import { POST_PAD, fmt, getRulerMarks } from "./shared";
 
 const BAND_H = 52;
 
@@ -29,10 +29,7 @@ export function RulerOverlay({ xs, ppm, length }: {
     return () => ro.disconnect();
   }, []);
 
-  const tick = getTickInterval(length);
-  const decimals = tick < 1 ? String(tick).split(".")[1]?.length ?? 0 : 0;
-  const marks: number[] = [];
-  for (let m = 0; m <= length + 1e-9; m += tick) marks.push(m);
+  const marks = getRulerMarks(length);
 
   const sorted = [...xs].sort((a, b) => a - b);
   const px = (m: number) => POST_PAD + m * ppm;
@@ -81,11 +78,11 @@ export function RulerOverlay({ xs, ppm, length }: {
         onPointerUp={() => (dragRef.current = null)}
       >
         <svg className="pointer-events-none h-full w-full">
-          {marks.map((m) => (
+          {marks.map(({ value: m, label }) => (
             <g key={m} stroke="var(--crater)" fill="var(--ink)">
               <line x1={px(m)} x2={px(m)} y1={0} y2={12} strokeWidth={1.5} />
               <text x={px(m)} y={28} textAnchor="middle" fontSize={12} stroke="none" className="tabular-nums">
-                {m.toFixed(decimals)}
+                {label}
               </text>
             </g>
           ))}

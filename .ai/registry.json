@@ -865,6 +865,71 @@
       ],
       "checkpoint": "22eb0ed7",
       "next": "生产数据与标签界面已发布，100条分页超时及20条重复读取已修复；网站7a24ede8、迁移head19000。该筛选生产数据库20条1.05–1.17秒、100条1.98–2.02秒，阶段、页面、人工证据与权限检查通过。待实际加载体验验收及391项业务复核。"
+    },
+    {
+      "id": "REPO-CODE-AUDIT-20261005",
+      "title": "全仓代码核查与优化",
+      "agent": "codex",
+      "threadId": "01a0ffb9-c74e-7c80-ac23-13b52f30e52a",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/REPO-CODE-AUDIT-20261005.md",
+      "writePaths": [
+        ".ai/tasks/REPO-CODE-AUDIT-20261005.md",
+        ".tmp/repo-code-audit-20261005/",
+        "src/lib/request-body.ts",
+        "src/app/api/csp-report/route.ts",
+        "src/app/api/integrations/webhooks/[provider]/route.ts",
+        "src/features/wechat/broker.ts",
+        "tests/request-body-limits.test.ts",
+        "src/features/classroom/sync/idb.ts",
+        "src/features/classroom/live/useClassBoard.ts",
+        "tests/classroom-idb-transactions.test.ts",
+        "tests/classroom-board-reconcile.test.ts",
+        "src/features/games/match.tsx",
+        "src/features/tools/motion-lab/shared.ts",
+        "src/features/tools/motion-lab/RulerOverlay.tsx",
+        "tests/motion-lab-values.test.ts",
+        "scripts/lib/postgres-process-env.mjs",
+        "scripts/lib/db-audit-runner.mjs",
+        "scripts/ci-rebuild-db.mjs",
+        "tests/db-audit-target-policy.test.ts",
+        "src/features/notebook/workspace/NotebookSync.tsx",
+        "src/features/notebook/store.ts",
+        "tests/notebook-sync-lifecycle.test.ts",
+        "src/features/notebook/editor/TitleField.tsx",
+        "tests/notebook-title-save.test.ts",
+        "src/features/school/students.ts",
+        "tests/student-learning-read.test.ts",
+        "scripts/ops/deploy-mathin-linux.sh",
+        "tests/deploy-rollback.test.ts",
+        "supabase/migrations/20261005001000_profile_account_state_guard.sql",
+        "supabase/tests/profile_account_state_guard.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "中断时已有修复已由 MINI-REVIEW-SUBMIT-20261009 接手，定向测试、源码静态检查与隔离账户权限 SQL 通过，纳入本次生产发布；原全仓核查其余范围未继续。"
+    },
+    {
+      "id": "MINI-REVIEW-SUBMIT-20261009",
+      "title": "小程序后端接通与提交审核",
+      "agent": "codex",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
+        ".tmp/mini-review-submit-20261009/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "用户追加授权发布其它开发改动；正在将已有代码核查修复及账户权限迁移纳入候选，再构建并接通生产后端。"
     }
   ]
 }

@@ -41,6 +41,10 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
   const [elapsedMs, setElapsedMs] = useState(0);
   const [recorded, setRecorded] = useState<"yes" | "no" | "failed">("no");
   const startedAtRef = useRef(0);
+  const roundRef = useRef(0);
+  const requestPendingRef = useRef(false);
+
+  useEffect(() => () => { roundRef.current++; }, []);
 
   const playing = phase === "playing";
   useEffect(() => {
@@ -56,32 +60,39 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
     nextDifficulty: Difficulty,
     nextSudokuVariantId: SudokuVariantId = sudokuVariantId,
   ) {
+    if (requestPendingRef.current) return;
+    requestPendingRef.current = true;
+    const round = ++roundRef.current;
     setDifficulty(nextDifficulty);
     setSudokuVariantId(nextSudokuVariantId);
     setPhase("starting");
     setElapsedMs(0);
     const nextSudokuVariant = getSudokuVariant(nextSudokuVariantId);
     const rankedRound = gameId !== "sudoku" || Boolean(nextSudokuVariant?.ranked);
-    if (loggedIn && rankedRound) {
-      const res = await startGame(gameId, nextDifficulty);
-      if (res.ok) {
-        setSeed(res.seed);
-        setSessionId(res.sessionId);
-      } else {
-        // 会话过期等场景退化为本地对局
-        setSeed(localSeed());
-        setSessionId(null);
+    let nextSeed = localSeed();
+    let nextSessionId: string | null = null;
+    try {
+      if (loggedIn && rankedRound) {
+        const res = await startGame(gameId, nextDifficulty);
+        if (res.ok) {
+          nextSeed = res.seed;
+          nextSessionId = res.sessionId;
+        }
       }
-    } else {
-      const nextSeed = localSeed();
-      setSeed(gameId === "sudoku" ? sudokuSeedForVariant(nextSeed, nextSudokuVariantId) : nextSeed);
-      setSessionId(null);
+    } catch {
+      // 会话过期或网络异常时保留本地对局入口。
     }
+    if (round !== roundRef.current) return;
+    setSeed(gameId === "sudoku" ? sudokuSeedForVariant(nextSeed, nextSudokuVariantId) : nextSeed);
+    setSessionId(nextSessionId);
     startedAtRef.current = nowMs();
+    requestPendingRef.current = false;
     setPhase("playing");
   }
 
   async function handleComplete(proof: unknown) {
+    if (requestPendingRef.current || phase !== "playing") return;
+    const round = roundRef.current;
     const durationMs = nowMs() - startedAtRef.current;
     setElapsedMs(durationMs);
     if (!sessionId) {
@@ -89,9 +100,18 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
       setPhase("done");
       return;
     }
+    requestPendingRef.current = true;
     setPhase("submitting");
-    const res = await submitScore(sessionId, durationMs, proof);
-    setRecorded(res.ok ? "yes" : "failed");
+    let result: "yes" | "failed" = "failed";
+    try {
+      const res = await submitScore(sessionId, durationMs, proof);
+      result = res.ok ? "yes" : "failed";
+    } catch {
+      // 提交失败也结束当前局，允许玩家重新开始。
+    }
+    if (round !== roundRef.current) return;
+    requestPendingRef.current = false;
+    setRecorded(result);
     setPhase("done");
   }
 
@@ -120,7 +140,7 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
           ))}
         </div>
         <span className="font-serif text-lg tabular-nums" aria-live="off">{formatMs(elapsedMs)}</span>
-        <Button variant="ghost" size="sm" className="px-2" onClick={() => begin(difficulty)} disabled={phase === "starting"}>
+        <Button variant="ghost" size="sm" className="px-2" onClick={() => begin(difficulty)} disabled={phase === "starting" || phase === "submitting"}>
           <RotateCcw size={14} />
           {phase === "idle" ? t("start") : t("restart")}
         </Button>
@@ -150,7 +170,7 @@ export function GameMatch({ gameId, loggedIn }: { gameId: string; loggedIn: bool
             key={`${seed}:${difficulty}`}
             seed={seed}
             difficulty={difficulty}
-            finished={phase === "done" || phase === "submitting"}
+            finished={phase !== "playing"}
             onComplete={handleComplete}
           />
         )}

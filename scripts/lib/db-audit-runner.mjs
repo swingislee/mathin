@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertNonProductionWriteTarget } from "./r1-write-target-policy.mjs";
+import { sanitizedPostgresEnvironment } from "./postgres-process-env.mjs";
 
 const assertionRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../supabase/tests");
 
@@ -30,11 +31,7 @@ export function runAssertionFiles(label, fileNames, { environment = process.env,
     sshHost: environment.SUPABASE_DB_SSH,
     environment,
   });
-  const childEnvironment = { ...environment };
-  // libpq 的 hostaddr/service 可绕过连接串中的主机；执行只采用已核对的 URL。
-  for (const key of Object.keys(childEnvironment)) {
-    if (/^(PGHOSTADDR|PGSERVICE|PGSERVICEFILE|PGSYSCONFDIR)$/i.test(key)) delete childEnvironment[key];
-  }
+  const childEnvironment = sanitizedPostgresEnvironment(environment);
   // 当前目标策略只接受明确声明的 loopback 数据库，SSH 远端尚未登记。
   for (const file of new Set(files)) {
     const result = execute("psql", [databaseUrl, "-X", "-v", "ON_ERROR_STOP=1", "-f", file], {

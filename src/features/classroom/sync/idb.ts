@@ -59,6 +59,14 @@ function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   });
 }
 
+function transactionToPromise(transaction: IDBTransaction): Promise<void> {
+  return new Promise((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error("IDB_TRANSACTION_FAILED"));
+    transaction.onabort = () => reject(transaction.error ?? new Error("IDB_TRANSACTION_ABORTED"));
+  });
+}
+
 export async function idbGet<T>(store: string, key: string): Promise<T | undefined> {
   const db = await openClassroomDb();
   return requestToPromise(db.transaction(store, "readonly").objectStore(store).get(key));
@@ -66,7 +74,10 @@ export async function idbGet<T>(store: string, key: string): Promise<T | undefin
 
 export async function idbPut(store: string, key: string, value: unknown): Promise<void> {
   const db = await openClassroomDb();
-  await requestToPromise(db.transaction(store, "readwrite").objectStore(store).put(value, key));
+  const transaction = db.transaction(store, "readwrite");
+  transaction.objectStore(store).put(value, key);
+  // Request success only queues a write; the transaction can still abort afterward.
+  await transactionToPromise(transaction);
 }
 
 export async function idbDelete(store: string, keys: string[]): Promise<void> {
@@ -74,7 +85,8 @@ export async function idbDelete(store: string, keys: string[]): Promise<void> {
   const db = await openClassroomDb();
   const tx = db.transaction(store, "readwrite");
   const objectStore = tx.objectStore(store);
-  await Promise.all(keys.map((key) => requestToPromise(objectStore.delete(key))));
+  for (const key of keys) objectStore.delete(key);
+  await transactionToPromise(tx);
 }
 
 export async function idbListByIndex<T>(store: string, index: string, value: string): Promise<T[]> {

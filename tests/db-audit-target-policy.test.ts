@@ -1,6 +1,9 @@
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runAssertionFiles } from "../scripts/lib/db-audit-runner.mjs";
+
+const rebuildProcess = vi.hoisted(() => ({ spawn: vi.fn() }));
+vi.mock("node:child_process", () => ({ spawnSync: rebuildProcess.spawn }));
 
 const files = ["r1_account_security_assertions.sql", "p6_courseware_security_assertions.sql"];
 const environment: NodeJS.ProcessEnv = {
@@ -67,5 +70,50 @@ describe("explicit SQL assertion execution", () => {
     const execute = vi.fn().mockReturnValue({ error: new Error("private connection detail") });
     expect(() => runAssertionFiles("db:test", files, { environment, execute })).toThrow("SQL_CHECK:START_FAILED: unable to start psql");
     expect(execute).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("destructive rebuild process boundary", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    rebuildProcess.spawn.mockReset().mockImplementation(() => { throw new Error("MOCK_FIRST_PSQL"); });
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process, "exit").mockImplementation((code) => { throw new Error(`MOCK_EXIT:${code}`); });
+    for (const [key, value] of Object.entries(environment)) vi.stubEnv(key, value);
+    vi.stubEnv("CI_ALLOW_DB_REBUILD", "1");
+  });
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
+
+  it("removes libpq routing overrides and sends the checked URL directly to psql without a shell", async () => {
+    const overrides = {
+      PGHOSTADDR: "192.168.5.183", pghostaddr: "192.168.5.183", PGSERVICE: "another-target",
+      PGSERVICEFILE: "private-services.conf", PGSYSCONFDIR: "private-config",
+    };
+    for (const [key, value] of Object.entries(overrides)) vi.stubEnv(key, value);
+    vi.stubEnv("PGAPPNAME", "fixture-rebuild");
+    // The mock stops at the first process launch; no psql or SQL is executed.
+    await expect(import("../scripts/ci-rebuild-db.mjs")).rejects.toThrow("MOCK_FIRST_PSQL");
+    expect(rebuildProcess.spawn).toHaveBeenCalledTimes(1);
+    const [program, args, options] = rebuildProcess.spawn.mock.calls[0];
+    expect(program).toBe("psql");
+    expect(args[0]).toBe(environment.DATABASE_URL);
+    expect(options.shell).toBe(false);
+    expect(options.windowsHide).toBe(true);
+    for (const key of Object.keys(overrides)) expect(options.env[key]).toBeUndefined();
+    expect(options.env.PGAPPNAME).toBe("fixture-rebuild");
+    expect(options.env.MATHIN_WRITE_ALLOWED_DATABASE_TARGET).toBe(environment.MATHIN_WRITE_ALLOWED_DATABASE_TARGET);
+    expect(process.env.PGHOSTADDR).toBe("192.168.5.183");
+  });
+
+  it.each([
+    { CI_ALLOW_DB_REBUILD: "0" },
+    { MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "127.0.0.1:5432/another" },
+    { DATABASE_URL: "postgresql://postgres@supabase.mathin.club:5432/postgres" },
+    { DATABASE_URL: "postgresql://postgres@192.168.5.183:5432/postgres", MATHIN_WRITE_ALLOWED_DATABASE_TARGET: "192.168.5.183:5432/postgres" },
+  ])("rejects missing destructive consent or a rejected target before starting psql", async (overrides) => {
+    for (const [key, value] of Object.entries(overrides)) vi.stubEnv(key, value);
+    await expect(import("../scripts/ci-rebuild-db.mjs")).rejects.toThrow("MOCK_EXIT:2");
+    expect(rebuildProcess.spawn).not.toHaveBeenCalled();
   });
 });

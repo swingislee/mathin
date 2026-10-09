@@ -24,7 +24,7 @@ export const useNotebookStore = create<NotebookState>((set) => ({
   saveStates: {},
   hydratedFor: null,
   hydrate: (userId, notes) => set((state) =>
-    state.hydratedFor === userId ? state : { notes: byId(notes), hydratedFor: userId },
+    state.hydratedFor === userId ? state : { notes: byId(notes), saveStates: {}, hydratedFor: userId },
   ),
   replaceAll: (notes) => set({ notes: byId(notes) }),
   upsert: (note) => set((state) => ({ notes: { ...state.notes, [note.id]: note } })),

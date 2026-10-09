@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { authReturnOrigin, requestPublicOrigin } from "@/lib/auth-return-origin";
+import { readLimitedRequestText } from "@/lib/request-body";
 import { requireWechatConfig } from "./config";
 import { requireWechatTokenConfig } from "./broker-config";
 import { WECHAT_FLOW_COOKIE, WECHAT_GUEST_COOKIE, WECHAT_PROVIDER, opaqueTokenSchema, wechatError, type WechatIdentity } from "./contract";
@@ -126,8 +127,7 @@ export async function exchangeBrokerToken(request: Request) {
   try {
     const config = requireWechatTokenConfig();
     if (!request.headers.get("content-type")?.startsWith("application/x-www-form-urlencoded")) return failure();
-    const body = await request.text();
-    if (body.length > 8192) return failure();
+    const body = await readLimitedRequestText(request, 8192);
     const input = exchangeSchema.parse(Object.fromEntries(new URLSearchParams(body)));
     const authorization = request.headers.get("authorization");
     let clientId = input.client_id ?? "";
