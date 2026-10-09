@@ -1161,6 +1161,25 @@
       ],
       "checkpoint": null,
       "next": "线索和沟通月份已改为紧凑下拉，完整月份及人数保留在选项中；两个组件静态检查通过，3130开发服务可用，待实际使用确认，生产未发布。"
+    },
+    {
+      "id": "COMMUNICATION-HEADER-20261009",
+      "title": "线索与沟通顶部整理",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-HEADER-20261009.md",
+      "writePaths": [
+        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
+        ".ai/tasks/COMMUNICATION-HEADER-20261009.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/source-worklist/Workspace.tsx"
+      ],
+      "checkpoint": null,
+      "next": "线索和沟通的月份、小组并入统一页头筛选区，操作集中右侧图标；两个组件静态检查通过，复用现有开发服务，待实际密度及换行验收，生产未发布。"
     }
   ]
 }

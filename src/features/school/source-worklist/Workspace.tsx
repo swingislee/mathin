@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, ChevronDown, ChevronRight, ListOrdered, RefreshCw, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, CornerDownRight, RefreshCw, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-styles';
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -150,7 +150,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
         </button>)}
       </nav></DashboardCommandState>
       <DashboardCommandFilters>
-        <form className="flex flex-wrap items-center gap-2" onSubmit={event => { event.preventDefault(); if (!busy) { if (!query.q) searchOrigin.save(query); navigate({ q: String(new FormData(event.currentTarget).get('q') ?? '').trim().slice(0,80) }); } }}>
+        <form className="flex min-w-0 max-w-full flex-wrap items-center gap-2" onSubmit={event => { event.preventDefault(); if (!busy) { if (!query.q) searchOrigin.save(query); navigate({ q: String(new FormData(event.currentTarget).get('q') ?? '').trim().slice(0,80) }); } }}>
           <FilterSearchInput name="q" defaultValue={query.q} placeholder={m.search} aria-label={m.search} disabled={busy} />
           {query.q ? <Button size="sm" variant="ghost" type="button" disabled={busy} onClick={returnFromSearch}>{m.clearSearch}</Button> : null}
           <select aria-label={m.sourceMarks} value={query.marker} disabled={busy} onChange={event => navigate({ marker: event.target.value })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
@@ -162,19 +162,19 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
             {canAssign || query.scope === 'unassigned' ? <option value="unassigned">{locale.startsWith('en') ? 'Unassigned' : '待分配'}</option> : null}
           </select>
         </form>
+        <SourceLayoutFilters data={data} kind={query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'} periodFields={taskPeriodFields(query.stage)} locale={locale} disabled={busy} compactPeriods layout="toolbar"
+          onChange={change => navigate({ ...change, marker: '' })} />
       </DashboardCommandFilters>
       <DashboardCommandActions>
-        <span className="inline-flex items-center gap-1 text-xs text-muted"><ListOrdered className="size-3.5" />{m.sourceOrder}</span>
-        {focused ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => { const row = rows.find(r => r.worklist.id === focused); if (row) { const next = new Set(collapsed); for (const key of collapseKeys(row,allMonths)) next.delete(key); setCollapsed(next); open(row); remember(row.worklist.id,next); } }}>{m.resume}</Button> : null}
-        <Button size="sm" variant="ghost" disabled={busy} onClick={() => { setRefreshRequested(true); router.refresh(); }}><RefreshCw className="size-3.5" />{m.refresh}</Button>
+        {focused ? <Button size="sm" variant="ghost" className="size-8 p-0" title={m.resume} aria-label={m.resume} disabled={busy} onClick={() => { const row = rows.find(r => r.worklist.id === focused); if (row) { const next = new Set(collapsed); for (const key of collapseKeys(row,allMonths)) next.delete(key); setCollapsed(next); open(row); remember(row.worklist.id,next); } }}><CornerDownRight className="size-4" aria-hidden /></Button> : null}
+        <Button size="sm" variant="ghost" className="size-8 p-0" title={m.refresh} aria-label={m.refresh} disabled={busy} onClick={() => { setRefreshRequested(true); router.refresh(); }}><RefreshCw className="size-4" aria-hidden /></Button>
+        {!firstContactContent ? <div className="flex items-center gap-0.5 border-l border-line pl-1.5">
+          <Button size="sm" variant="ghost" className="size-8 p-0" title={m.collapseAll} aria-label={m.collapseAll} disabled={busy} onClick={() => { const next = new Set(rows.flatMap(row => collapseKeys(row,allMonths))); setCollapsed(next); setActive(null); remember(focused,next); }}><ChevronsDownUp className="size-4" aria-hidden /></Button>
+          <Button size="sm" variant="ghost" className="size-8 p-0" title={m.expandAll} aria-label={m.expandAll} disabled={busy} onClick={() => { const next = new Set<string>(); setCollapsed(next); remember(focused,next); }}><ChevronsUpDown className="size-4" aria-hidden /></Button>
+        </div> : null}
       </DashboardCommandActions>
     </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref={firstContact ? "/dashboard/leads" : "/dashboard/communication"} currentPage={data.page} totalPages={data.totalPages}
       totalCount={data.count} pageSize={data.pageSize} disabled={busy} onPageChange={(page,pageSize) => navigate({ page,pageSize })} />}>
-      <SourceLayoutFilters data={data} kind={query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'} periodFields={taskPeriodFields(query.stage)} locale={locale} disabled={busy} compactPeriods
-        onChange={change => navigate({ ...change, marker: '' })} actions={<>{!firstContactContent ? <div className="ml-auto flex items-center gap-1">
-          <Button size="sm" variant="ghost" className="size-7 p-0" title={m.collapseAll} aria-label={m.collapseAll} disabled={busy} onClick={() => { const next = new Set(rows.flatMap(row => collapseKeys(row,allMonths))); setCollapsed(next); setActive(null); remember(focused,next); }}><ChevronsDownUp className="size-3.5" /></Button>
-          <Button size="sm" variant="ghost" className="size-7 p-0" title={m.expandAll} aria-label={m.expandAll} disabled={busy} onClick={() => { const next = new Set<string>(); setCollapsed(next); remember(focused,next); }}><ChevronsUpDown className="size-3.5" /></Button>
-        </div> : null}</>} />
       {firstContactContent ?? <DashboardTableShell><Table mobileLayout="stacked" className="table-fixed text-xs [&_th]:px-2 [&_td]:px-2">
         <TableHeader className="sticky top-0 z-20"><TableRow>
           <TableHead className="w-40">{m.name}</TableHead><TableHead className="w-28">{m.phone}</TableHead>
