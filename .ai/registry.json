@@ -3,6 +3,28 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "RELEASE-V041-20261009",
+      "title": "v0.4.1 生产发布与团队说明",
+      "agent": "codex",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/RELEASE-V041-20261009.md",
+      "writePaths": [
+        ".ai/tasks/RELEASE-V041-20261009.md",
+        ".tmp/release-v041-20261009/",
+        "package.json",
+        "CHANGELOG.md",
+        "docs/releases/v0.4.1.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md"
+      ],
+      "checkpoint": null,
+      "next": "核对近期提交与生产迁移，构建发布 v0.4.1 并记录团队说明。"
+    },
+    {
       "id": "SCHOOL-SUPPORT-OWNERS-20261009",
       "title": "学服负责人设置与分配名单",
       "agent": "codex",
