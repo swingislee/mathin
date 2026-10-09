@@ -5,8 +5,8 @@ import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-st
 import { workMessages, type PeriodField, type SourceLayout, type SourcePlacement } from './contract';
 import { sourceGroupLabels } from './grouping';
 
-export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled, onChange, actions }: {
-  data: SourceLayout; kind: SourcePlacement['kind']; periodFields: PeriodField[]; locale: string; disabled?: boolean;
+export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled, compactPeriods = false, onChange, actions }: {
+  data: SourceLayout; kind: SourcePlacement['kind']; periodFields: PeriodField[]; locale: string; disabled?: boolean; compactPeriods?: boolean;
   onChange: (change: Partial<Pick<SourceLayout,'periodField' | 'period' | 'group'>>) => void; actions?: ReactNode;
 }) {
   const m = workMessages(locale), labels = sourceGroupLabels(kind, locale);
@@ -20,10 +20,14 @@ export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled
         <select aria-label={m.periodBasis} value={data.periodField} disabled={disabled} onChange={event => onChange({ periodField: event.target.value as PeriodField, period: '', group: '' })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
           {periodFields.map(field => <option key={field} value={field}>{m.periods[field]}</option>)}
         </select>
-        <nav aria-label={m.periods[data.periodField]} className={`${tabsListClassName} h-auto max-w-full justify-start overflow-x-auto gap-1`}>
+        {compactPeriods ? <select aria-label={m.periods[data.periodField]} value={data.period} disabled={disabled}
+          onChange={event => onChange({ period: event.target.value, group: '' })} className="h-8 min-w-0 max-w-full rounded-md border border-line bg-card px-2 text-xs">
+          {data.periods.map(period => <option key={period.key} value={period.key}>{period.key === 'unknown' ? m.unknownPeriod : period.key} · {period.count}</option>)}
+          <option value="all">{m.allPeriods}</option>
+        </select> : <nav aria-label={m.periods[data.periodField]} className={`${tabsListClassName} h-auto max-w-full justify-start overflow-x-auto gap-1`}>
           {data.periods.map(period => choice(period.key, period.key === 'unknown' ? m.unknownPeriod : period.key, data.period, () => onChange({ period: period.key, group: '' }), period.count))}
           {choice('all',m.allPeriods,data.period,() => onChange({ period: 'all', group: '' }))}
-        </nav>
+        </nav>}
       </> : <span className="text-xs text-muted">{labels.group}{labels.subgroup ? ` → ${labels.subgroup}` : ''}</span>}
       {actions}
     </div>

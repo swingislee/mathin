@@ -1048,6 +1048,25 @@
       ],
       "checkpoint": "eaef65950b2eebfcf8ec97c5a3822132d08d8567",
       "next": "已按用户要求成功上传 0.1.2：统一参与登记文案、提交时单次定位、切换页面保留成员和预约信息；连接生产 API，体验版隐藏开发录制入口。浏览器连接不可用，后台设为体验版尚未核实；本轮未提交审核或正式发布，后端未改动。"
+    },
+    {
+      "id": "COMMUNICATION-MONTH-FILTER-20261009",
+      "title": "线索与沟通月份筛选收紧",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-MONTH-FILTER-20261009.md",
+      "writePaths": [
+        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
+        "src/features/school/source-worklist/Workspace.tsx",
+        ".ai/tasks/COMMUNICATION-MONTH-FILTER-20261009.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "线索和沟通月份已改为紧凑下拉，完整月份及人数保留在选项中；两个组件静态检查通过，3130开发服务可用，待实际使用确认，生产未发布。"
     }
   ]
 }

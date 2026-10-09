@@ -169,7 +169,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
       </DashboardCommandActions>
     </FollowupCommandPanel>} footer={<LeadPoolPagination baseHref={firstContact ? "/dashboard/leads" : "/dashboard/communication"} currentPage={data.page} totalPages={data.totalPages}
       totalCount={data.count} pageSize={data.pageSize} disabled={busy} onPageChange={(page,pageSize) => navigate({ page,pageSize })} />}>
-      <SourceLayoutFilters data={data} kind={query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'} periodFields={taskPeriodFields(query.stage)} locale={locale} disabled={busy}
+      <SourceLayoutFilters data={data} kind={query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'} periodFields={taskPeriodFields(query.stage)} locale={locale} disabled={busy} compactPeriods
         onChange={change => navigate({ ...change, marker: '' })} actions={<>{!firstContactContent ? <div className="ml-auto flex items-center gap-1">
           <Button size="sm" variant="ghost" className="size-7 p-0" title={m.collapseAll} aria-label={m.collapseAll} disabled={busy} onClick={() => { const next = new Set(rows.flatMap(row => collapseKeys(row,allMonths))); setCollapsed(next); setActive(null); remember(focused,next); }}><ChevronsDownUp className="size-3.5" /></Button>
           <Button size="sm" variant="ghost" className="size-7 p-0" title={m.expandAll} aria-label={m.expandAll} disabled={busy} onClick={() => { const next = new Set<string>(); setCollapsed(next); remember(focused,next); }}><ChevronsUpDown className="size-3.5" /></Button>
