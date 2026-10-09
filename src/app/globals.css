@@ -1,7 +1,7 @@
 @import "../../public/fonts/lxgw-wenkai/lxgwwenkai-regular.css";
-@import "tailwindcss";
-@source not "../../apps";
-@source not "../../archive";
+/* Only website code and rendered articles supply utility classes. */
+@import "tailwindcss" source("..");
+@source "../../content";
 
 /* 设计 token 来源：docs/design.md（色值取样自 public/Main.png） */
 :root {

@@ -82,9 +82,10 @@ const nextConfig: NextConfig = {
     // 首次请求只加载所需路由；全站条目预载会与鉴权及页面读取争用事件循环。
     preloadEntriesOnStart: false,
     // 这里的预算只传给 Turbopack；JavaScript 堆由 pnpm dev 的 NODE_OPTIONS 单独限制。
-    // 开发期文件系统缓存保持关闭。诊断与限制边界见 local-development-memory runbook。
+    // 重启复用已编译模块，避免每次重新准备全站；4 GiB 预算和 React 调试内存保护继续生效。
+    // 定位缓存问题时可临时设置 MATHIN_DEV_CACHE=0；见 docs/ops/development-performance.md。
     turbopackMemoryLimit: devTurbopackMemoryLimit,
-    turbopackFileSystemCacheForDev: false,
+    turbopackFileSystemCacheForDev: process.env.MATHIN_DEV_CACHE !== "0",
     // Next 16.2.11 会永久保留未连接 HMR 的 HTML 请求调试流；随 RSC 响应传递调试信息。
     reactDebugChannel: false,
   },

@@ -3,6 +3,26 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "SITE-DEV-COLD-START-20261009",
+      "title": "整站开发冷启动",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/SITE-DEV-COLD-START-20261009.md",
+      "writePaths": [
+        "next.config.ts",
+        "src/app/globals.css",
+        "docs/ops/development-performance.md",
+        ".ai/tasks/SITE-DEV-COLD-START-20261009.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端全站样式扫描已收紧并恢复编译缓存：样式22.7秒降至0.49秒，推广页首次48秒降至7.6秒，重启复用2.2秒；文章与热更新通过。待实际使用验收，生产未改动。"
+    },
+    {
       "id": "MINI-WECHAT-LOGIN-DEV-PERF-20261009",
       "title": "小程序微信登录开发入口耗时",
       "agent": "codex",
