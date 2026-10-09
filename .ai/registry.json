@@ -1210,6 +1210,28 @@
       ],
       "checkpoint": null,
       "next": "线索和沟通的月份、小组并入统一页头筛选区，操作集中右侧图标；两个组件静态检查通过，复用现有开发服务，待实际密度及换行验收，生产未发布。"
+    },
+    {
+      "id": "SOURCE-READ-MODEL-20261009",
+      "title": "来源关系与沟通查询简化",
+      "agent": "codex",
+      "threadId": "01a1107b-4c06-7703-a5a7-fcc055f8b0e7",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/SOURCE-READ-MODEL-20261009.md",
+      "writePaths": [
+        ".ai/tasks/SOURCE-READ-MODEL-20261009.md",
+        ".tmp/source-read-model-20261009/",
+        "supabase/migrations/20261009200000_source_read_relations.sql",
+        "supabase/tests/source_read_relations.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": null,
+      "next": "整理可索引的来源关系，保持读取结果与权限，先交付开发端及实测耗时。"
     }
   ]
 }
