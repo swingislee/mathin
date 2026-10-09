@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { studentStageRpc, studentStageRowSchema } from "../student-stage-data";
@@ -11,7 +12,7 @@ import { parse, requiredText, uuid } from "./schemas";
 const schema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("group"), id: uuid.nullable(), name: requiredText(80) }),
   z.object({ kind: z.literal("member"), groupId: uuid, userId: uuid, active: z.boolean() }),
-  z.object({ kind: z.literal("role"), userId: uuid, role: z.enum(SCHOOL_BUSINESS_ROLES) }),
+  z.object({ kind: z.literal("role"), userId: uuid, role: z.enum(SCHOOL_BUSINESS_ROLES).nullable() }),
   z.object({ kind: z.literal("participant"), studentId: uuid.nullable(), leadId: uuid.nullable(), userId: uuid.nullable(),
     role: z.enum([...SCHOOL_BUSINESS_ROLES, "participant"]), groupId: uuid.nullable() }),
 ]);
@@ -28,12 +29,16 @@ export async function saveSchoolCollaborationAction(input: Input): Promise<Actio
     else if (value.kind === "role") await studentStageRpc(client, "set_school_staff_business_role", { p_user_id: value.userId, p_role: value.role });
     else await studentStageRpc(client, "add_school_subject_collaborator", { p_student_id: value.studentId, p_lead_id: value.leadId,
       p_user_id: value.userId, p_role: value.role, p_group_id: value.groupId });
+    revalidatePath("/[locale]/dashboard/students/groups", "page");
+    if (value.kind === "role") {
+      for (const page of ["leads", "communication", "students", "students/[studentId]"]) revalidatePath(`/[locale]/dashboard/${page}`, "page");
+    }
     const settings = schoolCollaborationSchema.parse(await studentStageRpc(client, "read_school_collaboration_settings", {}));
     const subject = value.kind === "participant" ? studentStageRowSchema.parse(await studentStageRpc(client, "read_student_record_subject", {
       p_student_id: value.studentId, p_lead_id: value.leadId,
     })) : undefined;
     return { ok: true, data: { settings, ...(subject ? { subject } : {}) } };
   } catch (error) {
-    return actionError(error, ["VALIDATION", "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND"]);
+    return actionError(error, ["VALIDATION", "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "TARGET_CANNOT_FOLLOW_UP"]);
   }
 }

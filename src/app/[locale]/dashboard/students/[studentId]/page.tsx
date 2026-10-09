@@ -12,7 +12,7 @@ import {
   DashboardMainColumn,
   DashboardPage,
 } from "@/features/school/dashboard-page";
-import { listStaffMembers } from "@/features/school/staff";
+import { listSchoolSupportOwners } from "@/features/school/school-collaboration-data";
 import { StudentActionsMenu } from "@/features/school/StudentActionsMenu";
 import {
   StudentAccountStatus,
@@ -81,7 +81,7 @@ export default async function StudentDetailPage({
   const showFinance = perms.has("finance.order.view");
 
   const assignees = canAssign
-    ? (await listStaffMembers()).filter((member) => member.canFollowUp).map((member) => ({ userId: member.userId, displayName: member.displayName }))
+    ? await listSchoolSupportOwners()
     : [];
 
   const tabs: StudentTab[] = showFinance ? [...BASE_TABS, "finance"] : [...BASE_TABS];

@@ -29,18 +29,21 @@ export function SchoolCollaborationSettings({ initial, locale }: { initial: Sett
       {settings.canManage ? <Button size="sm" onClick={() => setEditing({ id: null, name: "" })}>{m.add}</Button> : null}
     </DashboardCommandActions></DashboardCommandPanel>}>
     <p role="status" className="text-sm text-muted">{message}</p>
-    <DashboardSection title={m.title}><DashboardTableShell><Table><TableHeader><TableRow>
+    <DashboardSection title={m.groupsTitle}><DashboardTableShell><Table><TableHeader><TableRow>
       <TableHead>{m.name}</TableHead><TableHead>{m.members}</TableHead>{settings.canManage ? <TableHead /> : null}
     </TableRow></TableHeader><TableBody>{settings.groups.map(group => <TableRow key={group.id}>
       <TableCell>{group.name}</TableCell><TableCell>{group.memberIds.length}</TableCell>
       {settings.canManage ? <TableCell><Button variant="ghost" size="sm" disabled={pending} onClick={() => setEditing({ id: group.id, name: group.name })}>{m.rename}</Button></TableCell> : null}
     </TableRow>)}</TableBody></Table></DashboardTableShell>{!settings.groups.length ? <p className="text-sm text-muted">{m.empty}</p> : null}</DashboardSection>
-    {settings.canManage ? <DashboardSection title={m.staff}><p className="text-sm text-muted">{m.memberHint}</p>
+    {settings.canManage ? <DashboardSection title={m.staff}><p className="text-sm text-muted">{m.supportHint} {m.memberHint}</p>
       <DashboardTableShell><Table><TableHeader><TableRow><TableHead>{m.staff}</TableHead><TableHead>{m.role}</TableHead>{settings.groups.map(group => <TableHead key={group.id}>{group.name}</TableHead>)}</TableRow></TableHeader>
         <TableBody>{settings.staff.map(staff => <TableRow key={staff.id}><TableCell>{staff.name}</TableCell><TableCell>
-          <Select value={staff.role ?? ""} disabled={pending} onValueChange={role => save({ kind: "role", userId: staff.id, role: role as SchoolBusinessRole })}>
-            <SelectTrigger aria-label={`${staff.name} · ${m.role}`} className="w-48"><SelectValue placeholder={m.choose} /></SelectTrigger><SelectContent>{SCHOOL_BUSINESS_ROLES.map(role => <SelectItem key={role} value={role}>{m.roles[role]}</SelectItem>)}</SelectContent>
-          </Select></TableCell>{settings.groups.map(group => <TableCell key={group.id}><Checkbox aria-label={`${staff.name} · ${group.name}`} disabled={pending}
+          <Select value={staff.role ?? "unset"} disabled={pending} onValueChange={role => save({ kind: "role", userId: staff.id, role: role === "unset" ? null : role as SchoolBusinessRole })}>
+            <SelectTrigger aria-label={`${staff.name} · ${m.role}`} className="w-48"><SelectValue placeholder={m.choose} /></SelectTrigger><SelectContent>
+              <SelectItem value="unset">{m.noRole}</SelectItem>
+              {SCHOOL_BUSINESS_ROLES.map(role => <SelectItem key={role} value={role} disabled={role === "school_support" && !staff.canFollowUp}>{role === "school_support" ? m.supportOwner : m.roles[role]}</SelectItem>)}
+            </SelectContent>
+          </Select>{!staff.canFollowUp ? <p className="mt-1 text-xs text-muted">{m.needsFollowup}</p> : null}</TableCell>{settings.groups.map(group => <TableCell key={group.id}><Checkbox aria-label={`${staff.name} · ${group.name}`} disabled={pending}
             checked={group.memberIds.includes(staff.id)} onCheckedChange={active => save({ kind: "member", userId: staff.id, groupId: group.id, active: active === true })} /></TableCell>)}</TableRow>)}</TableBody>
       </Table></DashboardTableShell></DashboardSection> : null}
     <Dialog open={Boolean(editing)} onOpenChange={open => { if (!open && !pending) setEditing(null); }}><DialogContent><DialogHeader><DialogTitle>{editing?.id ? m.rename : m.add}</DialogTitle></DialogHeader>

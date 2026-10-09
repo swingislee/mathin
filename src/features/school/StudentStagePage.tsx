@@ -9,8 +9,7 @@ import { loadStudentStageFieldPage } from "./student-stage-table-data";
 import { studentStageFieldScope } from "./student-stage-table-fields";
 import { StudentStageWorkspace } from "./StudentStageWorkspace";
 import { getOrganizationTimezoneV2 } from "./organization-locations";
-import { listStaffMembers } from "./staff";
-import { readSchoolCollaborationSettings } from "./school-collaboration-data";
+import { listSchoolSupportOwners, readSchoolCollaborationSettings } from "./school-collaboration-data";
 import { schoolCollaborationMessages } from "./school-collaboration-contract";
 import { listLeadPool } from "./leads";
 import { listInvitationOptions } from "./invitations";
@@ -31,8 +30,8 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
     return { timeZone, now, data: await loadStudentStageFieldPage(filters, { locale, timeZone, now }, currentUserId,
       { includeRecordHints: !firstContact, includeFieldFacets: !firstContact }) };
   });
-  const [t, staff, collaboration, { timeZone, now, data }] = await Promise.all([
-    getTranslations("school.students"), canAssign ? listStaffMembers() : Promise.resolve([]), readSchoolCollaborationSettings(), dataPromise,
+  const [t, assignees, collaboration, { timeZone, now, data }] = await Promise.all([
+    getTranslations("school.students"), canAssign ? listSchoolSupportOwners() : Promise.resolve([]), readSchoolCollaborationSettings(), dataPromise,
   ]);
   const resolvedFilters = { ...filters, scope: studentStageFieldScope(data.fieldView.query), detail: "", fields: JSON.stringify(data.fieldView.query) };
   const m = workEntryMessages(locale);
@@ -49,6 +48,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
         historicalFirstContacts={data.rows.flatMap(row => !row.leadId && row.studentId ? [{ studentId: row.studentId, name: row.name, phone: row.phone, grade: row.grade, context: row.note }] : [])}
         rowOrder={data.rows.map(row => row.leadId ? `lead:${row.leadId}` : `student:${row.studentId}`)}
         activities={options.activities} assessors={options.assessors} locale={locale} currentUserId={currentUserId}
+        canAssign={canAssign} assignees={assignees}
         canManageInvitation={permissions.has("followup.write")} canContact={permissions.has("followup.write")}
         canManageIdentity={permissions.has("followup.write") && permissions.has("student.edit")} timeZone={timeZone} now={now} />
     </CommunicationWorkSelectionProvider>;
@@ -58,7 +58,7 @@ export async function StudentStagePage({ locale, currentUserId, permissions, sea
     collaboration={collaboration}
     canPlan={permissions.has("followup.write") && permissions.has("followup.view")}
     canPlanOthers={canAssign && permissions.has("student.view.all")}
-    canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
+    canAssign={canAssign} assignees={assignees}
     canEnroll={permissions.has("enrollment.manage")} timeZone={timeZone} now={now} actions={presentation === "communication" ? <><Link href="/dashboard/communication/lists" className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{locale.startsWith("en") ? "Working lists" : "工作名单"}</Link><Link href="/dashboard/communication/worklists" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{m.worklists}</Link></> : <>
       <Link href="/dashboard/students/groups" className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>{schoolCollaborationMessages(locale).title}</Link>
       {!permissions.has("followup.write") && permissions.has("student.create") ? <NewStudentDialog /> : null}

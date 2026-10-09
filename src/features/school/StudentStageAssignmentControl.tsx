@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChevronDown, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { assignStudentStageAction } from "./student-stage-actions";
@@ -57,11 +58,18 @@ export function StudentStageAssignmentControl(props: AssignmentProps) {
   const [staffUserId, setStaffUserId] = useState("");
   const { m, error, pendingOwnerId, submit } = useOwnerAssignment(props);
   return <div className="flex min-w-0 flex-wrap items-center gap-2" data-student-stage-assignment>
-    <FollowupChoice presentation="select" value={staffUserId} onValueChange={setStaffUserId} disabled={disabled || Boolean(pendingOwnerId)}
+    <FollowupChoice presentation="select" value={staffUserId} onValueChange={setStaffUserId} disabled={disabled || Boolean(pendingOwnerId) || !assignees.length}
       label={m.chooseOwner} className="w-40" options={assignees.map(member => ({ value: member.userId, label: member.displayName }))} />
     <Button size="sm" disabled={disabled || Boolean(pendingOwnerId) || !staffUserId || !rows.length} onClick={() => { void submit(staffUserId); }}>{m.assign}</Button>
+    {!assignees.length ? <OwnerSettingsLink locale={props.locale} /> : null}
     {error ? <p role="alert" className="w-full whitespace-normal text-xs text-rose">{error}</p> : null}
   </div>;
+}
+
+function OwnerSettingsLink({ locale }: { locale: string }) {
+  return <Link href="/dashboard/students/groups" className="text-xs text-muted underline" onClick={event => event.stopPropagation()}>
+    {locale.startsWith("en") ? "Set learning support owners" : "设置学服负责人"}
+  </Link>;
 }
 
 function LeadOwnerControl({ row, ...props }: Omit<AssignmentProps, "rows"> & { row: StudentStageRow }) {
@@ -75,7 +83,7 @@ function LeadOwnerControl({ row, ...props }: Omit<AssignmentProps, "rows"> & { r
   return <div className="min-w-0" data-lead-owner-control onClick={event => event.stopPropagation()}>
     <div className="flex items-center gap-1" aria-busy={Boolean(pendingOwnerId)}>
       <select value={pendingOwnerId || current.ownerId || ""} aria-label={`${m.chooseOwner} · ${row.name}`}
-        title={`${m.owner} · ${current.ownerName || m.unassigned}`} disabled={props.disabled || Boolean(pendingOwnerId)}
+        title={`${m.owner} · ${current.ownerName || m.unassigned}`} disabled={props.disabled || Boolean(pendingOwnerId) || !props.assignees.length}
         onChange={event => { if (event.target.value !== current.ownerId) void submit(event.target.value); }}
         className={`h-8 w-full min-w-0 rounded-md border px-1 text-xs text-ink ${current.ownerId ? "border-line bg-card" : "border-crater/40 bg-moon/20"}`}>
         {!current.ownerId ? <option value="" disabled>{m.unassigned}</option> : null}
@@ -84,6 +92,7 @@ function LeadOwnerControl({ row, ...props }: Omit<AssignmentProps, "rows"> & { r
       </select>
       {pendingOwnerId ? <LoaderCircle className="size-3 shrink-0 animate-spin text-muted" aria-label={m.saving} /> : null}
     </div>
+    {!props.assignees.length ? <OwnerSettingsLink locale={props.locale} /> : null}
     {error ? <p role="alert" className="mt-1 whitespace-normal text-xs text-rose">{error}</p> : null}
   </div>;
 }

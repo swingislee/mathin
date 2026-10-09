@@ -5,7 +5,7 @@ import { getMyPerms, requireAnyPerm } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { studentStageRowSchema, studentStageRpc } from '../student-stage-data';
 import { getOrganizationTimezoneV2 } from '../organization-locations';
-import { listStaffMembers } from '../staff';
+import { listSchoolSupportOwners } from '../school-collaboration-data';
 import { listLeadPool } from '../leads';
 import { listInvitationOptions } from '../invitations';
 import { InvitationCoordinationWorkbench } from '../InvitationCoordinationWorkbench';
@@ -45,14 +45,13 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
     redirect({ href: '/dashboard/classes', locale });
   }
   const canAssign = permissions.has('student.assign');
-  const [data, timeZone, now, staff] = await Promise.all([
+  const [data, timeZone, now, assignees] = await Promise.all([
     studentStageRpc(client, 'school_communication_page', { p_stage: query.stage, p_scope: query.scope, p_search: query.q,
       p_group: query.group, p_marker: query.marker, p_page: query.page, p_page_size: query.pageSize,
       p_period_field: query.periodField, p_period: query.period, p_subjects: subjects }), getOrganizationTimezoneV2(), getNow(),
-    canAssign ? listStaffMembers() : Promise.resolve([]),
+    canAssign ? listSchoolSupportOwners() : Promise.resolve([]),
   ]);
   const page = pageSchema.parse(data);
-  const assignees = staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }));
   let firstContactContent;
   if (firstContact) {
     const leadIds = page.rows.flatMap(row => row.leadId ? [row.leadId] : []);

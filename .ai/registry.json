@@ -3,6 +3,36 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "SCHOOL-SUPPORT-OWNERS-20261009",
+      "title": "学服负责人设置与分配名单",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/SCHOOL-SUPPORT-OWNERS-20261009.md",
+      "writePaths": [
+        ".ai/tasks/SCHOOL-SUPPORT-OWNERS-20261009.md",
+        ".tmp/school-support-owners-20261009/",
+        "src/features/school/SchoolCollaborationSettings.tsx",
+        "src/features/school/school-collaboration-contract.ts",
+        "src/features/school/school-collaboration-data.ts",
+        "src/features/school/actions/school-collaboration.ts",
+        "src/features/school/source-worklist/Page.tsx",
+        "src/features/school/source-worklist/Workspace.tsx",
+        "src/features/school/StudentStagePage.tsx",
+        "src/features/school/StudentStageAssignmentControl.tsx",
+        "src/app/[locale]/dashboard/students/[studentId]/page.tsx",
+        "supabase/migrations/20261009203000_school_support_assignees.sql",
+        "supabase/tests/school_support_assignees.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": null,
+      "next": "分组与学服设置和明确学服名单已接通，三个分配接口校验资格；开发库已应用、定向静态与权限 SQL 检查通过，待实际使用验收，生产未改动。"
+    },
+    {
       "id": "MINI-UNIFIED-ENTRY-20261009",
       "title": "微信绑定与首次登记统一入口",
       "agent": "codex",

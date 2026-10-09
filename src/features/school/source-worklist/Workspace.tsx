@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, ChevronDown, ChevronRight, CornerDownRight, RefreshCw, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-styles';
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Link, useRouter } from '@/i18n/navigation';
@@ -17,6 +17,7 @@ import { LeadPoolPagination } from '../LeadPoolPagination';
 import { Student360Trigger } from '../Student360Sheet';
 import { StudentStageOwnerControl } from '../StudentStageAssignmentControl';
 import { studentStageMessages } from '../student-stage-messages';
+import { schoolCollaborationMessages } from '../school-collaboration-contract';
 import { communicationEntryMode } from '../work-entry-contract';
 import type { StudentEntryMode, StudentStageSaved, StudentStageAssignee, StudentStageAssignment } from '../student-stage-contract';
 import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, type WorkPage, type WorkQuery, type WorkRow } from './contract';
@@ -166,6 +167,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
           onChange={change => navigate({ ...change, marker: '' })} />
       </DashboardCommandFilters>
       <DashboardCommandActions>
+        {canAssign ? <Link href="/dashboard/students/groups" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>{schoolCollaborationMessages(locale).title}</Link> : null}
         {focused ? <Button size="sm" variant="ghost" className="size-8 p-0" title={m.resume} aria-label={m.resume} disabled={busy} onClick={() => { const row = rows.find(r => r.worklist.id === focused); if (row) { const next = new Set(collapsed); for (const key of collapseKeys(row,allMonths)) next.delete(key); setCollapsed(next); open(row); remember(row.worklist.id,next); } }}><CornerDownRight className="size-4" aria-hidden /></Button> : null}
         <Button size="sm" variant="ghost" className="size-8 p-0" title={m.refresh} aria-label={m.refresh} disabled={busy} onClick={() => { setRefreshRequested(true); router.refresh(); }}><RefreshCw className="size-4" aria-hidden /></Button>
         {!firstContactContent ? <div className="flex items-center gap-0.5 border-l border-line pl-1.5">
