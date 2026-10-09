@@ -42,14 +42,15 @@ export type Media = { id: string; kind: "image" | "video"; name: string; bytes: 
 export type PracticeSubmission = { id: string; submittedAt: string; note: string; media: Media[] };
 export type Session = { accessToken: string; refreshToken: string; expiresAt: number };
 /** available 表示服务端配置就绪；真实微信往返仍由登录操作核验。 */
-export type ParentWechatAuthStatus = { available: boolean; linked: boolean | null; canBind: boolean };
+export type ParentWechatAuthStatus = { available: boolean; linked: boolean | null; canBind: boolean; canBindDirect?: boolean; registrationRequired?: boolean };
 export type ParentWechatAuthCommand =
   | { action: "login"; code: string; scene?: string }
-  | { action: "bind"; code: string; password: string; confirm: true };
+  | { action: "bind"; code: string; password?: string; confirm: true };
 export type ParentWechatAuthResult =
   | { state: "authenticated"; session: Session }
   | { state: "binding_required" }
-  | { state: "onboarding_required"; ticket: string }
+  | { state: "onboarding_required"; ticket: string; phoneVerified?: boolean }
+  | { state: "current_session" }
   | { state: "bound" };
 export type ParentWechatAuthErrorReason = "WECHAT_NOT_CONFIGURED" | "WECHAT_CODE_INVALID"
   | "WECHAT_UNIONID_REQUIRED" | "WECHAT_CREDENTIALS_INVALID" | "WECHAT_MFA_REQUIRED"

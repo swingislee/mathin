@@ -4,7 +4,8 @@ const h = vi.hoisted(() => ({ config: true, authorize: vi.fn(), active: vi.fn(),
   exchange: vi.fn(), native: vi.fn(), context: vi.fn(), password: vi.fn(), revoke: vi.fn(), owner: vi.fn(), conflict: vi.fn(),
   onboarding: vi.fn(), needsFamily: vi.fn(), resume: vi.fn(), touch: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: h.touch }) }));
-vi.mock("@/features/parent-portal/onboarding-server", () => ({
+vi.mock("@/features/parent-portal/onboarding-server", async original => ({
+  ...await original<object>(),
   familyOnboardingAvailable: () => process.env.WECHAT_FAMILY_ONBOARDING_ENABLED === "true",
   beginFamilyOnboarding: (...args: unknown[]) => h.onboarding(...args),
   needsFamilyOnboarding: (...args: unknown[]) => h.needsFamily(...args),
@@ -67,7 +68,7 @@ describe("parent mini program auth HTTP", () => {
   });
   it("checks available binding capabilities and MFA", async () => {
     const request = new Request(baseUrl, { headers: { authorization: "Bearer original-access" } });
-    expect(await (await GET(request)).json()).toEqual({ available: true, linked: false, canBind: true });
+    expect(await (await GET(request)).json()).toEqual({ available: true, linked: false, canBind: true, canBindDirect: false });
     h.context.mockResolvedValue({ user, sessionId, mfaRequired: true });
     expect((await (await GET(request)).json()).canBind).toBe(false);
   });
@@ -90,7 +91,7 @@ describe("parent mini program auth HTTP", () => {
     h.owner.mockResolvedValue(userId); h.needsFamily.mockResolvedValue(true);
     const result = await POST(body({ action: "login", code: "fresh-code", location: { status: "declined" } }));
     expect(await result.json()).toEqual({ state: "onboarding_required", ticket: "family-proof" });
-    expect(h.onboarding).toHaveBeenCalledWith(identity, null);
+    expect(h.onboarding).toHaveBeenCalledWith(identity, null, expect.objectContaining({ id: userId }));
     expect(h.revoke).toHaveBeenCalledWith(session.access_token);
   });
   it("does not force already associated work accounts to register again", async () => {
@@ -149,6 +150,39 @@ describe("parent mini program auth HTTP", () => {
     expect(h.native).toHaveBeenCalledWith(expect.any(Object), identity, userId, expect.objectContaining({ token: "original-access", sessionId, verify: expect.any(Function) }));
     expect(h.revoke).toHaveBeenCalledWith(session.access_token, sessionId);
     expect(h.limit).toHaveBeenCalledWith(expect.any(Request), "bind", userId);
+  });
+  it("binds a verified phone session with explicit confirmation and no password replay", async () => {
+    const phoneUser = { ...user, phone: "8619900000001", phone_confirmed_at: "2026-10-09T00:00:00Z" };
+    h.authorize.mockResolvedValue({ user: phoneUser, token: "original-access" });
+    h.context.mockResolvedValue({ user: phoneUser, sessionId, mfaRequired: false });
+    expect(await (await GET(new Request(baseUrl, { headers: { authorization: "Bearer original-access" } }))).json()).toMatchObject({ canBindDirect: true });
+    expect(await (await POST(body({ action: "bind", code: "fresh-code", confirm: true }, true))).json()).toEqual({ state: "bound" });
+    expect(h.password).not.toHaveBeenCalled();
+    expect(h.revoke).toHaveBeenCalledWith(session.access_token, sessionId);
+  });
+  it.each([{}, { phone: "8619900000001" }])("keeps password proof required without a verified phone %j", async fields => {
+    h.context.mockResolvedValue({ user: { ...user, ...fields }, sessionId, mfaRequired: false });
+    expect((await POST(body({ action: "bind", code: "fresh-code", confirm: true }, true))).status).toBe(403);
+    expect(h.exchange).not.toHaveBeenCalled();
+  });
+  it("continues the current account's unfinished form without replacing its session", async () => {
+    vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId); h.needsFamily.mockResolvedValue(true);
+    const phoneUser = { ...user, phone: "8619900000001", phone_confirmed_at: "2026-10-09T00:00:00Z" };
+    h.context.mockResolvedValue({ user: phoneUser, sessionId, mfaRequired: false });
+    expect(await (await POST(body({ action: "login", code: "fresh-code" }, true))).json()).toMatchObject({ state: "onboarding_required" });
+    expect(h.onboarding).toHaveBeenCalledWith(identity, null, phoneUser);
+    expect(h.native).not.toHaveBeenCalled(); expect(h.revoke).not.toHaveBeenCalled();
+  });
+  it("rejects switching to another WeChat owner while continuing a signed-in account", async () => {
+    h.owner.mockResolvedValue("33333333-3333-4333-8333-333333333333");
+    expect((await POST(body({ action: "login", code: "fresh-code" }, true))).status).toBe(409);
+    expect(h.native).not.toHaveBeenCalled(); expect(h.onboarding).not.toHaveBeenCalled();
+  });
+  it("lets a completed current account enter directly and records the promotion source", async () => {
+    vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
+    expect(await (await POST(body({ action: "login", code: "fresh-code", scene: "a".repeat(24) }, true))).json()).toEqual({ state: "current_session" });
+    expect(h.touch).toHaveBeenCalledWith("miniapp_record_promotion_touch", { p_scene: "a".repeat(24), p_user: userId });
+    expect(h.native).not.toHaveBeenCalled();
   });
   it("handles a retry of an already completed binding without another link mutation", async () => {
     h.owner.mockResolvedValue(userId);

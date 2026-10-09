@@ -1,5 +1,5 @@
 import type { Session } from "./api-types";
-import type { FamilyAnswers, FamilyForm, RegistrationLocation } from "./onboarding-form";
+import type { FamilyAnswers, FamilyChild, FamilyForm, RegistrationLocation } from "./onboarding-form";
 export type { RegistrationLocation } from "./onboarding-form";
 
 export type FamilyRegistration = FamilyAnswers & {
@@ -7,12 +7,13 @@ export type FamilyRegistration = FamilyAnswers & {
   privacyVersion: string; childrenPrivacyVersion: string; consent: true;
 };
 export type PhoneResult = { state: "family_required"; ticket: string; form: FamilyForm; maskedPhone: string; privacyVersion: string; childrenPrivacyVersion: string;
+  existingParticipants?: (Pick<FamilyChild, "childName" | "gender" | "grade" | "school"> & { id: string })[];
   policyText: { zh: { privacy: string; children: string }; en: { privacy: string; children: string } } };
 export type RegistrationResult = { state: "authenticated"; session: Session; participantId: string | null; participantIds?: string[]; grade: number | null };
 
 // This proof stays in memory and expires server-side. It is never put in URL or persistent storage.
-let currentProof: { ticket: string; scene: string } | null = null;
-export function setOnboardingProof(ticket: string, scene = "") { currentProof = { ticket, scene }; }
+let currentProof: { ticket: string; scene: string; phoneVerified: boolean } | null = null;
+export function setOnboardingProof(ticket: string, scene = "", phoneVerified = false) { currentProof = { ticket, scene, phoneVerified }; }
 export function takeOnboardingProof() { const value = currentProof; currentProof = null; return value; }
 export function promotionScene(value: string | undefined): string {
   try { const decoded = decodeURIComponent(value || ""); return /^[a-f0-9]{24}$/.test(decoded) ? decoded : ""; }
@@ -27,6 +28,8 @@ export const onboardingCopy = {
   zh: {
     navigationTitle: "参与登记", title: "欢迎来到格致", intro: "填写参与信息，发现适合你的公益活动。",
     phone: "授权手机号，继续", phoneNote: "使用微信验证的手机号识别账号、接收活动联系。",
+    existingLogin: "已有手机号账号，登录并绑定微信", bind: "确认绑定当前微信", bindNote: "将当前微信绑定到已登录账号，以后可直接用微信进入。",
+    password: "账号密码", participant: "本次登记的参与人", newParticipant: "添加新的参与人", existingParticipantNote: "已关联参与人将沿用原档案，本次填写内容保存为登记资料。",
     formTitle: "参与信息", verifiedPhone: "已验证手机号", parentName: "联系人姓名", relation: "与参与人的关系",
     relations: ["母亲", "父亲", "其他监护人"], childName: "参与人姓名", grade: "参与人年级",
     school: "就读学校（选填）", gender: "性别（选填）", genders: ["暂不填写", "女", "男"],
@@ -37,13 +40,15 @@ export const onboardingCopy = {
     privacy: "隐私政策", childrenPrivacy: "未满14周岁参与人隐私保护规则", complete: "完成登记，进入发现",
     busy: "正在准备微信登录…", retry: "重新微信登录", invalid: "请完成标记为必填的内容，并同意隐私规则。",
     denied: "请主动授权手机号，继续登记。", expired: "微信验证已过期，请重新登录；已填写内容会保留在当前页面。",
-    existing: "这个手机号或微信已有关联账号，请联系工作人员完成首次绑定或核对账号状态。",
-    unavailable: "微信登记服务暂未准备好，请稍后重试。", binding: "已有账号需先在网页“账号安全”中绑定微信，之后即可直接登录。",
+    existing: "这个手机号或微信已有关联账号，请先登录已有账号；若绑定关系不一致，请联系工作人员核对。",
+    unavailable: "微信登记服务暂未准备好，请稍后重试。", binding: "登录已有账号后，确认绑定当前微信即可继续。",
     chooseGrade: "选择参与人年级", skipLocation: "暂不提供定位", privacyButton: "查看小程序隐私说明",
   },
   en: {
     navigationTitle: "Participation", title: "Welcome to Gezhi", intro: "Add your details and discover community activities.",
     phone: "Authorize phone and continue", phoneNote: "Your verified WeChat phone identifies your account and supports activity contact.",
+    existingLogin: "Sign in with an existing phone account", bind: "Confirm linking this WeChat", bindNote: "Link this WeChat to your signed-in account for future WeChat sign-in.",
+    password: "Account password", participant: "Participant for this registration", newParticipant: "Add a new participant", existingParticipantNote: "Your linked participant’s record is kept. These answers are saved with this registration.",
     formTitle: "Participation details", verifiedPhone: "Verified phone", parentName: "Contact name", relation: "Relationship to the participant",
     relations: ["Mother", "Father", "Other guardian"], childName: "Participant name", grade: "Participant’s grade",
     school: "School (optional)", gender: "Gender (optional)", genders: ["Prefer not to say", "Female", "Male"],
@@ -54,8 +59,8 @@ export const onboardingCopy = {
     privacy: "Privacy policy", childrenPrivacy: "Privacy for participants under 14", complete: "Complete registration and discover",
     busy: "Preparing WeChat sign-in…", retry: "Sign in with WeChat again", invalid: "Complete the required fields and agree to the privacy policies.",
     denied: "Authorize your phone number to continue registration.", expired: "WeChat verification expired. Sign in again; your form stays on this page.",
-    existing: "This phone or WeChat is already linked to an account. Contact staff to link WeChat or check your account status.",
-    unavailable: "WeChat registration is not ready yet. Please try again later.", binding: "Link WeChat once in the website’s Account security settings before using it to sign in.",
+    existing: "This phone or WeChat already has an account. Sign in to that account, or contact staff if the links do not match.",
+    unavailable: "WeChat registration is not ready yet. Please try again later.", binding: "Sign in to your existing account and confirm linking this WeChat to continue.",
     chooseGrade: "Choose participant’s grade", skipLocation: "Continue without location", privacyButton: "Mini Program privacy notice",
   },
 };

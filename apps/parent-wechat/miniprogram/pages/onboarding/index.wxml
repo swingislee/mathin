@@ -10,8 +10,18 @@
       <button class="primary" open-type="getPhoneNumber" bindgetphonenumber="phone" disabled="{{busy}}" loading="{{busy}}">{{words.phone}}</button>
       <button class="text-button" bindtap="privacy">{{words.privacyButton}}</button>
     </block>
+    <block wx:elif="{{stage === 'bind'}}">
+      <text class="auth-hint">{{words.bindNote}}</text>
+      <block wx:if="{{!canBindDirect}}"><label class="field-label">{{words.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" disabled="{{busy}}" /></block>
+      <button class="primary" bindtap="confirmBinding" loading="{{busy}}" disabled="{{busy || (!canBindDirect && !password)}}">{{words.bind}}</button>
+    </block>
     <block wx:elif="{{stage === 'family'}}">
       <text class="verified-phone">{{words.verifiedPhone}} · {{maskedPhone}}</text>
+      <block wx:if="{{policy.existingParticipants.length}}">
+        <label class="field-label">{{words.participant}}</label>
+        <picker range="{{participantChoices}}" value="{{participantIndex}}" bindchange="chooseParticipant" disabled="{{busy}}"><view class="input picker-input">{{participantChoices[participantIndex]}}</view></picker>
+        <text class="auth-hint">{{words.existingParticipantNote}}</text>
+      </block>
       <block wx:for="{{fields}}" wx:key="id">
         <label class="field-label">{{item.text}}<text class="field-requirement">{{item.mode === 'required' ? (locale === 'zh' ? '（必填）' : ' (required)') : (locale === 'zh' ? '（选填）' : ' (optional)')}}</text></label>
         <input wx:if="{{item.kind === 'text'}}" class="input" value="{{values[item.id]}}" bindinput="input" data-field="{{item.id}}" maxlength="{{item.id === 'school' ? 120 : 100}}" disabled="{{busy}}" />
@@ -23,6 +33,7 @@
       <text class="auth-hint">{{words.locationNote}}</text>
       <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{words.complete}}</button>
     </block>
+    <button wx:if="{{stage === 'phone' || stage === 'wechat'}}" class="text-button" bindtap="existingLogin" disabled="{{busy}}">{{words.existingLogin}}</button>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
   </view>
 </view>

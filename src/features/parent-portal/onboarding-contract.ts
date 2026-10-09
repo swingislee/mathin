@@ -8,7 +8,7 @@ const childFields = {
   school: optionalText(120), interests: z.array(z.string().regex(/^[a-z][a-z0-9_-]{0,39}$/)).max(20)
     .refine(values => new Set(values).size === values.length),
 };
-export const familyChildSchema = z.object({ key: z.string().regex(/^[a-zA-Z0-9_-]{1,50}$/), ...childFields }).strict();
+export const familyChildSchema = z.object({ key: z.string().regex(/^[a-zA-Z0-9_-]{1,50}$/), participantId: z.string().uuid().optional(), ...childFields }).strict();
 const locationTime = { enteredAt: z.string().datetime().optional(), capturedAt: z.string().datetime().optional() };
 export const registrationLocationSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("granted"), latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180),
@@ -24,6 +24,7 @@ export const familyRegistrationSchema = z.object({
 }).strict();
 export const onboardingCommandSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("phone"), ticket: z.string().regex(/^[a-f0-9]{64}$/), code: z.string().regex(/^[A-Za-z0-9_-]{1,256}$/) }).strict(),
+  z.object({ action: z.literal("form"), ticket: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ action: z.literal("complete"), ticket: z.string().regex(/^[a-f0-9]{64}$/), family: familyRegistrationSchema }).strict(),
 ]);
 export type FamilyRegistration = z.infer<typeof familyRegistrationSchema>;

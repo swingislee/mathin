@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const h = vi.hoisted(() => ({ config: true, read: vi.fn(), issue: vi.fn(), phone: vi.fn(), owner: vi.fn(),
   rpc: vi.fn(), create: vi.fn(), getUser: vi.fn(), update: vi.fn(), password: vi.fn(), native: vi.fn(),
-  context: vi.fn(), revoke: vi.fn(), authorize: vi.fn(), release: vi.fn(), active: vi.fn(), snapshot: vi.fn(), form: vi.fn() }));
+  context: vi.fn(), revoke: vi.fn(), authorize: vi.fn(), release: vi.fn(), active: vi.fn(), snapshot: vi.fn(), form: vi.fn(), participants: vi.fn() }));
 vi.mock("@/features/wechat/miniapp-config", () => ({ getMiniappWechatConfig: () => h.config ? { phoneLinking: true, completionUrl: "https://example.test/auth/complete" } : null }));
 vi.mock("@/features/wechat/miniapp-phone", async original => ({ ...await original<object>(), exchangeMiniappPhone: (...args: unknown[]) => h.phone(...args) }));
 vi.mock("@/features/wechat/store", () => ({ readTicket: (...args: unknown[]) => h.read(...args), issueTicket: (...args: unknown[]) => h.issue(...args),
@@ -15,6 +15,10 @@ vi.mock("@/features/parent-portal/server", async original => ({ ...await origina
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: h.rpc,
   auth: { admin: { createUser: h.create, getUserById: h.getUser, updateUserById: h.update } },
   from: (table: string) => {
+    if (table === "student_guardians") return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
+    if (table === "students") {
+      const query = { select: () => query, is: () => query, or: () => query, order: h.participants }; return query;
+    }
     if (table === "miniapp_forms") {
       const query = { select: () => query, eq: () => query, in: () => query, maybeSingle: h.form };
       return query;
@@ -47,6 +51,7 @@ beforeEach(() => {
   vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.config = true;
   for (const value of Object.values(h)) if (typeof value === "function" && "mockReset" in value) value.mockReset();
   h.read.mockResolvedValue(proof); h.issue.mockResolvedValue("b".repeat(64)); h.phone.mockResolvedValue(proof);
+  h.participants.mockResolvedValue({ data: [], error: null });
   h.form.mockResolvedValue({ data: { ...DEFAULT_FAMILY_FORM, slug: "family-onboarding", version: 1 }, error: null });
   h.owner.mockResolvedValue(null); h.rpc.mockImplementation(async name => ({ error: null,
     data: name === "miniapp_prepare_family" ? reservation : { studentId, grade: 3 } }));
@@ -60,6 +65,29 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("verified family onboarding security", () => {
+  it("uses the linked account's already verified phone to open the form", async () => {
+    const user = { id: userId, phone: proof.phone.slice(1), phone_confirmed_at: "2026-10-09T00:00:00Z" };
+    const begin = await beginFamilyOnboarding(identity, null, user as never);
+    expect(begin.phoneVerified).toBe(true);
+    h.read.mockResolvedValue({ purpose: "family-phone", identity, scene: null, verifiedPhone: { userId, phone: proof.phone, localPhone: proof.localPhone } });
+    h.owner.mockResolvedValue(userId); h.getUser.mockResolvedValue({ data: { user }, error: null });
+    h.participants.mockResolvedValue({ data: [{ id: studentId, name: "Existing child", gender: "", grade: 3, school: "" }], error: null });
+    expect(await (await onboardingPost(request({ action: "form", ticket }))).json()).toMatchObject({ state: "family_required", existingParticipants: [{ id: studentId }] });
+    expect(h.phone).not.toHaveBeenCalled(); expect(h.create).not.toHaveBeenCalled();
+  });
+  it.each(["unverified", "different-owner", "changed-phone", "mfa"])("refuses a stale or insufficient phone proof: %s", async mode => {
+    h.read.mockResolvedValue({ purpose: "family-phone", identity, scene: null, ...(mode === "unverified" ? {} : { verifiedPhone: { userId, phone: proof.phone, localPhone: proof.localPhone } }) });
+    h.owner.mockResolvedValue(mode === "different-owner" ? studentId : userId);
+    h.getUser.mockResolvedValue({ data: { user: { id: userId, phone: mode === "changed-phone" ? "8619900000002" : proof.phone.slice(1),
+      phone_confirmed_at: "2026-10-09T00:00:00Z", factors: mode === "mfa" ? [{ status: "verified" }] : [] } }, error: null });
+    await expect(onboardingPost(request({ action: "form", ticket }))).rejects.toMatchObject({ code: mode === "mfa" ? "ACCOUNT_SECURITY" : "UNAUTHENTICATED" });
+    expect(h.issue).not.toHaveBeenCalled(); expect(h.phone).not.toHaveBeenCalled();
+  });
+  it("rejects another account's participant before reserving or creating anything", async () => {
+    await expect(onboardingPost(request({ action: "complete", ticket, family: { ...family, children: [{ key: "child-1", participantId: studentId,
+      childName: family.childName, gender: "", grade: 3, school: "", interests: family.interests }] } }))).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(h.rpc).not.toHaveBeenCalled(); expect(h.create).not.toHaveBeenCalled();
+  });
   it("rejects interest options not offered by this promotion before reserving an account", async () => {
     await expect(onboardingPost(request({ action: "complete", ticket, family: { ...family, interests: ["unknown"] } })))
       .rejects.toMatchObject({ code: "VALIDATION" });

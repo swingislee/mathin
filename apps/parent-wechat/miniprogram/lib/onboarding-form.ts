@@ -9,10 +9,10 @@ export type FamilyForm = FamilyFormConfig & { slug: string; version: number };
 export type RegistrationLocation = ({ status: "granted"; latitude: number; longitude: number; accuracy: number | null }
   | { status: "declined" | "unavailable" }) & { enteredAt?: string; capturedAt?: string };
 export type FamilyChild = {
-  key: string; childName: string;
+  key: string; participantId?: string; childName: string;
   gender: "" | "female" | "male"; grade: number | null; school: string; interests: string[];
 };
-export type FamilyAnswers = Omit<FamilyChild, "key"> & {
+export type FamilyAnswers = Omit<FamilyChild, "key" | "participantId"> & {
   parentName: string; relation: "" | "mother" | "father" | "guardian";
   /** Older clients send the first child's fields at the top level. New clients also send every child here. */
   children?: FamilyChild[];

@@ -54,7 +54,7 @@ Page({
     try {
       const result = await loginWithWechat();
       if (result.state === "onboarding_required") {
-        setOnboardingProof(result.ticket);
+        setOnboardingProof(result.ticket, "", Boolean(result.phoneVerified));
         this.setData({ sheet: "" }); wx.navigateTo({ url: "/pages/onboarding/index" });
       } else if (result.state === "binding_required") {
         this.setData({ info: onboardingCopy[currentLocale()].binding });
@@ -71,8 +71,8 @@ Page({
     this.setData({ sheet: "bind", wantsWechatBinding: true, password: "", error: "", info: "" });
   },
   async confirmWechatBinding() {
-    if (this.data.busy || !this.data.account || !this.data.wechat?.canBind || !this.data.password) return;
-    const password = this.data.password;
+    if (this.data.busy || !this.data.account || !this.data.wechat?.canBind || (!this.data.wechat.canBindDirect && !this.data.password)) return;
+    const password = this.data.wechat.canBindDirect ? undefined : this.data.password;
     this.setData({ busy: true, error: "", info: "", password: "" });
     try {
       await bindWechat(password);

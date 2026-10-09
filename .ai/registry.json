@@ -3,6 +3,38 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-UNIFIED-ENTRY-20261009",
+      "title": "微信绑定与首次登记统一入口",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-UNIFIED-ENTRY-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-UNIFIED-ENTRY-20261009.md",
+        "apps/parent-wechat/miniprogram/",
+        "src/features/parent-portal/onboarding-server.ts",
+        "src/features/parent-portal/onboarding-contract.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/wechat-contract.ts",
+        "contracts/parent-api/portal.ts",
+        "contracts/participant-api/",
+        "tests/parent-wechat-auth.test.ts",
+        "tests/parent-wechat-auth-client.test.ts",
+        "tests/parent-portal-identity.test.ts",
+        "tests/wechat-family-onboarding.test.ts",
+        "tests/wechat-registration-location.test.ts",
+        "supabase/migrations/20261009180000_miniapp_existing_participant_registration.sql",
+        "supabase/tests/miniapp_existing_participant_registration.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端已统一首次登记与微信绑定：已验证手机号免重复授权，已登录手机号账号点击确认即可绑定，已登记账号直接进入。既有参与人保留原档案与权限。定向鉴权、客户端、提交定位、SQL、小程序类型及模板检查通过；全仓类型检查仍有既存依赖声明错误。开发工程已刷新，生产与手机包未更新，待实际验收。"
+    },
+    {
       "id": "LEAD-OWNER-DETAIL-20261009",
       "title": "线索行内负责人分配与细分状态",
       "agent": "codex",

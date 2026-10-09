@@ -12,8 +12,8 @@ type Request = {
 type Login = { success: (result: { code?: string }) => void; fail: () => void };
 type Api = {
   wechatAuthStatus: () => Promise<WechatAuthStatus>;
-  loginWithWechat: () => Promise<WechatAuthResult>;
-  bindWechat: (password: string) => Promise<void>;
+  loginWithWechat: (scene?: string, useCurrentSession?: boolean) => Promise<WechatAuthResult>;
+  bindWechat: (password?: string) => Promise<void>;
   saveSession: (value: Session) => void;
   clearSession: () => void;
 };
@@ -169,6 +169,28 @@ describe("小程序微信鉴权传输", () => {
     run.requests[0].success({ statusCode: 503, data: { code: "UNAVAILABLE", reason: "WECHAT_UNIONID_REQUIRED", message: "upstream details" } });
     await rejected;
   });
+  it("已登录账号继续登记时携带当前会话，完成后保留原凭据", async () => {
+    const original = active("current"), run = apiRuntime(original);
+    const pending = run.api.loginWithWechat("a".repeat(24), true);
+    await vi.waitFor(() => expect(run.logins).toHaveLength(1));
+    run.logins[0].success({ code: "current-code" });
+    await vi.waitFor(() => expect(run.requests).toHaveLength(1));
+    expect(run.requests[0].header.Authorization).toBe("Bearer current");
+    expect(run.requests[0].data.scene).toBe("a".repeat(24));
+    run.requests[0].success({ statusCode: 200, data: { state: "current_session" } });
+    await expect(pending).resolves.toEqual({ state: "current_session" });
+    expect(run.current()).toBe(original); expect(run.wx.setStorageSync).not.toHaveBeenCalled();
+  });
+  it("直接绑定仍发送当前会话和本人确认", async () => {
+    const run = apiRuntime(active("current"));
+    const pending = run.api.bindWechat();
+    await vi.waitFor(() => expect(run.logins).toHaveLength(1));
+    run.logins[0].success({ code: "current-code" });
+    await vi.waitFor(() => expect(run.requests).toHaveLength(1));
+    expect(run.requests[0].header.Authorization).toBe("Bearer current");
+    expect(run.requests[0].data).toEqual({ action: "bind", code: "current-code", confirm: true });
+    run.requests[0].success({ statusCode: 200, data: { state: "bound" } }); await pending;
+  });
 });
 
 describe("小程序微信登录与明确绑定", () => {
@@ -206,7 +228,7 @@ describe("小程序微信登录与明确绑定", () => {
     await run.page.signInWithWechat();
     expect(run.page.data.wantsWechatBinding).toBe(false);
     expect(run.wx.navigateTo).not.toHaveBeenCalled();
-    expect(run.page.data.info).toContain("绑定微信");
+    expect(run.page.data.info).toContain("绑定当前微信");
   });
 
   it("原密码或MFA被拒绝时不返回业务页，清空密码并显示可理解原因", async () => {

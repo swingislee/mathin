@@ -51,12 +51,11 @@ describe("participant access for work accounts", () => {
     expect((await mediaGet(request())).status).toBe(200);
     expect(h.rpc).toHaveBeenCalledWith("miniapp_can_participate", { p_student: studentId, p_scope: "grades" });
   });
-  it("registers an empty household once and keeps existing self or child associations", async () => {
-    const { db } = await authorize(request()); h.rpc.mockResolvedValue({ data: [], error: null });
-    expect(await needsFamilyOnboarding(db, userId)).toBe(true);
+  it("requires a submitted form even when the account already has participants", async () => {
+    h.rpc.mockResolvedValue({ data: [{ id: studentId }], error: null });
+    expect(await needsFamilyOnboarding(userId)).toBe(true);
+    expect(h.rpc).not.toHaveBeenCalled();
     h.completed.mockResolvedValue({ data: { id: studentId }, error: null });
-    expect(await needsFamilyOnboarding(db, userId)).toBe(false);
-    h.completed.mockClear(); h.rpc.mockResolvedValue({ data: [{ id: studentId }], error: null });
-    expect(await needsFamilyOnboarding(db, userId)).toBe(false); expect(h.completed).not.toHaveBeenCalled();
+    expect(await needsFamilyOnboarding(userId)).toBe(false);
   });
 });

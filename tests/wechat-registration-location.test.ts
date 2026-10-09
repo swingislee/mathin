@@ -101,7 +101,7 @@ describe("onboarding location boundary", () => {
       run.app.onShow?.({ query: { scene: "a".repeat(24) }, path: "pages/onboarding/index" });
       await run.openForm();
     }
-    expect(run.api.loginWithWechat).toHaveBeenCalledWith("a".repeat(24));
+    expect(run.api.loginWithWechat).toHaveBeenCalledWith("a".repeat(24), false);
     expect(run.wx.getSetting).not.toHaveBeenCalled();
     expect(run.wx.getLocation).not.toHaveBeenCalled();
   });

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
-import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import type { Session, User } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { wechatIdentitySchema, WECHAT_PROVIDER, type WechatIdentity } from "@/features/wechat/contract";
@@ -17,8 +17,9 @@ import { authorize, PortalError, readJson, requireResult, response } from "./ser
 import zh from "../../../messages/zh.json";
 import en from "../../../messages/en.json";
 
+const verifiedPhoneSchema = z.object({ userId: z.string().uuid(), phone: z.string().regex(/^\+[0-9]{7,20}$/), localPhone: z.string().regex(/^[0-9]{6,18}$/) });
 const identityProofSchema = z.object({ purpose: z.literal("family-phone"), identity: wechatIdentitySchema,
-  scene: promotionSceneSchema.nullable() });
+  scene: promotionSceneSchema.nullable(), verifiedPhone: verifiedPhoneSchema.optional() });
 const phoneProofSchema = identityProofSchema.extend({ purpose: z.literal("family-registration"),
   phone: z.string().regex(/^\+[0-9]{7,20}$/), localPhone: z.string().regex(/^[0-9]{6,18}$/), formVersion: z.number().int().positive().optional() });
 const reservationSchema = z.object({ id: z.string().uuid(), userId: z.string().uuid(), created: z.boolean(), completed: z.boolean(), family: familyRegistrationSchema });
@@ -58,22 +59,49 @@ async function readFamilyForm(scene: string | null) {
   return familyFormSchema.parse(row);
 }
 
-export async function beginFamilyOnboarding(identity: WechatIdentity, scene: string | null = null) {
+export function verifiedAccountPhone(user: Pick<User, "id" | "phone" | "phone_confirmed_at">) {
+  const digits = user.phone?.replace(/\D/g, "") || "";
+  if (!user.phone_confirmed_at || !/^[0-9]{7,18}$/.test(digits)) return undefined;
+  return { userId: user.id, phone: `+${digits}`, localPhone: /^86\d{11}$/.test(digits) ? digits.slice(2) : digits };
+}
+
+export async function beginFamilyOnboarding(identity: WechatIdentity, scene: string | null = null, user?: User) {
   configOrFail();
   if (scene) {
     const form = requireResult(await createAdminClient().from("miniapp_forms").select("slug").eq("slug", scene).eq("purpose", "promotion").eq("enabled", true).maybeSingle());
     if (!form) throw new PortalError("NOT_FOUND");
   }
-  return { state: "onboarding_required" as const, ticket: await newProof({ purpose: "family-phone", identity, scene }) };
+  const verifiedPhone = user ? verifiedAccountPhone(user) : undefined;
+  return { state: "onboarding_required" as const, ticket: await newProof({ purpose: "family-phone", identity, scene, verifiedPhone }),
+    ...(verifiedPhone ? { phoneVerified: true } : {}) };
 }
 
 /** Existing work accounts can register a household without replacing their account. */
-export async function needsFamilyOnboarding(db: SupabaseClient, userId: string) {
-  const participants = requireResult(await db.rpc("get_my_students"));
-  if (participants?.length) return false;
+export async function needsFamilyOnboarding(userId: string) {
   const completed = requireResult(await createAdminClient().from("miniapp_intakes").select("id")
     .eq("intake_kind", "family").eq("registration_user_id", userId).not("completed_at", "is", null).limit(1).maybeSingle());
   return !completed;
+}
+
+async function existingParticipants(identity: WechatIdentity) {
+  const userId = await findWechatUser(identity.subject);
+  if (!userId) return [];
+  await assertAccountActive(userId);
+  const admin = createAdminClient();
+  const guardians = requireResult(await admin.from("student_guardians").select("student_id").eq("guardian_id", userId)) ?? [];
+  const ids = guardians.map(row => row.student_id);
+  const rows = requireResult(await admin.from("students").select("id,name,gender,grade,school")
+    .is("deleted_at", null).or(`user_id.eq.${userId}${ids.length ? `,id.in.(${ids.join(",")})` : ""}`).order("name")) ?? [];
+  return rows.map(row => ({ id: row.id, childName: row.name, gender: ["female", "male"].includes(row.gender) ? row.gender : "", grade: row.grade, school: row.school }));
+}
+
+async function familyFormResponse(proof: z.infer<typeof identityProofSchema>, phone: { phone: string; localPhone: string }) {
+  const form = await readFamilyForm(proof.scene);
+  const participants = await existingParticipants(proof.identity);
+  const ticket = await newProof({ purpose: "family-registration", identity: proof.identity, scene: proof.scene,
+    formVersion: form.version, phone: phone.phone, localPhone: phone.localPhone });
+  return response({ state: "family_required", ticket, form, existingParticipants: participants,
+    maskedPhone: phone.phone.slice(0, 5) + "****" + phone.phone.slice(-4), ...await policies() });
 }
 
 async function establishAccount(config: MiniappWechatConfig, identity: WechatIdentity, proof: z.infer<typeof phoneProofSchema>, family: FamilyRegistration) {
@@ -160,14 +188,16 @@ export async function onboardingPost(request: Request) {
   const config = configOrFail();
   const input = onboardingCommandSchema.parse(await readJson(request));
   await limitMiniappWechat(request, "login");
-  if (input.action === "phone") {
+  if (input.action === "phone" || input.action === "form") {
     const proof = await readTicket("guest", input.ticket, input.ticket, identityProofSchema, true);
     if (!proof) throw new PortalError("UNAUTHENTICATED");
-    const form = await readFamilyForm(proof.scene);
-    const phone = await exchangeMiniappPhone(config, input.code);
-    const ticket = await newProof({ purpose: "family-registration", identity: proof.identity, scene: proof.scene,
-      formVersion: form.version, phone: phone.phone, localPhone: phone.localPhone });
-    return response({ state: "family_required", ticket, form, maskedPhone: phone.phone.slice(0, 5) + "****" + phone.phone.slice(-4), ...await policies() });
+    if (input.action === "phone") return familyFormResponse(proof, await exchangeMiniappPhone(config, input.code));
+    const verified = proof.verifiedPhone;
+    if (!verified || await findWechatUser(proof.identity.subject) !== verified.userId) throw new PortalError("UNAUTHENTICATED");
+    const { data, error } = await createAdminClient().auth.admin.getUserById(verified.userId);
+    if (error || !data.user || verifiedAccountPhone(data.user)?.phone !== verified.phone) throw new PortalError("UNAUTHENTICATED");
+    if (data.user.factors?.some(factor => factor.status === "verified")) throw new PortalError("ACCOUNT_SECURITY");
+    return familyFormResponse(proof, verified);
   }
   // Retain the short-lived proof for idempotent retries when the network loses the success response.
   const proof = await readTicket("guest", input.ticket, input.ticket, phoneProofSchema);
@@ -177,8 +207,13 @@ export async function onboardingPost(request: Request) {
     || (input.family.formVersion !== undefined && input.family.formVersion !== form.version)) throw new PortalError("FORM_CHANGED");
   if (familyAnswerErrors(form, input.family).length) throw new PortalError("VALIDATION");
   const children = familyChildren(input.family);
+  if (children.some(child => child.participantId)) {
+    const allowed = new Set((await existingParticipants(proof.identity)).map(row => row.id));
+    if (children.some(child => child.participantId && !allowed.has(child.participantId))) throw new PortalError("FORBIDDEN");
+  }
   const family: FamilyRegistration = { ...input.family, ...children[0], children, formVersion: form.version };
   // The child's local key belongs to the children array, not the family-level payload.
   delete (family as FamilyRegistration & { key?: string }).key;
+  delete (family as FamilyRegistration & { participantId?: string }).participantId;
   return response(await establishAccount(config, proof.identity, proof, family));
 }

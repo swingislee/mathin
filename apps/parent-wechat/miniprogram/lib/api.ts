@@ -79,11 +79,12 @@ function wechatCode():Promise<string>{
     fail:()=>reject(new ApiError("UNAUTHENTICATED","WECHAT_CODE_INVALID")),
   }));
 }
-export async function loginWithWechat(scene?:string):Promise<WechatAuthResult>{
+export async function loginWithWechat(scene?:string,useCurrentSession=false):Promise<WechatAuthResult>{
+  const token=useCurrentSession?await accessToken():undefined;
   const version=sessionVersion;
   const code=await wechatCode();
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
-  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"login",code,...(scene ? {scene} : {})});
+  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"login",code,...(scene ? {scene} : {})},token);
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
   if(result.state==="authenticated")saveSession(result.session);
   return result;
@@ -91,17 +92,20 @@ export async function loginWithWechat(scene?:string):Promise<WechatAuthResult>{
 export function authorizeWechatPhone(ticket:string,code:string):Promise<PhoneResult>{
   return send("auth/wechat/onboarding","POST",{action:"phone",ticket,code});
 }
+export function verifiedWechatForm(ticket:string):Promise<PhoneResult>{
+  return send("auth/wechat/onboarding","POST",{action:"form",ticket});
+}
 export async function completeWechatFamily(ticket:string,family:FamilyRegistration):Promise<RegistrationResult>{
   const version=sessionVersion;
   const result=await send<RegistrationResult>("auth/wechat/onboarding","POST",{action:"complete",ticket,family});
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
   saveSession(result.session);return result;
 }
-export async function bindWechat(password:string):Promise<void>{
+export async function bindWechat(password?:string):Promise<void>{
   const token=await accessToken();
   const code=await wechatCode();
   if(session()?.accessToken!==token)throw new ApiError("UNAUTHENTICATED");
-  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"bind",code,password,confirm:true},token);
+  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"bind",code,...(password?{password}:{}),confirm:true},token);
   if(result.state!=="bound")throw new ApiError("UNAVAILABLE");
 }
 export async function logout(){try{await send("auth","POST",{action:"logout"},await accessToken());}finally{clearSession();}}
