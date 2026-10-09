@@ -12,11 +12,15 @@ Page({
     wechat: null as WechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
   loadVersion: 0,
   statusVersion: 0,
+  sessionToken: "",
   onShow() {
     syncPage(this, "account");
     this.setData({ activityCopy: activityCopy[currentLocale()] });
-    const authenticated = Boolean(session());
-    this.setData({ authenticated: Boolean(session()), account: null, accountName: "", error: "", password: "", loading: false,
+    const current = session(), authenticated = Boolean(current), token = current?.accessToken || "";
+    const reset = !current || token !== this.sessionToken;
+    this.sessionToken = token;
+    this.setData({ authenticated, error: "", password: "", loading: false,
+      ...(reset ? { account: null, accountName: "", wechat: null } : {}),
       sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && hasReturn() ? "login" : "" });
     void this.loadWechat();
     if (authenticated) void this.load();
@@ -85,7 +89,7 @@ Page({
   },
   async loadWechat() {
     const version = ++this.statusVersion;
-    this.setData({ wechatLoading: true, wechatStatusFailed: false });
+    this.setData({ wechatLoading: !this.data.wechat, wechatStatusFailed: false });
     try {
       const status = await wechatAuthStatus();
       if (version === this.statusVersion) this.setData({ wechat: status });
@@ -110,6 +114,7 @@ Page({
     try { await logout(); } catch { /* 本机会话由 API finally 清除。 */ }
     finally {
       clearNavigation();
+      this.sessionToken = "";
       this.setData({ busy: false, authenticated: false, account: null, accountName: "", error: "", password: "", identifier: "", loading: false, sheet: "",
         info: "", wantsWechatBinding: false, wechat: null });
       void this.loadWechat();
@@ -117,15 +122,20 @@ Page({
   },
   async load() {
     const version = ++this.loadVersion;
-    this.setData({ loading: true, error: "" });
+    this.setData({ loading: !this.data.account, error: "" });
     try {
       const account = await get<Account>("account");
       if (version === this.loadVersion) {
+        this.sessionToken = session()?.accessToken || "";
         this.setData({ account, accountName: participantAccountName(account.displayName) });
         if (!this.data.wantsWechatBinding) resumeAfterLogin();
       }
     } catch (error) {
-      if (version === this.loadVersion) this.setData({ error: errorText(error), authenticated: Boolean(session()) });
+      if (version === this.loadVersion) {
+        const current = session();
+        this.setData({ error: errorText(error), authenticated: Boolean(current),
+          ...(!current || current.accessToken !== this.sessionToken ? { account: null, accountName: "" } : {}) });
+      }
     } finally { if (version === this.loadVersion) this.setData({ loading: false }); }
   },
   open(e: WechatMiniprogram.TouchEvent) { openPage(String(e.currentTarget.dataset.url)); },

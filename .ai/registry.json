@@ -3,6 +3,29 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-TAB-CONTINUITY-20261009",
+      "title": "小程序日历与我的切换保持成员信息",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-TAB-CONTINUITY-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-TAB-CONTINUITY-20261009.md",
+        "apps/parent-wechat/miniprogram/pages/calendar/index.ts",
+        "apps/parent-wechat/miniprogram/pages/calendar/index.wxml",
+        "apps/parent-wechat/miniprogram/pages/account/index.ts",
+        "apps/parent-wechat/miniprogram/pages/account/index.wxml",
+        "apps/parent-wechat/miniprogram/app.wxss"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发工程已刷新：同一登录状态切换底栏时保留成员、日期和预约内容，后台更新；首次读取显示占位。小程序类型与两个页面模板编译通过，待实际切换验收；手机体验版尚未包含本次调整。"
+    },
+    {
       "id": "MINI-SUBMISSION-LOCATION-20261009",
       "title": "小程序仅在提交表单时定位",
       "agent": "codex",
