@@ -1,0 +1,56 @@
+export type FamilyFieldId = "parentName" | "relation" | "childName" | "grade" | "school" | "gender" | "interests";
+export type FamilyFieldMode = "required" | "optional" | "hidden";
+export type FamilyText = { zh: string; en: string };
+export type FamilyOption = { id: string; label: FamilyText };
+export type FamilyField = { id: FamilyFieldId; mode: FamilyFieldMode; label: FamilyText; options?: FamilyOption[] };
+export type FamilyFormConfig = { title: FamilyText; description: FamilyText; fields: FamilyField[] };
+export type FamilyForm = FamilyFormConfig & { slug: string; version: number };
+export type RegistrationLocation = ({ status: "granted"; latitude: number; longitude: number; accuracy: number | null }
+  | { status: "declined" | "unavailable" }) & { enteredAt?: string; capturedAt?: string };
+export type FamilyChild = {
+  key: string; childName: string;
+  gender: "" | "female" | "male"; grade: number | null; school: string; interests: string[];
+};
+export type FamilyAnswers = Omit<FamilyChild, "key"> & {
+  parentName: string; relation: "" | "mother" | "father" | "guardian";
+  /** Older clients send the first child's fields at the top level. New clients also send every child here. */
+  children?: FamilyChild[];
+};
+export function familyChildren(answers: FamilyAnswers): FamilyChild[] {
+  return answers.children ?? [{ key: "child-1", childName: answers.childName, gender: answers.gender,
+    grade: answers.grade, school: answers.school, interests: answers.interests }];
+}
+
+export const FAMILY_FIELD_IDS: FamilyFieldId[] = ["parentName", "relation", "childName", "grade", "school", "gender", "interests"];
+export const DEFAULT_FAMILY_FORM: FamilyFormConfig = {
+  title: { zh: "认识你的家庭", en: "Your family" },
+  description: { zh: "称呼或昵称都可以，方便我们与你联系。", en: "A preferred name or nickname helps us keep in touch." },
+  fields: [
+    { id: "parentName", mode: "optional", label: { zh: "家长怎么称呼", en: "Parent’s preferred name" } },
+    { id: "relation", mode: "required", label: { zh: "与孩子的关系", en: "Relationship" } },
+    { id: "childName", mode: "required", label: { zh: "孩子怎么称呼", en: "Child’s preferred name" } },
+    { id: "grade", mode: "required", label: { zh: "孩子年级", en: "Child’s grade" } },
+    { id: "school", mode: "optional", label: { zh: "就读学校", en: "School" } },
+    { id: "gender", mode: "optional", label: { zh: "孩子性别", en: "Child’s gender" } },
+    { id: "interests", mode: "required", label: { zh: "感兴趣的内容", en: "Interests" }, options: [
+      { id: "math", label: { zh: "数学思维", en: "Math thinking" } },
+      { id: "science", label: { zh: "科学探索", en: "Science" } },
+      { id: "activities", label: { zh: "公益活动", en: "Community activities" } },
+    ] },
+  ],
+};
+
+/** Both clients and the server enforce the selected form; hidden fields carry no answers. */
+export function familyAnswerErrors(form: FamilyFormConfig, answers: FamilyAnswers): FamilyFieldId[] {
+  return form.fields.filter(field => {
+    const records = field.id === "parentName" || field.id === "relation" ? [answers] : familyChildren(answers);
+    return records.some(record => {
+      const value = record[field.id as keyof typeof record];
+      const empty = value === null || value === "" || (Array.isArray(value) && value.length === 0);
+      if (field.mode === "hidden") return !empty;
+      if (field.mode === "required" && empty) return true;
+      if (field.id === "interests") return (record.interests ?? []).some(id => !field.options?.some(option => option.id === id));
+      return false;
+    });
+  }).map(field => field.id);
+}

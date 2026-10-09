@@ -3,6 +3,39 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-PROMOTION-FORMS-20261009",
+      "title": "推广表单配置、扫码位置与家长自填资料",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-PROMOTION-FORMS-20261009.md",
+      "writePaths": [
+        "src/features/school/promotions/",
+        "src/features/parent-portal/onboarding-contract.ts",
+        "src/features/parent-portal/onboarding-server.ts",
+        "src/features/parent-portal/wechat-contract.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/family-form.ts",
+        "apps/parent-wechat/",
+        "contracts/participant-api/onboarding.ts",
+        "scripts/sync-participant-contract.mjs",
+        "supabase/migrations/20261009090000_miniapp_promotion_forms.sql",
+        "supabase/tests/miniapp_promotion_forms.sql",
+        "tests/wechat-family-onboarding.test.ts",
+        "tests/wechat-promotion-forms.test.ts",
+        "tests/wechat-entry-location.test.ts",
+        ".ai/tasks/MINI-PROMOTION-FORMS-20261009.md",
+        "tests/parent-wechat-auth-client.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端表单配置、进入定位及后台核实/补充孩子已可验收；定向权限检查、页面读取与小程序编译通过。待手机扫码真实场景验收，生产未部署。"
+    },
+    {
       "id": "MINI-WECHAT-LOGIN-DEV-20261009",
       "title": "开发端接通真实小程序微信登录",
       "agent": "codex",

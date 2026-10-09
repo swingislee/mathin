@@ -69,6 +69,7 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
   const cache = new Map<string, Record<string, unknown>>();
   function load(file: string): Record<string, unknown> {
     if (file === path.join(miniRoot, "lib/api.ts")) return api;
+    if (file === path.join(miniRoot, "lib/entry-location.ts")) return { entryLocation: async () => ({ status: "unavailable" }), clearEntryLocation: vi.fn() };
     if (cache.has(file)) return cache.get(file)!;
     const exports: Record<string, unknown> = {};
     cache.set(file, exports);

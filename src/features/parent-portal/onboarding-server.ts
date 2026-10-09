@@ -10,16 +10,20 @@ import { MiniappWechatError } from "@/features/wechat/miniapp-provider";
 import { createMiniappAuthClient, exchangeMiniappIdentitySession, limitMiniappWechat, miniappSessionContext, revokeMiniappSession } from "@/features/wechat/miniapp-session";
 import { randomToken } from "@/features/wechat/provider";
 import { assertAccountActive, findWechatUser, issueTicket, readTicket, saveWechatSnapshot } from "@/features/wechat/store";
-import { familyRegistrationSchema, onboardingCommandSchema, promotionSceneSchema, type FamilyRegistration } from "./onboarding-contract";
+import { familyRegistrationSchema, onboardingCommandSchema, promotionSceneSchema, registrationLocationSchema, type FamilyRegistration } from "./onboarding-contract";
+import { familyFormSchema } from "./family-form";
+import { familyAnswerErrors, familyChildren, type RegistrationLocation } from "../../../contracts/participant-api/onboarding";
 import { authorize, PortalError, readJson, requireResult, response } from "./server";
 import zh from "../../../messages/zh.json";
 import en from "../../../messages/en.json";
 
-const identityProofSchema = z.object({ purpose: z.literal("family-phone"), identity: wechatIdentitySchema, scene: promotionSceneSchema.nullable() });
+const identityProofSchema = z.object({ purpose: z.literal("family-phone"), identity: wechatIdentitySchema,
+  scene: promotionSceneSchema.nullable(), location: registrationLocationSchema.optional() });
 const phoneProofSchema = identityProofSchema.extend({ purpose: z.literal("family-registration"),
-  phone: z.string().regex(/^\+[0-9]{7,20}$/), localPhone: z.string().regex(/^[0-9]{6,18}$/) });
+  phone: z.string().regex(/^\+[0-9]{7,20}$/), localPhone: z.string().regex(/^[0-9]{6,18}$/), formVersion: z.number().int().positive().optional() });
 const reservationSchema = z.object({ id: z.string().uuid(), userId: z.string().uuid(), created: z.boolean(), completed: z.boolean(), family: familyRegistrationSchema });
-const completionSchema = z.object({ studentId: z.string().uuid(), grade: z.number().int() });
+const completionSchema = z.object({ studentId: z.string().uuid().nullable(), grade: z.number().int().nullable(),
+  participantIds: z.array(z.string().uuid()).optional() });
 
 export function familyOnboardingAvailable(config = getMiniappWechatConfig()) {
   return Boolean(config?.phoneLinking && process.env.WECHAT_FAMILY_ONBOARDING_ENABLED === "true");
@@ -47,13 +51,20 @@ async function policies() {
     policyText: { zh: policyText(zh.compliance), en: policyText(en.compliance) } };
 }
 
-export async function beginFamilyOnboarding(identity: WechatIdentity, scene: string | null = null) {
+async function readFamilyForm(scene: string | null) {
+  const row = requireResult(await createAdminClient().from("miniapp_forms").select("slug,version,title,description,fields")
+    .eq("slug", scene || "family-onboarding").in("purpose", ["family", "promotion"]).eq("enabled", true).maybeSingle());
+  if (!row) throw new PortalError("NOT_FOUND");
+  return familyFormSchema.parse(row);
+}
+
+export async function beginFamilyOnboarding(identity: WechatIdentity, scene: string | null = null, location?: RegistrationLocation) {
   configOrFail();
   if (scene) {
     const form = requireResult(await createAdminClient().from("miniapp_forms").select("slug").eq("slug", scene).eq("purpose", "promotion").eq("enabled", true).maybeSingle());
     if (!form) throw new PortalError("NOT_FOUND");
   }
-  return { state: "onboarding_required" as const, ticket: await newProof({ purpose: "family-phone", identity, scene }) };
+  return { state: "onboarding_required" as const, ticket: await newProof({ purpose: "family-phone", identity, scene, ...(location ? { location } : {}) }) };
 }
 
 async function establishAccount(config: MiniappWechatConfig, identity: WechatIdentity, proof: z.infer<typeof phoneProofSchema>, family: FamilyRegistration) {
@@ -114,7 +125,7 @@ async function establishAccount(config: MiniappWechatConfig, identity: WechatIde
     if (bootstrap) await revokeMiniappSession(bootstrap.access_token, context.sessionId);
     bootstrap = undefined;
     return { state: "authenticated" as const, session: { accessToken: session.access_token, refreshToken: session.refresh_token, expiresAt: session.expires_at },
-      participantId: completed.studentId, grade: completed.grade };
+      participantId: completed.studentId, grade: completed.grade, ...(completed.participantIds ? { participantIds: completed.participantIds } : {}) };
   } catch (error) {
     if (session) await revokeMiniappSession(session.access_token);
     if (bootstrap && bootstrap.access_token !== session?.access_token) await revokeMiniappSession(bootstrap.access_token);
@@ -143,12 +154,23 @@ export async function onboardingPost(request: Request) {
   if (input.action === "phone") {
     const proof = await readTicket("guest", input.ticket, input.ticket, identityProofSchema, true);
     if (!proof) throw new PortalError("UNAUTHENTICATED");
+    const form = await readFamilyForm(proof.scene);
     const phone = await exchangeMiniappPhone(config, input.code);
-    const ticket = await newProof({ purpose: "family-registration", identity: proof.identity, scene: proof.scene, phone: phone.phone, localPhone: phone.localPhone });
-    return response({ state: "family_required", ticket, maskedPhone: phone.phone.slice(0, 5) + "****" + phone.phone.slice(-4), ...await policies() });
+    const ticket = await newProof({ purpose: "family-registration", identity: proof.identity, scene: proof.scene,
+      location: proof.location, formVersion: form.version, phone: phone.phone, localPhone: phone.localPhone });
+    return response({ state: "family_required", ticket, form, maskedPhone: phone.phone.slice(0, 5) + "****" + phone.phone.slice(-4), ...await policies() });
   }
   // Retain the short-lived proof for idempotent retries when the network loses the success response.
   const proof = await readTicket("guest", input.ticket, input.ticket, phoneProofSchema);
   if (!proof) throw new PortalError("UNAUTHENTICATED");
-  return response(await establishAccount(config, proof.identity, proof, input.family));
+  const form = await readFamilyForm(proof.scene);
+  if ((proof.formVersion !== undefined && proof.formVersion !== form.version)
+    || (input.family.formVersion !== undefined && input.family.formVersion !== form.version)) throw new PortalError("FORM_CHANGED");
+  if (familyAnswerErrors(form, input.family).length) throw new PortalError("VALIDATION");
+  const children = familyChildren(input.family);
+  const family: FamilyRegistration = { ...input.family, ...children[0], children, formVersion: form.version,
+    location: proof.location ?? input.family.location };
+  // The child's local key belongs to the children array, not the family-level payload.
+  delete (family as FamilyRegistration & { key?: string }).key;
+  return response(await establishAccount(config, proof.identity, proof, family));
 }

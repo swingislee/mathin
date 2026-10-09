@@ -55,7 +55,7 @@
     "empty-state": "/components/empty-state/index",
     "tab-overlay": "/components/tab-overlay/index"
   },
-  "permission": { "scope.userLocation": { "desc": "经您授权，记录本次家庭登记的实际地点，用于核对推广来源" } },
+  "permission": { "scope.userLocation": { "desc": "经您授权，记录本次扫码进入时的位置，用于核对推广来源" } },
   "requiredPrivateInfos": ["getLocation"],
   "darkmode": true,
   "themeLocation": "theme.json",

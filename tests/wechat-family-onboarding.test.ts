@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const h = vi.hoisted(() => ({ config: true, read: vi.fn(), issue: vi.fn(), phone: vi.fn(), owner: vi.fn(),
   rpc: vi.fn(), create: vi.fn(), getUser: vi.fn(), update: vi.fn(), password: vi.fn(), native: vi.fn(),
-  context: vi.fn(), revoke: vi.fn(), authorize: vi.fn(), release: vi.fn(), active: vi.fn(), snapshot: vi.fn() }));
+  context: vi.fn(), revoke: vi.fn(), authorize: vi.fn(), release: vi.fn(), active: vi.fn(), snapshot: vi.fn(), form: vi.fn() }));
 vi.mock("@/features/wechat/miniapp-config", () => ({ getMiniappWechatConfig: () => h.config ? { phoneLinking: true, completionUrl: "https://example.test/auth/complete" } : null }));
 vi.mock("@/features/wechat/miniapp-phone", async original => ({ ...await original<object>(), exchangeMiniappPhone: (...args: unknown[]) => h.phone(...args) }));
 vi.mock("@/features/wechat/store", () => ({ readTicket: (...args: unknown[]) => h.read(...args), issueTicket: (...args: unknown[]) => h.issue(...args),
@@ -15,6 +15,10 @@ vi.mock("@/features/parent-portal/server", async original => ({ ...await origina
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: h.rpc,
   auth: { admin: { createUser: h.create, getUserById: h.getUser, updateUserById: h.update } },
   from: (table: string) => {
+    if (table === "miniapp_forms") {
+      const query = { select: () => query, eq: () => query, in: () => query, maybeSingle: h.form };
+      return query;
+    }
     if (table === "consent_policies") return { select: () => ({ eq: async () => ({ data: [
       { policy_kind: "privacy", version: "v1", document_path: "/privacy" },
       { policy_kind: "children_privacy", version: "v1", document_path: "/children" },
@@ -26,6 +30,7 @@ import { beginFamilyOnboarding, onboardingPost } from "@/features/parent-portal/
 import { onboardingCommandSchema } from "@/features/parent-portal/onboarding-contract";
 import { verifiedPhone } from "@/features/wechat/miniapp-phone";
 import { PortalError } from "@/features/parent-portal/server";
+import { DEFAULT_FAMILY_FORM } from "../contracts/participant-api/onboarding";
 
 const userId = "11111111-1111-4111-8111-111111111111", registrationId = "22222222-2222-4222-8222-222222222222";
 const studentId = "33333333-3333-4333-8333-333333333333", ticket = "a".repeat(64);
@@ -42,6 +47,7 @@ beforeEach(() => {
   vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.config = true;
   for (const value of Object.values(h)) if (typeof value === "function" && "mockReset" in value) value.mockReset();
   h.read.mockResolvedValue(proof); h.issue.mockResolvedValue("b".repeat(64)); h.phone.mockResolvedValue(proof);
+  h.form.mockResolvedValue({ data: { ...DEFAULT_FAMILY_FORM, slug: "family-onboarding", version: 1 }, error: null });
   h.owner.mockResolvedValue(null); h.rpc.mockImplementation(async name => ({ error: null,
     data: name === "miniapp_prepare_family" ? reservation : { studentId, grade: 3 } }));
   h.create.mockResolvedValue({ data: { user: { id: userId } }, error: null });
@@ -54,6 +60,23 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("verified family onboarding security", () => {
+  it("rejects interest options not offered by this promotion before reserving an account", async () => {
+    await expect(onboardingPost(request({ action: "complete", ticket, family: { ...family, interests: ["unknown"] } })))
+      .rejects.toMatchObject({ code: "VALIDATION" });
+    expect(h.rpc).not.toHaveBeenCalled(); expect(h.create).not.toHaveBeenCalled();
+  });
+  it("rejects a form changed after the phone proof was issued", async () => {
+    h.read.mockResolvedValue({ ...proof, formVersion: 2 });
+    await expect(complete()).rejects.toMatchObject({ code: "FORM_CHANGED" });
+    expect(h.rpc).not.toHaveBeenCalled();
+  });
+  it("preserves the entry location bound to the server proof instead of replacing it at submission", async () => {
+    const location = { status: "granted", latitude: 30, longitude: 120, accuracy: 20,
+      enteredAt: "2026-10-09T02:00:00.000Z", capturedAt: "2026-10-09T02:00:01.000Z" };
+    h.read.mockResolvedValue({ ...proof, location });
+    await complete();
+    expect(h.rpc).toHaveBeenCalledWith("miniapp_prepare_family", expect.objectContaining({ p_family: expect.objectContaining({ location }) }));
+  });
   it("requires the configuration gate and a live server proof before phone exchange", async () => {
     h.config = false;
     await expect(onboardingPost(request({ action: "phone", ticket, code: "wx-code" }))).rejects.toMatchObject({ code: "UNAVAILABLE" });

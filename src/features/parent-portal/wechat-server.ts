@@ -39,7 +39,7 @@ export async function parentWechatAuthPost(request: Request) {
     const identity = await exchangeMiniappWechatCode(config, input.code);
     const userId = await findWechatUser(identity.subject);
     if (!userId) return response(familyOnboardingAvailable(config)
-      ? await beginFamilyOnboarding(identity, input.scene ?? null)
+      ? await beginFamilyOnboarding(identity, input.scene ?? null, input.location)
       : { state: "binding_required" } satisfies ParentWechatAuthResult);
     await assertMiniappWechatAccount(userId);
     if (familyOnboardingAvailable(config)) {
@@ -53,7 +53,9 @@ export async function parentWechatAuthPost(request: Request) {
       if (context.mfaRequired) throw new MiniappWechatError("ACCOUNT_SECURITY", "WECHAT_MFA_REQUIRED");
       if (!session.expires_at) throw new MiniappWechatError("UNAVAILABLE");
       if (input.scene) {
-        const touched = await createAdminClient().rpc("miniapp_record_promotion_touch", { p_scene: input.scene, p_user: userId });
+        const touched = await (createAdminClient().rpc as unknown as (name: string, args: object) => Promise<{ error: unknown }>)("miniapp_record_promotion_touch", {
+          p_scene: input.scene, p_user: userId, p_location: input.location ?? { status: "unavailable" },
+        });
         if (touched.error) throw new MiniappWechatError("UNAVAILABLE");
       }
       return response({ state: "authenticated", session: { accessToken: session.access_token,

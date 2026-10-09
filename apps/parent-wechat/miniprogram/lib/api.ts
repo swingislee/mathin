@@ -1,5 +1,5 @@
 import { config } from "../config.local";
-import type { FamilyRegistration, PhoneResult, RegistrationResult } from "./onboarding";
+import type { FamilyRegistration, PhoneResult, RegistrationResult, RegistrationLocation } from "./onboarding";
 import type { ActivityOffer, ActivityRequest, ActivityRequestCommand } from "./api-types";
 import type { Session, Media, ParticipantCalendar, AssessmentOverview, AssessmentRequest, AssessmentAvailability, AssessmentTopic, AssessmentCommand, WechatAuthStatus, WechatAuthResult } from "./api-types";
 
@@ -77,11 +77,11 @@ function wechatCode():Promise<string>{
     fail:()=>reject(new ApiError("UNAUTHENTICATED","WECHAT_CODE_INVALID")),
   }));
 }
-export async function loginWithWechat(scene?:string):Promise<WechatAuthResult>{
+export async function loginWithWechat(scene?:string,location?:RegistrationLocation):Promise<WechatAuthResult>{
   const version=sessionVersion;
   const code=await wechatCode();
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
-  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"login",code,...(scene ? {scene} : {})});
+  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"login",code,...(scene ? {scene} : {}),...(location ? {location} : {})});
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
   if(result.state==="authenticated")saveSession(result.session);
   return result;

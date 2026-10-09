@@ -2,8 +2,8 @@
   <app-nav />
   <view class="portal-content onboarding-content">
     <text class="onboarding-eyebrow">格致未来思维</text>
-    <text class="onboarding-title">{{stage === 'family' ? words.formTitle : words.title}}</text>
-    <text class="onboarding-intro">{{words.intro}}</text>
+    <text class="onboarding-title">{{stage === 'family' ? formTitle : words.title}}</text>
+    <text class="onboarding-intro">{{stage === 'family' ? formDescription : words.intro}}</text>
     <block wx:if="{{stage === 'wechat'}}"><text wx:if="{{busy}}" class="auth-hint">{{words.busy}}</text><button wx:else class="primary" bindtap="start">{{words.retry}}</button></block>
     <block wx:elif="{{stage === 'phone'}}">
       <text class="auth-hint">{{words.phoneNote}}</text>
@@ -12,20 +12,15 @@
     </block>
     <block wx:elif="{{stage === 'family'}}">
       <text class="verified-phone">{{words.verifiedPhone}} · {{maskedPhone}}</text>
-      <label class="field-label">{{words.parentName}}</label><input class="input" value="{{parentName}}" bindinput="input" data-field="parentName" maxlength="100" disabled="{{busy}}" />
-      <label class="field-label">{{words.relation}}</label><picker range="{{words.relations}}" value="{{relationIndex}}" bindchange="picker" data-field="relationIndex" disabled="{{busy}}"><view class="input picker-input">{{words.relations[relationIndex]}}</view></picker>
-      <label class="field-label">{{words.childName}}</label><input class="input" value="{{childName}}" bindinput="input" data-field="childName" maxlength="100" disabled="{{busy}}" />
-      <label class="field-label">{{words.grade}}</label><picker range="{{gradeLabels}}" value="{{gradeIndex}}" bindchange="picker" data-field="gradeIndex" disabled="{{busy}}"><view class="input picker-input">{{gradeLabels[gradeIndex]}}</view></picker>
-      <label class="field-label">{{words.school}}</label><input class="input" value="{{school}}" bindinput="input" data-field="school" maxlength="120" disabled="{{busy}}" />
-      <label class="field-label">{{words.gender}}</label><picker range="{{words.genders}}" value="{{genderIndex}}" bindchange="picker" data-field="genderIndex" disabled="{{busy}}"><view class="input picker-input">{{words.genders[genderIndex]}}</view></picker>
-      <label class="field-label">{{words.interests}}</label><checkbox-group bindchange="chooseInterests" class="interest-options"><label wx:for="{{words.interestOptions}}" wx:key="id"><checkbox value="{{item.id}}" checked="{{selectedInterests[item.id]}}" disabled="{{busy}}" />{{item.label}}</label></checkbox-group>
-      <view class="location-entry"><button class="secondary" bindtap="locate" loading="{{locating}}" disabled="{{busy || locating}}">{{words.location}}</button><text class="auth-hint">{{words.locationNote}}</text>
-        <text class="auth-hint">{{location.status === 'granted' ? words.locationReady : (location.status === 'declined' ? words.locationDeclined : words.locationUnavailable)}}</text>
-        <button wx:if="{{location.status !== 'granted'}}" class="text-button" bindtap="skipLocation" disabled="{{busy}}">{{words.skipLocation}}</button>
-      </view>
+      <block wx:for="{{fields}}" wx:key="id">
+        <label class="field-label">{{item.text}}<text class="field-requirement">{{item.mode === 'required' ? (locale === 'zh' ? '（必填）' : ' (required)') : (locale === 'zh' ? '（选填）' : ' (optional)')}}</text></label>
+        <input wx:if="{{item.kind === 'text'}}" class="input" value="{{values[item.id]}}" bindinput="input" data-field="{{item.id}}" maxlength="{{item.id === 'school' ? 120 : 100}}" disabled="{{busy}}" />
+        <picker wx:elif="{{item.kind === 'picker'}}" range="{{choices[item.id]}}" value="{{selection[item.id]}}" bindchange="picker" data-field="{{item.id}}" disabled="{{busy}}"><view class="input picker-input">{{choices[item.id][selection[item.id]]}}</view></picker>
+        <checkbox-group wx:else bindchange="chooseInterests" class="interest-options"><label wx:for="{{item.choices}}" wx:for-item="option" wx:key="id"><checkbox value="{{option.id}}" checked="{{selectedInterests[option.id]}}" disabled="{{busy}}" />{{option.text}}</label></checkbox-group>
+      </block>
       <checkbox-group bindchange="consent"><label class="onboarding-consent"><checkbox value="yes" checked="{{consent}}" disabled="{{busy}}" /><text>{{words.consent}}</text></label></checkbox-group>
       <view class="policy-links"><button class="text-button" bindtap="policy" data-kind="privacy">{{words.privacy}}</button><button class="text-button" bindtap="policy" data-kind="children">{{words.childrenPrivacy}}</button></view>
-      <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy || locating}}">{{words.complete}}</button>
+      <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{words.complete}}</button>
     </block>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
   </view>
