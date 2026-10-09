@@ -6,5 +6,5 @@
 - 位置权限：微信已有授权可能直接成功；“查看微信位置权限”允许本人进入系统设置，关闭权限表示拒绝，不能强制恢复首次授权。
 - 分支与负责文件：`main`；`lib/registration-replay.ts`、`lib/activity-catalog-page.ts`、`pages/discover/index.wxml`、`pages/onboarding/`、定向位置边界用例及小程序 README。避开并行任务中的“我的”、日历和全局样式。
 - 当前版本：`ca87b258` 已实现并提交；小程序类型检查、14 项定向位置边界与录制检查通过，覆盖开发版限制、有效表单才定位、重复点击只定位一次、重新录制重置状态及不调用后台写入。官方工具的登记页及发现页 WXML 编译通过；本机模拟器已进入 `/pages/onboarding/index?replay=1`，运行时返回标题“参与登记”。
-- 手机交付：已从该提交生成独立工程 `.tmp/mini-registration-replay-20261009/phone-recording`，配置正式 HTTPS API 与域名校验，但录制分支不发送登记写入。构建来源与内容摘要保存在同目录 `preview-manifest.json`。自动审批拒绝生成预览二维码，因为该动作需要将代码包发送到微信开发者平台；已向用户请求本次开发预览上传的确认，二维码尚未生成。
-- 后续：确认后复用上述工程生成 `phone-review-registration-replay.jpg`，页面 `pages/onboarding/index`、参数 `replay=1`，不提交审核或发布。手机实际授权、录制与平台审核结果由用户确认。
+- 手机预览准备记录：已从该提交生成独立工程 `.tmp/mini-registration-replay-20261009/phone-recording`，配置正式 HTTPS API 与域名校验，但录制分支不发送登记写入。构建来源与内容摘要保存在同目录 `preview-manifest.json`。生成二维码的上传在执行前被自动审批阻止，代码包未上传，二维码未生成。
+- 交付选择：用户于 2026-10-09 明确选择“仅保留本地开发入口”，本增量以本地可用状态完成，不继续上传代码包或生成手机预览码。本地入口为“发现 → 重新走登记流程”，直接路径为 `/pages/onboarding/index?replay=1`；实际使用效果待用户确认。

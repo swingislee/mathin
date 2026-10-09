@@ -6,7 +6,7 @@
       "id": "MINI-REGISTRATION-REPLAY-20261009",
       "title": "开发版重走登记与定位录制",
       "agent": "codex",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/MINI-REGISTRATION-REPLAY-20261009.md",
@@ -24,7 +24,7 @@
         ".ai/registry.json"
       ],
       "checkpoint": null,
-      "next": "开发版录制入口已提交 ca87b258，类型、定向位置/数据保护检查及模板编译通过，开发工具已打开录制页。独立手机预览工程已准备；生成二维码的代码包上传被自动审批阻止，待用户确认后继续。"
+      "next": "开发版录制入口已提交 ca87b258，类型、定向位置/数据保护检查及模板编译通过，开发工具已打开录制页。用户选择仅保留本地开发入口，不继续上传代码包或生成手机预览码；待本地实际使用确认。"
     },
     {
       "id": "MINI-TAB-CONTINUITY-20261009",
