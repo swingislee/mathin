@@ -11,6 +11,18 @@ import { parentWechatAuthCommandSchema } from "./wechat-contract";
 import { beginFamilyOnboarding, familyOnboardingAvailable, resumePendingFamily } from "./onboarding-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+async function loginStep<T>(step: "rate_limit" | "wechat_exchange" | "identity_lookup" | "onboarding_proof", run: () => Promise<T>): Promise<T> {
+  const started = Date.now();
+  try { return await run(); }
+  catch (error) {
+    // Development diagnostics contain no identity, URL, credential or raw upstream error.
+    if (process.env.NODE_ENV === "development") console.warn("miniapp-wechat-login", JSON.stringify({
+      step, elapsedMs: Date.now() - started, code: error instanceof MiniappWechatError ? error.code : "UNAVAILABLE",
+    }));
+    throw error;
+  }
+}
+
 export function parentWechatAuthFailure(error: unknown) {
   if (!(error instanceof MiniappWechatError)) return failure(error);
   const result = failure(new PortalError(error.code));
@@ -35,11 +47,11 @@ export async function parentWechatAuthPost(request: Request) {
   const config = getMiniappWechatConfig();
   if (!config) throw new MiniappWechatError("UNAVAILABLE", "WECHAT_NOT_CONFIGURED");
   if (input.action === "login") {
-    await limitMiniappWechat(request, "login");
-    const identity = await exchangeMiniappWechatCode(config, input.code);
-    const userId = await findWechatUser(identity.subject);
+    await loginStep("rate_limit", () => limitMiniappWechat(request, "login"));
+    const identity = await loginStep("wechat_exchange", () => exchangeMiniappWechatCode(config, input.code));
+    const userId = await loginStep("identity_lookup", () => findWechatUser(identity.subject));
     if (!userId) return response(familyOnboardingAvailable(config)
-      ? await beginFamilyOnboarding(identity, input.scene ?? null, input.location)
+      ? await loginStep("onboarding_proof", () => beginFamilyOnboarding(identity, input.scene ?? null, input.location))
       : { state: "binding_required" } satisfies ParentWechatAuthResult);
     await assertMiniappWechatAccount(userId);
     if (familyOnboardingAvailable(config)) {

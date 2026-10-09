@@ -14,7 +14,9 @@ export function configured(){return Boolean(config.apiOrigin);}
 function origin(){const value=String(config.apiOrigin);if(!value)throw new ApiError("CONFIG_REQUIRED");return value.replace(/\/$/,"");}
 function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Promise<T> {
   return new Promise((resolve,reject)=>{
-    wx.request({url:origin()+"/api/v1/participant/"+path,method,data,timeout:path === "auth/wechat/onboarding" ? 60000 : 20000,
+    // WeChat entry can wait for development compilation before the server exchanges its one-time code.
+    const wechatEntry = path === "auth/wechat" || path === "auth/wechat/onboarding";
+    wx.request({url:origin()+"/api/v1/participant/"+path,method,data,timeout:wechatEntry ? 60000 : 20000,
       header:{"content-type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},
       success:result=>{
         if(token&&session()?.accessToken!==token){reject(new ApiError("UNAUTHENTICATED"));return;}

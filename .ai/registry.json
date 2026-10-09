@@ -3,6 +3,25 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-WECHAT-LOGIN-TIMEOUT-20261009",
+      "title": "小程序开户页微信登录超时",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-WECHAT-LOGIN-TIMEOUT-20261009.md",
+      "writePaths": [
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        ".ai/tasks/MINI-WECHAT-LOGIN-TIMEOUT-20261009.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发页刷新后已恢复到手机号授权；微信请求等待上限调整为60秒，保留脱敏失败阶段诊断。定向认证与小程序类型检查通过，待本人继续授权，生产未改动。"
+    },
+    {
       "id": "MINI-PROMOTION-FORMS-20261009",
       "title": "推广表单配置、扫码位置与家长自填资料",
       "agent": "codex",
