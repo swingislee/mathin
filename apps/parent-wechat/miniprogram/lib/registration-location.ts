@@ -1,21 +1,12 @@
 import type { RegistrationLocation } from "./onboarding-form";
 
-type Entry = { scene: string; result: Promise<RegistrationLocation> };
-let current: Entry | null = null;
-
-export function promotionScene(value: string | undefined): string {
-  try { const decoded = decodeURIComponent(value || ""); return /^[a-f0-9]{24}$/.test(decoded) ? decoded : ""; }
-  catch { return ""; }
-}
-
-/** A single foreground sample for this entry. Coordinates never enter persistent storage. */
-export function beginEntryLocation(scene: string): Promise<RegistrationLocation> {
-  const enteredAt = new Date().toISOString();
-  const result = new Promise<RegistrationLocation>(resolve => {
+/** Called only by a validated form submission. The page retains its result for retries. */
+export function registrationLocation(): Promise<RegistrationLocation> {
+  return new Promise<RegistrationLocation>(resolve => {
     let settled = false;
     const finish = (value: RegistrationLocation) => {
       if (settled) return;
-      settled = true; clearTimeout(timer); resolve({ ...value, enteredAt });
+      settled = true; clearTimeout(timer); resolve(value);
     };
     const timer = setTimeout(() => finish({ status: "unavailable" }), 15000);
     void (async () => {
@@ -34,9 +25,4 @@ export function beginEntryLocation(scene: string): Promise<RegistrationLocation>
       }
     })();
   });
-  current = { scene, result };
-  return result;
 }
-
-export function entryLocation(scene = "") { return current?.scene === scene ? current.result : beginEntryLocation(scene); }
-export function clearEntryLocation() { current = null; }

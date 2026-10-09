@@ -14,6 +14,10 @@ export type RegistrationResult = { state: "authenticated"; session: Session; par
 let currentProof: { ticket: string; scene: string } | null = null;
 export function setOnboardingProof(ticket: string, scene = "") { currentProof = { ticket, scene }; }
 export function takeOnboardingProof() { const value = currentProof; currentProof = null; return value; }
+export function promotionScene(value: string | undefined): string {
+  try { const decoded = decodeURIComponent(value || ""); return /^[a-f0-9]{24}$/.test(decoded) ? decoded : ""; }
+  catch { return ""; }
+}
 export function stageForGrade(grade: number) { return grade === -1 ? "k2" : grade === 0 ? "k3" : `g${grade}`; }
 export function saveOnboardingPreferences(grade: number) {
   wx.setStorageSync("gezhi.activity-catalog.filters.v1", { stage: stageForGrade(grade) });
@@ -27,7 +31,7 @@ export const onboardingCopy = {
     relations: ["母亲", "父亲", "其他监护人"], childName: "参与人姓名", grade: "参与人年级",
     school: "就读学校（选填）", gender: "性别（选填）", genders: ["暂不填写", "女", "男"],
     interests: "感兴趣的内容", interestOptions: [{ id: "math", label: "数学思维" }, { id: "science", label: "科学探索" }, { id: "activities", label: "公益活动" }],
-    location: "记录当前地点", locationNote: "授权后只记录本次填写位置，用于核对推广来源。",
+    location: "记录当前地点", locationNote: "提交时经您授权获取一次位置，用于核对推广来源；未授权也可提交。",
     locationReady: "已取得本次定位", locationDeclined: "未授权定位", locationUnavailable: "尚未取得定位",
     consent: "我已阅读并同意隐私政策及未满14周岁参与人隐私保护规则，确认有权填写所提交的资料。",
     privacy: "隐私政策", childrenPrivacy: "未满14周岁参与人隐私保护规则", complete: "完成登记，进入发现",
@@ -44,7 +48,7 @@ export const onboardingCopy = {
     relations: ["Mother", "Father", "Other guardian"], childName: "Participant name", grade: "Participant’s grade",
     school: "School (optional)", gender: "Gender (optional)", genders: ["Prefer not to say", "Female", "Male"],
     interests: "Interests", interestOptions: [{ id: "math", label: "Math thinking" }, { id: "science", label: "Science" }, { id: "activities", label: "Community activities" }],
-    location: "Share current location", locationNote: "With permission, only this registration location is recorded to identify the promotion source.",
+    location: "Share current location", locationNote: "With permission, your location is captured once at submission to check the promotion source. You can also submit without sharing it.",
     locationReady: "Location received", locationDeclined: "Location not shared", locationUnavailable: "No location yet",
     consent: "I have read and agree to the privacy policy and privacy rules for participants under 14, and am authorized to provide the submitted details.",
     privacy: "Privacy policy", childrenPrivacy: "Privacy for participants under 14", complete: "Complete registration and discover",

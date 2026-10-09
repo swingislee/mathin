@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const h = vi.hoisted(() => ({ config: true, authorize: vi.fn(), active: vi.fn(), limit: vi.fn(),
   exchange: vi.fn(), native: vi.fn(), context: vi.fn(), password: vi.fn(), revoke: vi.fn(), owner: vi.fn(), conflict: vi.fn(),
-  onboarding: vi.fn(), needsFamily: vi.fn(), resume: vi.fn() }));
+  onboarding: vi.fn(), needsFamily: vi.fn(), resume: vi.fn(), touch: vi.fn() }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: h.touch }) }));
 vi.mock("@/features/parent-portal/onboarding-server", () => ({
   familyOnboardingAvailable: () => process.env.WECHAT_FAMILY_ONBOARDING_ENABLED === "true",
   beginFamilyOnboarding: (...args: unknown[]) => h.onboarding(...args),
@@ -35,6 +36,7 @@ beforeEach(() => {
   h.config = true;
   vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "false");
   h.needsFamily.mockResolvedValue(false); h.resume.mockResolvedValue(null);
+  h.touch.mockResolvedValue({ error: null });
   h.onboarding.mockResolvedValue({ state: "onboarding_required", ticket: "family-proof" });
   h.authorize.mockResolvedValue({ user: { ...user, identities: [] }, token: "original-access" });
   h.context.mockResolvedValue({ user: { ...user, identities: [] }, sessionId, mfaRequired: false });
@@ -88,13 +90,23 @@ describe("parent mini program auth HTTP", () => {
     h.owner.mockResolvedValue(userId); h.needsFamily.mockResolvedValue(true);
     const result = await POST(body({ action: "login", code: "fresh-code", location: { status: "declined" } }));
     expect(await result.json()).toEqual({ state: "onboarding_required", ticket: "family-proof" });
-    expect(h.onboarding).toHaveBeenCalledWith(identity, null, { status: "declined" });
+    expect(h.onboarding).toHaveBeenCalledWith(identity, null);
     expect(h.revoke).toHaveBeenCalledWith(session.access_token);
   });
   it("does not force already associated work accounts to register again", async () => {
     vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
     expect(await (await POST(body({ action: "login", code: "fresh-code" }))).json()).toMatchObject({ state: "authenticated" });
     expect(h.onboarding).not.toHaveBeenCalled(); expect(h.revoke).not.toHaveBeenCalled();
+  });
+  it("discards old-client login coordinates for new identities and repeated promotion scans", async () => {
+    vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true");
+    const scene = "a".repeat(24), location = { status: "granted", latitude: 30, longitude: 120, accuracy: 20 };
+    const payload = { action: "login", code: "fresh-code", scene, location };
+    expect(await (await POST(body(payload))).json()).toMatchObject({ state: "onboarding_required" });
+    expect(h.onboarding).toHaveBeenCalledWith(identity, scene);
+    h.owner.mockResolvedValue(userId);
+    expect(await (await POST(body(payload))).json()).toMatchObject({ state: "authenticated" });
+    expect(h.touch).toHaveBeenCalledExactlyOnceWith("miniapp_record_promotion_touch", { p_scene: scene, p_user: userId });
   });
   it("does not offer family registration around an existing account's MFA requirement", async () => {
     vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);

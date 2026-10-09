@@ -1,9 +1,9 @@
 import { ApiError, authorizeWechatPhone, completeWechatFamily, loginWithWechat, session } from "../../lib/api";
 import { pageData, currentLocale, errorText } from "../../lib/page";
 import { clearNavigation, selectParticipant } from "../../lib/navigation";
-import { onboardingCopy, saveOnboardingPreferences, takeOnboardingProof, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
+import { onboardingCopy, promotionScene, saveOnboardingPreferences, takeOnboardingProof, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
 import { familyAnswerErrors, type FamilyField, type FamilyForm } from "../../lib/onboarding-form";
-import { entryLocation, promotionScene } from "../../lib/entry-location";
+import { registrationLocation } from "../../lib/registration-location";
 import { participantWording } from "../../lib/participant-wording";
 
 type DisplayField = FamilyField & { text: string; kind: "text" | "picker" | "interests"; choices: { id: string; text: string }[] };
@@ -12,10 +12,12 @@ Page({
     values: { parentName: "", childName: "", school: "" }, selection: { relation: 0, gender: 0, grade: 0 },
     choices: {} as Record<string, string[]>, fields: [] as DisplayField[], formTitle: "", formDescription: "",
     interests: [] as string[], selectedInterests: {} as Record<string, boolean>, consent: false,
-    location: { status: "unavailable" } as RegistrationLocation, policy: null as PhoneResult | null },
+    policy: null as PhoneResult | null },
   active: true,
+  submissionLocation: null as Promise<RegistrationLocation> | null,
   onLoad(query: Record<string,string | undefined>) {
     this.active = true;
+    this.submissionLocation = null;
     const locale = currentLocale(), words = onboardingCopy[locale];
     wx.setNavigationBarTitle({ title: words.navigationTitle });
     this.setData({ locale, words, choices: {
@@ -26,22 +28,17 @@ Page({
     const proof = takeOnboardingProof();
     const scene = promotionScene(query.scene || proof?.scene);
     this.setData({ scene });
-    // App.onShow starts this sample on entry; page loading reuses it rather than locating at submission.
-    if (scene || !session()) void entryLocation(scene);
     if (proof) this.setData({ ticket: proof.ticket, stage: "phone" });
     else if (session() && !scene) this.discover();
     else void this.start();
   },
-  onUnload() { this.active = false; this.setData({ ticket: "", policy: null }); },
+  onUnload() { this.active = false; this.submissionLocation = null; this.setData({ ticket: "", policy: null }); },
   discover() { clearNavigation(); wx.switchTab({ url: "/pages/discover/index" }); },
   async start() {
     if (this.data.busy) return;
     this.setData({ busy: true, error: "", stage: "wechat", ticket: "" });
     try {
-      const location = await entryLocation(this.data.scene);
-      if (!this.active) return;
-      this.setData({ location });
-      const result = await loginWithWechat(this.data.scene || undefined, location);
+      const result = await loginWithWechat(this.data.scene || undefined);
       if (!this.active) return;
       if (result.state === "authenticated") this.discover();
       else if (result.state === "onboarding_required") this.setData({ stage: "phone", ticket: result.ticket });
@@ -105,23 +102,27 @@ Page({
   },
   async complete() {
     const data = this.data;
-    if (data.busy || !data.policy) return;
+    if (!this.active || data.busy || !data.ticket || !data.policy) return;
     const shown = (id: string) => data.fields.some(field => field.id === id);
     const child = { key: "child-1", childName: shown("childName") ? data.values.childName.trim() : "", school: shown("school") ? data.values.school.trim() : "",
       gender: shown("gender") ? (["", "female", "male"] as const)[data.selection.gender] : "" as const,
       grade: shown("grade") && data.selection.grade > 0 ? data.selection.grade - 2 : null, interests: shown("interests") ? data.interests : [] };
     const family: FamilyRegistration = { parentName: shown("parentName") ? data.values.parentName.trim() : "",
       relation: shown("relation") ? (["", "mother", "father", "guardian"] as const)[data.selection.relation] : "", ...child, children: [child],
-      formVersion: data.policy.form.version, location: data.location, consent: true,
+      formVersion: data.policy.form.version, location: { status: "unavailable" }, consent: true,
       privacyVersion: data.policy.privacyVersion, childrenPrivacyVersion: data.policy.childrenPrivacyVersion };
     delete (family as FamilyRegistration & { key?: string }).key;
     if (!data.consent || familyAnswerErrors(data.policy.form, family).length) { this.setData({ error: data.words.invalid }); return; }
     this.setData({ busy: true, error: "" });
     try {
+      this.submissionLocation ??= registrationLocation();
+      family.location = await this.submissionLocation;
+      if (!this.active) return;
       const result = await completeWechatFamily(data.ticket, family);
       if (!this.active) return;
       if (result.grade !== null) saveOnboardingPreferences(result.grade);
       clearNavigation(); if (result.participantId) selectParticipant(result.participantId);
+      this.submissionLocation = null;
       this.setData({ ticket: "", policy: null }); wx.switchTab({ url: "/pages/discover/index" });
     } catch (error) {
       if (this.active) this.setData({ error: this.authError(error), ...(error instanceof ApiError && ["UNAUTHENTICATED", "FORM_CHANGED"].includes(error.code) ? { stage: "wechat", ticket: "" } : {}) });

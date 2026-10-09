@@ -32,7 +32,7 @@ export function WechatFamilyDetails({ studentId, leadId, locale }: { studentId: 
       <span>{t("家长原填称呼：", "Parent’s original name: ")}{record.parentName || t("未填写", "Not provided")}</span>
       <span>{record.verifiedAt ? t(`已由 ${record.verifiedBy || "工作人员"} 核实`, `Verified by ${record.verifiedBy || "staff"}`) : t("家长自填，待沟通核实", "Parent-provided; awaiting verification")}</span>
       {location?.status === "granted" && location.latitude !== undefined && location.longitude !== undefined
-        ? <a className="underline underline-offset-4" target="_blank" rel="noreferrer" href={`https://apis.map.qq.com/uri/v1/marker?marker=coord:${location.latitude},${location.longitude};title:${encodeURIComponent(t("扫码位置", "Scan location"))}&referer=mathin`}>{t("扫码位置：", "Scan location: ")}{location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}</a>
+        ? <a className="underline underline-offset-4" target="_blank" rel="noreferrer" href={`https://apis.map.qq.com/uri/v1/marker?marker=coord:${location.latitude},${location.longitude};title:${encodeURIComponent(t("登记位置", "Registration location"))}&referer=mathin`}>{t("登记位置：", "Registration location: ")}{location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}</a>
         : <span>{location?.status === "declined" ? t("位置未授权", "Location not shared") : t("位置未记录", "No location recorded")}</span>}
     </div>
     {!editing && <div className="mt-2 space-y-2 text-sm">{record.children.map(child => {

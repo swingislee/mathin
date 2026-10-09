@@ -58,7 +58,7 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
   let page: Page;
   const wx = {
     getAppBaseInfo: () => ({ language }), setNavigationBarTitle: vi.fn(), setTabBarItem: vi.fn(),
-    navigateTo: vi.fn(), switchTab: vi.fn(), showModal: vi.fn(),
+    navigateTo: vi.fn(), switchTab: vi.fn(), showModal: vi.fn(), getLocation: vi.fn(), getSetting: vi.fn(),
   };
   const api = {
     ApiError: ClientError, session: () => null,
@@ -69,7 +69,6 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
   const cache = new Map<string, Record<string, unknown>>();
   function load(file: string): Record<string, unknown> {
     if (file === path.join(miniRoot, "lib/api.ts")) return api;
-    if (file === path.join(miniRoot, "lib/entry-location.ts")) return { entryLocation: async () => ({ status: "unavailable" }), clearEntryLocation: vi.fn() };
     if (cache.has(file)) return cache.get(file)!;
     const exports: Record<string, unknown> = {};
     cache.set(file, exports);
@@ -196,6 +195,9 @@ describe("小程序微信登录与明确绑定", () => {
     expect(run.page.data.authenticated).toBe(false);
     expect(run.page.data.wantsWechatBinding).toBe(false);
     expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/onboarding/index" });
+    expect(run.api.loginWithWechat).toHaveBeenCalledWith();
+    expect(run.wx.getLocation).not.toHaveBeenCalled();
+    expect(run.wx.getSetting).not.toHaveBeenCalled();
   });
 
   it("已有账号提示首次绑定，不自动改成密码登录或创建账号", async () => {

@@ -70,12 +70,19 @@ describe("verified family onboarding security", () => {
     await expect(complete()).rejects.toMatchObject({ code: "FORM_CHANGED" });
     expect(h.rpc).not.toHaveBeenCalled();
   });
-  it("preserves the entry location bound to the server proof instead of replacing it at submission", async () => {
+  it("uses only the submitted location even when an older proof contains an entry sample", async () => {
     const location = { status: "granted", latitude: 30, longitude: 120, accuracy: 20,
       enteredAt: "2026-10-09T02:00:00.000Z", capturedAt: "2026-10-09T02:00:01.000Z" };
     h.read.mockResolvedValue({ ...proof, location });
     await complete();
-    expect(h.rpc).toHaveBeenCalledWith("miniapp_prepare_family", expect.objectContaining({ p_family: expect.objectContaining({ location }) }));
+    expect(h.rpc).toHaveBeenCalledWith("miniapp_prepare_family", expect.objectContaining({ p_family: expect.objectContaining({ location: family.location }) }));
+  });
+  it("keeps coordinates out of both onboarding handoff proofs", async () => {
+    await beginFamilyOnboarding(identity);
+    expect(h.issue.mock.calls[0][1]).not.toHaveProperty("location");
+    h.read.mockResolvedValue({ ...proof, location: { status: "granted", latitude: 30, longitude: 120, accuracy: 20 } });
+    await onboardingPost(request({ action: "phone", ticket, code: "wx-code" }));
+    expect(h.issue.mock.calls[1][1]).not.toHaveProperty("location");
   });
   it("requires the configuration gate and a live server proof before phone exchange", async () => {
     h.config = false;

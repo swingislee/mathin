@@ -3,6 +3,42 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-SUBMISSION-LOCATION-20261009",
+      "title": "小程序仅在提交表单时定位",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-SUBMISSION-LOCATION-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-SUBMISSION-LOCATION-20261009.md",
+        "apps/parent-wechat/miniprogram/app.ts",
+        "apps/parent-wechat/miniprogram/app.json",
+        "apps/parent-wechat/miniprogram/lib/entry-location.ts",
+        "apps/parent-wechat/miniprogram/lib/registration-location.ts",
+        "apps/parent-wechat/miniprogram/lib/onboarding.ts",
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.ts",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.wxml",
+        "apps/parent-wechat/miniprogram/pages/account/index.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/onboarding-server.ts",
+        "src/features/parent-portal/wechat-contract.ts",
+        "src/features/school/promotions/WechatFamilyDetails.tsx",
+        "tests/wechat-entry-location.test.ts",
+        "tests/wechat-registration-location.test.ts",
+        "tests/parent-wechat-auth-client.test.ts",
+        "tests/parent-wechat-auth.test.ts",
+        "tests/wechat-family-onboarding.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发工程已刷新：校验通过后的表单提交单次定位，重试复用；登录与重复扫码不采集位置。定向采集/鉴权检查、小程序类型、模板编译和源码静态检查通过，待实际使用验收。生产及体验版待另批更新。"
+    },
+    {
       "id": "MINI-PARTICIPANT-COPY-20261009",
       "title": "小程序所有页面称呼统一",
       "agent": "codex",

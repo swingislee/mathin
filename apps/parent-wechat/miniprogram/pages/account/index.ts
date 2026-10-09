@@ -4,7 +4,6 @@ import { clearNavigation, hasReturn, openPage, resumeAfterLogin, selectParticipa
 import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
 import { activityCopy } from "../../lib/activity-catalog";
 import { onboardingCopy, setOnboardingProof } from "../../lib/onboarding";
-import { clearEntryLocation, entryLocation } from "../../lib/entry-location";
 import { participantAccountName } from "../../lib/participant-wording";
 
 Page({
@@ -49,7 +48,7 @@ Page({
     if (this.data.busy || !this.data.wechat?.available) return;
     this.setData({ busy: true, error: "", info: "", password: "", wantsWechatBinding: false });
     try {
-      const result = await loginWithWechat(undefined, await entryLocation());
+      const result = await loginWithWechat();
       if (result.state === "onboarding_required") {
         setOnboardingProof(result.ticket);
         this.setData({ sheet: "" }); wx.navigateTo({ url: "/pages/onboarding/index" });
@@ -111,7 +110,6 @@ Page({
     try { await logout(); } catch { /* 本机会话由 API finally 清除。 */ }
     finally {
       clearNavigation();
-      clearEntryLocation();
       this.setData({ busy: false, authenticated: false, account: null, accountName: "", error: "", password: "", identifier: "", loading: false, sheet: "",
         info: "", wantsWechatBinding: false, wechat: null });
       void this.loadWechat();

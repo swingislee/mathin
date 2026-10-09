@@ -20,6 +20,7 @@
       </block>
       <checkbox-group bindchange="consent"><label class="onboarding-consent"><checkbox value="yes" checked="{{consent}}" disabled="{{busy}}" /><text>{{words.consent}}</text></label></checkbox-group>
       <view class="policy-links"><button class="text-button" bindtap="policy" data-kind="privacy">{{words.privacy}}</button><button class="text-button" bindtap="policy" data-kind="children">{{words.childrenPrivacy}}</button></view>
+      <text class="auth-hint">{{words.locationNote}}</text>
       <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{words.complete}}</button>
     </block>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
