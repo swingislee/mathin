@@ -3,6 +3,31 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-PARTICIPANT-COPY-20261009",
+      "title": "小程序所有页面称呼统一",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-PARTICIPANT-COPY-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-PARTICIPANT-COPY-20261009.md",
+        "apps/parent-wechat/miniprogram/lib/onboarding.ts",
+        "apps/parent-wechat/miniprogram/lib/participant-wording.ts",
+        "apps/parent-wechat/miniprogram/pages/onboarding/",
+        "apps/parent-wechat/miniprogram/pages/register/index.ts",
+        "apps/parent-wechat/README.md",
+        ".tmp/mini-participant-copy-20261009/",
+        "apps/parent-wechat/miniprogram/pages/account/index.ts",
+        "apps/parent-wechat/miniprogram/pages/account/index.wxml"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "小程序全部页面固定文案、历史表单展示、隐私弹窗和默认账号称呼已统一中英文；类型与文案检查通过，开发工程已刷新待实际验收。0.1.0 未重传，手机体验版更新后继续录制定位材料。"
+    },
+    {
       "id": "MINI-LEAD-FIRST-CONTACT-20261009",
       "title": "微信登记线索及时首联",
       "agent": "codex",

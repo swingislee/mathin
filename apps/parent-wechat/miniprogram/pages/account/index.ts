@@ -5,10 +5,11 @@ import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
 import { activityCopy } from "../../lib/activity-catalog";
 import { onboardingCopy, setOnboardingProof } from "../../lib/onboarding";
 import { clearEntryLocation, entryLocation } from "../../lib/entry-location";
+import { participantAccountName } from "../../lib/participant-wording";
 
 Page({
   data: { ...pageData("account"), activityCopy: activityCopy.zh, authenticated: false, identifier: "", password: "", busy: false,
-    account: null as Account | null, sheet: "", info: "", wantsWechatBinding: false,
+    account: null as Account | null, accountName: "", sheet: "", info: "", wantsWechatBinding: false,
     wechat: null as WechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
   loadVersion: 0,
   statusVersion: 0,
@@ -16,7 +17,7 @@ Page({
     syncPage(this, "account");
     this.setData({ activityCopy: activityCopy[currentLocale()] });
     const authenticated = Boolean(session());
-    this.setData({ authenticated: Boolean(session()), account: null, error: "", password: "", loading: false,
+    this.setData({ authenticated: Boolean(session()), account: null, accountName: "", error: "", password: "", loading: false,
       sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && hasReturn() ? "login" : "" });
     void this.loadWechat();
     if (authenticated) void this.load();
@@ -111,7 +112,7 @@ Page({
     finally {
       clearNavigation();
       clearEntryLocation();
-      this.setData({ busy: false, authenticated: false, account: null, error: "", password: "", identifier: "", loading: false, sheet: "",
+      this.setData({ busy: false, authenticated: false, account: null, accountName: "", error: "", password: "", identifier: "", loading: false, sheet: "",
         info: "", wantsWechatBinding: false, wechat: null });
       void this.loadWechat();
     }
@@ -122,7 +123,7 @@ Page({
     try {
       const account = await get<Account>("account");
       if (version === this.loadVersion) {
-        this.setData({ account });
+        this.setData({ account, accountName: participantAccountName(account.displayName) });
         if (!this.data.wantsWechatBinding) resumeAfterLogin();
       }
     } catch (error) {

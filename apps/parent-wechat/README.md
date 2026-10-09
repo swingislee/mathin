@@ -13,6 +13,8 @@
 
 品牌固定为“格致未来思维”。文案跟随微信语言：英文使用 en，其余回退中文。公共文案维护在 `lib/locale.ts` 与 `lib/copy.ts`，默认导航同步维护在 `app.json`。诊断用途、真实年级选项、数学／英语、发布资料正文和信息使用说明保留真实含义。
 
+小程序页面统一使用“账号、联系人、参与人、参与信息”。首次登记文案维护在 `lib/onboarding.ts`；后台已有表单标题、字段和隐私说明由 `lib/participant-wording.ts` 在展示时适配，同步中英文。真实关系选项和未满十四周岁信息保护的适用范围保持明确，字段 ID、提交答案及同意版本沿用原合同。
+
 首层路由为 `discover`、`calendar`、`account`；二级路由使用 `agenda`、`records`、`task`、`reflections`、`activity-*` 和 `service`。工程目录与工具命令保留旧路径，以兼容本机配置。
 
 ## 服务端与数据

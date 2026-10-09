@@ -4,6 +4,7 @@ import { clearNavigation, selectParticipant } from "../../lib/navigation";
 import { onboardingCopy, saveOnboardingPreferences, takeOnboardingProof, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
 import { familyAnswerErrors, type FamilyField, type FamilyForm } from "../../lib/onboarding-form";
 import { entryLocation, promotionScene } from "../../lib/entry-location";
+import { participantWording } from "../../lib/participant-wording";
 
 type DisplayField = FamilyField & { text: string; kind: "text" | "picker" | "interests"; choices: { id: string; text: string }[] };
 Page({
@@ -16,10 +17,11 @@ Page({
   onLoad(query: Record<string,string | undefined>) {
     this.active = true;
     const locale = currentLocale(), words = onboardingCopy[locale];
+    wx.setNavigationBarTitle({ title: words.navigationTitle });
     this.setData({ locale, words, choices: {
       relation: [locale === "zh" ? "请选择" : "Choose", ...words.relations], gender: words.genders,
-      grade: locale === "zh" ? ["选择孩子年级", "幼中班", "幼大班", "一年级", "二年级", "三年级", "四年级", "五年级", "六年级", "初一", "初二", "初三", "高一", "高二", "高三"]
-        : ["Choose grade", "K2", "K3", ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`)],
+      grade: locale === "zh" ? [words.chooseGrade, "幼中班", "幼大班", "一年级", "二年级", "三年级", "四年级", "五年级", "六年级", "初一", "初二", "初三", "高一", "高二", "高三"]
+        : [words.chooseGrade, "K2", "K3", ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`)],
     } });
     const proof = takeOnboardingProof();
     const scene = promotionScene(query.scene || proof?.scene);
@@ -49,7 +51,7 @@ Page({
   },
   configureForm(form: FamilyForm) {
     const locale = currentLocale();
-    const text = (value: { zh: string; en: string }) => value[locale] || value.zh;
+    const text = (value: { zh: string; en: string }) => participantWording(value[locale] || value.zh);
     const fields: DisplayField[] = form.fields.filter(field => field.mode !== "hidden").map(field => ({ ...field,
       text: text(field.label), kind: field.id === "interests" ? "interests" : ["relation", "gender", "grade"].includes(field.id) ? "picker" : "text",
       choices: (field.options || []).map(option => ({ id: option.id, text: text(option.label) })),
@@ -90,7 +92,7 @@ Page({
   policy(event: WechatMiniprogram.TouchEvent) {
     const key = event.currentTarget.dataset.kind === "children" ? "children" : "privacy";
     const policy = this.data.policy?.policyText[currentLocale()];
-    if (policy) wx.showModal({ title: key === "privacy" ? this.data.words.privacy : this.data.words.childrenPrivacy, content: policy[key], showCancel: false });
+    if (policy) wx.showModal({ title: key === "privacy" ? this.data.words.privacy : this.data.words.childrenPrivacy, content: participantWording(policy[key]), showCancel: false });
   },
   privacy() { wx.openPrivacyContract({ fail: () => this.setData({ error: this.data.words.unavailable }) }); },
   authError(error: unknown) {

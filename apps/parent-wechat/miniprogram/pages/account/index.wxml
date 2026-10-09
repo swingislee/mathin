@@ -1,7 +1,7 @@
 <view class="portal-page account-page">
   <app-nav />
   <view class="portal-content">
-    <view class="account-header"><button class="account-identity" bindtap="showAccount"><image class="account-avatar" src="/assets/account.png" aria-hidden="true" /><text class="account-name">{{authenticated ? (account.displayName || copy.accountLabel) : copy.signInNow}}</text><view class="chevron"></view></button><button class="account-header-action" data-url="/pages/reservations/index" bindtap="open">{{copy.myBookings}}</button></view>
+    <view class="account-header"><button class="account-identity" bindtap="showAccount"><image class="account-avatar" src="/assets/account.png" aria-hidden="true" /><text class="account-name">{{authenticated ? (accountName || copy.accountLabel) : copy.signInNow}}</text><view class="chevron"></view></button><button class="account-header-action" data-url="/pages/reservations/index" bindtap="open">{{copy.myBookings}}</button></view>
     <view class="account-feature-row">
       <button class="intake-tile surface" data-url="/pages/register/index?source=account" bindtap="open"><text class="intake-tile-title">{{copy.registrationTitle}}</text><text class="small-pill">{{copy.registrationAction}}</text><image class="intake-watermark" src="/assets/icons/form.png" aria-hidden="true" /></button>
       <view class="participants-tile surface"><view class="participants-heading"><text>{{copy.linkedParticipants}}</text><button class="text-link" bindtap="showParticipants">{{copy.view}}<view class="chevron"></view></button></view><view wx:if="{{account.participants.length}}" class="participants-row"><button wx:for="{{account.participants}}" wx:key="id" wx:if="{{index < 2}}" class="participant-entry" data-id="{{item.id}}" bindtap="participant"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><text>{{item.name}}</text></button></view><button wx:else class="participants-empty" bindtap="showParticipants"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><text>{{authenticated ? copy.noLinkedParticipants : copy.signInNow}}</text></button></view>
@@ -45,7 +45,7 @@
       <text wx:else class="auth-hint">{{copy.wechatUnavailable}}</text>
     </block>
     <block wx:elif="{{sheet === 'bind'}}">
-      <text class="account-display-name">{{account.displayName || copy.accountLabel}}</text>
+      <text class="account-display-name">{{accountName || copy.accountLabel}}</text>
       <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
       <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
       <text wx:elif="{{wechat.linked}}" class="auth-hint">{{copy.wechatBound}}</text>
@@ -59,7 +59,7 @@
     </block>
     <block wx:elif="{{sheet === 'participants'}}"><button wx:for="{{account.participants}}" wx:key="id" class="member-option" data-id="{{item.id}}" bindtap="participant"><image src="/assets/participant.png" class="participant-avatar" aria-hidden="true" /><text>{{item.name}}</text><view class="chevron"></view></button><text wx:if="{{!account.participants.length}}" class="muted small">{{copy.noLinkNote}}</text></block>
     <block wx:else>
-      <text class="account-display-name">{{account.displayName || copy.accountLabel}}</text>
+      <text class="account-display-name">{{accountName || copy.accountLabel}}</text>
       <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
       <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
       <block wx:else>
