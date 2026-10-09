@@ -4,6 +4,8 @@ import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/Fol
 import { FirstContactRecordRow } from './FirstContactRecordRow';
 import { FirstContactStatusTags } from './FirstContactStatusTags';
 import { RecordStatusIcons } from './record-status/RecordStatusIcons';
+import { StudentStageOwnerControl } from './StudentStageAssignmentControl';
+import { studentStageMessages } from './student-stage-messages';
 import { firstContactRowMessages } from './first-contact-row-messages';
 import { businessRecordMessages } from './business-record-state-contract';
 import type { HistoricalFirstContactRow } from './historical-first-contact-contract';
@@ -38,7 +40,7 @@ import type { FollowupServerFields } from "./followup-table-page";
 import { useFollowupServerFields } from "./useFollowupServerFields";
 import { useFirstContactFacets } from "./useFirstContactFacets";
 import { firstContactTableFields, FIRST_CONTACT_TABLE_COLUMNS } from "./first-contact-table-fields";
-import type { StudentStageRow } from "./student-stage-contract";
+import type { StudentStageAssignee, StudentStageRow } from "./student-stage-contract";
 import { SourceGroupedRows } from './source-worklist/SourceGroupedRows';
 import type { WorkRow } from './source-worklist/contract';
 import {
@@ -540,11 +542,12 @@ function InvitationHistory({ rows, formatAt }: { rows: InvitationCoordinationRow
 const sameCommunicationFact = (left: CommunicationRow, right: CommunicationRow) => left.source === right.source
   && left.value === right.value && (left.source !== "contact" || right.source !== "contact" || left.previousInvitation === right.previousInvitation);
 
-export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, firstContactRows, sourceLayout, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage, firstContactOnly = false }: {
+export function InvitationCoordinationWorkbench({ rows, activities, assessors, locale, currentUserId, canManageInvitation, postActivityRows = EMPTY_ROWS, searchQuery = "", contactLeads = EMPTY_CONTACT_LEADS, leadDetails = EMPTY_CONTACT_LEADS, canContact = false, canManageIdentity = false, canAssign = false, assignees = EMPTY_ROWS, focusLeadId, rowOrder, invitationHistory = EMPTY_ROWS, workday, worklist, selectionEnabled = false, sessionKey = "communication", workMode, historicalFirstContacts=EMPTY_ROWS, fieldView, firstContactRows, sourceLayout, timeZone = ASSESSMENT_TIME_ZONE, now, emptyMessage, firstContactOnly = false }: {
   rows: InvitationCoordinationRow[]; activities: InvitationActivityOption[]; assessors: InvitationAssessorOption[]; locale: string;
   queue?: InvitationQueue; coordinationStage?: InvitationCoordinationStage | null; stageCounts?: InvitationQueueCounts["stages"];
   searchQuery?: string; currentUserId: string; canManageInvitation: boolean; postActivityRows?: ActivityEnrollmentContext[];
   contactLeads?: LeadPoolRow[]; leadDetails?: LeadPoolRow[]; canContact?: boolean; canManageIdentity?: boolean; focusLeadId?: string;
+  canAssign?: boolean; assignees?: StudentStageAssignee[];
   rowOrder?: string[]; invitationHistory?: InvitationCoordinationRow[];
   workday?: CommunicationWorkday; worklist?: CommunicationWorklist; selectionEnabled?: boolean; sessionKey?: string;
   workMode?: CommunicationWorkbenchView;
@@ -565,6 +568,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const workSelection = useCommunicationWorkSelection();
   const { setVisibleKeys } = workSelection;
   const router = useRouter();
+  const [assigning, setAssigning] = useState(false);
   const [entryDrafts, setEntryDrafts] = useState<Record<string, InvitationEntryDraft>>({});
   const updateEntryDraft = useCallback((id: string, entry: InvitationEntryDraft) => setEntryDrafts((current) => ({ ...current, [id]: entry })), []);
   const [rowOverrides, setRowOverrides] = useState<Record<string, { base: InvitationCoordinationRow; value: InvitationCoordinationRow }>>({});
@@ -691,7 +695,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     persistenceKey: firstContactRows || focusLeadId ? undefined : `school.followup.communication.fields-v2.${recordsMode ? "records" : workday ? "workday" : "all"}.${worklist?.id ?? currentUserId}` });
   const columnProps = (column: keyof typeof COMMUNICATION_TABLE_COLUMNS) => {
     const props = table.columnProps(column);
-    return { ...props, ...(firstContactRows ? { disabled: savingIds.size > 0 } : {}),
+    return { ...props, ...(firstContactRows ? { disabled: savingIds.size > 0 || assigning } : {}),
       ...(firstContactRows && props.fields.some(field => field.kind === "enum" || field.kind === "date")
         ? { onLoadFacets: deferred.onLoadFacets, facetsStatus: deferred.facetsStatus } : {}) };
   };
@@ -821,25 +825,27 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const canonicalKey = communicationRowKey(row);
     const historicalSummary = historicalSummaryFor(row);
     const statusRow = firstContactRows?.find(subject => subject.key === canonicalKey || (row.source === 'contact' && subject.leadId === row.value.id));
+    const ownerControl = canAssign && statusRow ? <StudentStageOwnerControl row={statusRow} assignees={assignees}
+      locale={locale} context="lead" disabled={assigning || savingIds.size > 0} onBusyChange={setAssigning} onAssigned={() => router.refresh()} /> : undefined;
     if (row.source === 'profile') return <FirstContactRecordRow key={canonicalKey} locale={locale} record={{
       key: canonicalKey, state: firstContactOnly ? 'current' : 'historical', missingFirstContact: true,
       statusContent: statusRow ? <RecordStatusIcons row={statusRow} locale={locale} /> : undefined,
-      person: { name: row.value.name, phone: row.value.phone, grade: gradeOf(row) || t('gradePending'),
+      person: { name: row.value.name, phone: row.value.phone, owner: statusRow?.ownerName, grade: gradeOf(row) || t('gradePending'),
         subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
-      status: { label: stateOf(row), tone: 'neutral', context: '' },
+      status: { label: firstContactOnly ? studentStageMessages(locale).details[statusRow?.detail ?? 'not_contacted'] ?? rowM.notContacted : stateOf(row), tone: 'neutral', context: '' },
       updated: recordM.unknown, note: row.value.context,
-    }} active={active} expanded={expanded}
+    }} active={active} expanded={expanded} ownerControl={ownerControl}
       rowRef={element => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
       detailsId={`first-contact-details-${canonicalKey}`} onExpandedChange={open => changeDetails(canonicalKey, open)} />;
     if (row.source === "contact") {
       const previous = row.previousInvitation;
       return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
-        statusRow={statusRow}
+        statusRow={statusRow} ownerControl={ownerControl}
         active={active} onActivate={setActiveContactId}
         selected={selected}
         onSaved={saveContact} onReminderSaved={saveContactReminder} onAdvance={() => advanceAfter(canonicalKey)}
         activities={activities} assessors={assessors} locale={locale}
-        canContact={canContact && !row.value.activeInvitation} canManageIdentity={canManageIdentity} layout="communication"
+        canContact={canContact && !row.value.activeInvitation && !assigning} canManageIdentity={canManageIdentity && !assigning} layout="communication"
         expanded={expanded} onExpandedChange={(open) => changeDetails(canonicalKey, open)}
         leadingSelection={leadingSelectionFor(row)}
         historicalSummary={historicalSummary} historicalEntryLabel={recordsMode ? workT("newCommunication") : undefined}
@@ -903,12 +909,12 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         </>}
       </FollowupInlineDetails>
     </Fragment>;
-  }, [activities, advanceAfter, arrangementOf, assessors, beginSave, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, firstContactOnly, firstContactRows, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, rowM.grade, rowM.notes, rowM.owner, rowM.phone, rowM.updated, saveContact, saveContactReminder, savePost, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
+  }, [activities, advanceAfter, arrangementOf, assignees, assigning, assessors, beginSave, canAssign, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, firstContactOnly, firstContactRows, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, router, rowM.grade, rowM.notContacted, rowM.notes, rowM.owner, rowM.phone, rowM.updated, saveContact, saveContactReminder, savePost, savingIds.size, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday]);
 
 
   return <SchoolSupportTableEntry workspace="communication" enabled={canContact} columns={["name","phone","grade","blank","blank","note","blank"]} initialWork={{date:workday?.date??worklist?.date,worklistId:worklist?.id??null}}><DashboardTableShell data-followup-workbench data-communication-scroll>
     <Table mobileLayout="stacked" className="w-full min-w-[55rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
-      <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.75rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
+      <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.75rem" }} /><col style={{ width: firstContactOnly ? "7.5rem" : "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">
           {selectionEnabled ? <Checkbox checked={selectableKeys.length > 0 && selectedVisible === selectableKeys.length ? true : selectedVisible ? "indeterminate" : false}
@@ -917,7 +923,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.phone} {...columnProps("phone")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-1 [&>div]:ml-0 [&_[data-dashboard-table-menu]]:px-1"><DashboardTableColumnHeader label={rowM.grade} {...columnProps("grade")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.owner} {...columnProps("owner")} /></TableHead>
-        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayResultColumn") : workspaceT("contactStage")} {...columnProps("state")} /></TableHead>
+        <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayResultColumn") : firstContactOnly ? rowM.contactStatus : workspaceT("contactStage")} {...columnProps("state")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} {...columnProps("note")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : rowM.updated} {...columnProps("updated")} /></TableHead>
       </TableRow></TableHeader>

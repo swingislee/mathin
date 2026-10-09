@@ -15,6 +15,7 @@ import { FollowupContactFacts } from "./FollowupContactFacts";
 import { FirstContactRecordRow } from "./FirstContactRecordRow";
 import { RecordStatusIcons } from './record-status/RecordStatusIcons';
 import type { StudentStageRow } from './student-stage-contract';
+import { studentStageMessages } from './student-stage-messages';
 import { firstContactRowMessages } from "./first-contact-row-messages";
 import { invitationForAdvance, invitationHasStageInformation, leadContactInput, leadWechatValue, type LeadContactDraft } from "./followup-entry-contract";
 import { addStudentFollowUp } from "./actions/followups";
@@ -100,9 +101,11 @@ export function LeadContactEntryRow({
   historicalSummary,
   historicalEntryLabel,
   statusRow,
+  ownerControl,
 }: {
   lead: LeadPoolRow;
   statusRow?: StudentStageRow;
+  ownerControl?: ReactNode;
   formatAt: (value: string) => string;
   active: boolean;
   selected?: boolean;
@@ -311,14 +314,17 @@ export function LeadContactEntryRow({
       </>
   );
 
+  const statusLabel = lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`)
+    : statusRow ? studentStageMessages(locale).details[statusRow.detail] ?? rowM.notContacted
+      : lead.status === "uncontacted" ? rowM.notContacted : t(`status_${lead.status}`);
   return <FirstContactRecordRow record={{
       statusContent: statusRow ? <RecordStatusIcons row={statusRow} locale={locale} /> : undefined,
       key: layout === "communication" ? `lead:${lead.id}` : lead.id,
       visitCommitted: leadHasCommittedVisit(lead),
-      person: { name: lead.provisionalStudentName, phone: lead.phone, owner: lead.ownerName || t("unassignedOwner"),
+      person: { name: lead.provisionalStudentName, phone: lead.phone, owner: lead.ownerName || rowM.unassigned,
         grade: lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade")),
         subject: { studentId: lead.studentId ?? null, leadId: lead.id }, studentGrade: lead.gradeHint },
-      status: { label: lead.lastContactOutcome ? t(`contactOutcome_${lead.lastContactOutcome}`) : t(`status_${lead.status}`),
+      status: { label: statusLabel,
         tone: lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy",
         context: `${lead.acquisitionLocation || t("acquisitionLocationMissing")}${lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}`,
         contextTitle: [lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ") },
@@ -331,7 +337,7 @@ export function LeadContactEntryRow({
     active={active} selected={selected} expanded={detailsOpen} pending={pending} layout={layout} canAssign={canAssign}
     detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)}
     onOutcomeChange={canUseEntry ? chooseOutcome : undefined} onSave={canUseEntry ? () => saveEntry(false) : undefined}
-    selection={leadingSelection} historicalSummary={historicalSummary}
+    selection={leadingSelection} historicalSummary={historicalSummary} ownerControl={ownerControl}
     identityHint={<PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />}
     defaultCells={layout === "default" ? <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
@@ -344,7 +350,7 @@ export function LeadContactEntryRow({
       <TableCell className="px-2 py-2"><p className="truncate" title={lead.acquisitionLocation}>{lead.acquisitionLocation || t("acquisitionLocationMissing")}</p>
         <p className="mt-1 truncate text-[11px] text-muted" title={[sourceAttribution, ...lead.interests].join(" · ")}>{lead.acquiredAt ? formatAt(lead.acquiredAt) : "—"}{lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}</p></TableCell>
       <TableCell className="px-2 py-2"><p className="truncate" title={lead.ownerName || t("unassignedOwner")}>{lead.ownerName || t("unassignedOwner")}</p></TableCell>
-      <TableCell className="px-2 py-2"><Badge variant="outline" title={t(`status_${lead.status}`)} className={cn("max-w-full truncate px-1.5 text-[10px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : ["contacted", "intent_confirmed", "converted"].includes(lead.status) ? "healthy" : "neutral"])}>{t(`status_${lead.status}`)}</Badge></TableCell>
+      <TableCell className="px-2 py-2"><Badge variant="outline" title={statusLabel} className={cn("max-w-full truncate px-1.5 text-[10px]", followupToneClasses[lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : ["contacted", "intent_confirmed", "converted"].includes(lead.status) ? "healthy" : "neutral"])}>{statusLabel}</Badge></TableCell>
       <TableCell className="px-2 py-2">{entryContent}</TableCell>
 
     </> : undefined}>

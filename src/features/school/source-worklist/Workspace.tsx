@@ -158,7 +158,8 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
           </select>
           <select aria-label={m.all} value={query.scope} disabled={busy} onChange={event => navigate({ scope: event.target.value as WorkQuery['scope'] })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
             <option value="mine">{m.mine}</option>{canViewAll ? <option value="all">{m.all}</option> : null}
-            {query.scope === 'group' || query.scope === 'unassigned' ? <option value={query.scope}>{query.scope === 'group' ? (locale.startsWith('en') ? 'My groups' : '我的小组') : (locale.startsWith('en') ? 'Unassigned' : '待分配')}</option> : null}
+            {query.scope === 'group' ? <option value="group">{locale.startsWith('en') ? 'My groups' : '我的小组'}</option> : null}
+            {canAssign || query.scope === 'unassigned' ? <option value="unassigned">{locale.startsWith('en') ? 'Unassigned' : '待分配'}</option> : null}
           </select>
         </form>
       </DashboardCommandFilters>
@@ -210,7 +211,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
                     <span className="text-[11px] text-muted">{row.grade != null ? `${row.grade}${locale.startsWith('en') ? '' : ' 年级'}` : row.gradeText}</span>
                     <div className="max-w-36 text-[11px] text-muted">{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} onBusyChange={setBusy} onAssigned={assigned} /> : row.ownerName || stages.unassigned}</div></TableCell>
                   <TableCell mobileLabel={m.phone}>{row.phone || '—'}</TableCell>
-                  <TableCell mobileLabel={m.stage}><div className="mb-1 text-[11px] text-muted">{stages.stages[row.stage]} · {stages.details[row.detail] ?? row.detail}</div>
+                  <TableCell mobileLabel={m.stage}><div className="mb-1 text-[11px] text-muted">{stages.details[row.detail] ?? row.detail}</div>
                     <RecordStatusIcons row={row} locale={locale} /></TableCell>
                   {showContext ? <TableCell mobileLabel={m.contextByTask[query.stage]}><p className="line-clamp-2 leading-5" title={contextText(row)}>{contextText(row) || '—'}</p></TableCell> : null}
                   <TableCell mobileLabel={m.recent}>

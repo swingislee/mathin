@@ -33,7 +33,7 @@ export function FirstContactRecordRow({
   record, locale, active, selected = false, expanded, onExpandedChange, onActivate,
   rowRef, tabIndex = 0, pending = false, layout = "communication", canAssign = false,
   detailsId, onKeyDown, onClick, selection, historicalSummary,
-  defaultCells, children, onOutcomeChange, onSave, identityHint,
+  defaultCells, children, onOutcomeChange, onSave, identityHint, ownerControl,
 }: {
   record: FirstContactRecord;
   locale: string;
@@ -54,6 +54,7 @@ export function FirstContactRecordRow({
   historicalSummary?: { state: ReactNode; details: ReactNode; updated: ReactNode };
   defaultCells?: ReactNode;
   identityHint?: ReactNode;
+  ownerControl?: ReactNode;
   children?: ReactNode | (() => ReactNode);
   onOutcomeChange?: ComponentProps<typeof FollowupRecordRow>["onOutcomeChange"];
   onSave?: () => void;
@@ -76,7 +77,7 @@ export function FirstContactRecordRow({
         </TableCell>
         <TableCell mobileLabel={fields.phone} className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${record.person.phone}`} title={record.person.phone}>{record.person.phone || "—"}</a></TableCell>
         <TableCell mobileLabel={fields.grade} className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>
-        <TableCell mobileLabel={fields.owner} className="px-2 py-1.5"><p className="truncate text-xs" title={record.person.owner}>{record.person.owner || "—"}</p></TableCell>
+        <TableCell mobileLabel={fields.owner} className="px-2 py-1.5">{ownerControl ?? <p className="truncate text-xs" title={record.person.owner}>{record.person.owner || fields.unassigned}</p>}</TableCell>
         <TableCell mobileSpan="secondary" className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <>
           <FirstContactStatusTags label={record.status.label} tone={record.status.tone} facts={record.statusContent ? undefined : record.contactFacts} locale={locale} dirty={record.pendingChanges} />
           {record.statusContent}

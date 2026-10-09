@@ -3,6 +3,31 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "LEAD-OWNER-DETAIL-20261009",
+      "title": "线索行内负责人分配与细分状态",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/LEAD-OWNER-DETAIL-20261009.md",
+      "writePaths": [
+        ".ai/tasks/LEAD-OWNER-DETAIL-20261009.md",
+        ".tmp/lead-owner-detail-20261009/",
+        "src/features/school/StudentStageAssignmentControl.tsx",
+        "src/features/school/FirstContactRecordRow.tsx",
+        "src/features/school/LeadFirstContactWorkbench.tsx",
+        "src/features/school/InvitationCoordinationWorkbench.tsx",
+        "src/features/school/first-contact-row-messages.ts",
+        "src/features/school/source-worklist/Page.tsx",
+        "src/features/school/source-worklist/Workspace.tsx"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发页可在负责人列直接分配、改派，行内显示细分状态；ESLint 通过，类型检查有既存依赖错误，待实际使用验收。"
+    },
+    {
       "id": "ACTIVITY-TAGS-20261009",
       "title": "后台维护活动标签与小程序分类",
       "agent": "codex",

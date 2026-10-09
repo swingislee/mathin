@@ -52,6 +52,7 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
     canAssign ? listStaffMembers() : Promise.resolve([]),
   ]);
   const page = pageSchema.parse(data);
+  const assignees = staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }));
   let firstContactContent;
   if (firstContact) {
     const leadIds = page.rows.flatMap(row => row.leadId ? [row.leadId] : []);
@@ -67,6 +68,7 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
         historicalFirstContacts={page.rows.flatMap(row => !row.leadId && row.studentId ? [{ studentId: row.studentId, name: row.name, phone: row.phone, grade: row.grade, context: row.note }] : [])}
         rowOrder={page.rows.map(row => row.leadId ? 'lead:' + row.leadId : 'student:' + row.studentId)}
         activities={options.activities} assessors={options.assessors} locale={locale} currentUserId={user.id}
+        canAssign={canAssign} assignees={assignees}
         canManageInvitation={permissions.has('followup.write')} canContact={permissions.has('followup.write')}
         canManageIdentity={permissions.has('followup.write') && permissions.has('student.edit')} timeZone={timeZone} now={now.getTime()} />
     </CommunicationWorkSelectionProvider>;
@@ -74,6 +76,6 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
   return <Workspace key={JSON.stringify(query)} data={page} query={{ ...query, page: page.page, periodField: page.periodField, period: page.period, group: page.group }} locale={locale}
     currentUserId={user.id} canEnroll={permissions.has('enrollment.manage')} canViewAll={permissions.has('student.view.all')}
     canAssess={permissions.has('review.write')} firstContactContent={firstContactContent}
-    canAssign={canAssign} assignees={staff.filter(member => member.isActive && member.canFollowUp).map(({ userId, displayName }) => ({ userId, displayName }))}
+    canAssign={canAssign} assignees={assignees}
     timeZone={timeZone} now={now.getTime()} />;
 }
