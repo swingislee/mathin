@@ -3,6 +3,33 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-PROMOTION-WORKSPACE-20261009",
+      "title": "组织推广配置与线索共用登记",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-PROMOTION-WORKSPACE-20261009.md",
+      "writePaths": [
+        "src/features/school/promotions/",
+        "src/features/school/nav.ts",
+        "src/features/school/dashboard-routes.ts",
+        "src/app/[locale]/dashboard/promotions/page.tsx",
+        "src/features/school/LeadFirstContactWorkbench.tsx",
+        "src/features/school/Student360Sheet.tsx",
+        "supabase/migrations/20261009113000_promotions_lead_workspace.sql",
+        "supabase/tests/promotions_lead_workspace.sql",
+        ".ai/tasks/MINI-PROMOTION-WORKSPACE-20261009.md",
+        ".tmp/promotion-workspace-20261009/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "组织管理中的微信推广已直接显示手机表单与固定字段库，扫码登记已接入线索。定向权限、关联与开发页面读取通过，待实际使用验收，生产未部署。"
+    },
+    {
       "id": "MINI-WECHAT-LOGIN-TIMEOUT-20261009",
       "title": "小程序开户页微信登录超时",
       "agent": "codex",

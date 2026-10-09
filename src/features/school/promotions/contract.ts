@@ -2,6 +2,8 @@ import { z } from "zod";
 import { familyChildSchema } from "@/features/parent-portal/onboarding-contract";
 
 export const promotionSchema = z.object({ scene: z.string(), name: z.string(), enabled: z.boolean(), updatedAt: z.string(), newCount: z.number(), repeatCount: z.number() });
+export const promotionSettingsSchema = z.array(promotionSchema);
+export type PromotionSettings = z.infer<typeof promotionSettingsSchema>;
 export const promotionRecordSchema = z.object({ id: z.string(), at: z.string(), promoter: z.string(), state: z.enum(["new", "existing_record", "registered"]),
   phone: z.string().nullable(), parentName: z.string().nullable(), childName: z.string().nullable(), grade: z.string().nullable(), school: z.string().nullable(),
   interests: z.array(z.string()).nullable(), location: z.object({ status: z.string(), latitude: z.number().optional(), longitude: z.number().optional(), accuracy: z.number().nullable().optional(),

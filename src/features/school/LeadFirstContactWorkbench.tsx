@@ -1,4 +1,5 @@
 "use client";
+import { WechatFamilyDetails } from "./promotions/WechatFamilyDetails";
 
 import { Check, ChevronDown, ChevronRight, LoaderCircle } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -377,6 +378,7 @@ export function LeadContactEntryRow({
           gradeHint={lead.gradeHint} contactFacts={contactFacts} enableProgressShortcuts={false} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
           onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : contactFacts}
       </FollowupEntryFields>
+      <WechatFamilyDetails key={`wechat:${lead.id}`} studentId={lead.studentId ?? null} leadId={lead.id} locale={locale} />
       {!detailsFirst ? detailsExtra : null}
       </>}
   </FirstContactRecordRow>;

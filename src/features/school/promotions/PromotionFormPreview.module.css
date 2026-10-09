@@ -1,0 +1,23 @@
+.phone { width: min(100%, 375px); margin-inline: auto; border: 1px solid var(--line); border-radius: 26px; background: var(--paper); color: var(--ink); overflow: hidden; font-family: system-ui, sans-serif; }
+.navigation { display: flex; align-items: center; justify-content: space-between; padding: 20px 16px 14px; font-size: 13px; border-bottom: 1px solid var(--line); }
+.capsule { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 20px; padding: 3px 10px; }
+.page { padding: 20px 18px 28px; }
+.introduction, .field { display: block; width: 100%; text-align: left; border-radius: 6px; cursor: pointer; outline: 1px solid transparent; outline-offset: 5px; transition: outline-color .15s; }
+.introduction:focus-visible, .field:focus-visible, .introduction[data-selected=true], .field[data-selected=true] { outline-color: var(--crater); }
+.introduction:hover, .field:hover { background: color-mix(in srgb, var(--moon) 14%, transparent); }
+.eyebrow { display: block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
+.title { display: block; font-size: 24px; line-height: 1.35; overflow-wrap: anywhere; }
+.description { display: block; font-size: 14px; line-height: 1.7; margin-top: 10px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.phoneNumber { display: flex; align-items: center; gap: 6px; color: var(--leaf-deep); font-size: 13px; margin: 20px 0 12px; }
+.field { margin: 18px 0; }
+.label { display: block; font-size: 14px; margin-bottom: 7px; line-height: 1.6; overflow-wrap: anywhere; }
+.label > span { color: var(--muted); font-size: 12px; }
+.input { display: flex; align-items: center; justify-content: space-between; min-height: 47px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted); font-size: 15px; line-height: 1.6; }
+.interests { display: flex; flex-wrap: wrap; gap: 10px; font-size: 14px; line-height: 1.6; }
+.interests > span { display: flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.interests i, .checkbox { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 15px; height: 15px; border: 1px solid var(--line); background: var(--card); }
+.consent { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.8; margin-top: 22px; }
+.checkbox { margin-top: 4px; color: var(--leaf-deep); }
+.policy { color: var(--leaf-deep); font-size: 12px; margin: 12px 0 20px; }
+.submit { text-align: center; padding: 13px 8px; border-radius: 7px; background: var(--leaf-deep); color: var(--paper); font-size: 15px; line-height: 1.5; }
+.empty { color: var(--muted); font-size: 13px; padding: 28px 0; }

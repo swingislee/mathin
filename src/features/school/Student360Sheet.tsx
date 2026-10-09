@@ -47,6 +47,7 @@ const LeadIdentityControl = dynamic(() => import("./LeadIdentityControl").then((
 const StudentMergePanel = dynamic(() => import("./StudentMergePanel").then(module => module.StudentMergePanel));
 const SchoolSupportProfileButton = dynamic(() => import("./SchoolSupportProfile").then((module) => module.SchoolSupportProfileButton));
 const SchoolRecordSourceReview = dynamic(() => import("./SchoolRecordSourceReview").then(module => module.SchoolRecordSourceReview));
+const WechatFamilyDetails = dynamic(() => import("./promotions/WechatFamilyDetails").then(module => module.WechatFamilyDetails));
 
 const BUSINESS_PHASES = new Set<Student360Phase>([
   "source",
@@ -491,6 +492,8 @@ function Student360PanelBody({
           {snapshot.identity.accessScope === "full" && (snapshot.identity.studentId || snapshot.identity.primaryLeadId) ? <section className="px-5 pb-4 sm:px-7">
             <SchoolRecordSourceReview key={snapshot.identity.studentId ?? snapshot.identity.primaryLeadId} locale={locale}
               subject={{ studentId: snapshot.identity.studentId, leadId: snapshot.identity.studentId ? null : snapshot.identity.primaryLeadId }} />
+            <WechatFamilyDetails key={`wechat:${snapshot.identity.studentId ?? snapshot.identity.primaryLeadId}`} locale={locale}
+              studentId={snapshot.identity.studentId} leadId={snapshot.identity.studentId ? null : snapshot.identity.primaryLeadId} />
           </section> : null}
 
           {snapshot.identity.profileRemark ? (

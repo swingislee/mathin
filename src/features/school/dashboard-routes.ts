@@ -634,8 +634,8 @@ export const DASHBOARD_ROUTES = {
     kind: "tool",
     environments: STAFF_ONLY,
     permission: "registration.invite.manage",
-    createSurface: "dialog",
-    nav: { labelKey: "promotions", group: "subjectOperations" },
+    createSurface: "none",
+    nav: { labelKey: "promotions", group: "organization" },
   },
   systemHealth: {
     // 展示的是系统错误/请求路径/环境/release/roster mismatch，不是业务运营（§5.25）。
