@@ -1,7 +1,6 @@
 <view class="portal-page discover-page">
   <app-nav title="{{full ? activityCopy.catalog : brandName}}" brand="{{!full}}" back="{{full}}" />
   <view class="portal-content">
-    <button wx:if="{{registrationReplay}}" class="text-button" bindtap="replayRegistration">{{replayCopy.badge}} · {{replayCopy.entry}}</button>
     <view class="discovery-filters"><button class="filter-pill" data-filter="stage" bindtap="showFilter"><text>{{stageLabel || copy.participantStage}}</text><view class="chevron down"></view></button><button class="filter-pill" data-filter="topic" bindtap="showFilter"><text>{{topicLabel || copy.activityTopic}}</text><view class="chevron down"></view></button><button wx:if="{{stage || topic}}" class="text-button" bindtap="reset">{{copy.clearFilters}}</button></view>
     <button wx:if="{{!full}}" class="feature-entry surface" bindtap="book" hover-class="pressed">
       <image class="feature-art" src="/assets/appointment.png" mode="aspectFit" aria-hidden="true" />

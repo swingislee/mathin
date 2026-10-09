@@ -47,20 +47,18 @@ describe("single location request at submission", () => {
 
 type OnboardingPage = {
   data: { busy: boolean; consent: boolean; policy: PhoneResult | null; ticket: string;
-    replay: boolean; stage: string; replayResult: string;
     values: { parentName: string; childName: string; school: string }; selection: { relation: number; gender: number; grade: number }; interests: string[] };
   setData: (value: Record<string, unknown>) => void;
-  onLoad: (query: Record<string, string>) => void; onUnload: () => void; restartReplay: () => void;
+  onLoad: (query: Record<string, string>) => void; onUnload: () => void;
   phone: (event: { detail: { code: string } }) => Promise<void>; complete: () => Promise<void>;
 };
-function formRuntime(locationOverrides: Record<string, unknown> = {}, environment?: string) {
+function formRuntime(locationOverrides: Record<string, unknown> = {}) {
   const miniRoot = path.resolve("apps/parent-wechat/miniprogram");
   const policy = { state: "family_required", ticket: "phone-proof", form: { ...DEFAULT_FAMILY_FORM, slug: "family-onboarding", version: 1 },
     maskedPhone: "masked", privacyVersion: "v1", childrenPrivacyVersion: "v1", policyText: { zh: { privacy: "", children: "" }, en: { privacy: "", children: "" } } };
-  const wx = { ...runtime(locationOverrides).wx, setNavigationBarTitle: vi.fn(), switchTab: vi.fn(), setStorageSync: vi.fn(),
-    getAccountInfoSync: vi.fn(() => ({ miniProgram: { envVersion: environment } })), pageScrollTo: vi.fn(), openSetting: vi.fn() };
+  const wx = { ...runtime(locationOverrides).wx, setNavigationBarTitle: vi.fn(), switchTab: vi.fn(), setStorageSync: vi.fn() };
   class ApiError extends Error { constructor(public code: string) { super(code); } }
-  const api = { ApiError, session: vi.fn<() => object | null>(() => null),
+  const api = { ApiError, session: () => null,
     loginWithWechat: vi.fn(async () => ({ state: "onboarding_required", ticket: "identity-proof" })),
     authorizeWechatPhone: vi.fn(async () => policy),
     completeWechatFamily: vi.fn<(ticket: string, family: FamilyRegistration) => Promise<{ grade: null; participantId: null }>>()
@@ -90,13 +88,10 @@ function formRuntime(locationOverrides: Record<string, unknown> = {}, environmen
     page.onLoad({ scene: "a".repeat(24) });
     await vi.waitFor(() => expect(page.data.ticket).toBe("identity-proof"));
     await page.phone({ detail: { code: "phone-code" } });
-    fillForm();
-  }
-  function fillForm() {
     page.setData({ consent: true, values: { parentName: "Fixture contact", childName: "Fixture participant", school: "" },
       selection: { relation: 1, gender: 0, grade: 5 }, interests: ["math"] });
   }
-  return { wx, api, page, app, openForm, fillForm };
+  return { wx, api, page, app, openForm };
 }
 
 describe("onboarding location boundary", () => {
@@ -144,52 +139,6 @@ describe("onboarding location boundary", () => {
     await vi.waitFor(() => expect(run.wx.getLocation).toHaveBeenCalledOnce());
     run.page.onUnload(); resolve({ latitude: 30, longitude: 120, accuracy: 8 });
     await pending;
-    expect(run.api.completeWechatFamily).not.toHaveBeenCalled();
-  });
-});
-
-describe("development registration recording", () => {
-  it.each(["trial", "release", undefined])("ignores a replay query in %s and keeps normal sign-in", environment => {
-    const run = formRuntime({}, environment);
-    run.api.session.mockReturnValue({ accessToken: "existing-session" });
-    run.page.onLoad({ replay: "1" });
-    expect(run.page.data.replay).toBe(false);
-    expect(run.wx.switchTab).toHaveBeenCalledWith({ url: "/pages/discover/index" });
-    expect(run.wx.getLocation).not.toHaveBeenCalled();
-  });
-  it("lets an existing account record real location calls without authenticating or writing a registration", async () => {
-    const run = formRuntime({}, "develop");
-    run.api.session.mockReturnValue({ accessToken: "existing-session" });
-    run.page.onLoad({ replay: "1" });
-    expect(run.page.data.stage).toBe("family");
-    expect(run.page.data.ticket).toBe("");
-    expect(run.wx.getSetting).not.toHaveBeenCalled();
-    await run.page.complete();
-    expect(run.wx.getLocation).not.toHaveBeenCalled();
-    run.fillForm();
-    await Promise.all([run.page.complete(), run.page.complete()]);
-    await run.page.complete();
-    expect(run.page.data.stage).toBe("replay-complete");
-    expect(run.page.data.replayResult).toBe("已取得本次定位");
-    expect(run.wx.getLocation).toHaveBeenCalledTimes(1);
-    expect(run.api.loginWithWechat).not.toHaveBeenCalled();
-    expect(run.api.authorizeWechatPhone).not.toHaveBeenCalled();
-    expect(run.api.completeWechatFamily).not.toHaveBeenCalled();
-    expect(run.wx.setStorageSync).not.toHaveBeenCalled();
-    run.page.restartReplay();
-    expect(run.page.data.consent).toBe(false);
-    expect(run.page.data.values.childName).toBe("");
-    expect(run.page.data.replayResult).toBe("");
-    run.fillForm(); await run.page.complete();
-    expect(run.wx.getLocation).toHaveBeenCalledTimes(2);
-    expect(run.api.completeWechatFamily).not.toHaveBeenCalled();
-  });
-  it("reports declined permission without presenting a successful location or saving the form", async () => {
-    const run = formRuntime({ getSetting: async () => ({ authSetting: { "scope.userLocation": false } }) }, "develop");
-    run.page.onLoad({ replay: "1" }); run.fillForm(); await run.page.complete();
-    expect(run.page.data.stage).toBe("replay-complete");
-    expect(run.page.data.replayResult).toBe("未授权定位");
-    expect(run.wx.getLocation).not.toHaveBeenCalled();
     expect(run.api.completeWechatFamily).not.toHaveBeenCalled();
   });
 });
