@@ -63,7 +63,7 @@
       "id": "ACTIVITY-TAGS-20261009",
       "title": "后台维护活动标签与小程序分类",
       "agent": "codex",
-      "status": "done",
+      "status": "in_progress",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/ACTIVITY-TAGS-20261009.md",
@@ -93,8 +93,8 @@
         "messages/zh.json",
         "messages/en.json"
       ],
-      "checkpoint": null,
-      "next": "活动标签已接通开发库：新建/编辑可维护并复用标签，小程序按已发布活动标签筛选。保存、权限与公开读取定向核对、小程序类型和源码静态检查通过；开发窗口已刷新。全库类型检查存在依赖错误，生产和手机包未更新，待实际使用验收。"
+      "checkpoint": "abdea2db311a66d99ee35ea53118e3707e05be60",
+      "next": "已部署生产 3c8026aa（release 20261009-102728），活动标签迁移与原 970 条活动保留核对通过；生产构建、完整类型和接口读取通过。小程序 0.1.3 上传待开发者工具确认，保留原 pendingTask 待用户继续。"
     },
     {
       "id": "MINI-REGISTRATION-REPLAY-20261009",
