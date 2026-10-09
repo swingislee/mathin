@@ -3,6 +3,25 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-LEAD-FIRST-CONTACT-20261009",
+      "title": "微信登记线索及时首联",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-LEAD-FIRST-CONTACT-20261009.md",
+      "writePaths": [
+        "supabase/migrations/20261009143000_miniapp_first_contact_priority.sql",
+        "supabase/tests/miniapp_first_contact_priority.sql",
+        ".ai/tasks/MINI-LEAD-FIRST-CONTACT-20261009.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "原线索页优先展示新登记月份、默认全部分组并按新近登记排序；没有增加入口。开发端真实登记已在默认及全部月份第一页，定向范围检查通过，待实际首联；生产未改动。"
+    },
+    {
       "id": "MINI-WECHAT-ACCOUNT-COMPLETE-20261009",
       "title": "微信家庭开户提交失败",
       "agent": "codex",
