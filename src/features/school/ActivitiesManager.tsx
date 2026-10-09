@@ -357,7 +357,7 @@ function ActivityDialog({
           <Input id="activity-tags" value={tagsText} onChange={event => setTagsText(event.target.value)} placeholder={t("tagsPlaceholder")} aria-describedby="activity-tags-hint" aria-invalid={invalidTags} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} />
           <p id="activity-tags-hint" className={`text-xs ${invalidTags ? "text-rose" : "text-muted"}`}>{invalidTags ? t("tagsLimit") : t("tagsHint")}</p>
           {availableTags.some(tag => !tags.includes(tag)) ? <div className="flex flex-wrap gap-1" aria-label={t("existingTags")}>
-            {availableTags.filter(tag => !tags.includes(tag)).map(tag => <Button key={tag} type="button" variant="outline" size="sm" className="h-6 px-2 text-xs" disabled={tags.length >= 10} onClick={() => setTagsText([...tags, tag].join("，"))}>{tag}</Button>)}
+            {availableTags.filter(tag => !tags.includes(tag)).map(tag => <Button key={tag} type="button" variant="secondary" size="sm" className="h-6 px-2 text-xs" disabled={tags.length >= 10} onClick={() => setTagsText([...tags, tag].join("，"))}>{tag}</Button>)}
           </div> : null}
         </div>
         <Label className="grid gap-1 text-xs font-normal text-muted">{t("time")}<DateTimePicker mode="datetime" value={form.scheduledAt} onValueChange={(value) => set("scheduledAt", value)} className={`${inputClass} h-9 rounded-md py-1.5 shadow-none`} /></Label>
