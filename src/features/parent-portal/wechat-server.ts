@@ -8,7 +8,7 @@ import { assertMiniappWechatAccount, exchangeMiniappIdentitySession, limitMiniap
 import { findWechatUser, recordWechatConflict } from "@/features/wechat/store";
 import { authorize, failure, PortalError, readJson, response } from "./server";
 import { parentWechatAuthCommandSchema } from "./wechat-contract";
-import { beginFamilyOnboarding, familyOnboardingAvailable, resumePendingFamily } from "./onboarding-server";
+import { beginFamilyOnboarding, familyOnboardingAvailable, needsFamilyOnboarding, resumePendingFamily } from "./onboarding-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 async function loginStep<T>(step: "rate_limit" | "wechat_exchange" | "identity_lookup" | "onboarding_proof", run: () => Promise<T>): Promise<T> {
@@ -60,10 +60,15 @@ export async function parentWechatAuthPost(request: Request) {
     }
     const session = await exchangeMiniappIdentitySession(config, identity, userId);
     try {
-      await authorize(new Request(request.url, { headers: { authorization: `Bearer ${session.access_token}` } }));
+      const { db } = await authorize(new Request(request.url, { headers: { authorization: `Bearer ${session.access_token}` } }));
       const context = await miniappSessionContext(config, session.access_token, userId);
       if (context.mfaRequired) throw new MiniappWechatError("ACCOUNT_SECURITY", "WECHAT_MFA_REQUIRED");
       if (!session.expires_at) throw new MiniappWechatError("UNAVAILABLE");
+      if (familyOnboardingAvailable(config) && await needsFamilyOnboarding(db, userId)) {
+        const onboarding = await beginFamilyOnboarding(identity, input.scene ?? null, input.location);
+        await revokeMiniappSession(session.access_token);
+        return response(onboarding);
+      }
       if (input.scene) {
         const touched = await (createAdminClient().rpc as unknown as (name: string, args: object) => Promise<{ error: unknown }>)("miniapp_record_promotion_touch", {
           p_scene: input.scene, p_user: userId, p_location: input.location ?? { status: "unavailable" },

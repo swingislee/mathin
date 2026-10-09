@@ -1,6 +1,6 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
-import type { Session } from "@supabase/supabase-js";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { wechatIdentitySchema, WECHAT_PROVIDER, type WechatIdentity } from "@/features/wechat/contract";
@@ -65,6 +65,15 @@ export async function beginFamilyOnboarding(identity: WechatIdentity, scene: str
     if (!form) throw new PortalError("NOT_FOUND");
   }
   return { state: "onboarding_required" as const, ticket: await newProof({ purpose: "family-phone", identity, scene, ...(location ? { location } : {}) }) };
+}
+
+/** Existing work accounts can register a household without replacing their account. */
+export async function needsFamilyOnboarding(db: SupabaseClient, userId: string) {
+  const participants = requireResult(await db.rpc("get_my_students"));
+  if (participants?.length) return false;
+  const completed = requireResult(await createAdminClient().from("miniapp_intakes").select("id")
+    .eq("intake_kind", "family").eq("registration_user_id", userId).not("completed_at", "is", null).limit(1).maybeSingle());
+  return !completed;
 }
 
 async function establishAccount(config: MiniappWechatConfig, identity: WechatIdentity, proof: z.infer<typeof phoneProofSchema>, family: FamilyRegistration) {

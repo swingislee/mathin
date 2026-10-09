@@ -36,9 +36,10 @@ export async function authorize(request: Request) {
   const db=client(token);
   const { data:{user},error }=await db.auth.getUser(token);
   if (error || !user) throw new PortalError("UNAUTHENTICATED");
-  const profile=requireResult(await db.from("profiles").select("display_name,role,account_status,password_change_required").eq("id",user.id).maybeSingle());
-  if (!profile || !["parent","student"].includes(profile.role)) throw new PortalError("FORBIDDEN");
-  if (profile.account_status!=="active" || profile.password_change_required
+  const profile=requireResult(await db.from("profiles").select("display_name,role,is_active,account_status,password_change_required").eq("id",user.id).maybeSingle());
+  if (!profile) throw new PortalError("FORBIDDEN");
+  // 工作角色与本人/监护人关系可以并存；每项数据仍由参与人关系授权。
+  if (!profile.is_active || profile.account_status!=="active" || profile.password_change_required
     || !requireResult(await db.rpc("has_current_required_consents",{p_user_id:user.id}))) throw new PortalError("ACCOUNT_SECURITY");
   return { db,user,profile,token };
 }
@@ -223,8 +224,11 @@ export async function mediaGet(request:Request) {
     return new Response(result.body,{status:result.status,headers:outgoing});
   }
   const {db}=await authorize(request),id=uuid.parse(query.get("id"));
-  const row=requireResult(await db.from("miniapp_practice_uploads").select("object_path").eq("id",id).eq("ready",true).maybeSingle());
+  const row=requireResult(await db.from("miniapp_practice_uploads").select("object_path,student_id,kind").eq("id",id).eq("ready",true).maybeSingle());
   if(!row)throw new PortalError("NOT_FOUND");
+  // 工作台 RLS 也允许工作人员读附件；小程序签名仅面向本人或已授权监护人。
+  if(!requireResult(await db.rpc("miniapp_can_participate",{p_student:row.student_id,p_scope:"grades"}))
+    || (row.kind==="video"&&!requireResult(await db.rpc("miniapp_can_participate",{p_student:row.student_id,p_scope:"video"}))))throw new PortalError("FORBIDDEN");
   const signed=requireResult(await db.storage.from("miniapp-practice").createSignedUrl(row.object_path,300));
   if(!signed)throw new PortalError("UNAVAILABLE");
   const token=new URL(signed.signedUrl).searchParams.get("token");

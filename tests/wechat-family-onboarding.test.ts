@@ -140,6 +140,15 @@ describe("verified family onboarding security", () => {
     expect((await (await complete()).json()).participantId).toBe(studentId);
     expect(h.create).not.toHaveBeenCalled(); expect(h.update).not.toHaveBeenCalled(); expect(h.password).not.toHaveBeenCalled();
   });
+  it("preserves a linked existing work account when completing its first household registration", async () => {
+    h.rpc.mockImplementation(async name => ({ error: null,
+      data: name === "miniapp_prepare_family" ? { ...reservation, created: true } : { studentId, grade: 3 } }));
+    h.owner.mockResolvedValue(userId);
+    expect((await (await complete()).json()).participantId).toBe(studentId);
+    expect(h.native).toHaveBeenCalledWith(expect.anything(), identity, userId);
+    expect(h.create).not.toHaveBeenCalled(); expect(h.update).not.toHaveBeenCalled();
+    expect(h.getUser).not.toHaveBeenCalled(); expect(h.password).not.toHaveBeenCalled();
+  });
   it("a rejected final session revokes both issued sessions and releases the lease", async () => {
     h.authorize.mockRejectedValue(new PortalError("FORBIDDEN"));
     await expect(complete()).rejects.toMatchObject({ code: "FORBIDDEN" });

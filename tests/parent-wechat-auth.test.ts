@@ -1,7 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const h = vi.hoisted(() => ({ config: true, authorize: vi.fn(), active: vi.fn(), limit: vi.fn(),
-  exchange: vi.fn(), native: vi.fn(), context: vi.fn(), password: vi.fn(), revoke: vi.fn(), owner: vi.fn(), conflict: vi.fn() }));
+  exchange: vi.fn(), native: vi.fn(), context: vi.fn(), password: vi.fn(), revoke: vi.fn(), owner: vi.fn(), conflict: vi.fn(),
+  onboarding: vi.fn(), needsFamily: vi.fn(), resume: vi.fn() }));
+vi.mock("@/features/parent-portal/onboarding-server", () => ({
+  familyOnboardingAvailable: () => process.env.WECHAT_FAMILY_ONBOARDING_ENABLED === "true",
+  beginFamilyOnboarding: (...args: unknown[]) => h.onboarding(...args),
+  needsFamilyOnboarding: (...args: unknown[]) => h.needsFamily(...args),
+  resumePendingFamily: (...args: unknown[]) => h.resume(...args),
+}));
 vi.mock("@/features/wechat/miniapp-config", () => ({ getMiniappWechatConfig: () => h.config ? { phoneLinking: true } : null }));
 vi.mock("@/features/wechat/miniapp-provider", async (original) => ({ ...await original<object>(), exchangeMiniappWechatCode: (...args: unknown[]) => h.exchange(...args) }));
 vi.mock("@/features/wechat/miniapp-session", () => ({ assertMiniappWechatAccount: (...args: unknown[]) => h.active(...args),
@@ -26,10 +33,14 @@ const bind = { action: "bind", code: "fresh-code", password: "unit-password", co
 beforeEach(() => {
   for (const value of Object.values(h)) if (typeof value === "function" && "mockReset" in value) value.mockReset();
   h.config = true;
+  vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "false");
+  h.needsFamily.mockResolvedValue(false); h.resume.mockResolvedValue(null);
+  h.onboarding.mockResolvedValue({ state: "onboarding_required", ticket: "family-proof" });
   h.authorize.mockResolvedValue({ user: { ...user, identities: [] }, token: "original-access" });
   h.context.mockResolvedValue({ user: { ...user, identities: [] }, sessionId, mfaRequired: false });
   h.exchange.mockResolvedValue(identity); h.native.mockResolvedValue(session); h.owner.mockResolvedValue(null);
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("parent mini program auth HTTP", () => {
   it("reports configuration closure without trying Auth or WeChat", async () => {
@@ -71,6 +82,25 @@ describe("parent mini program auth HTTP", () => {
     expect(await result.json()).toEqual({ state: "authenticated", session: { accessToken: session.access_token, refreshToken: session.refresh_token, expiresAt: session.expires_at } });
     expect(h.native).toHaveBeenCalledWith(expect.any(Object), identity, userId);
     expect(h.revoke).not.toHaveBeenCalled();
+  });
+  it("offers a linked work account its own family registration after security checks", async () => {
+    vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true");
+    h.owner.mockResolvedValue(userId); h.needsFamily.mockResolvedValue(true);
+    const result = await POST(body({ action: "login", code: "fresh-code", location: { status: "declined" } }));
+    expect(await result.json()).toEqual({ state: "onboarding_required", ticket: "family-proof" });
+    expect(h.onboarding).toHaveBeenCalledWith(identity, null, { status: "declined" });
+    expect(h.revoke).toHaveBeenCalledWith(session.access_token);
+  });
+  it("does not force already associated work accounts to register again", async () => {
+    vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
+    expect(await (await POST(body({ action: "login", code: "fresh-code" }))).json()).toMatchObject({ state: "authenticated" });
+    expect(h.onboarding).not.toHaveBeenCalled(); expect(h.revoke).not.toHaveBeenCalled();
+  });
+  it("does not offer family registration around an existing account's MFA requirement", async () => {
+    vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
+    h.needsFamily.mockResolvedValue(true); h.context.mockResolvedValue({ user, sessionId, mfaRequired: true });
+    expect((await POST(body({ action: "login", code: "fresh-code" }))).status).toBe(403);
+    expect(h.onboarding).not.toHaveBeenCalled(); expect(h.needsFamily).not.toHaveBeenCalled();
   });
   it.each(["FORBIDDEN", "ACCOUNT_SECURITY"] as const)("revokes a newly issued session that fails %s", async (code) => {
     h.owner.mockResolvedValue(userId); h.authorize.mockRejectedValue(new PortalError(code));

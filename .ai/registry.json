@@ -923,7 +923,15 @@
       "card": ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
       "writePaths": [
         ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
-        ".tmp/mini-review-submit-20261009/"
+        ".tmp/mini-review-submit-20261009/",
+        "src/features/parent-portal/server.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/onboarding-server.ts",
+        "tests/parent-wechat-auth.test.ts",
+        "tests/parent-portal-identity.test.ts",
+        "tests/wechat-family-onboarding.test.ts",
+        "supabase/migrations/20261009160000_miniapp_multi_identity.sql",
+        "supabase/tests/miniapp_multi_identity.sql"
       ],
       "sharedPaths": [
         ".ai/registry.json",
@@ -931,7 +939,7 @@
         "apps/parent-wechat/docs/portal.md"
       ],
       "checkpoint": "6ee128b203b19e373131374e1d7210985507727e",
-      "next": "生产后端和其它已收口开发修复已发布 6ee128b2，6 项迁移及公网检查通过；小程序 0.1.0 已上传。用户已在 Chrome 打开后台，待恢复浏览器控制连接后核对平台配置并提交审核，无需重复部署或上传。"
+      "next": "0.1.0 已上传，用户改为手动提审并要求位置权限截图和视频。修复工作人员兼任家长或学生的入口限制，按真实关联授权并保留原账号，完成后继续录制材料。"
     }
   ]
 }
