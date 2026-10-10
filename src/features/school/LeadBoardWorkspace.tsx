@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, Plus, Settings2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Plus, Settings2, X } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DashboardPage, DashboardCommandPanel, DashboardCommandActions, DashboardCommandFilters } from "./dashboard-page";
 import {
   DEFAULT_LEAD_RULES, LEAD_FIELDS, LEAD_LANES, LEAD_LIGHTS, LEAD_LIGHT_DOT, LEAD_OPS, assessFacts, judgeLead, resolveLeadRules, supportFacts, teachFacts,
-  type LeadBoard, type LeadCondition, type LeadFacts, type LeadLane, type LeadLight, type LeadRuleConfig, type LeadSubject,
+  type LeadBoard, type LeadCondition, type LeadGrain, type LeadFacts, type LeadLane, type LeadLight, type LeadRuleConfig, type LeadSubject,
 } from "./lead-board-contract";
 import { leadBoardMessages, type LeadBoardMessages } from "./lead-board-messages";
 import { readLeadSubjectAction, saveLeadRulesAction } from "./actions/lead-board";
@@ -40,6 +40,19 @@ function clusterRank(item: Item) {
   return item.lane === "support" ? SUPPORT_ORDER.indexOf(item.cluster) : item.lane === "assess" ? STEP_ORDER.indexOf(item.cluster) : 0;
 }
 
+function shiftAnchor(from: string, grain: LeadGrain, delta: number) {
+  // 时间段起点是机构时区的零点；加半天后按 UTC 取日期，任何时区都落在同一天。
+  const day = new Date(new Date(from).getTime() + 12 * 3600 * 1000);
+  if (grain === "week") day.setUTCDate(day.getUTCDate() + delta * 7); else day.setUTCMonth(day.getUTCMonth() + delta, 1);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(day);
+}
+function periodLabel(period: LeadBoard["period"], locale: string) {
+  const start = new Date(period.from), end = new Date(new Date(period.to).getTime() - 1);
+  if (period.grain === "month") return new Intl.DateTimeFormat(locale, { year: "numeric", month: "long" }).format(start);
+  const day = new Intl.DateTimeFormat(locale, { month: "numeric", day: "numeric" });
+  return `${day.format(start)} – ${day.format(end)}`;
+}
+
 export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; locale: string }) {
   const m = leadBoardMessages(locale), router = useRouter();
   const [board, setBoard] = useState(initial);
@@ -52,6 +65,12 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
   const [status, setStatus] = useState("");
   const [pending, start] = useTransition();
   const rules = draft ?? savedRules(board);
+  const go = (next: { unit?: string; grain?: LeadGrain; date?: string | null }) => {
+    const query = new URLSearchParams({ unit: next.unit ?? board.unitId ?? "", grain: next.grain ?? board.period.grain });
+    const date = next.date === undefined ? (board.period.isCurrent ? null : shiftAnchor(board.period.from, board.period.grain, 0)) : next.date;
+    if (date) query.set("date", date);
+    router.push(`/dashboard/lead-board?${query.toString()}`);
+  };
   const items = useMemo(() => buildItems(board, rules, m), [board, rules, m]);
   const unitName = (id: string) => board.units.find(unit => unit.id === id)?.name ?? "";
   const unitLabel = (id: string) => {
@@ -75,7 +94,8 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
     start(async () => {
       const result = await saveLeadRulesAction({ unitId, lane: editLane, config });
       if (!result.ok) { setStatus(m.saveFailed); return; }
-      setBoard(result.data); setDraft(current => current ? { ...current, [editLane]: resolveLeadRules(result.data, editLane) } : current); setStatus(m.saved);
+      const next = { ...board, rules: result.data.rules };
+      setBoard(next); setDraft(current => current ? { ...current, [editLane]: resolveLeadRules(next, editLane) } : current); setStatus(m.saved);
     });
   };
 
@@ -87,10 +107,20 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
   return <DashboardPage title={m.title} density="compact" description={m.info}
     commandPanel={<DashboardCommandPanel>
       <DashboardCommandFilters>
-        <Select value={board.unitId} onValueChange={value => router.push(`/dashboard/lead-board?unit=${value}`)}>
+        <Select value={board.unitId} onValueChange={value => go({ unit: value })}>
           <SelectTrigger aria-label={m.unit} className="h-8 min-w-48"><SelectValue /></SelectTrigger>
           <SelectContent>{board.units.map(unit => <SelectItem key={unit.id} value={unit.id}>{unitLabel(unit.id)}</SelectItem>)}</SelectContent>
         </Select>
+        <div role="group" aria-label={m.grains.week} className="inline-flex rounded-lg bg-line/55 p-[3px]">
+          {(["week", "month"] as const).map(grain => <button key={grain} type="button" aria-pressed={board.period.grain === grain} onClick={() => go({ grain, date: null })}
+            className={cn("rounded-md px-3 py-0.5 text-sm text-muted", board.period.grain === grain && "bg-card text-ink shadow-sm")}>{m.grains[grain]}</button>)}
+        </div>
+        <div className="inline-flex items-center gap-0.5">
+          <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={m.previous} onClick={() => go({ date: shiftAnchor(board.period.from, board.period.grain, -1) })}><ChevronLeft className="size-4" /></Button>
+          <span className="min-w-28 text-center text-sm tabular-nums">{periodLabel(board.period, locale)}</span>
+          <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={m.next} disabled={board.period.isCurrent} onClick={() => go({ date: shiftAnchor(board.period.from, board.period.grain, 1) })}><ChevronRight className="size-4" /></Button>
+          {!board.period.isCurrent ? <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => go({ date: null })}>{m.current[board.period.grain]}</Button> : null}
+        </div>
       </DashboardCommandFilters>
       <DashboardCommandActions>
         {board.canManageRules ? <Button size="sm" variant={draft ? "primary" : "secondary"} onClick={() => setDraft(current => current ? null : clone(savedRules(board)))}>
@@ -125,10 +155,11 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
                 const clusters = [...new Map(laneItems.map(item => [item.cluster, item.clusterLabel])).entries()];
                 return <div key={lane} className="grid grid-cols-[3.2rem_minmax(0,1fr)] gap-2 border-b border-dashed border-line px-3 py-2 last:border-b-0">
                   <span className="pt-px text-xs text-muted">{m.lanes[lane]}</span>
-                  <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-2">{clusters.map(([cluster, label]) => {
+                  <div className={cn("flex min-w-0 flex-wrap gap-y-2", lane === "teach" ? "gap-x-2.5" : "gap-x-4")}>{clusters.map(([cluster, label]) => {
                     const dots = laneItems.filter(item => item.cluster === cluster);
                     return <div key={cluster} className="flex min-w-0 flex-col gap-1">
-                      <span className="whitespace-nowrap text-[11px] text-muted">{label} <span className="tabular-nums">{dots.length}</span></span>
+                      {lane === "teach" ? <span className="w-fit rounded-full bg-line/60 px-1.5 text-[10px] tabular-nums text-muted" title={m.classStudents(label, dots.length)}>{dots.length}</span>
+                        : <span className="whitespace-nowrap text-[11px] text-muted">{label} <span className="tabular-nums">{dots.length}</span></span>}
                       <div className="grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${Math.min(columns, dots.length)}, ${size}px)` }}>
                         {dots.map(item => { const active = selected?.key === item.key && selected.lane === item.lane && selected.ownerId === item.ownerId;
                           return <button key={`${item.lane}:${item.key}`} type="button" title={`${item.name} · ${label} · ${m.lightShort[item.color]}`}

@@ -24,7 +24,9 @@ export const leadBoardSchema = z.object({
   assess: z.array(z.object({ key: z.string(), name: z.string(), ownerId: z.string().uuid(), scheduledAt: z.string(),
     step: z.enum(["arrival", "record", "explain", "done"]), hoursOver: z.number().int() })),
   rules: z.record(z.string(), z.object({ config: z.unknown(), unitId: z.string().uuid(), updatedAt: z.string() })).default({}),
+  period: z.object({ grain: z.enum(["week", "month"]), from: z.string(), to: z.string(), asOf: z.string(), isCurrent: z.boolean() }),
 });
+export type LeadGrain = "week" | "month";
 export type LeadBoard = z.infer<typeof leadBoardSchema>;
 export const leadSubjectSchema = z.object({ records: z.array(z.object({ at: z.string(), kind: z.string(), outcome: z.string().nullable(), note: z.string(), by: z.string().nullable() })) });
 export type LeadSubject = z.infer<typeof leadSubjectSchema>;

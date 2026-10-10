@@ -23,7 +23,7 @@ export function leadBoardMessages(locale: string) {
     results: { connected: en ? "Connected" : "已沟通", unreachable: en ? "Unreachable" : "未接通", declined: en ? "Declined" : "拒绝", invalid_number: en ? "Invalid number" : "号码无效", none: en ? "No record" : "无记录" } as Record<string, string>,
     fields: {
       cluster: en ? "Stage" : "阶段", label: en ? "Student label" : "学生标签", cadenceOver: en ? "Past contact cycle" : "超出联系周期", sinceContact: en ? "Since last effective contact" : "距上次有效沟通",
-      neverContacted: en ? "Never contacted" : "从未有效沟通", attempts7d: en ? "Attempts in 7 days" : "近 7 天联系次数", lastResult: en ? "Latest result" : "最近结果",
+      neverContacted: en ? "Never contacted" : "从未有效沟通", attempts7d: en ? "Attempts in period" : "本期联系次数", lastResult: en ? "Latest result" : "最近结果",
       summaryLength: en ? "Latest summary length" : "最近摘要字数", hasNext: en ? "Next follow-up set" : "已约下次跟进", nextOverdue: en ? "Next follow-up overdue" : "下次跟进已过期",
       paused: en ? "Paused or closed" : "暂缓或已结束", learningLogged: en ? "Latest lesson record entered" : "最近一讲学情已登记",
       hoursSinceLesson: en ? "Since latest lesson" : "距最近一讲下课", contactOver: en ? "Past contact frequency" : "超出沟通频率",
@@ -34,7 +34,12 @@ export function leadBoardMessages(locale: string) {
     yes: en ? "Yes" : "是", no: en ? "No" : "否", empty: en ? "—" : "—",
     // members
     students: (n: number) => en ? `${n} students` : `负责 ${n} 名学生`,
-    week: (all: number, ok: number) => en ? `This week ${all} contacts · ${ok} effective` : `本周沟通 ${all} 次 · 有效 ${ok}`,
+    week: (all: number, ok: number) => en ? `${all} contacts · ${ok} effective` : `本期沟通 ${all} 次 · 有效 ${ok}`,
+    grains: { week: en ? "Week" : "周", month: en ? "Month" : "月" } as Record<string, string>,
+    previous: en ? "Previous" : "上一期", next: en ? "Next" : "下一期",
+    current: { week: en ? "This week" : "本周", month: en ? "This month" : "本月" } as Record<string, string>,
+    asOf: (time: string) => en ? `As of ${time}` : `截至 ${time}`,
+    classStudents: (name: string, n: number) => en ? `${name} · ${n} students` : `${name} · ${n} 名学生`,
     lead: en ? "Lead" : "组长", noStudents: en ? "No students assigned yet" : "暂无负责学生",
     noUnits: en ? "You are not leading an organization yet. Directors can set leads in Staff → Organization." : "你还不是任何组织的组长。主管可在“员工 → 组织与分工”中设置组长。",
     noMembers: en ? "This organization has no members yet." : "该组织还没有成员。",
