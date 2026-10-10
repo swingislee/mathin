@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Crown, Maximize, Minus, Plus, UserPlus, X } from "lucide-react";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DashboardPage, DashboardCommandPanel, DashboardCommandActions, DashboardCommandState } from "./dashboard-page";
 import { SCHOOL_ORGANIZATION_KINDS, SCHOOL_STAFF_RESERVE_REASONS, type SchoolStaffReserveReason, type SchoolBusinessRole, type SchoolCollaborationSettings as Settings, type SchoolOrganizationKind } from "./school-collaboration-contract";
@@ -19,7 +18,7 @@ import {
   orderedUnits, subtreeIds, unitPath, type OrgChanges, type OrgDraft, type OrgUnit,
 } from "./school-organization-model";
 import { schoolOrganizationMessages, type SchoolOrganizationMessages } from "./school-organization-messages";
-import { saveSchoolOrganizationAction, setStaffReserveAction } from "./actions/school-organization";
+import { saveSchoolOrganizationAction } from "./actions/school-organization";
 import { StaffMembersPanel } from "./StaffMembersPanel";
 import type { StaffMember, StaffRoleInfo } from "./staff";
 import type { StaffImportBatchSummary } from "./actions/types";
@@ -46,9 +45,10 @@ export type StaffAdministration = {
 };
 
 export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initial: Settings; locale: string; staffAdmin?: StaffAdministration }) {
-  const m = schoolOrganizationMessages(locale), router = useRouter();
+  const m = schoolOrganizationMessages(locale);
   const [settings, setSettings] = useState(initial);
   const [draft, setDraft] = useState<OrgDraft>(() => draftFromSettings(initial));
+  const settingsRef = useRef(initial), draftRef = useRef(draft), chain = useRef<Promise<void>>(Promise.resolve());
   const [selection, setSelection] = useState<Selection>(null);
   const [mode, setMode] = useState<"board" | "roster">("board");
   const [query, setQuery] = useState("");
@@ -56,12 +56,12 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number; label: string; hint: string } | null>(null);
   const [view, setView] = useState<View>({ x: 24, y: 24, k: 0.9 });
-  const [confirming, setConfirming] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const pending = saving;
   const [status, setStatus] = useState("");
   const [rosterView, setRosterView] = useState<"active" | "reserve">("active");
   const [onboarding, setOnboarding] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
-  const [pending, start] = useTransition();
   const canvasRef = useRef<HTMLDivElement>(null), dragRef = useRef<Drag | null>(null);
   const manage = settings.canManage;
 
@@ -73,16 +73,9 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   const memberCount = useCallback((id: string) => manage ? membersOf(id).length : 1, [manage, membersOf]);
   const layout = useMemo(() => layoutOrganization(draft.units, memberCount), [draft.units, memberCount]);
   const studentsUnder = useCallback((id: string) => subtreeIds(draft.units, id).reduce((sum, unit) => sum + (baseGroups.get(unit)?.studentCount ?? 0), 0), [draft.units, baseGroups]);
-  const changes = useMemo(() => diffOrganization(settings, draft), [settings, draft]);
-  const dirty = changeCount(changes) > 0;
   const rolesOf = useCallback((id: string) => draft.roles[id] ?? [], [draft.roles]);
+  const reserveOf = (id: string) => draft.reserve[id] ?? null;
 
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = m.unsavedLeave; };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, m.unsavedLeave]);
 
   const fit = useCallback(() => {
     const canvas = canvasRef.current; if (!canvas || !layout.size) return;
@@ -112,12 +105,37 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   }, [zoomAt, mode]);
 
   /* ---------- 草稿修改 ---------- */
-  const update = (change: (current: OrgDraft) => OrgDraft) => { setStatus(""); setDraft(change); };
+  /* 每次调整当场保存：按顺序把草稿与最新已保存状态的差异写入，失败时恢复。 */
+  const flush = () => {
+    chain.current = chain.current.then(async () => {
+      const base = settingsRef.current, target = draftRef.current, diff = diffOrganization(base, target);
+      if (!changeCount(diff)) return;
+      const lines = describeChanges(diff, base, target, m, studentsUnder);
+      setSaving(true);
+      const result = await saveSchoolOrganizationAction(diff);
+      setSaving(false);
+      if (!result.ok) {
+        draftRef.current = draftFromSettings(base); setDraft(draftRef.current);
+        setStatus(m.errors[result.code] ?? m.errors.UNKNOWN); return;
+      }
+      settingsRef.current = result.data.settings; setSettings(result.data.settings);
+      if (draftRef.current === target) { draftRef.current = draftFromSettings(result.data.settings); setDraft(draftRef.current); }
+      setStatus(lines.map(line => line.effect ? `${line.text}（${line.effect}）` : line.text).join("；"));
+    });
+  };
+  const update = (change: (current: OrgDraft) => OrgDraft) => {
+    const next = change(draftRef.current);
+    if (next === draftRef.current) return;
+    draftRef.current = next; setDraft(next); flush();
+  };
   const addMember = (userId: string, groupId: string, from: string | null) => update(current => {
     if (current.members.some(row => row.userId === userId && row.groupId === groupId)) return current;
     const kept = from ? current.members.filter(row => !(row.userId === userId && row.groupId === from)) : current.members;
-    return { ...current, members: [...kept, { userId, groupId, lead: false }] };
+    return { ...current, members: [...kept, { userId, groupId, lead: false }], reserve: { ...current.reserve, [userId]: null } };
   });
+  const moveToReserve = (userId: string, reason: SchoolStaffReserveReason) => update(current => ({ ...current,
+    members: current.members.filter(row => row.userId !== userId), reserve: { ...current.reserve, [userId]: reason } }));
+  const restoreFromReserve = (userId: string) => update(current => ({ ...current, reserve: { ...current.reserve, [userId]: null } }));
   const removeMember = (userId: string, groupId: string) => update(current => ({ ...current, members: current.members.filter(row => !(row.userId === userId && row.groupId === groupId)) }));
   const setLead = (userId: string, groupId: string, lead: boolean) => update(current => ({ ...current,
     members: current.members.map(row => row.userId === userId && row.groupId === groupId ? { ...row, lead } : row) }));
@@ -156,6 +174,7 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
     }
     return null;
   };
+  const overReserve = (x: number, y: number) => document.elementsFromPoint(x, y).some(node => (node as HTMLElement).closest?.("[data-org-reserve]"));
   const beginDrag = (event: ReactPointerEvent, drag: Drag) => {
     if (event.button !== 0) return;
     event.stopPropagation(); dragRef.current = drag;
@@ -170,8 +189,8 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
       if (!manage) return;
       const staff = drag.kind === "person" ? staffById.get(drag.id) : undefined, unit = drag.kind === "unit" ? unitById.get(drag.id) : undefined;
       setGhost({ x: event.clientX, y: event.clientY, label: staff?.name ?? unit?.name ?? "",
-        hint: drag.kind === "unit" ? m.parent : drag.from ? (event.altKey ? m.alsoTo : m.moveTo) : m.addTo });
-      setDropTarget(unitAt(event.clientX, event.clientY, drag.kind === "unit" ? drag.id : undefined));
+        hint: drag.kind === "unit" ? m.parent : overReserve(event.clientX, event.clientY) ? m.rosterReserve : drag.from ? (event.altKey ? m.alsoTo : m.moveTo) : m.addTo });
+      setDropTarget(drag.kind === "person" && overReserve(event.clientX, event.clientY) ? "reserve" : unitAt(event.clientX, event.clientY, drag.kind === "unit" ? drag.id : undefined));
     };
     const up = (event: PointerEvent) => {
       const drag = dragRef.current; dragRef.current = null; setGhost(null); setDropTarget(null);
@@ -183,6 +202,10 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
         return;
       }
       if (!manage || drag.kind === "pan") return;
+      if (drag.kind === "person" && overReserve(event.clientX, event.clientY)) {
+        if (!reserveOf(drag.id) && !staffById.get(drag.id)?.fixedTest) moveToReserve(drag.id, "other");
+        return;
+      }
       const target = unitAt(event.clientX, event.clientY, drag.kind === "unit" ? drag.id : undefined);
       if (!target) return;
       if (drag.kind === "person") { if (target !== drag.from) { addMember(drag.id, target, event.altKey ? null : drag.from); setSelection({ kind: "person", id: drag.id }); } }
@@ -193,22 +216,10 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   });
 
   /* ---------- 保存 ---------- */
-  const describe = useMemo(() => describeChanges(changes, settings, draft, m, studentsUnder), [changes, settings, draft, m, studentsUnder]);
-  const save = () => start(async () => {
-    const result = await saveSchoolOrganizationAction(changes);
-    if (!result.ok) { setStatus(m.errors[result.code] ?? m.errors.UNKNOWN); setConfirming(false); return; }
-    setSettings(result.data.settings); setDraft(draftFromSettings(result.data.settings)); setConfirming(false); setStatus(m.saved); router.refresh();
-  });
-  const discard = () => { setDraft(draftFromSettings(settings)); setSelection(null); setStatus(""); };
 
   const units = orderedUnits(draft.units);
-  const active = settings.staff.filter(staff => !staff.reserve), reserved = settings.staff.filter(staff => staff.reserve);
+  const active = settings.staff.filter(staff => !reserveOf(staff.id)), reserved = settings.staff.filter(staff => reserveOf(staff.id));
   const people = active.filter(staff => !query.trim() || staff.name.includes(query.trim()));
-  const setReserve = (userId: string, reason: SchoolStaffReserveReason | null) => start(async () => {
-    const result = await setStaffReserveAction({ userId, reason });
-    if (!result.ok) { setStatus(m.errors[result.code] ?? m.errors.UNKNOWN); return; }
-    setSettings(result.data.settings); setStatus(reason ? m.reserveMoved : m.reserveRestored); router.refresh();
-  });
   const traySections = (() => {
     const unassigned = people.filter(staff => !linksOf(staff.id).length);
     const buckets = new Map<string, { unit: OrgUnit; staff: Staff[] }>();
@@ -323,7 +334,7 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   const rosterColumns = [
     { key: "duties", header: m.duties.split(" · ")[0], cell: (member: StaffMember) => rolesOf(member.userId).map(role => m.roles[role]).join("、") || "—" },
     { key: "units", header: m.units, cell: (member: StaffMember) => {
-      const reserve = staffById.get(member.userId)?.reserve;
+      const reserve = reserveOf(member.userId);
       return linksOf(member.userId).map(row => `${unitById.get(row.groupId)?.name}${row.lead ? `（${m.lead}）` : ""}`).join("、") || (reserve ? m.reasons[reserve] : m.unassigned);
     } },
   ];
@@ -365,12 +376,10 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
           <UserPlus className="size-4" />{m.addStaff}</Button> : null}
         {manage ? <>
           <Button size="sm" variant="secondary" disabled={pending} onClick={() => addUnit(selectedUnit?.id ?? null)}><Plus className="size-4" />{selectedUnit ? m.addChild : m.addUnit}</Button>
-          {dirty ? <Button size="sm" variant="ghost" disabled={pending} onClick={discard}>{m.discard}</Button> : null}
-          <Button size="sm" disabled={!dirty || pending} onClick={() => setConfirming(true)}>{m.save}{dirty ? <span className="tabular-nums">{changeCount(changes)}</span> : null}</Button>
         </> : null}
       </DashboardCommandActions>
     </DashboardCommandPanel>}>
-    <p role="status" className="min-h-5 text-sm text-muted">{status}</p>
+    <p role="status" className="min-h-5 truncate text-sm text-muted" title={status}>{saving ? m.saving : status}</p>
     <div className={cn("grid min-w-0 overflow-hidden rounded-[10px] border border-line bg-card",
       manage ? "@5xl/page:grid-cols-[13.5rem_minmax(0,1fr)_23rem]" : "@5xl/page:grid-cols-[minmax(0,1fr)_23rem]",
       "@5xl/page:h-[calc(100dvh-11rem)] @5xl/page:min-h-[34rem]")}>
@@ -387,14 +396,15 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
             {bucket.staff.map(staff => trayPerson(staff, `${bucket.unit.id}:${staff.id}`))}
           </div>)}
         </div>
-        {reserved.length ? <div className="mt-auto border-t border-line pt-2">
+        <div data-org-reserve className={cn("mt-auto rounded-md border border-dashed border-line p-2", dropTarget === "reserve" && "border-[#4C7BD9] bg-[#4C7BD9]/10")}>
           <button type="button" aria-expanded={reserveOpen} onClick={() => setReserveOpen(value => !value)} className="flex w-full items-center justify-between text-xs text-muted">
             <span>{m.rosterReserve} · {reserved.length}</span><span aria-hidden>{reserveOpen ? "−" : "+"}</span></button>
-          {reserveOpen ? <div className="mt-1 flex max-h-40 flex-col gap-0.5 overflow-auto">{reserved.map(staff => <button key={staff.id} type="button"
-            onClick={() => setSelection({ kind: "person", id: staff.id })}
-            className={cn("flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-muted hover:bg-table-hover", selection?.id === staff.id && "bg-table-selected text-ink")}>
-            <span className="min-w-0 flex-1 truncate">{staff.name}</span><span className="shrink-0 text-[11px]">{m.reasons[staff.reserve!]}</span></button>)}</div> : null}
-        </div> : null}
+          <p className="mt-0.5 text-[11px] text-muted">{m.reserveDrop}</p>
+          {reserveOpen ? <div className="mt-1 flex max-h-40 flex-col gap-0.5 overflow-auto">{reserved.map(staff => <button key={staff.id} type="button" data-org-person={staff.id}
+            onPointerDown={event => beginDrag(event, { kind: "person", id: staff.id, from: null, sx: event.clientX, sy: event.clientY, moved: false })}
+            className={cn("flex cursor-grab touch-none select-none items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-muted hover:bg-table-hover", selection?.id === staff.id && "bg-table-selected text-ink")}>
+            <span className="min-w-0 flex-1 truncate">{staff.name}</span><span className="shrink-0 text-[11px]">{m.reasons[reserveOf(staff.id)!]}</span></button>)}</div> : null}
+        </div>
       </aside> : null}
       <div className="h-[60vh] min-h-0 min-w-0 @5xl/page:h-auto [&>*]:h-full">{mode === "board" ? board : roster}</div>
       <aside aria-live="polite" className="min-h-0 overflow-y-auto border-t border-line p-4 @5xl/page:border-l @5xl/page:border-t-0">
@@ -402,7 +412,8 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
           roles={rolesOf(selectedStaff.id)} onRoles={roles => setRoles(selectedStaff.id, roles)} onClose={() => setSelection(null)}
           onLead={(groupId, lead) => setLead(selectedStaff.id, groupId, lead)} onRemove={groupId => removeMember(selectedStaff.id, groupId)}
           onJoin={groupId => addMember(selectedStaff.id, groupId, null)} onOpenUnit={id => setSelection({ kind: "unit", id })}
-          pending={pending} onReserve={reason => setReserve(selectedStaff.id, reason)} />
+          pending={pending} reserve={reserveOf(selectedStaff.id)}
+          onReserve={reason => reason ? moveToReserve(selectedStaff.id, reason) : restoreFromReserve(selectedStaff.id)} />
         : selectedUnit ? <UnitCard key={`${selectedUnit.id}:${selectedUnit.name}`} unit={selectedUnit} m={m} draft={draft} settings={settings} manage={manage} pending={pending}
           studentCount={studentsUnder(selectedUnit.id)} members={manage ? sortedMembers(selectedUnit.id) : []} staffById={staffById}
           onClose={() => setSelection(null)} onPatch={patch => patchUnit(selectedUnit.id, patch)} onParent={parentId => reparent(selectedUnit.id, parentId)}
@@ -414,15 +425,6 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
     </div>
     {ghost ? <div className="pointer-events-none fixed z-50 rounded-md border border-crater bg-card px-2.5 py-1 text-sm shadow-sm" style={{ left: ghost.x + 12, top: ghost.y + 10 }}>
       {ghost.label}<span className="ml-1.5 text-xs text-muted">{ghost.hint}</span></div> : null}
-    <Dialog open={confirming} onOpenChange={open => { if (!pending) setConfirming(open); }}>
-      <DialogContent className="max-w-xl">
-        <DialogHeader><DialogTitle>{m.saveTitle}</DialogTitle><DialogDescription>{m.saveHint}</DialogDescription></DialogHeader>
-        <ul className="max-h-[50vh] overflow-y-auto border-t border-line">{describe.map((line, index) => <li key={index} className="border-b border-line py-2 text-sm leading-6">
-          {line.text}{line.effect ? <span className="block text-xs text-muted">{line.effect}</span> : null}</li>)}</ul>
-        <DialogFooter><Button variant="ghost" disabled={pending} onClick={() => setConfirming(false)}>{m.keepEditing}</Button>
-          <Button disabled={pending} onClick={save}>{pending ? m.saving : m.confirm}</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
   </DashboardPage>;
 }
 
@@ -452,8 +454,8 @@ function Overview({ m, manage, staff, units, unassigned }: { m: SchoolOrganizati
   </div>;
 }
 
-function PersonCard({ staff, m, draft, settings, roles, studentsUnder, onRoles, onClose, onLead, onRemove, onJoin, onOpenUnit, pending, onReserve }: {
-  pending: boolean; onReserve: (reason: SchoolStaffReserveReason | null) => void;
+function PersonCard({ staff, m, draft, settings, roles, studentsUnder, onRoles, onClose, onLead, onRemove, onJoin, onOpenUnit, pending, reserve, onReserve }: {
+  pending: boolean; reserve: SchoolStaffReserveReason | null; onReserve: (reason: SchoolStaffReserveReason | null) => void;
   staff: Staff; m: SchoolOrganizationMessages; draft: OrgDraft; settings: Settings; roles: SchoolBusinessRole[]; studentsUnder: (id: string) => number;
   onRoles: (roles: SchoolBusinessRole[]) => void; onClose: () => void; onLead: (groupId: string, lead: boolean) => void;
   onRemove: (groupId: string) => void; onJoin: (groupId: string) => void; onOpenUnit: (id: string) => void;
@@ -511,11 +513,12 @@ function PersonCard({ staff, m, draft, settings, roles, studentsUnder, onRoles, 
     <Field label={m.effects}><Effects items={effects} /></Field>
     <Field label={m.rosterReserve}>
       {staff.fixedTest ? <p className="text-sm text-muted">{m.fixedTest}</p>
-      : staff.reserve ? <div className="flex flex-wrap items-center gap-2 text-sm"><span>{m.reasons[staff.reserve]}</span>
+      : reserve ? <div className="flex flex-wrap items-center gap-2">
+        <Select value={reserve} onValueChange={value => onReserve(value as SchoolStaffReserveReason)}><SelectTrigger aria-label={m.rosterReserve} className="h-8 w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>{SCHOOL_STAFF_RESERVE_REASONS.filter(reason => reason !== "test").map(reason => <SelectItem key={reason} value={reason}>{m.reasons[reason]}</SelectItem>)}</SelectContent></Select>
         <Button size="sm" variant="secondary" disabled={pending} onClick={() => onReserve(null)}>{m.restore}</Button></div>
-      : links.length ? <p className="text-xs text-muted">{m.reserveBlocked}</p>
-      : <Select value="" onValueChange={value => onReserve(value as SchoolStaffReserveReason)}><SelectTrigger aria-label={m.moveToReserve} className="h-8"><SelectValue placeholder={m.moveToReserve} /></SelectTrigger>
-        <SelectContent>{SCHOOL_STAFF_RESERVE_REASONS.filter(reason => reason !== "test").map(reason => <SelectItem key={reason} value={reason}>{m.reasons[reason]}</SelectItem>)}</SelectContent></Select>}
+      : <div className="flex flex-col gap-1"><Button size="sm" variant="secondary" className="self-start" disabled={pending} onClick={() => onReserve("other")}>{m.moveToReserve}</Button>
+        <p className="text-xs text-muted">{links.length ? m.reserveLeaves : m.reserveHint}</p></div>}
     </Field>
   </div>;
 }
@@ -601,6 +604,7 @@ function describeChanges(changes: OrgChanges, settings: Settings, draft: OrgDraf
     else if (existed) lines.push({ text: d.lead(person(row.userId), unit, row.lead) });
     else lines.push({ text: d.joined(person(row.userId), unit, row.lead), effect: n ? d.gainAccess(unit, n) : undefined });
   }
+  for (const row of changes.reserve) lines.push({ text: row.reason ? d.reserved(person(row.userId), m.reasons[row.reason]) : d.restored(person(row.userId)) });
   for (const row of changes.roles) {
     const labels = row.roles.map(role => m.roles[role]).join("、");
     lines.push({ text: d.roles(person(row.userId), labels), effect: row.roles.length ? row.roles.map(role => m.dutyGrants[role]).join("；") : d.roleKept });

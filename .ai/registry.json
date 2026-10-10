@@ -3,6 +3,29 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ORG-AUTOSAVE-20261010",
+      "title": "组织与分工：当场生效与备用账号拖放",
+      "agent": "claude",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ORG-AUTOSAVE-20261010.md",
+      "writePaths": [
+        ".ai/tasks/ORG-AUTOSAVE-20261010.md",
+        "src/features/school/SchoolOrganizationBoard.tsx",
+        "src/features/school/school-organization-model.ts",
+        "src/features/school/school-organization-messages.ts",
+        "src/features/school/actions/school-organization.ts",
+        "supabase/migrations/20261010224000_school_organization_reserve_changes.sql",
+        "supabase/tests/school_staff_reserve.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "组织调整当场生效、备用账号拖放已在开发端可用，待实际使用验收；生产未发布。"
+    },
+    {
       "id": "STAFF-ORG-ROSTER-20261010",
       "title": "组织与分工：名册合并、备用账号与组长设置",
       "agent": "claude",

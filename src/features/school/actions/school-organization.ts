@@ -13,6 +13,7 @@ const schema = z.object({
   archive: z.array(uuid).max(500),
   members: z.array(z.object({ groupId: uuid, userId: uuid, active: z.boolean(), lead: z.boolean() })).max(500),
   roles: z.array(z.object({ userId: uuid, roles: z.array(z.enum(SCHOOL_BUSINESS_ROLES)).max(3) })).max(500),
+  reserve: z.array(z.object({ userId: uuid, reason: z.enum(SCHOOL_STAFF_RESERVE_REASONS).nullable() })).max(500),
 });
 
 export async function saveSchoolOrganizationAction(input: z.infer<typeof schema>): Promise<ActionResult<{ settings: SchoolCollaborationSettings }>> {
@@ -27,18 +28,7 @@ export async function saveSchoolOrganizationAction(input: z.infer<typeof schema>
     return { ok: true, data: { settings } };
   } catch (error) {
     return actionError(error, ["VALIDATION", "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "TARGET_CANNOT_FOLLOW_UP",
-      "GROUP_NAME_TAKEN", "ORGANIZATION_CYCLE", "GROUP_NOT_EMPTY", "GROUP_IN_USE"]);
+      "GROUP_NAME_TAKEN", "ORGANIZATION_CYCLE", "GROUP_NOT_EMPTY", "GROUP_IN_USE", "STAFF_IN_ORGANIZATION"]);
   }
 }
 
-const reserveSchema = z.object({ userId: uuid, reason: z.enum(SCHOOL_STAFF_RESERVE_REASONS).nullable() });
-export async function setStaffReserveAction(input: z.infer<typeof reserveSchema>): Promise<ActionResult<{ settings: SchoolCollaborationSettings }>> {
-  try {
-    const value = parse(reserveSchema, input), client = await createClient();
-    const settings = schoolCollaborationSchema.parse(await studentStageRpc(client, "set_school_staff_reserve", { p_user_id: value.userId, p_reason: value.reason }));
-    revalidatePath("/[locale]/dashboard/staff", "page");
-    return { ok: true, data: { settings } };
-  } catch (error) {
-    return actionError(error, ["VALIDATION", "UNAUTHENTICATED", "FORBIDDEN", "STAFF_IN_ORGANIZATION"]);
-  }
-}

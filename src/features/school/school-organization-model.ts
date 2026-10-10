@@ -1,13 +1,14 @@
-import type { SchoolBusinessRole, SchoolCollaborationSettings, SchoolOrganizationKind } from "./school-collaboration-contract";
+import type { SchoolBusinessRole, SchoolCollaborationSettings, SchoolOrganizationKind, SchoolStaffReserveReason } from "./school-collaboration-contract";
 
 export type OrgUnit = { id: string; name: string; kind: SchoolOrganizationKind; parentId: string | null; sortOrder: number };
 export type OrgMembership = { groupId: string; userId: string; lead: boolean };
-export type OrgDraft = { units: OrgUnit[]; members: OrgMembership[]; roles: Record<string, SchoolBusinessRole[]> };
+export type OrgDraft = { units: OrgUnit[]; members: OrgMembership[]; roles: Record<string, SchoolBusinessRole[]>; reserve: Record<string, SchoolStaffReserveReason | null> };
 export type OrgChanges = {
   units: Array<OrgUnit>;
   archive: string[];
   members: Array<OrgMembership & { active: boolean }>;
   roles: Array<{ userId: string; roles: SchoolBusinessRole[] }>;
+  reserve: Array<{ userId: string; reason: SchoolStaffReserveReason | null }>;
 };
 
 export const ORG_ROLE_ORDER: SchoolBusinessRole[] = ["school_support", "assessment_teacher", "teacher"];
@@ -18,6 +19,7 @@ export function draftFromSettings(settings: SchoolCollaborationSettings): OrgDra
     units: settings.groups.map(({ id, name, kind, parentId, sortOrder }) => ({ id, name, kind, parentId, sortOrder })),
     members: settings.groups.flatMap(group => group.memberIds.map(userId => ({ groupId: group.id, userId, lead: group.leadIds.includes(userId) }))),
     roles: Object.fromEntries(settings.staff.map(staff => [staff.id, sortRoles(staff.roles.length ? staff.roles : staff.role ? [staff.role] : [])])),
+    reserve: Object.fromEntries(settings.staff.map(staff => [staff.id, staff.reserve])),
   };
 }
 
@@ -68,9 +70,12 @@ export function diffOrganization(settings: SchoolCollaborationSettings, draft: O
   for (const [id, row] of before) if (!after.has(id) && draftIds.has(row.groupId)) members.push({ ...row, lead: false, active: false });
   const roles = Object.entries(draft.roles).filter(([userId, value]) => sortRoles(base.roles[userId] ?? []).join() !== sortRoles(value).join())
     .map(([userId, value]) => ({ userId, roles: sortRoles(value) }));
-  return { units, archive, members, roles };
+  const fixed = new Set(settings.staff.filter(staff => staff.fixedTest).map(staff => staff.id));
+  const reserve = Object.entries(draft.reserve).filter(([userId, reason]) => !fixed.has(userId) && (base.reserve[userId] ?? null) !== reason)
+    .map(([userId, reason]) => ({ userId, reason }));
+  return { units, archive, members, roles, reserve };
 }
-export const changeCount = (changes: OrgChanges) => changes.units.length + changes.archive.length + changes.members.length + changes.roles.length;
+export const changeCount = (changes: OrgChanges) => changes.units.length + changes.archive.length + changes.members.length + changes.roles.length + changes.reserve.length;
 
 /* 自动整理：自上而下的树形布局，尺寸与节点样式中的固定高度一致。 */
 export const ORG_NODE = { width: 168, head: 40, pad: 5, row: 28, gapX: 20, gapY: 48 };
