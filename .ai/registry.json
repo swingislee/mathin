@@ -7,7 +7,7 @@
       "title": "小程序预约汇总与参与登记",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/MINI-RESERVATIONS-REGISTRATION-20261010.md",
@@ -36,8 +36,8 @@
         "src/features/participant-portal/server.ts",
         "src/lib/database.types.ts"
       ],
-      "checkpoint": null,
-      "next": "预约汇总、登记历史及补充提交已在开发端实现，定向类型／权限／隔离事务检查通过。准备0.1.7候选，待本次生产部署及上传授权后手机验收。"
+      "checkpoint": "dd3cbfb426303ffcbf0afca0faae7f51902df757",
+      "next": "生产后端与登记迁移已部署，0.1.7已上传成功；在微信平台选择体验版后验收我的预约与登记历史／补充填写。用户验收及正式发布分别办理。"
     },
     {
       "id": "RELEASE-V050-20261010",
