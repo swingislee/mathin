@@ -153,7 +153,9 @@ async function establishAccount(config: MiniappWechatConfig, identity: WechatIde
       });
     }
     const context = await miniappSessionContext(config, session.access_token, reservation.userId);
-    if (context.mfaRequired || !session.expires_at) throw new PortalError("ACCOUNT_SECURITY");
+    // A verified WeChat login can complete registration without repeating the account's MFA.
+    // Bootstrap/linking checks above still protect accounts without an established WeChat identity.
+    if (!session.expires_at) throw new PortalError("ACCOUNT_SECURITY");
     const completed = completionSchema.parse(requireResult(await admin.rpc("miniapp_complete_family", {
       p_id: reservation.id, p_subject: identity.subject, p_lease: lease,
     })));
@@ -196,7 +198,7 @@ export async function onboardingPost(request: Request) {
     if (!verified || await findWechatUser(proof.identity.subject) !== verified.userId) throw new PortalError("UNAUTHENTICATED");
     const { data, error } = await createAdminClient().auth.admin.getUserById(verified.userId);
     if (error || !data.user || verifiedAccountPhone(data.user)?.phone !== verified.phone) throw new PortalError("UNAUTHENTICATED");
-    if (data.user.factors?.some(factor => factor.status === "verified")) throw new PortalError("ACCOUNT_SECURITY");
+    // This short-lived server proof already ties the verified WeChat identity to the account and phone.
     return familyFormResponse(proof, verified);
   }
   // Retain the short-lived proof for idempotent retries when the network loses the success response.

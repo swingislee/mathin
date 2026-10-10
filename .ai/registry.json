@@ -3,6 +3,31 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-WECHAT-TRUSTED-LOGIN-20261010",
+      "title": "已绑定微信直接登录小程序",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-WECHAT-TRUSTED-LOGIN-20261010.md",
+      "writePaths": [
+        ".ai/tasks/MINI-WECHAT-TRUSTED-LOGIN-20261010.md",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/onboarding-server.ts",
+        "tests/parent-wechat-auth.test.ts",
+        "tests/wechat-family-onboarding.test.ts",
+        "docs/ops/wechat-oauth.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md"
+      ],
+      "checkpoint": null,
+      "next": "开发端已支持已绑定微信直接登录并完成首次登记，保留首次绑定和后台 MFA 策略。定向鉴权及静态检查通过；生产未部署，手机实际登录待验收。"
+    },
+    {
       "id": "RELEASE-V041-20261009",
       "title": "v0.4.1 生产发布与团队说明",
       "agent": "codex",

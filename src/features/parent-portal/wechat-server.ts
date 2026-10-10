@@ -56,7 +56,7 @@ export async function parentWechatAuthPost(request: Request) {
       const { user, token } = await authorize(request);
       await assertMiniappWechatAccount(user.id);
       const context = await miniappSessionContext(config, token, user.id);
-      if (context.mfaRequired) throw new MiniappWechatError("ACCOUNT_SECURITY", "WECHAT_MFA_REQUIRED");
+      // Fresh WeChat proof must belong to the current account; linked login does not require another factor.
       if (userId !== user.id) throw new MiniappWechatError("CONFLICT");
       if (familyOnboardingAvailable(config) && await needsFamilyOnboarding(user.id)) {
         return response(await beginFamilyOnboarding(identity, input.scene ?? null, context.user));
@@ -76,7 +76,7 @@ export async function parentWechatAuthPost(request: Request) {
     try {
       await authorize(new Request(request.url, { headers: { authorization: `Bearer ${session.access_token}` } }));
       const context = await miniappSessionContext(config, session.access_token, userId);
-      if (context.mfaRequired) throw new MiniappWechatError("ACCOUNT_SECURITY", "WECHAT_MFA_REQUIRED");
+      // Native Auth has verified the existing WeChat identity; keep its actual assurance level.
       if (!session.expires_at) throw new MiniappWechatError("UNAVAILABLE");
       if (familyOnboardingAvailable(config) && await needsFamilyOnboarding(userId)) {
         const onboarding = await beginFamilyOnboarding(identity, input.scene ?? null, context.user);

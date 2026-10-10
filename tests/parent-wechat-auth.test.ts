@@ -79,7 +79,7 @@ describe("parent mini program auth HTTP", () => {
     expect(h.native).not.toHaveBeenCalled(); expect(h.authorize).not.toHaveBeenCalled();
     expect(h.limit).toHaveBeenCalledWith(expect.any(Request), "login");
   });
-  it("returns the existing account's normal session only after portal and MFA checks", async () => {
+  it("returns the existing account's normal session after native identity and account checks", async () => {
     h.owner.mockResolvedValue(userId);
     const result = await POST(body({ action: "login", code: "fresh-code" }));
     expect(await result.json()).toEqual({ state: "authenticated", session: { accessToken: session.access_token, refreshToken: session.refresh_token, expiresAt: session.expires_at } });
@@ -109,11 +109,12 @@ describe("parent mini program auth HTTP", () => {
     expect(await (await POST(body(payload))).json()).toMatchObject({ state: "authenticated" });
     expect(h.touch).toHaveBeenCalledExactlyOnceWith("miniapp_record_promotion_touch", { p_scene: scene, p_user: userId });
   });
-  it("does not offer family registration around an existing account's MFA requirement", async () => {
+  it("lets an MFA-enabled account register its household after verified WeChat login", async () => {
     vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
     h.needsFamily.mockResolvedValue(true); h.context.mockResolvedValue({ user, sessionId, mfaRequired: true });
-    expect((await POST(body({ action: "login", code: "fresh-code" }))).status).toBe(403);
-    expect(h.onboarding).not.toHaveBeenCalled(); expect(h.needsFamily).not.toHaveBeenCalled();
+    expect(await (await POST(body({ action: "login", code: "fresh-code" }))).json()).toMatchObject({ state: "onboarding_required" });
+    expect(h.onboarding).toHaveBeenCalledWith(identity, null, user);
+    expect(h.revoke).toHaveBeenCalledWith(session.access_token);
   });
   it.each(["FORBIDDEN", "ACCOUNT_SECURITY"] as const)("revokes a newly issued session that fails %s", async (code) => {
     h.owner.mockResolvedValue(userId); h.authorize.mockRejectedValue(new PortalError(code));
@@ -121,11 +122,14 @@ describe("parent mini program auth HTTP", () => {
     expect(result.status).toBe(403); expect(await result.json()).toEqual({ code });
     expect(h.revoke).toHaveBeenCalledWith(session.access_token);
   });
-  it("does not issue a usable AAL1 login for an account requiring AAL2", async () => {
+  it("accepts the native WeChat session without requiring the account's additional factor", async () => {
     h.owner.mockResolvedValue(userId); h.context.mockResolvedValue({ user, sessionId, mfaRequired: true });
     const result = await POST(body({ action: "login", code: "fresh-code" }));
-    expect(await result.json()).toEqual({ code: "ACCOUNT_SECURITY", reason: "WECHAT_MFA_REQUIRED" });
-    expect(h.revoke).toHaveBeenCalledWith(session.access_token);
+    expect(await result.json()).toEqual({ state: "authenticated", session: { accessToken: session.access_token,
+      refreshToken: session.refresh_token, expiresAt: session.expires_at } });
+    expect(h.native).toHaveBeenCalledWith(expect.any(Object), identity, userId);
+    expect(h.context).toHaveBeenCalledWith(expect.any(Object), session.access_token, userId);
+    expect(h.revoke).not.toHaveBeenCalled(); expect(h.password).not.toHaveBeenCalled();
   });
   it("requires explicit consent, rejects caller-supplied identities and bounds the body", async () => {
     for (const value of [{ ...bind, confirm: false }, { ...bind, userId }, { action: "login", code: "fresh-code", unionid: "caller-identity" }]) {
@@ -165,21 +169,23 @@ describe("parent mini program auth HTTP", () => {
     expect((await POST(body({ action: "bind", code: "fresh-code", confirm: true }, true))).status).toBe(403);
     expect(h.exchange).not.toHaveBeenCalled();
   });
-  it("continues the current account's unfinished form without replacing its session", async () => {
+  it.each([false, true])("continues a linked account's unfinished form without replacing its session (MFA: %s)", async mfaRequired => {
     vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId); h.needsFamily.mockResolvedValue(true);
     const phoneUser = { ...user, phone: "8619900000001", phone_confirmed_at: "2026-10-09T00:00:00Z" };
-    h.context.mockResolvedValue({ user: phoneUser, sessionId, mfaRequired: false });
+    h.context.mockResolvedValue({ user: phoneUser, sessionId, mfaRequired });
     expect(await (await POST(body({ action: "login", code: "fresh-code" }, true))).json()).toMatchObject({ state: "onboarding_required" });
     expect(h.onboarding).toHaveBeenCalledWith(identity, null, phoneUser);
     expect(h.native).not.toHaveBeenCalled(); expect(h.revoke).not.toHaveBeenCalled();
   });
   it("rejects switching to another WeChat owner while continuing a signed-in account", async () => {
     h.owner.mockResolvedValue("33333333-3333-4333-8333-333333333333");
+    h.context.mockResolvedValue({ user, sessionId, mfaRequired: true });
     expect((await POST(body({ action: "login", code: "fresh-code" }, true))).status).toBe(409);
     expect(h.native).not.toHaveBeenCalled(); expect(h.onboarding).not.toHaveBeenCalled();
   });
-  it("lets a completed current account enter directly and records the promotion source", async () => {
+  it.each([false, true])("lets a completed linked account enter directly and records its source (MFA: %s)", async mfaRequired => {
     vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
+    h.context.mockResolvedValue({ user, sessionId, mfaRequired });
     expect(await (await POST(body({ action: "login", code: "fresh-code", scene: "a".repeat(24) }, true))).json()).toEqual({ state: "current_session" });
     expect(h.touch).toHaveBeenCalledWith("miniapp_record_promotion_touch", { p_scene: "a".repeat(24), p_user: userId });
     expect(h.native).not.toHaveBeenCalled();

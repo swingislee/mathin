@@ -65,8 +65,8 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs());
 
 describe("verified family onboarding security", () => {
-  it("uses the linked account's already verified phone to open the form", async () => {
-    const user = { id: userId, phone: proof.phone.slice(1), phone_confirmed_at: "2026-10-09T00:00:00Z" };
+  it.each([false, true])("uses the linked account's already verified phone to open the form (MFA: %s)", async mfa => {
+    const user = { id: userId, phone: proof.phone.slice(1), phone_confirmed_at: "2026-10-09T00:00:00Z", factors: mfa ? [{ status: "verified" }] : [] };
     const begin = await beginFamilyOnboarding(identity, null, user as never);
     expect(begin.phoneVerified).toBe(true);
     h.read.mockResolvedValue({ purpose: "family-phone", identity, scene: null, verifiedPhone: { userId, phone: proof.phone, localPhone: proof.localPhone } });
@@ -75,12 +75,12 @@ describe("verified family onboarding security", () => {
     expect(await (await onboardingPost(request({ action: "form", ticket }))).json()).toMatchObject({ state: "family_required", existingParticipants: [{ id: studentId }] });
     expect(h.phone).not.toHaveBeenCalled(); expect(h.create).not.toHaveBeenCalled();
   });
-  it.each(["unverified", "different-owner", "changed-phone", "mfa"])("refuses a stale or insufficient phone proof: %s", async mode => {
+  it.each(["unverified", "different-owner", "changed-phone"])("refuses a stale or insufficient phone proof: %s", async mode => {
     h.read.mockResolvedValue({ purpose: "family-phone", identity, scene: null, ...(mode === "unverified" ? {} : { verifiedPhone: { userId, phone: proof.phone, localPhone: proof.localPhone } }) });
     h.owner.mockResolvedValue(mode === "different-owner" ? studentId : userId);
     h.getUser.mockResolvedValue({ data: { user: { id: userId, phone: mode === "changed-phone" ? "8619900000002" : proof.phone.slice(1),
-      phone_confirmed_at: "2026-10-09T00:00:00Z", factors: mode === "mfa" ? [{ status: "verified" }] : [] } }, error: null });
-    await expect(onboardingPost(request({ action: "form", ticket }))).rejects.toMatchObject({ code: mode === "mfa" ? "ACCOUNT_SECURITY" : "UNAUTHENTICATED" });
+      phone_confirmed_at: "2026-10-09T00:00:00Z", factors: [{ status: "verified" }] } }, error: null });
+    await expect(onboardingPost(request({ action: "form", ticket }))).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
     expect(h.issue).not.toHaveBeenCalled(); expect(h.phone).not.toHaveBeenCalled();
   });
   it("rejects another account's participant before reserving or creating anything", async () => {
@@ -175,14 +175,16 @@ describe("verified family onboarding security", () => {
     expect((await (await complete()).json()).participantId).toBe(studentId);
     expect(h.create).not.toHaveBeenCalled(); expect(h.update).not.toHaveBeenCalled(); expect(h.password).not.toHaveBeenCalled();
   });
-  it("preserves a linked existing work account when completing its first household registration", async () => {
+  it.each([false, true])("preserves a linked work account when completing its first registration (MFA: %s)", async mfaRequired => {
     h.rpc.mockImplementation(async name => ({ error: null,
       data: name === "miniapp_prepare_family" ? { ...reservation, created: true } : { studentId, grade: 3 } }));
     h.owner.mockResolvedValue(userId);
+    h.context.mockResolvedValue({ sessionId: "native", mfaRequired });
     expect((await (await complete()).json()).participantId).toBe(studentId);
     expect(h.native).toHaveBeenCalledWith(expect.anything(), identity, userId);
     expect(h.create).not.toHaveBeenCalled(); expect(h.update).not.toHaveBeenCalled();
     expect(h.getUser).not.toHaveBeenCalled(); expect(h.password).not.toHaveBeenCalled();
+    expect(h.revoke).not.toHaveBeenCalled();
   });
   it("a rejected final session revokes both issued sessions and releases the lease", async () => {
     h.authorize.mockRejectedValue(new PortalError("FORBIDDEN"));
@@ -190,7 +192,7 @@ describe("verified family onboarding security", () => {
     expect(h.revoke).toHaveBeenCalledWith("native"); expect(h.revoke).toHaveBeenCalledWith("bootstrap");
     expect(h.release).toHaveBeenCalled();
   });
-  it("an MFA requirement stops family completion and revokes bootstrap credentials", async () => {
+  it("an MFA requirement still prevents bootstrap linking and revokes temporary credentials", async () => {
     h.context.mockResolvedValue({ sessionId: "bootstrap", mfaRequired: true });
     await expect(complete()).rejects.toMatchObject({ code: "ACCOUNT_SECURITY" });
     expect(h.native).not.toHaveBeenCalled(); expect(h.rpc).toHaveBeenCalledTimes(1); expect(h.revoke).toHaveBeenCalledWith("bootstrap");
