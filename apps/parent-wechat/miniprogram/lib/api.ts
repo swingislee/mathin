@@ -1,6 +1,6 @@
 import { config } from "../config.local";
 import type { FamilyRegistration, PhoneResult, RegistrationResult } from "./onboarding";
-import type { ActivityOffer, ActivityRequest, ActivityRequestCommand } from "./api-types";
+import type { ActivityOffer, ActivityRequest, ActivityRequestCommand, RegistrationHistory, RegistrationForm, RegistrationSubmission } from "./api-types";
 import type { Session, Media, ParticipantCalendar, AssessmentOverview, AssessmentRequest, AssessmentAvailability, AssessmentTopic, AssessmentCommand, WechatAuthStatus, WechatAuthResult } from "./api-types";
 
 const sessionKey="gezhi.session.v1";
@@ -54,6 +54,18 @@ export async function activityRequests(): Promise<ActivityRequest[]> {
 }
 export async function activityCommand(data: ActivityRequestCommand): Promise<{ id?: string; ok?: boolean }> {
   return send("activities", "POST", data, await accessToken());
+}
+export async function getRegistrationHistory(page = 1): Promise<RegistrationHistory> {
+  return send("registrations?page=" + page, "GET", undefined, await accessToken());
+}
+export async function getRegistrationForm(): Promise<RegistrationForm> {
+  return send("registrations?resource=form", "GET", undefined, await accessToken());
+}
+export async function getRegistrationReceipt(id: string): Promise<{ id: string } | null> {
+  return send("registrations?resource=receipt&id=" + encodeURIComponent(id), "GET", undefined, await accessToken());
+}
+export async function submitRegistration(id: string, family: FamilyRegistration): Promise<RegistrationSubmission> {
+  return send("registrations", "POST", { id, family }, await accessToken());
 }
 export async function participantCalendar(participant:string,range:{from:string;to:string}):Promise<ParticipantCalendar>{
   const query=`participant=${encodeURIComponent(participant)}&from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;

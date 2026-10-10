@@ -1,4 +1,4 @@
-import type { Session } from "./api-types";
+import type { Session, RegistrationForm } from "./api-types";
 import type { FamilyAnswers, FamilyChild, FamilyForm, RegistrationLocation } from "./onboarding-form";
 export type { RegistrationLocation } from "./onboarding-form";
 
@@ -7,6 +7,7 @@ export type FamilyRegistration = FamilyAnswers & {
   privacyVersion: string; childrenPrivacyVersion: string; consent: true;
 };
 export type PhoneResult = { state: "family_required"; ticket: string; form: FamilyForm; maskedPhone: string; privacyVersion: string; childrenPrivacyVersion: string;
+  accountId?: string; contact?: RegistrationForm["contact"];
   existingParticipants?: (Pick<FamilyChild, "childName" | "gender" | "grade" | "school"> & { id: string })[];
   policyText: { zh: { privacy: string; children: string }; en: { privacy: string; children: string } } };
 export type RegistrationResult = { state: "authenticated"; session: Session; participantId: string | null; participantIds?: string[]; grade: number | null };

@@ -1,0 +1,9 @@
+.registration-heading { display: block; margin: 48rpx 0 20rpx; font-size: 30rpx; font-weight: 600; }
+.registration-record { border-bottom: 1rpx solid var(--line); }
+.registration-summary { display: flex; justify-content: space-between; align-items: center; gap: 24rpx; width: 100%; padding: 28rpx 0; text-align: left; line-height: 1.6; background: transparent; }
+.registration-summary::after { border: 0; }
+.registration-summary > text { flex-shrink: 0; color: var(--muted); }
+.registration-details { padding: 0 0 28rpx; }
+.registration-section + .registration-section { margin-top: 28rpx; }
+.registration-field { display: grid; grid-template-columns: minmax(120rpx, 1fr) 2fr; gap: 24rpx; padding-top: 16rpx; font-size: 27rpx; line-height: 1.6; }
+.registration-field > text { overflow-wrap: anywhere; white-space: pre-wrap; }

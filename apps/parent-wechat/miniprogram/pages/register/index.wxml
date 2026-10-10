@@ -1,6 +1,30 @@
 <view class="portal-page">
   <app-nav title="{{formTitle || copy.registrationTitle}}" back />
-  <view class="portal-content has-fixed-actions">
+  <view wx:if="{{hub}}" class="portal-content registration-history">
+    <view wx:if="{{saved}}" class="notice">{{copy.registrationReceipt}}</view>
+    <button class="primary" bindtap="fillRegistration" disabled="{{loading}}">{{copy.registrationFill}}</button>
+    <text class="registration-heading">{{copy.registrationHistory}}</text>
+    <view wx:if="{{!loggedIn}}" class="empty-state"><text>{{copy.loginRequired}}</text><button class="text-button" bindtap="login">{{copy.signInNow}}</button></view>
+    <block wx:else>
+      <view wx:for="{{records}}" wx:key="id" class="registration-record">
+        <button class="registration-summary" data-index="{{index}}" bindtap="toggleRecord">
+          <view><text class="row-title block">{{item.title}}</text><text class="muted small">{{item.submittedAt}}</text></view>
+          <text class="small">{{item.expanded ? copy.collapse : copy.details}}</text>
+        </button>
+        <view wx:if="{{item.expanded}}" class="registration-details">
+          <view wx:for="{{item.sections}}" wx:for-item="section" wx:key="index" class="registration-section">
+            <text class="subheading block">{{section.title}}</text>
+            <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="index" class="registration-field"><text class="muted">{{field.label}}</text><text>{{field.value}}</text></view>
+          </view>
+        </view>
+      </view>
+      <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
+      <view wx:elif="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="loadHistory">{{copy.retry}}</button></view>
+      <view wx:elif="{{!records.length}}" class="empty-state">{{copy.registrationEmpty}}</view>
+      <button wx:if="{{hasMore && !loading}}" class="text-button" bindtap="moreHistory">{{copy.registrationMore}}</button>
+    </block>
+  </view>
+  <view wx:else class="portal-content has-fixed-actions">
     <view wx:if="{{submitted}}" class="surface booking-success"><text class="success-symbol">✓</text><text class="row-title">{{copy.registrationReceipt}}</text><button class="primary" bindtap="explore">{{copy.seeActivities}}</button></view>
     <block wx:else>
       <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>

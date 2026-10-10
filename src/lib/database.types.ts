@@ -27669,6 +27669,10 @@ export type Database = {
         }
         Returns: string
       }
+      miniapp_submit_registration_update: {
+        Args: { p_answers: Json; p_request_id: string; p_version: number }
+        Returns: Json
+      }
       miniapp_submit_practice: {
         Args: {
           p_assignment: string

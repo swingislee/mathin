@@ -1,3 +1,4 @@
+import type { FamilyForm, FamilyChild } from "./onboarding";
 /** 小程序专用 API 合同。服务端映射既有业务数据；共享表和其他客户端沿用原合同。 */
 export type Locale = "zh" | "en";
 export type LocalizedText = { zh: string; en: string };
@@ -12,6 +13,18 @@ export type IntakeForm = {
   slug: string; version: number; title: LocalizedText; description: LocalizedText;
   privacyNotice: LocalizedText; fields: FormField[];
 };
+export type RegistrationRecord = {
+  id: string; submittedAt: string; title: LocalizedText;
+  sections: { title: LocalizedText; fields: { label: LocalizedText; value: LocalizedText }[] }[];
+};
+export type RegistrationHistory = { registrationRequired: boolean; records: RegistrationRecord[]; hasMore: boolean };
+export type RegistrationForm = {
+  accountId: string; form: FamilyForm; maskedPhone: string; privacyVersion: string; childrenPrivacyVersion: string;
+  policyText: { zh: { privacy: string; children: string }; en: { privacy: string; children: string } };
+  existingParticipants?: (Pick<FamilyChild, "childName" | "gender" | "grade" | "school"> & { id: string })[];
+  contact?: { name: string; relation: "" | "mother" | "father" | "guardian" };
+};
+export type RegistrationSubmission = { id: string; participantId: string | null; participantIds: string[]; grade: number | null };
 export type Participant = { id: string; name: string };
 export type Activity = {
   id: string; title: LocalizedText; description: LocalizedText; location: string;

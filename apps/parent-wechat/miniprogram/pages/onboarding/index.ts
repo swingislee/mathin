@@ -1,5 +1,5 @@
-import { ApiError, authorizeWechatPhone, bindWechat, completeWechatFamily, loginWithWechat, session, verifiedWechatForm, wechatAuthStatus } from "../../lib/api";
-import { pageData, currentLocale, errorText, loginPage } from "../../lib/page";
+import { ApiError, authorizeWechatPhone, bindWechat, completeWechatFamily, getRegistrationForm, getRegistrationReceipt, submitRegistration, requestId, loginWithWechat, session, verifiedWechatForm, wechatAuthStatus } from "../../lib/api";
+import { pageData, currentLocale, errorText, loginPage, localized } from "../../lib/page";
 import { clearNavigation, selectParticipant } from "../../lib/navigation";
 import { onboardingCopy, promotionScene, saveOnboardingPreferences, takeOnboardingProof, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
 import { familyAnswerErrors, type FamilyForm } from "../../lib/onboarding-form";
@@ -9,6 +9,7 @@ import { participantWording } from "../../lib/participant-wording";
 
 Page({
   data: { ...pageData("account"), words: onboardingCopy.zh, stage: "wechat", busy: false, ticket: "", scene: "", maskedPhone: "",
+    registration: false, registrationId: "", registrationKey: "",
     canBindDirect: false, password: "", participantIndex: 0, participantChoices: [] as string[],
     values: { parentName: "", childName: "", school: "" }, selection: { relation: 0, gender: 0, grade: 0 },
     choices: {} as Record<string, string[]>, fields: [] as DisplayFamilyField[], formTitle: "", formDescription: "",
@@ -21,7 +22,8 @@ Page({
     this.submissionLocation = null;
     const locale = currentLocale(), words = onboardingCopy[locale];
     wx.setNavigationBarTitle({ title: words.navigationTitle });
-    this.setData({ locale, words, choices: onboardingChoices(locale) });
+    this.setData({ locale, words, copy: localized(locale), choices: onboardingChoices(locale), registration: query.registration === "1" });
+    if (this.data.registration) { wx.setNavigationBarTitle({ title: this.data.copy.registrationTitle }); void this.start(); return; }
     const proof = takeOnboardingProof();
     const scene = promotionScene(query.scene || proof?.scene);
     this.setData({ scene });
@@ -30,7 +32,7 @@ Page({
   },
   onUnload() { this.active = false; this.submissionLocation = null; this.setData({ ticket: "", policy: null }); },
   discover() { clearNavigation(); wx.switchTab({ url: "/pages/discover/index" }); },
-  existingLogin() { loginPage("/pages/onboarding/index" + (this.data.scene ? `?scene=${this.data.scene}` : "")); },
+  existingLogin() { loginPage(this.data.registration ? "/pages/register/index" : "/pages/onboarding/index" + (this.data.scene ? `?scene=${this.data.scene}` : "")); },
   passwordInput(event: WechatMiniprogram.Input) { this.setData({ password: event.detail.value }); },
   async acceptProof(proof: { ticket: string; phoneVerified?: boolean }) {
     if (!proof.phoneVerified) { this.setData({ ticket: proof.ticket, stage: "phone" }); return; }
@@ -54,6 +56,18 @@ Page({
     if (this.data.busy) return;
     this.setData({ busy: true, error: "", stage: "wechat", ticket: "" });
     try {
+      if (this.data.registration) {
+        if (!session()) { this.existingLogin(); return; }
+        const form = await getRegistrationForm();
+        if (!this.active) return;
+        const key = "gezhi.registration.pending." + form.accountId;
+        const pending: unknown = wx.getStorageSync(key);
+        const id = typeof pending === "string" && /^[a-f0-9-]{36}$/.test(pending) ? pending : requestId();
+        this.setData({ registrationId: id, registrationKey: key });
+        if (pending && await getRegistrationReceipt(id)) { this.registrationSaved(); return; }
+        this.showForm({ ...form, state: "family_required", ticket: "" });
+        return;
+      }
       const current = Boolean(session());
       if (current) {
         const status = await wechatAuthStatus();
@@ -78,6 +92,8 @@ Page({
     const participants = policy.existingParticipants || [];
     this.setData({ stage: "family", ticket: policy.ticket, maskedPhone: policy.maskedPhone, policy,
       participantChoices: [...participants.map(row => row.childName), this.data.words.newParticipant], participantIndex: 0 });
+    if (policy.contact) this.setData({ "values.parentName": policy.contact.name,
+      "selection.relation": ["", "mother", "father", "guardian"].indexOf(policy.contact.relation) });
     if (participants.length) this.selectExistingParticipant(0);
   },
   selectExistingParticipant(index: number) {
@@ -135,7 +151,7 @@ Page({
   },
   async complete() {
     const data = this.data;
-    if (!this.active || data.busy || !data.ticket || !data.policy) return;
+    if (!this.active || data.busy || (!data.registration && !data.ticket) || !data.policy) return;
     const shown = (id: string) => data.fields.some(field => field.id === id);
     const participant = data.policy.existingParticipants?.[data.participantIndex];
     const child = { key: "child-1", ...(participant ? { participantId: participant.id } : {}), childName: shown("childName") ? data.values.childName.trim() : "", school: shown("school") ? data.values.school.trim() : "",
@@ -153,14 +169,24 @@ Page({
       this.submissionLocation ??= registrationLocation();
       family.location = await this.submissionLocation;
       if (!this.active) return;
-      const result = await completeWechatFamily(data.ticket, family);
+      // Persist only an opaque retry key. An interrupted submission is recovered with the same key.
+      if (data.registration) wx.setStorageSync(data.registrationKey, data.registrationId);
+      const result = data.registration ? await submitRegistration(data.registrationId, family) : await completeWechatFamily(data.ticket, family);
       if (!this.active) return;
       if (result.grade !== null) saveOnboardingPreferences(result.grade);
       clearNavigation(); if (result.participantId) selectParticipant(result.participantId);
       this.submissionLocation = null;
+      if (data.registration) { this.registrationSaved(); return; }
       this.setData({ ticket: "", policy: null }); wx.switchTab({ url: "/pages/discover/index" });
     } catch (error) {
+      if (data.registration && error instanceof ApiError && error.code === "CONFLICT") {
+        try { if (await getRegistrationReceipt(data.registrationId)) { if (this.active) this.registrationSaved(); return; } } catch { /* Keep the retry key until a receipt is confirmed. */ }
+      }
       if (this.active) this.setData({ error: this.authError(error), ...(error instanceof ApiError && ["UNAUTHENTICATED", "FORM_CHANGED"].includes(error.code) ? { stage: "wechat", ticket: "" } : {}) });
     } finally { if (this.active) this.setData({ busy: false }); }
+  },
+  registrationSaved() {
+    wx.removeStorageSync(this.data.registrationKey);
+    wx.redirectTo({ url: "/pages/register/index?saved=1" });
   },
 });

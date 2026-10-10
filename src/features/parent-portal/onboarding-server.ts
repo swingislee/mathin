@@ -39,7 +39,7 @@ async function newProof(payload: object) {
   // Keep a margin below the database's 15-minute ceiling for application/database clock skew.
   return issueTicket("guest", payload, token, 14 * 60, token);
 }
-async function policies() {
+export async function policies() {
   const rows = requireResult(await createAdminClient().from("consent_policies").select("policy_kind,version,document_path").eq("required", true)) ?? [];
   const privacy = rows.find(row => row.policy_kind === "privacy"), children = rows.find(row => row.policy_kind === "children_privacy");
   if (!privacy || !children) throw new PortalError("UNAVAILABLE");
@@ -52,7 +52,7 @@ async function policies() {
     policyText: { zh: policyText(zh.compliance), en: policyText(en.compliance) } };
 }
 
-async function readFamilyForm(scene: string | null) {
+export async function readFamilyForm(scene: string | null) {
   const row = requireResult(await createAdminClient().from("miniapp_forms").select("slug,version,title,description,fields")
     .eq("slug", scene || "family-onboarding").in("purpose", ["family", "promotion"]).eq("enabled", true).maybeSingle());
   if (!row) throw new PortalError("NOT_FOUND");

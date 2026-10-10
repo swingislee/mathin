@@ -3,6 +3,43 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-RESERVATIONS-REGISTRATION-20261010",
+      "title": "小程序预约汇总与参与登记",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-RESERVATIONS-REGISTRATION-20261010.md",
+      "writePaths": [
+        ".ai/tasks/MINI-RESERVATIONS-REGISTRATION-20261010.md",
+        ".tmp/mini-reservations-registration-20261010/",
+        "apps/parent-wechat/miniprogram/pages/reservations/",
+        "apps/parent-wechat/miniprogram/pages/register/",
+        "apps/parent-wechat/miniprogram/pages/onboarding/",
+        "src/features/participant-portal/registration-server.ts",
+        "src/features/participant-portal/registration-projection.ts",
+        "tests/participant-registration.test.ts",
+        "supabase/migrations/20261010230000_miniapp_registration_updates.sql",
+        "supabase/tests/miniapp_registration_updates.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "apps/parent-wechat/miniprogram/lib/api-types.ts",
+        "apps/parent-wechat/miniprogram/lib/copy.ts",
+        "apps/parent-wechat/miniprogram/lib/onboarding.ts",
+        "contracts/participant-api/README.md",
+        "contracts/participant-api/portal.ts",
+        "src/features/parent-portal/onboarding-server.ts",
+        "src/features/participant-portal/server.ts",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": null,
+      "next": "预约汇总、登记历史及补充提交已在开发端实现，定向类型／权限／隔离事务检查通过。准备0.1.7候选，待本次生产部署及上传授权后手机验收。"
+    },
+    {
       "id": "RELEASE-V050-20261010",
       "title": "v0.5.0 周内改动生产发布与团队说明",
       "agent": "codex",
