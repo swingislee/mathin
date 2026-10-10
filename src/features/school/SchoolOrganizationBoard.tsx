@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, Crown, Maximize, Minus, Plus, UserPlus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Crown, Maximize, Minus, PanelRight, Plus, UserPlus, Users, X } from "lucide-react";
+import { toast } from "sonner";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useSplitOrientation } from "@/hooks/use-split-orientation";
 import { Link } from "@/i18n/navigation";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
@@ -49,7 +53,12 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   const [settings, setSettings] = useState(initial);
   const [draft, setDraft] = useState<OrgDraft>(() => draftFromSettings(initial));
   const settingsRef = useRef(initial), draftRef = useRef(draft), chain = useRef<Promise<void>>(Promise.resolve());
-  const [selection, setSelection] = useState<Selection>(null);
+  const [selection, setSelectionState] = useState<Selection>(null);
+  // 窄屏时左右两栏收成抽屉：选中员工或组织即打开右侧详情。
+  const [layoutRef, orientation] = useSplitOrientation(960);
+  const desktop = orientation === "horizontal";
+  const [trayOpen, setTrayOpen] = useState(false), [sideOpen, setSideOpen] = useState(false);
+  const setSelection = (value: Selection) => { setSelectionState(value); if (!desktop) { setSideOpen(Boolean(value)); if (value) setTrayOpen(false); } };
   const [mode, setMode] = useState<"board" | "roster">("board");
   const [query, setQuery] = useState("");
   const [hoverPerson, setHoverPerson] = useState<string | null>(null);
@@ -58,7 +67,6 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   const [view, setView] = useState<View>({ x: 24, y: 24, k: 0.9 });
   const [saving, setSaving] = useState(false);
   const pending = saving;
-  const [status, setStatus] = useState("");
   const [rosterView, setRosterView] = useState<"active" | "reserve">("active");
   const [onboarding, setOnboarding] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
@@ -116,11 +124,11 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
       setSaving(false);
       if (!result.ok) {
         draftRef.current = draftFromSettings(base); setDraft(draftRef.current);
-        setStatus(m.errors[result.code] ?? m.errors.UNKNOWN); return;
+        toast.error(m.errors[result.code] ?? m.errors.UNKNOWN); return;
       }
       settingsRef.current = result.data.settings; setSettings(result.data.settings);
       if (draftRef.current === target) { draftRef.current = draftFromSettings(result.data.settings); setDraft(draftRef.current); }
-      setStatus(lines.map(line => line.effect ? `${line.text}（${line.effect}）` : line.text).join("；"));
+      toast.success(lines.map(line => line.text).join("；"), { description: lines.map(line => line.effect).filter(Boolean).join("；") || undefined });
     });
   };
   const update = (change: (current: OrgDraft) => OrgDraft) => {
@@ -363,30 +371,10 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
     </div>
   </div>;
 
-  return <DashboardPage title={m.tab} density="compact"
-    commandPanel={<DashboardCommandPanel>
-      <DashboardCommandState>
-        <div role="group" aria-label={m.board} className="inline-flex rounded-lg bg-line/55 p-[3px]">
-          {(["board", "roster"] as const).map(value => <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)}
-            className={cn("rounded-md px-3 py-1 text-sm text-muted", mode === value && "bg-card text-ink shadow-sm")}>{value === "board" ? m.board : m.roster}</button>)}
-        </div>
-      </DashboardCommandState>
-      <DashboardCommandActions>
-        {staffAdmin && (staffAdmin.canInviteStaff || staffAdmin.canManageStaff) ? <Button size="sm" variant="secondary" onClick={() => { setMode("roster"); setOnboarding(true); }}>
-          <UserPlus className="size-4" />{m.addStaff}</Button> : null}
-        {manage ? <>
-          <Button size="sm" variant="secondary" disabled={pending} onClick={() => addUnit(selectedUnit?.id ?? null)}><Plus className="size-4" />{selectedUnit ? m.addChild : m.addUnit}</Button>
-        </> : null}
-      </DashboardCommandActions>
-    </DashboardCommandPanel>}>
-    <p role="status" className="min-h-5 truncate text-sm text-muted" title={status}>{saving ? m.saving : status}</p>
-    <div className={cn("grid min-w-0 overflow-hidden rounded-[10px] border border-line bg-card",
-      manage ? "@5xl/page:grid-cols-[13.5rem_minmax(0,1fr)_23rem]" : "@5xl/page:grid-cols-[minmax(0,1fr)_23rem]",
-      "@5xl/page:h-[calc(100dvh-11rem)] @5xl/page:min-h-[34rem]")}>
-      {manage ? <aside aria-label={m.staffTitle} className="flex min-h-0 flex-col gap-2 border-b border-line p-3 @5xl/page:border-b-0 @5xl/page:border-r">
+  const tray = <aside aria-label={m.staffTitle} className="flex h-full min-h-0 flex-col gap-2 p-2.5">
         <p className="text-xs font-semibold tracking-wide text-muted">{m.staffTitle} · {m.dragHint}</p>
         <Input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={m.search} aria-label={m.search} className="h-8" />
-        <div className="flex max-h-48 min-h-0 flex-col gap-1 overflow-auto @5xl/page:max-h-none">
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto">
           {traySections.unassigned.length ? <>
             <p className="w-full pt-1 text-xs text-rose">{m.unassigned} · {traySections.unassigned.length}</p>
             {traySections.unassigned.map(staff => trayPerson(staff, `u:${staff.id}`))}
@@ -405,9 +393,9 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
             className={cn("flex cursor-grab touch-none select-none items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-muted hover:bg-table-hover", selection?.id === staff.id && "bg-table-selected text-ink")}>
             <span className="min-w-0 flex-1 truncate">{staff.name}</span><span className="shrink-0 text-[11px]">{m.reasons[reserveOf(staff.id)!]}</span></button>)}</div> : null}
         </div>
-      </aside> : null}
-      <div className="h-[60vh] min-h-0 min-w-0 @5xl/page:h-auto [&>*]:h-full">{mode === "board" ? board : roster}</div>
-      <aside aria-live="polite" className="min-h-0 overflow-y-auto border-t border-line p-4 @5xl/page:border-l @5xl/page:border-t-0">
+  </aside>;
+  const center = <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col [&>*]:flex-1">{mode === "board" ? board : roster}</div>;
+  const inspector = <aside aria-live="polite" className="h-full min-h-0 overflow-y-auto p-3">
         {selectedStaff && manage ? <PersonCard key={selectedStaff.id} staff={selectedStaff} m={m} draft={draft} settings={settings} studentsUnder={studentsUnder}
           roles={rolesOf(selectedStaff.id)} onRoles={roles => setRoles(selectedStaff.id, roles)} onClose={() => setSelection(null)}
           onLead={(groupId, lead) => setLead(selectedStaff.id, groupId, lead)} onRemove={groupId => removeMember(selectedStaff.id, groupId)}
@@ -421,7 +409,43 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
           onOpenPerson={id => setSelection({ kind: "person", id })} onLead={(userId, lead) => setLead(userId, selectedUnit.id, lead)} />
         : <Overview m={m} manage={manage} staff={active.length} units={draft.units.length}
           unassigned={active.filter(staff => !linksOf(staff.id).length).length} />}
-      </aside>
+  </aside>;
+
+  return <DashboardPage title={m.tab} density="compact"
+    commandPanel={<DashboardCommandPanel>
+      <DashboardCommandState>
+        <div role="group" aria-label={m.board} className="inline-flex rounded-lg bg-line/55 p-[3px]">
+          {(["board", "roster"] as const).map(value => <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)}
+            className={cn("rounded-md px-3 py-1 text-sm text-muted", mode === value && "bg-card text-ink shadow-sm")}>{value === "board" ? m.board : m.roster}</button>)}
+        </div>
+      </DashboardCommandState>
+      <DashboardCommandActions>
+        {staffAdmin && (staffAdmin.canInviteStaff || staffAdmin.canManageStaff) ? <Button size="sm" variant="secondary" onClick={() => { setMode("roster"); setOnboarding(true); }}>
+          <UserPlus className="size-4" />{m.addStaff}</Button> : null}
+        {manage ? <>
+          <Button size="sm" variant="secondary" disabled={pending} onClick={() => addUnit(selectedUnit?.id ?? null)}><Plus className="size-4" />{selectedUnit ? m.addChild : m.addUnit}</Button>
+        </> : null}
+      </DashboardCommandActions>
+    </DashboardCommandPanel>}>
+    <div ref={layoutRef} className="flex h-[calc(100dvh-8rem)] min-h-[30rem] min-w-0 overflow-hidden rounded-lg border border-line bg-card">
+      {desktop ? <ResizablePanelGroup id="org-panels" orientation="horizontal" className="min-h-0 flex-1">
+        {manage ? <><ResizablePanel id="org-tray" defaultSize={208} minSize={168} maxSize={360}>{tray}</ResizablePanel>
+          <ResizableHandle id="org-tray-resize" /></> : null}
+        <ResizablePanel id="org-main" minSize={360}>{center}</ResizablePanel>
+        <ResizableHandle id="org-side-resize" />
+        <ResizablePanel id="org-side" defaultSize={352} minSize={280} maxSize={560}>{inspector}</ResizablePanel>
+      </ResizablePanelGroup>
+      : <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        {center}
+        <div className="pointer-events-none absolute inset-x-2 top-2 z-10 flex justify-between">
+          {manage ? <Button size="sm" variant="secondary" className="pointer-events-auto h-8 gap-1 shadow-sm" onClick={() => setTrayOpen(true)}><Users className="size-4" />{m.staffTitle}</Button> : <span />}
+          <Button size="sm" variant="secondary" className="pointer-events-auto h-8 gap-1 shadow-sm" onClick={() => setSideOpen(true)}><PanelRight className="size-4" />{m.details}</Button>
+        </div>
+        <Sheet open={trayOpen} onOpenChange={setTrayOpen}><SheetContent side="left" closeLabel={m.close} className="flex flex-col p-0">
+          <SheetTitle className="sr-only">{m.staffTitle}</SheetTitle>{tray}</SheetContent></Sheet>
+        <Sheet open={sideOpen} onOpenChange={setSideOpen}><SheetContent side="right" closeLabel={m.close} className="flex flex-col p-0">
+          <SheetTitle className="sr-only">{m.details}</SheetTitle>{inspector}</SheetContent></Sheet>
+      </div>}
     </div>
     {ghost ? <div className="pointer-events-none fixed z-50 rounded-md border border-crater bg-card px-2.5 py-1 text-sm shadow-sm" style={{ left: ghost.x + 12, top: ghost.y + 10 }}>
       {ghost.label}<span className="ml-1.5 text-xs text-muted">{ghost.hint}</span></div> : null}
