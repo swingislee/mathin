@@ -50,6 +50,7 @@ const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "leads",
   "invitations",
   "assessments",
+  "assessmentAvailability",
   "activities",
   "renewals",
   "finance",

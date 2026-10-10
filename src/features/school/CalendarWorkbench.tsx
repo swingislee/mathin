@@ -158,7 +158,7 @@ export function CalendarWorkbench({ locale, timeZone, now, currentUserId, curren
       return {
         id: `availability-${slot.id}`, sourceId: slot.id, kind: "availability" as const,
         startsAt: slot.startsAt, endsAt: slot.endsAt, title: `${teacherName(slot.teacherId)} · ${t(state)}`,
-        subtitle: slot.subjects.map(subject => a(`subject_${subject}`)).join(" / "), detail: campusName(slot.campusId),
+        subtitle: slot.subjects.map(subject => availability?.topics?.find(topic => topic.id === subject)?.name || subject).join(" / "), detail: campusName(slot.campusId),
         state: t(state), muted: !slot.enabled || Date.parse(slot.endsAt) <= now, conflict: Boolean(slot.blocked),
         canResize: !slot.booked && Date.parse(slot.endsAt) > now,
       };

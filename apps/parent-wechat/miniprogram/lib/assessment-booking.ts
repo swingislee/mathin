@@ -3,17 +3,15 @@ import { assessmentDay, shiftDay } from "./assessment-calendar";
 import { stageGroups } from "./catalog";
 import type { Locale } from "./locale";
 
-export const assessmentTopics: { id: AssessmentTopic; label: { zh: string; en: string } }[] = [
-  { id: "math", label: { zh: "数学", en: "Mathematics" } },
-  { id: "english", label: { zh: "英语", en: "English" } },
-];
-export function assessmentFields(locale: Locale, selected: AssessmentTopic[], stageNumber: number | null) {
+export function assessmentFields(locale: Locale, selected: AssessmentTopic[], stageNumber: number | null,
+  topics: import("./api-types").AssessmentTopicOption[] = []) {
   const groups = stageGroups.map(group => ({ id: group.id, label: group.label[locale],
     stages: group.stages.map(stage => ({ id: stage.id, stageNumber: stage.stageNumber, label: stage.label[locale] })) }));
   const stages = groups.reduce((all, group) => all.concat(group.stages), [] as typeof groups[0]["stages"]);
+  const legacy: Record<string, { zh: string; en: string }> = { math: { zh: "数学", en: "Mathematics" }, english: { zh: "英语", en: "English" } };
   return { stageOptions: groups, stageLabel: stages.find(stage => stage.stageNumber === stageNumber)?.label || "",
-    topicLabel: assessmentTopics.filter(topic => selected.includes(topic.id)).map(topic => topic.label[locale]).join(locale === "zh" ? "、" : ", "),
-    topicOptions: assessmentTopics.map(topic => ({ id: topic.id, label: topic.label[locale], selected: selected.includes(topic.id) })) };
+    topicLabel: selected.map(id => topics.find(topic => topic.id === id)?.label[locale] || legacy[id]?.[locale] || id).join(locale === "zh" ? "、" : ", "),
+    topicOptions: topics.filter(topic => topic.available).map(topic => ({ id: topic.id, label: topic.label[locale], selected: selected.includes(topic.id) })) };
 }
 const localTime = (value: string) => new Date(Date.parse(value) + 8 * 60 * 60 * 1000).toISOString();
 const shortDay = (date: string) => Number(date.slice(5, 7)) + "." + Number(date.slice(8, 10));

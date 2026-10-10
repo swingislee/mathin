@@ -17,7 +17,6 @@ import { loadAssessmentSlotManagementAction, saveAssessmentSlotAction } from "./
 import { CalendarRecurrenceFields, calendarRecurrenceInput, newCalendarRecurrenceDraft } from "./CalendarRecurrenceFields";
 import {
   ASSESSMENT_SLOT_GRADES,
-  ASSESSMENT_SLOT_SUBJECTS,
   assessmentAvailabilityError,
   assessmentSlotDraft,
   assessmentSlotInput,
@@ -55,7 +54,7 @@ function newSlotDraft({ data, initialDate, initialStartTime, teacherId, campusId
     teacherId: data.teachers.find(teacher => teacher.id === preferredTeacher)?.id
       ?? (data.canManageAll ? data.teachers[0]?.id : "") ?? "",
     campusId: data.campuses.find(campus => campus.id === campusId)?.id ?? data.campuses[0]?.id ?? "",
-    subjects: ["math"],
+    subjects: (data.topics ?? []).filter(topic => topic.enabled).slice(0,1).map(topic => topic.id),
     grades: [],
     date: initialDate,
     endDate: hour * 60 + minute + 40 >= 24 * 60 ? shiftAssessmentSlotDate(initialDate, 1, timeZone) : initialDate,
@@ -97,7 +96,8 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
   const busy = operation !== null;
   const booked = Boolean(currentSlot?.booked || currentSlot?.activeBooked);
   const activeBooked = currentSlot?.activeBooked ?? currentSlot?.booked ?? false;
-  const locked = busy || booked || needsRefresh;
+  const ruleManaged = Boolean(currentSlot?.ruleId);
+  const locked = busy || booked || needsRefresh || ruleManaged;
   const prefix = `assessment-slot-${draft.slotId}`;
   const status = activeBooked ? "booked" : currentSlot?.enabled ? "open" : "closed";
   const ended = currentSlot ? Date.parse(currentSlot.endsAt) <= openedAt : false;
@@ -140,7 +140,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
   }
 
   async function save() {
-    if (busyRef.current || needsRefresh) return;
+    if (busyRef.current || needsRefresh || ruleManaged) return;
     // Publication changes retain a booked slot's exact instants and immutable identity.
     const input: SaveAssessmentSlotInput | null = booked && currentSlot ? {
       slotId: currentSlot.id,
@@ -257,13 +257,14 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
             : <CalendarRecurrenceFields prefix={`${prefix}-repeat`} draft={repeat} startDate={draft.date} disabled={locked}
               onChange={value => { if (!busyRef.current) { setRepeat(value); setError(null); } }} />}
 
+          {ruleManaged && <p className="text-sm text-muted">{t("ruleManaged")}</p>}
           <fieldset disabled={locked}>
             <legend className="mb-3 text-sm font-medium text-ink">{t("subjects")}</legend>
-            <div className="grid grid-cols-2 gap-3">{ASSESSMENT_SLOT_SUBJECTS.map(subject => <Label key={subject} className="flex min-h-6 cursor-pointer items-center gap-2">
+            <div className="grid grid-cols-2 gap-3">{[...new Set([...(options.topics ?? []).filter(topic => topic.enabled).map(topic => topic.id), ...draft.subjects])].map(subject => <Label key={subject} className="flex min-h-6 cursor-pointer items-center gap-2">
               <Checkbox checked={draft.subjects.includes(subject)} disabled={locked}
                 onCheckedChange={checked => patch({ subjects: checked === true
                   ? [...new Set([...draft.subjects, subject])] : draft.subjects.filter(value => value !== subject) })} />
-              {t(`subject_${subject}`)}
+              {options.topics?.find(topic => topic.id === subject)?.name || subject}
             </Label>)}</div>
           </fieldset>
 
@@ -286,7 +287,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
 
           <div className="space-y-2">
             <Label className="flex min-h-6 cursor-pointer items-center gap-2">
-              <Checkbox checked={draft.enabled} disabled={busy || needsRefresh}
+              <Checkbox checked={draft.enabled} disabled={busy || needsRefresh || ruleManaged}
                 onCheckedChange={checked => patch({ enabled: checked === true })} />
               {t("enabled")}
             </Label>
@@ -302,7 +303,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
               {operation === "reload" ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : null}
               {t(currentSlot ? "useSaved" : "discardDraft")}
             </Button>
-            <Button type="submit" size="sm" disabled={busy || needsRefresh}>
+            <Button type="submit" size="sm" disabled={busy || needsRefresh || ruleManaged}>
               {operation === "save" ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <Save className="size-4" aria-hidden />}
               {t(operation === "save" ? "saving" : currentSlot ? "save" : draft.enabled ? "publish" : "saveClosed")}
             </Button>

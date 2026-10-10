@@ -15,7 +15,7 @@ const uniqueOptions = (exact = false) => z.array(exact ? exactTimeOption : timeO
   .max(84).refine((values) => new Set(values).size === values.length);
 
 export const assessmentQuerySchema = z.object({ participant: uuid }).strict();
-const subjects = z.array(z.enum(["math", "english"])).min(1).max(2)
+const subjects = z.array(z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/)).min(1).max(12)
   .refine(values => new Set(values).size === values.length);
 const grade = z.number().int().min(-1).max(12);
 export const assessmentSlotsQuerySchema = z.object({ participant: uuid,
@@ -79,6 +79,7 @@ export const assessmentRequestSchema: z.ZodType<ParentAssessmentRequest> = z.obj
 });
 
 export const assessmentOverviewSchema: z.ZodType<ParentAssessmentOverview> = z.object({
+  topics: z.array(z.object({ id: z.string(), label: z.object({ zh: z.string(), en: z.string() }), available: z.boolean() })).default([]),
   participantId: uuid, timeZone: z.literal("Asia/Shanghai"),
   eligibility: z.object({
     canRequest: z.boolean(),

@@ -21,7 +21,7 @@ export interface CalendarCreateDraft {
 export function newCalendarCreateDraft(kind: CalendarCreateDraft["kind"], at: Date, timeZone: string): CalendarCreateDraft {
   const year = calendarRange(calendarDayKey(at, timeZone), "year", timeZone);
   return {
-    id: newId(), kind, title: "", description: "", location: "", campusId: "", attendeeIds: [], teacherId: "", subjects: ["math"],
+    id: newId(), kind, title: "", description: "", location: "", campusId: "", attendeeIds: [], teacherId: "", subjects: [],
     start: zonedDateTimeInputValue(kind === "strategy" ? year.start : at, timeZone),
     end: zonedDateTimeInputValue(kind === "strategy" ? year.end : new Date(at.getTime() + 30 * 60_000), timeZone),
   };

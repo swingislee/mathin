@@ -194,11 +194,11 @@ export const DASHBOARD_ROUTES = {
   assessmentAvailability: {
     href: "/dashboard/assessments/availability",
     kind: "queue",
-    shellMode: "panel",
     environments: STAFF_ONLY,
     permissionAny: ["review.write", "followup.write", "schedule.manage"],
-    createSurface: "dialog",
+    createSurface: "parent",
     parent: "assessments",
+    nav: { labelKey: "assessmentAvailability", group: "subjectOperations" },
   },
   assessmentDetail: {
     hrefPattern: "/dashboard/assessments/[registrationId]",

@@ -7,25 +7,25 @@ import { createClient } from "@/lib/supabase/server";
 import { parse, uuid } from "./actions/schemas";
 import { calendarRecurrenceSchema, calendarRecurrenceWithinRange } from "./calendar-recurrence-schema";
 import {
-  ASSESSMENT_SLOT_SUBJECTS,
   type AssessmentAvailabilitySlot,
   type AssessmentSlotManagement,
   type SaveAssessmentSlotInput,
 } from "./assessment-availability-contract";
 
-const ERROR_CODES = ["UNAUTHENTICATED", "FORBIDDEN", "VALIDATION", "NOT_FOUND", "CONFLICT", "SLOT_BOOKED", "TIME_UNAVAILABLE", "NO_ELIGIBLE_TEACHER", "CAMPUS_UNAVAILABLE"] as const;
+const ERROR_CODES = ["UNAUTHENTICATED", "FORBIDDEN", "VALIDATION", "NOT_FOUND", "CONFLICT", "SLOT_BOOKED", "TIME_UNAVAILABLE", "NO_ELIGIBLE_TEACHER", "CAMPUS_UNAVAILABLE", "RULE_MANAGED"] as const;
 const instant = z.string().datetime({ offset: true });
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
   const parsed = new Date(`${value}T00:00:00Z`);
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 });
-const subjects = z.array(z.enum(ASSESSMENT_SLOT_SUBJECTS)).min(1).max(2).refine(value => new Set(value).size === value.length);
+const subjects = z.array(z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/)).min(1).max(12).refine(value => new Set(value).size === value.length);
 const grades = z.array(z.number().int().min(-1).max(12)).max(14).refine(value => new Set(value).size === value.length);
 const slotSchema = z.object({
-  id: uuid, teacherId: uuid, campusId: uuid, subjects, grades,
+  ruleId: uuid.nullable().optional(), id: uuid, teacherId: uuid, campusId: uuid, subjects, grades,
   startsAt: instant, endsAt: instant, enabled: z.boolean(), booked: z.boolean(), activeBooked: z.boolean().optional(), blocked: z.boolean().optional(), updatedAt: instant,
 });
 const managementSchema = z.object({
+  topics: z.array(z.object({ id: z.string(), name: z.string(), nameEn: z.string(), enabled: z.boolean(), updatedAt: instant })).default([]),
   currentUserId: uuid, canManageAll: z.boolean(),
   teachers: z.array(z.object({ id: uuid, displayName: z.string() })),
   campuses: z.array(z.object({ id: uuid, name: z.string() })),

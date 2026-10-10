@@ -104,7 +104,9 @@ export type AssessmentState = "coordinating_time" | "awaiting_facilitator" | "aw
 export type AssessmentEligibilityReason = "NO_LINKED_LEAD" | "AMBIGUOUS_LINKED_LEAD"
   | "LEAD_UNAVAILABLE" | "ACTIVE_INVITATION" | "NO_ELIGIBLE_FACILITATOR";
 export type AssessmentFacilitator = { id: string; displayName: string };
-export type AssessmentTopic = "math" | "english";
+/** Stable identifier in the backend diagnostic-topic catalog. */
+export type AssessmentTopic = string;
+export type AssessmentTopicOption = { id: string; label: { zh: string; en: string }; available: boolean };
 export type AssessmentSlot = {
   id: string; facilitatorId: string; campusId: string; startsAt: string; endsAt: string; available: boolean;
 };
@@ -131,6 +133,7 @@ export type AssessmentRequest = {
   booking?: AssessmentBookingDetails | null;
 };
 export type AssessmentOverview = {
+  topics?: AssessmentTopicOption[];
   participantId: string; timeZone: "Asia/Shanghai";
   eligibility: { canRequest: boolean; reason: AssessmentEligibilityReason | null };
   facilitators: AssessmentFacilitator[]; requests: AssessmentRequest[];

@@ -1,8 +1,7 @@
 import { addCalendarDays, calendarDayKey, dateTimeInputToInstant, zonedDateTimeInputValue } from "./schedule";
 import type { CalendarRecurrence } from "./calendar-contract";
 
-export const ASSESSMENT_SLOT_SUBJECTS = ["math", "english"] as const;
-export type AssessmentSlotSubject = typeof ASSESSMENT_SLOT_SUBJECTS[number];
+export type AssessmentSlotSubject = string;
 export const ASSESSMENT_SLOT_GRADES = Array.from({ length: 14 }, (_, index) => index - 1);
 
 export interface AssessmentAvailabilitySlot {
@@ -16,11 +15,13 @@ export interface AssessmentAvailabilitySlot {
   enabled: boolean;
   booked: boolean;
   activeBooked?: boolean;
+  ruleId?: string | null;
   blocked?: boolean;
   updatedAt: string;
 }
 
 export interface AssessmentSlotManagement {
+  topics?: import("./assessment-rules-contract").AssessmentTopicDefinition[];
   currentUserId: string;
   canManageAll: boolean;
   teachers: { id: string; displayName: string }[];
@@ -88,6 +89,7 @@ export function shiftAssessmentSlotDate(value: string, days: number, timeZone: s
 
 export function assessmentAvailabilityError(code: string): string {
   if (code === "UNAUTHENTICATED" || code === "FORBIDDEN") return "forbidden";
+  if (code === "RULE_MANAGED") return "ruleManaged";
   if (code === "VALIDATION") return "invalid";
   if (code === "CONFLICT") return "conflict";
   if (code === "SLOT_BOOKED") return "bookedConflict";

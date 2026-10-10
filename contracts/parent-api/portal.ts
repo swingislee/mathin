@@ -103,7 +103,9 @@ export type AssessmentState = "coordinating_time" | "awaiting_teacher" | "awaiti
 export type AssessmentEligibilityReason = "NO_LINKED_LEAD" | "AMBIGUOUS_LINKED_LEAD"
   | "LEAD_UNAVAILABLE" | "ACTIVE_INVITATION" | "NO_ELIGIBLE_TEACHER";
 export type AssessmentTeacher = { id: string; displayName: string };
-export type AssessmentSubject = "math" | "english";
+/** Stable identifier in the backend diagnostic-topic catalog. */
+export type AssessmentSubject = string;
+export type AssessmentTopicOption = { id: string; label: { zh: string; en: string }; available: boolean };
 export type AssessmentSlot = {
   id: string; teacherId: string; campusId: string; startsAt: string; endsAt: string; available: boolean;
 };
@@ -130,6 +132,7 @@ export type ParentAssessmentRequest = {
   booking?: AssessmentBookingDetails | null;
 };
 export type ParentAssessmentOverview = {
+  topics?: AssessmentTopicOption[];
   participantId: string; timeZone: "Asia/Shanghai";
   eligibility: { canRequest: boolean; reason: AssessmentEligibilityReason | null };
   teachers: AssessmentTeacher[]; requests: ParentAssessmentRequest[];

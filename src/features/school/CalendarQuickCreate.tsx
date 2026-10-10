@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { assessmentAvailabilityError, assessmentSlotInput, ASSESSMENT_SLOT_SUBJECTS, type AssessmentAvailabilitySlot, type AssessmentSlotManagement } from "./assessment-availability-contract";
+import { assessmentAvailabilityError, assessmentSlotInput, type AssessmentAvailabilitySlot, type AssessmentSlotManagement } from "./assessment-availability-contract";
 import { saveAssessmentSlotAction } from "./assessment-availability-actions";
 import { saveCalendarEventAction } from "./calendar-actions";
 import { CALENDAR_EVENT_KINDS, type CalendarEvent, type CalendarWorkspace } from "./calendar-contract";
@@ -130,9 +130,9 @@ export function CalendarQuickCreate({ draft, onChange, timeZone, workspace, avai
           <SelectContent>{campuses.map(campus => <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>)}</SelectContent>
         </Select> : <Input className={cn(inputClass, "flex-1")} aria-label={t("location")} placeholder={t("quickLocation")} maxLength={240} value={draft.location} onChange={event => patch({ location: event.target.value })} />}
       </div>
-      {isSlot ? <div className="ml-7 flex flex-wrap gap-4">{ASSESSMENT_SLOT_SUBJECTS.map(subject => <Label key={subject} className="flex cursor-pointer items-center gap-2 font-normal">
-        <Checkbox checked={draft.subjects.includes(subject)} onCheckedChange={checked => patch({ subjects: checked ? [...draft.subjects, subject] : draft.subjects.filter(value => value !== subject) })} />{a(`subject_${subject}`)}
-      </Label>)}</div> : null}
+      {isSlot ? <div className="ml-7 flex flex-wrap gap-4">{(availability?.topics ?? []).filter(topic => topic.enabled).map(topic => { const subject = topic.id; return <Label key={subject} className="flex cursor-pointer items-center gap-2 font-normal">
+        <Checkbox checked={draft.subjects.includes(subject)} onCheckedChange={checked => patch({ subjects: checked ? [...draft.subjects, subject] : draft.subjects.filter(value => value !== subject) })} />{topic.name}
+      </Label>; })}</div> : null}
       {!isSlot ? <div className="flex items-start gap-3"><AlignLeft className="mt-2.5 size-4 shrink-0 text-slate-500" />
         <Textarea className={cn(inputClass, "min-h-16 flex-1")} rows={2} maxLength={4000} aria-label={t("description")} placeholder={t("description")} value={draft.description} onChange={event => patch({ description: event.target.value })} />
       </div> : null}

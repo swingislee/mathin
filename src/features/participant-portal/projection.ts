@@ -46,7 +46,7 @@ export function assessmentOverview(value: Existing.ParentAssessmentOverview): Pa
   return { participantId: value.participantId, timeZone: value.timeZone,
     eligibility: { canRequest: value.eligibility.canRequest,
       reason: value.eligibility.reason === "NO_ELIGIBLE_TEACHER" ? "NO_ELIGIBLE_FACILITATOR" : value.eligibility.reason },
-    facilitators: value.teachers, requests: value.requests.map(assessmentRequest) };
+    topics: value.topics ?? [], facilitators: value.teachers, requests: value.requests.map(assessmentRequest) };
 }
 
 export function assessmentAvailability(value: Existing.AssessmentAvailability): Participant.AssessmentAvailability {

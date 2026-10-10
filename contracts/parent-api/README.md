@@ -119,7 +119,9 @@
 
 2026-10-05 新增老师主动发布排班：`20261005000100_assessment_published_slots.sql`、`20261005000200_assessment_slot_closure.sql`、`20261005000300_assessment_slot_booking_status.sql` 已应用于本机隔离开发库，未部署生产。新增 `assessment_slots` 存发布安排，预约仍写入原有邀约。教职员入口是 `/zh/dashboard/assessments/availability`，`review.write` 老师自管，`followup.write` / `schedule.manage` 工作人员全管；已约历史的主体内容不可修改，关闭发布保留预约事实。
 
-`GET /api/v1/parent/assessment-slots` 必填 `participant`、逗号分隔的 `subjects`（`math`、`english`，可多选）和 `grade`（-1 幼中班、0 幼大班、1～12 年级）。`parent_assessment_availability` 以调用者身份验证孩子范围，返回上海日期今天至今天+13 的 `{ participantId, timeZone, from, to, teachers, campuses, slots }`。时段含 `{ id, teacherId, campusId, startsAt, endsAt, available }`，只展示主动发布并符合全部所选科目和年级的安排；`available=false` 表示占用，未发布时间不补造记录。发布老师可以不是孩子原任课教师，输出不含其他家长或预约信息。
+2026-10-10 开发增量：后台新增诊断主题维护与“老师 → 开放／排除规则”表。预约概览增加 `topics: { id, label: { zh, en }, available }[]`；显示名称来自后台，`available` 只计未来两周有可约安排的启用主题。小程序据此生成选项；`math`、`english` 继续保留原含义，新增主题使用稳定字符串 ID。迁移 `20261010160000_assessment_teacher_rules.sql` 与 `20261010161000_assessment_rule_booking_release.sql` 已应用开发库，此增量尚未发布生产。
+
+`GET /api/v1/parent/assessment-slots` 必填 `participant`、逗号分隔的 `subjects`（后台主题 ID，最多 12 项、不可重复）和 `grade`（-1 幼中班、0 幼大班、1～12 年级）。`parent_assessment_availability` 以调用者身份验证孩子范围，返回上海日期今天至今天+13 的 `{ participantId, timeZone, from, to, teachers, campuses, slots }`。时段含 `{ id, teacherId, campusId, startsAt, endsAt, available }`，只展示主动发布并符合全部所选主题和年级的安排；`available=false` 包括占用、排除、校区休假或主题停用。未发布时间不补造记录。发布老师可以不是孩子原任课教师，输出不含其他家长或预约信息。规则修改保留原预约快照；取消预约后，仍符合当前规则的时间恢复可约。
 
 预约命令为 `{ action: "book", id, participantId, slotId, subjects, grade, mode: "campus" }`，调用 `book_parent_assessment_slot`。数据库锁定请求、学生及老师，核验发布状态、科目、年级、当前资格和时间占用后生成 `confirmed` 邀约，HTTP 返回 201。重试同 ID、同输入返回当前状态，包括已完成或已取消；变更输入或已占用返回 `CONFLICT`。结果的可选 `booking` 含时段、科目、年级、方式、校区及结束时间；旧协调记录可为 null 或省略。新预约可从既有邀约沟通明细完成或取消，取消后重新开放仍有效的发布时段。
 

@@ -3,7 +3,7 @@ import type { Account, Participant, AssessmentOverview, AssessmentRequest, Asses
 import { pageData, syncPage, errorText, loginPage } from "../../lib/page";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 import { assessmentTimeLabel, futureAssessmentOption } from "../../lib/assessment-calendar";
-import { assessmentFields, assessmentTopics, bookedTimeLabel, publishedAssessmentGrid } from "../../lib/assessment-booking";
+import { assessmentFields, bookedTimeLabel, publishedAssessmentGrid } from "../../lib/assessment-booking";
 import { pendingAssessment, savePendingAssessment, clearPendingAssessment, type PendingAssessmentRequest } from "../../lib/assessment-pending";
 
 type RequestView = AssessmentRequest & { facilitatorName: string; statusLabel: string; confirmedTimeLabel: string;
@@ -76,7 +76,7 @@ Page({
         loaded: true, pending: recovered ? null : pending, pendingChecked: Boolean(pending && !recovered), uncertain: Boolean(pending && !recovered), confirmUncertain: false,
         error: pending && !recovered ? this.data.copy.checkAssessment : "",
         showHistory: this.data.showHistory || Boolean(recovered) || overview.eligibility.reason === "ACTIVE_INVITATION" });
-      this.renderRequests();
+      this.renderRequests(); this.renderFields();
     } catch (error) {
       if (version === this.loadVersion) this.setData({ error: errorText(error), authenticated: Boolean(session()) });
     } finally { if (version === this.loadVersion) this.setData({ loading: false }); }
@@ -94,7 +94,7 @@ Page({
           && row.participantTimeOptions.includes(option) && row.facilitatorTimeOptions.includes(option))
         .map(value => ({ value, label: assessmentTimeLabel(value, this.data.copy.afterSchool) })) : [];
       const confirmedTimeToken = row.confirmedStartsAt ? new Date(Date.parse(row.confirmedStartsAt) + 8 * 60 * 60 * 1000).toISOString().slice(0, 16).replace("T", "@") : "";
-      const fields = row.booking ? assessmentFields(this.data.locale === "en" ? "en" : "zh", row.booking.topics, row.booking.stageNumber) : null;
+      const fields = row.booking ? assessmentFields(this.data.locale === "en" ? "en" : "zh", row.booking.topics, row.booking.stageNumber, this.data.overview?.topics) : null;
       return { ...row, facilitatorName: row.facilitator?.displayName || this.data.copy.toBeConfirmed, statusLabel: this.stateLabel(row.state),
         confirmedTimeLabel: ["confirmed", "completed"].includes(row.state) && confirmedTimeToken
           ? row.booking ? bookedTimeLabel(row.confirmedStartsAt!, row.booking.endsAt, this.data.copy.fullWeekdays.split(",")) : assessmentTimeLabel(confirmedTimeToken, this.data.copy.afterSchool) : "",
@@ -103,7 +103,7 @@ Page({
     });
     this.setData({ requests });
   },
-  renderFields() { this.setData(assessmentFields(this.data.locale === "en" ? "en" : "zh", this.data.selectedTopics, this.data.stageNumber)); },
+  renderFields() { this.setData(assessmentFields(this.data.locale === "en" ? "en" : "zh", this.data.selectedTopics, this.data.stageNumber, this.data.overview?.topics)); },
   clearAvailability() {
     this.availabilityVersion++;
     this.setData({ availability: null, availabilityLoading: false, campusId: "", facilitatorId: "", selectedSlotId: "", weekIndex: 0 });
@@ -142,7 +142,7 @@ Page({
     const sheet = String(e.currentTarget.dataset.sheet);
     if (this.data.busy || this.data.loading || (this.data.uncertain && sheet !== "participant")) return;
     this.setData({ sheet, draftTopics: [...this.data.selectedTopics] });
-    if (sheet === "topic") this.setData({ topicOptions: assessmentFields(this.data.locale === "en" ? "en" : "zh", this.data.draftTopics, this.data.stageNumber).topicOptions });
+    if (sheet === "topic") this.setData({ topicOptions: assessmentFields(this.data.locale === "en" ? "en" : "zh", this.data.draftTopics, this.data.stageNumber, this.data.overview?.topics).topicOptions });
   },
   closeSheet() { this.setData({ sheet: "" }); },
   noop() {},
@@ -154,13 +154,13 @@ Page({
   },
   toggleTopic(e: WechatMiniprogram.TouchEvent) {
     const id = String(e.currentTarget.dataset.id) as AssessmentTopic;
-    if (this.data.busy || this.data.uncertain || !assessmentTopics.some(topic => topic.id === id)) return;
+    if (this.data.busy || this.data.uncertain || !(this.data.overview?.topics || []).some(topic => topic.available && topic.id === id)) return;
     const draftTopics = this.data.draftTopics.includes(id) ? this.data.draftTopics.filter(topic => topic !== id) : [...this.data.draftTopics, id];
-    this.setData({ draftTopics, topicOptions: assessmentFields(this.data.locale === "en" ? "en" : "zh", draftTopics, this.data.stageNumber).topicOptions });
+    this.setData({ draftTopics, topicOptions: assessmentFields(this.data.locale === "en" ? "en" : "zh", draftTopics, this.data.stageNumber, this.data.overview?.topics).topicOptions });
   },
   confirmTopics() {
     if (this.data.busy || this.data.uncertain || !this.data.draftTopics.length) return;
-    const selectedTopics = assessmentTopics.filter(topic => this.data.draftTopics.includes(topic.id)).map(topic => topic.id);
+    const selectedTopics = (this.data.overview?.topics || []).filter(topic => topic.available && this.data.draftTopics.includes(topic.id)).map(topic => topic.id);
     if (selectedTopics.join(",") !== this.data.selectedTopics.join(",")) this.clearAvailability();
     this.setData({ selectedTopics, sheet: "" }); this.renderFields();
   },

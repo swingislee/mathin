@@ -11,7 +11,7 @@
 3. 开发 API 为 `http://192.168.5.213:3130`，写入已忽略的 `miniprogram/config.local.ts`。已有 3130 服务优先复用。
 4. 打开 `pages/discover/index` 查看本轮结果。小程序类型检查入口仍为 `corepack pnpm parents:wechat:typecheck`。
 
-品牌固定为“格致未来思维”。文案跟随微信语言：英文使用 en，其余回退中文。公共文案维护在 `lib/locale.ts` 与 `lib/copy.ts`，默认导航同步维护在 `app.json`。诊断用途、真实年级选项、数学／英语、发布资料正文和信息使用说明保留真实含义。
+品牌固定为“格致未来思维”。文案跟随微信语言：英文使用 en，其余回退中文。公共文案维护在 `lib/locale.ts` 与 `lib/copy.ts`，默认导航同步维护在 `app.json`。诊断用途、真实年级选项、后台诊断主题、发布资料正文和信息使用说明保留真实含义。
 
 小程序页面统一使用“账号、联系人、参与人、参与信息”。首次登记文案维护在 `lib/onboarding.ts`；后台已有表单标题、字段和隐私说明由 `lib/participant-wording.ts` 在展示时适配，同步中英文。真实关系选项和未满十四周岁信息保护的适用范围保持明确，字段 ID、提交答案及同意版本沿用原合同。
 
@@ -21,7 +21,7 @@
 
 小程序请求 `/api/v1/participant`；DTO 来自 [参与人合同](../../contracts/participant-api/README.md)，由 `node scripts/sync-participant-contract.mjs` 生成。服务端将 `calendar`、`stageNumber`、`facilitatorId`、`topics`、`taskId` 等字段转换到既有处理函数，账号、稳定 ID、范围校验与 RLS 继续复用。本轮无 Supabase 表名或字段改动，无数据库迁移，Messaging 与其他客户端沿用原接口。
 
-未确认申请的旧缓存由单独兼容模块读取，新请求保留原申请 ID。活动发布资料尚无独立主题，未分类项目保留在“全部主题”，不会推测成数学；诊断的数学／英语时段来自已有真实配置。具体能力和后台资料位置见[业务配置说明](docs/portal.md)。
+未确认申请的旧缓存由单独兼容模块读取，新请求保留原申请 ID。活动发布资料尚无独立主题，未分类项目保留在“全部主题”，不会推测成数学；诊断主题由后台维护，小程序仅显示未来两周有可约安排的主题，思维及其它学科均显示实际主题名称。具体能力和后台资料位置见[业务配置说明](docs/portal.md)。
 
 ## Codex 与微信开发者工具协同
 
