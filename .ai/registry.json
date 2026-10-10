@@ -3,6 +3,27 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-FIRST-REVIEW-20261010",
+      "title": "首次提审材料与诊断预约权限",
+      "agent": "codex",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-FIRST-REVIEW-20261010.md",
+      "writePaths": [
+        ".ai/tasks/MINI-FIRST-REVIEW-20261010.md",
+        ".tmp/mini-first-review-20261010/",
+        "apps/parent-wechat/miniprogram/lib/copy.ts",
+        "supabase/migrations/20261010150000_miniapp_assessment_participation.sql",
+        "supabase/tests/miniapp_assessment_participation.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "普通参与人预约权限及诊断中英文操作提示已实现，隔离权限 SQL 通过并应用开发库；首次提审文本已准备。待授权发布函数修复和上传新包，生产需发布真实可预约时段后补截图。"
+    },
+    {
       "id": "MINI-WECHAT-TRUSTED-LOGIN-20261010",
       "title": "已绑定微信直接登录小程序",
       "agent": "codex",
