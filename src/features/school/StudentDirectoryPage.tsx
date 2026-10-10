@@ -18,7 +18,7 @@ export async function StudentDirectoryPage({ locale, currentUserId, permissions,
   return <StudentDirectoryWorkspace data={data} filters={{ ...filters, page: data.page }} locale={locale}
     canContact={permissions.has("followup.view") && permissions.has("followup.write")}
     actions={<>
-      <Link href="/dashboard/students/groups" className={buttonVariants({ variant: "ghost", size: "sm" })}>{m.groups}</Link>
+      <Link href="/dashboard/staff?view=organization" className={buttonVariants({ variant: "ghost", size: "sm" })}>{m.groups}</Link>
       {permissions.has("student.import") ? <Link href="/dashboard/students/import" className={buttonVariants({ variant: "ghost", size: "sm" })}>{m.import}</Link> : null}
       {permissions.has("student.delete") ? <Link href="/dashboard/students?tab=recycle" className={buttonVariants({ variant: "ghost", size: "sm" })}>{m.recycle}</Link> : null}
       {permissions.has("student.create") ? <NewStudentDialog /> : null}

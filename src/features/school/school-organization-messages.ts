@@ -1,0 +1,122 @@
+import type { SchoolBusinessRole, SchoolOrganizationKind } from "./school-collaboration-contract";
+
+export function schoolOrganizationMessages(locale: string) {
+  const en = locale.startsWith("en");
+  const roles: Record<SchoolBusinessRole, string> = {
+    school_support: en ? "Learning support owner" : "学服负责人",
+    assessment_teacher: en ? "Assessment teacher" : "诊断老师",
+    teacher: en ? "Class teacher" : "授课老师",
+  };
+  const kinds: Record<SchoolOrganizationKind, string> = {
+    org: en ? "Organization" : "机构", campus: en ? "Campus" : "校区", dept: en ? "Department" : "部门", group: en ? "Team" : "小组",
+  };
+  return {
+    tab: en ? "Organization & roles" : "组织与分工",
+    info: en ? "Drag staff into an organization to add them. Membership grants access to that organization and every organization below it."
+      : "把员工拖进组织即加入；成员可查看所在组织及全部下级组织的学生资料。",
+assessmentSettings: en ? "Assessment settings" : "诊断预约设置",
+    board: en ? "Board" : "画板", roster: en ? "Roster" : "名册",
+    addUnit: en ? "New organization" : "新建组织", addChild: en ? "New sub-organization" : "新建下级组织",
+    discard: en ? "Discard changes" : "放弃调整", save: en ? "Save changes" : "保存调整",
+    newName: (n: number) => en ? `New organization ${n}` : `新组织 ${n}`,
+    staffTitle: en ? "Staff" : "人员", search: en ? "Search names" : "搜索姓名",
+    unassigned: en ? "Not in an organization" : "未入组", dragHint: en ? "Drag onto an organization" : "拖到组织里",
+    emptyUnit: en ? "Drop staff here" : "把员工拖到这里",
+    memberTotal: (n: number) => en ? `${n} members` : `${n} 名成员`,
+    zoomIn: en ? "Zoom in" : "放大", zoomOut: en ? "Zoom out" : "缩小", fit: en ? "Fit" : "适应",
+    lead: en ? "Lead" : "组长", member: en ? "Member" : "成员", also: en ? "Also in another organization" : "同时在其他组织",
+    alsoShort: en ? "+" : "兼",
+    moveTo: en ? "Move to…  hold Alt to add" : "调到… · 按住 Alt 为兼任", addTo: en ? "Add to…" : "加入…", alsoTo: en ? "Also add to…" : "兼任到…",
+    close: en ? "Close" : "关闭", remove: en ? "Remove" : "移出",
+    roles, kinds,
+    legendSupport: en ? "Support" : "学服", legendAssessment: en ? "Assessment" : "诊断", legendTeacher: en ? "Teaching" : "授课",
+    legendTwin: en ? "Same person" : "同一人兼任",
+    // overview
+    howTitle: en ? "How it works" : "怎么用",
+    how: en ? [
+      "Create organizations, then drag an organization's title onto another to place it underneath. The board arranges itself.",
+      "Drag staff from the left into an organization. Dragging between organizations moves them; hold Alt to add a second membership.",
+      "Select a person to open their identity card: job, responsibilities, organizations and what each identity grants.",
+      "Changes stay as a draft. Save lists every effect and applies them together.",
+    ] : [
+      "新建组织后，把组织标题拖到另一个组织上即成为它的下级，画板自动整理。",
+      "从左侧把员工拖进组织；在组织之间拖动是调动，按住 Alt 拖动是兼任。",
+      "点击员工打开身份卡片：岗位、业务分工、所在组织，以及每个身份带来的权限和名单。",
+      "调整先保存在草稿中，「保存调整」时逐条列出影响后一次生效。",
+    ],
+    staffCount: en ? "Staff" : "员工", unitCount: en ? "Organizations" : "组织", unassignedCount: en ? "Unassigned" : "未入组",
+    readOnly: en ? "You can view the organizations you belong to. Directors and administrators maintain the structure." : "这里显示你所在的组织。组织结构由主管和管理员维护。",
+    // person
+    studentLoad: en ? "Students owned" : "负责学生", classLoad: en ? "Classes" : "授课班级", assessmentLoad: en ? "Assessments, 2 wks" : "近两周诊断",
+    jobs: en ? "Job role · controls operations" : "岗位 · 决定能做哪些操作", noJob: en ? "No job role" : "未设置岗位",
+    jobsLink: en ? "Change on the staff page" : "在员工页调整岗位",
+    duties: en ? "Responsibilities · controls which lists include them" : "业务分工 · 决定出现在哪些名单",
+    multiDuty: en ? "Allow several responsibilities" : "兼任多个分工",
+    needsFollowup: en ? "Needs follow-up permission from the job role." : "需要岗位具备跟进登记权限。",
+    needsReview: en ? "Needs assessment permission from the job role to receive bookings." : "接收诊断预约还需要岗位具备测评登记权限。",
+    units: en ? "Organizations" : "所在组织", join: en ? "Join an organization…" : "加入组织…",
+    effects: en ? "What these identities grant" : "这些身份带来什么",
+    permFollowUp: en ? "follow-up records" : "跟进登记", permReview: en ? "assessment records" : "测评登记",
+    jobGrants: (perms: string[]) => en ? `Job role allows: ${perms.join(", ") || "viewing only"}` : `岗位可操作：${perms.join("、") || "仅查看"}`,
+    dutyGrants: {
+      school_support: en ? "Listed as a learning support owner for leads, communication and student assignment" : "出现在线索、沟通台和学生分配的学服负责人名单",
+      assessment_teacher: en ? "Included in assessment schedules; families can book open times" : "进入诊断排班，家长可预约其开放时段",
+      teacher: en ? "Can be assigned to classes and is included in assessment schedules" : "可排为班级授课老师，也进入诊断排班",
+    } satisfies Record<SchoolBusinessRole, string>,
+    seesStudents: (unit: string, n: number) => en ? `In ${unit}: can view ${n} students and leads in it and below` : `在「${unit}」：可查看该组织及下级的 ${n} 名学生／线索`,
+    seesUnit: (unit: string) => en ? `In ${unit}: can view student records of this organization and below` : `在「${unit}」：可查看该组织及下级组织的学生资料`,
+    leads: (unit: string) => en ? `Lead of ${unit}` : `担任「${unit}」组长`,
+    rule: (label: string) => en ? `Shared assessment rule applies: ${label}` : `适用诊断统一规则：${label}`,
+    ruleKind: (kind: string) => kind === "exclude" ? (en ? "Exclusion" : "排除时段") : (en ? "Open times" : "开放时段"),
+    noUnit: en ? "Not in any organization; sees only students they work with directly" : "尚未加入组织，只能查看自己直接参与的学生",
+    // unit
+    directMembers: en ? "Direct members" : "直属成员", subUnits: en ? "Sub-organizations" : "下级组织", unitStudents: en ? "Students & leads" : "组内学生／线索",
+    name: en ? "Name" : "名称", kind: en ? "Type" : "类型", parent: en ? "Parent organization" : "上级组织", topLevel: en ? "None (top level)" : "无（顶层）",
+    order: (i: number, n: number) => en ? `Order among siblings · ${i} of ${n}` : `同级顺序 · 第 ${i} / ${n}`,
+    moveEarlier: en ? "Move earlier" : "前移", moveLater: en ? "Move later" : "后移",
+    unitGrants: en ? "What this organization grants" : "这个组织带来什么",
+    unitSees: (n: number) => en ? `Members can view ${n} students and leads here and below` : `成员可查看本组织及下级的 ${n} 名学生／线索`,
+    unitStructure: en ? "Members can view student records of any sub-organization" : "成员可查看全部下级组织的学生资料",
+    unitFilters: en ? "Lists, communication and assessment settings can filter by it" : "学生名单、沟通台与诊断设置可按此组织筛选",
+    noLead: en ? "No lead assigned" : "尚未指定组长",
+    archive: en ? "Archive" : "归档",
+    archiveBlocked: en ? "Move members and sub-organizations out first. Organizations holding source students or assessment rules stay active."
+      : "先移出成员和下级组织；承载原表学生或诊断规则的组织保留使用。",
+    nameTaken: en ? "Another organization already uses this name." : "已有同名组织。",
+    // save
+    saveTitle: en ? "Save organization changes" : "保存组织调整",
+    saveHint: en ? "These changes also adjust student access and assessment schedules. They apply together; earlier relationships stay on record."
+      : "以下调整会同时改变相关人员可查看的学生资料和诊断排班，确认后一次生效，历史关系保留记录。",
+    keepEditing: en ? "Keep editing" : "继续调整", confirm: en ? "Confirm and save" : "确认保存", saving: en ? "Saving…" : "正在保存…",
+    saved: en ? "Organization saved" : "组织已保存",
+    unsavedLeave: en ? "Organization changes are not saved yet." : "组织调整尚未保存。",
+    errors: {
+      GROUP_NAME_TAKEN: en ? "Two organizations would share a name. Rename one and save again." : "存在同名组织，请改名后再保存。",
+      ORGANIZATION_CYCLE: en ? "An organization cannot sit under its own sub-organization." : "组织不能放到自己的下级组织下面。",
+      GROUP_NOT_EMPTY: en ? "Move members and sub-organizations out before archiving." : "归档前请先移出成员和下级组织。",
+      GROUP_IN_USE: en ? "This organization holds source students or assessment rules, so it stays active." : "该组织承载原表学生或诊断规则，暂时不能归档。",
+      TARGET_CANNOT_FOLLOW_UP: en ? "A learning support owner needs follow-up permission from the job role." : "设为学服负责人需要岗位具备跟进登记权限。",
+      FORBIDDEN: en ? "Only directors and administrators can change the organization." : "只有主管和管理员可以调整组织。",
+      UNKNOWN: en ? "Could not save. Refresh and check the changes." : "保存未完成，请刷新后核对调整内容。",
+    } as Record<string, string>,
+    describe: {
+      created: (name: string, parent: string | null) => en ? `New organization ${name}${parent ? ` under ${parent}` : ""}` : `新建组织「${name}」${parent ? `，隶属「${parent}」` : ""}`,
+      renamed: (from: string, to: string) => en ? `Rename ${from} to ${to}` : `组织改名：「${from}」→「${to}」`,
+      moved: (name: string, parent: string | null) => en ? `${name} now sits under ${parent ?? "the top level"}` : `「${name}」改为隶属${parent ? `「${parent}」` : "顶层"}`,
+      kind: (name: string, kind: string) => en ? `${name} is now a ${kind}` : `「${name}」类型改为${kind}`,
+      reordered: (name: string) => en ? `Reorder ${name}` : `调整「${name}」的排列顺序`,
+      archived: (name: string) => en ? `Archive ${name}` : `归档组织「${name}」`,
+      joined: (person: string, unit: string, lead: boolean) => en ? `${person} joins ${unit}${lead ? " as lead" : ""}` : `${person} 加入「${unit}」${lead ? "并担任组长" : ""}`,
+      left: (person: string, unit: string) => en ? `${person} leaves ${unit}` : `${person} 移出「${unit}」`,
+      lead: (person: string, unit: string, lead: boolean) => en ? `${person} ${lead ? "becomes" : "is no longer"} lead of ${unit}` : `${person}${lead ? "担任" : "不再担任"}「${unit}」组长`,
+      roles: (person: string, roles: string) => en ? `${person}: responsibilities ${roles || "cleared"}` : `${person}：业务分工改为${roles || "未设置"}`,
+      gainAccess: (unit: string, n: number) => en ? `Gains access to ${n} students and leads in ${unit}` : `可查看「${unit}」${n} 名学生／线索`,
+      loseAccess: (unit: string, n: number) => en ? `Loses access to ${n} students and leads in ${unit}` : `不再查看「${unit}」${n} 名学生／线索`,
+      structureOnly: en ? "Members and student records stay the same" : "成员与学生资料不变",
+      displayOnly: en ? "Display only" : "仅影响显示",
+      rulesFollow: (labels: string) => en ? `Shared assessment rules follow the change: ${labels}` : `诊断统一规则随之调整：${labels}`,
+      roleKept: en ? "Existing assignments stay on record" : "已有负责关系继续保留",
+    },
+  };
+}
+export type SchoolOrganizationMessages = ReturnType<typeof schoolOrganizationMessages>;

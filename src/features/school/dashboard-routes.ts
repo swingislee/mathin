@@ -585,20 +585,13 @@ export const DASHBOARD_ROUTES = {
 
     // 新员工由员工集合页批量建档；主管持有窄化的 staff.invite 即可进入，
     // 停用员工、修改岗位等完整管理动作仍由 staff.manage 单独控制。
+    // 员工与组织共用一个入口：有员工权限看员工名单，其余员工只看组织与分工。
     href: "/dashboard/staff",
     kind: "collection",
     environments: STAFF_ONLY,
-    permission: "staff.invite",
+    permissionAny: ["staff.invite", "staff.manage", "student.view.all", "student.view.assigned", "followup.view"],
     createSurface: "dialog",
     nav: { labelKey: "staff", group: "organization" },
-  },
-  staffGroups: {
-    href: "/dashboard/staff/groups",
-    kind: "collection",
-    environments: STAFF_ONLY,
-    createSurface: "dialog",
-    parent: "staff",
-    nav: { labelKey: "staffGroups", group: "organization" },
   },
   accessControl: {
     // 岗位权限是独立配置控制台，不依赖具体员工——与 staff 是同级而非父子（§5.23）。

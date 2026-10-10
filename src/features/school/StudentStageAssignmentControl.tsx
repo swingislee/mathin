@@ -67,7 +67,7 @@ export function StudentStageAssignmentControl(props: AssignmentProps) {
 }
 
 function OwnerSettingsLink({ locale }: { locale: string }) {
-  return <Link href="/dashboard/students/groups" className="text-xs text-muted underline" onClick={event => event.stopPropagation()}>
+  return <Link href="/dashboard/staff?view=organization" className="text-xs text-muted underline" onClick={event => event.stopPropagation()}>
     {locale.startsWith("en") ? "Set learning support owners" : "设置学服负责人"}
   </Link>;
 }

@@ -3,10 +3,22 @@ import type { DashboardFieldQuery } from "./dashboard-page/dashboard-table-field
 
 export const SCHOOL_BUSINESS_ROLES = ["school_support", "assessment_teacher", "teacher"] as const;
 export type SchoolBusinessRole = typeof SCHOOL_BUSINESS_ROLES[number];
+export const SCHOOL_ORGANIZATION_KINDS = ["org", "campus", "dept", "group"] as const;
+export type SchoolOrganizationKind = typeof SCHOOL_ORGANIZATION_KINDS[number];
 export const schoolCollaborationSchema = z.object({
   canManage: z.boolean(),
-  groups: z.array(z.object({ id: z.string().uuid(), name: z.string(), memberIds: z.array(z.string().uuid()) })),
-  staff: z.array(z.object({ id: z.string().uuid(), name: z.string(), role: z.enum(SCHOOL_BUSINESS_ROLES).nullable(), canFollowUp: z.boolean().default(false), canReview: z.boolean().default(false) })),
+  groups: z.array(z.object({
+    id: z.string().uuid(), name: z.string(), memberIds: z.array(z.string().uuid()),
+    parentId: z.string().uuid().nullable().default(null), kind: z.enum(SCHOOL_ORGANIZATION_KINDS).default("group"),
+    sortOrder: z.number().int().default(0), leadIds: z.array(z.string().uuid()).default([]), studentCount: z.number().int().default(0),
+  })),
+  staff: z.array(z.object({
+    id: z.string().uuid(), name: z.string(), role: z.enum(SCHOOL_BUSINESS_ROLES).nullable(),
+    roles: z.array(z.enum(SCHOOL_BUSINESS_ROLES)).default([]), jobs: z.array(z.string()).default([]),
+    canFollowUp: z.boolean().default(false), canReview: z.boolean().default(false),
+    studentCount: z.number().int().default(0), classCount: z.number().int().default(0), upcomingAssessmentCount: z.number().int().default(0),
+  })),
+  rules: z.array(z.object({ id: z.string().uuid(), kind: z.string(), label: z.string(), groupIds: z.array(z.string().uuid()) })).default([]),
 });
 export type SchoolCollaborationSettings = z.infer<typeof schoolCollaborationSchema>;
 export const schoolParticipantSchema = z.object({ userId: z.string().uuid(), name: z.string(), role: z.enum([...SCHOOL_BUSINESS_ROLES, "participant"]) });

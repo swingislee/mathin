@@ -167,7 +167,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
           onChange={change => navigate({ ...change, marker: '' })} />
       </DashboardCommandFilters>
       <DashboardCommandActions>
-        {canAssign ? <Link href="/dashboard/students/groups" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>{schoolCollaborationMessages(locale).title}</Link> : null}
+        {canAssign ? <Link href="/dashboard/staff?view=organization" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>{schoolCollaborationMessages(locale).title}</Link> : null}
         {focused ? <Button size="sm" variant="ghost" className="size-8 p-0" title={m.resume} aria-label={m.resume} disabled={busy} onClick={() => { const row = rows.find(r => r.worklist.id === focused); if (row) { const next = new Set(collapsed); for (const key of collapseKeys(row,allMonths)) next.delete(key); setCollapsed(next); open(row); remember(row.worklist.id,next); } }}><CornerDownRight className="size-4" aria-hidden /></Button> : null}
         <Button size="sm" variant="ghost" className="size-8 p-0" title={m.refresh} aria-label={m.refresh} disabled={busy} onClick={() => { setRefreshRequested(true); router.refresh(); }}><RefreshCw className="size-4" aria-hidden /></Button>
         {!firstContactContent ? <div className="flex items-center gap-0.5 border-l border-line pl-1.5">

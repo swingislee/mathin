@@ -3,6 +3,42 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "STAFF-ORGANIZATION-BOARD-20261010",
+      "title": "员工组织画板",
+      "agent": "claude",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/STAFF-ORGANIZATION-BOARD-20261010.md",
+      "writePaths": [
+        ".ai/tasks/STAFF-ORGANIZATION-BOARD-20261010.md",
+        ".tmp/org-structure-20261010/",
+        "src/features/school/SchoolOrganizationBoard.tsx",
+        "src/features/school/SchoolCollaborationSettings.tsx",
+        "src/features/school/school-organization-model.ts",
+        "src/features/school/school-organization-messages.ts",
+        "src/features/school/actions/school-organization.ts",
+        "src/features/school/school-collaboration-contract.ts",
+        "src/app/[locale]/dashboard/staff/groups/page.tsx",
+        "src/app/[locale]/dashboard/students/groups/page.tsx",
+        "supabase/migrations/20261010190000_school_organization_structure.sql",
+        "supabase/tests/school_organization_structure.sql",
+        "src/app/[locale]/dashboard/staff/page.tsx"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/dashboard-routes.ts",
+        "src/features/school/nav.ts",
+        "src/features/school/AssessmentRulesWorkbench.tsx",
+        "src/features/school/source-worklist/Workspace.tsx",
+        "src/features/school/StudentDirectoryPage.tsx",
+        "src/features/school/StudentStageAssignmentControl.tsx",
+        "src/features/school/StudentStagePage.tsx"
+      ],
+      "checkpoint": null,
+      "next": "组织画板已并入员工页“组织与分工”视图，层级迁移已应用本地开发库，待实际使用验收；生产未发布。"
+    },
+    {
       "id": "ASSESSMENT-INLINE-CALENDAR-20261010",
       "title": "诊断行内规则、简明日历与员工分组",
       "agent": "codex",

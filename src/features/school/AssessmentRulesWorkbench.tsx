@@ -140,7 +140,7 @@ export function AssessmentRulesWorkbench({ initial, initialError, timeZone, now 
       </SelectContent></Select>
     </>}</DashboardCommandFilters>
       <DashboardCommandActions>{view === "topics" && workspace?.canManageAll && <Button size="sm" disabled={newTopic} onClick={() => setNewTopic(true)}><Plus className="size-4" />{t("addTopic")}</Button>}
-        <Link className={buttonVariants({ size: "sm", variant: "ghost" })} href="/dashboard/staff/groups"><UsersRound className="size-4" />{t("staffGroups")}</Link>
+        <Link className={buttonVariants({ size: "sm", variant: "ghost" })} href="/dashboard/staff?view=organization"><UsersRound className="size-4" />{t("staffGroups")}</Link>
         <Link className={buttonVariants({ size: "sm", variant: "ghost" })} title={t("calendar")} aria-label={t("calendar")} href="/dashboard/assessments/availability?view=calendar"><CalendarDays className="size-4" /></Link>
         <Button size="sm" className="size-8 p-0" variant="ghost" title={t("refresh")} aria-label={t("refresh")} disabled={pending} onClick={() => void reload()}><RefreshCw className="size-4" /></Button>
       </DashboardCommandActions></DashboardCommandPanel>}>
@@ -165,7 +165,7 @@ export function AssessmentRulesWorkbench({ initial, initialError, timeZone, now 
         {["teacher", "open", "exclude"].map(key => <TableHead key={key}>{t(key)}</TableHead>)}
       </TableRow></TableHeader><FollowupTableBody navigation="tree" onNavigate={() => true}>
         {workspace.teachers.map(teacher => <TeacherRow key={teacher.id} teacher={teacher} visible={visibleIds.has(teacher.id)} workspace={workspace} onSaved={onSaved} timeZone={timeZone} now={now} revision={revision} active={view === "rules"} />)}
-        {!teachers.length && <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted">{t("noTeachers")} <Link href="/dashboard/staff/groups" className="underline">{t("configureStaffFirst")}</Link></TableCell></TableRow>}
+        {!teachers.length && <TableRow><TableCell colSpan={3} className="h-24 text-center text-muted">{t("noTeachers")} <Link href="/dashboard/staff?view=organization" className="underline">{t("configureStaffFirst")}</Link></TableCell></TableRow>}
       </FollowupTableBody></Table></DashboardTableShell>
         <DashboardTablePagination currentPage={currentPage} totalPages={pages} totalCount={teachers.length} pageSize={size} pageSizes={[20,50,100]} onPageChange={setPage} onPageSizeChange={value => { setSize(value); setPage(1); }} />
       </div>
