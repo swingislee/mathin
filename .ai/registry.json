@@ -6,7 +6,7 @@
       "id": "RELEASE-V050-20261010",
       "title": "v0.5.0 周内改动生产发布与团队说明",
       "agent": "codex",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/RELEASE-V050-20261010.md",
@@ -21,8 +21,8 @@
         ".ai/registry.json",
         "docs/current.md"
       ],
-      "checkpoint": null,
-      "next": "核对近一周提交与生产，发布最新网站及共用后端、必要迁移，记录 v0.5.0 团队说明。"
+      "checkpoint": "77000bb689e96139eeb0bcfeef003b196c80e536",
+      "next": "v0.5.0 网站与共用后端已部署，11 项迁移、构建及必要生产检查通过。团队设置真实组织、分工和可约时段后验收；小程序动态主题与平台发布另行办理。"
     },
     {
       "id": "ORG-AUTOSAVE-20261010",
