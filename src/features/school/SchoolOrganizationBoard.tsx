@@ -63,6 +63,7 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
   const [query, setQuery] = useState("");
   const [hoverPerson, setHoverPerson] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [dropSide, setDropSide] = useState<"before" | "after" | "inside">("inside");
   const [ghost, setGhost] = useState<{ x: number; y: number; label: string; hint: string } | null>(null);
   const [view, setView] = useState<View>({ x: 24, y: 24, k: 0.9 });
   const [saving, setSaving] = useState(false);
@@ -149,6 +150,28 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
     members: current.members.map(row => row.userId === userId && row.groupId === groupId ? { ...row, lead } : row) }));
   const setRoles = (userId: string, roles: SchoolBusinessRole[]) => update(current => ({ ...current, roles: { ...current.roles, [userId]: roles } }));
   const patchUnit = (id: string, patch: Partial<OrgUnit>) => update(current => ({ ...current, units: current.units.map(unit => unit.id === id ? { ...unit, ...patch } : unit) }));
+  /** 放到目标组织的前面或后面：成为它的同级，并重排两处同级顺序。 */
+  const placeBeside = (id: string, targetId: string, side: "before" | "after") => update(current => {
+    const target = current.units.find(unit => unit.id === targetId), moving = current.units.find(unit => unit.id === id);
+    if (!target || !moving || subtreeIds(current.units, id).includes(targetId)) return current;
+    const others = childrenOf(current.units, target.parentId).filter(unit => unit.id !== id);
+    const at = others.findIndex(unit => unit.id === targetId) + (side === "after" ? 1 : 0);
+    const ordered = [...others.slice(0, at), { ...moving, parentId: target.parentId }, ...others.slice(at)];
+    const order = new Map(ordered.map((unit, index) => [unit.id, index]));
+    let units = current.units.map(unit => unit.id === id ? { ...unit, parentId: target.parentId, sortOrder: order.get(id)! }
+      : order.has(unit.id) ? { ...unit, sortOrder: order.get(unit.id)! } : unit);
+    if (moving.parentId !== target.parentId) {
+      const old = new Map(childrenOf(units, moving.parentId).map((unit, index) => [unit.id, index]));
+      units = units.map(unit => old.has(unit.id) ? { ...unit, sortOrder: old.get(unit.id)! } : unit);
+    }
+    return units.every((unit, index) => unit === current.units[index]) ? current : { ...current, units };
+  });
+  const sideAt = (targetId: string, x: number): "before" | "after" | "inside" => {
+    const rect = document.querySelector(`[data-org-unit="${targetId}"]`)?.getBoundingClientRect();
+    if (!rect) return "inside";
+    const ratio = (x - rect.left) / rect.width;
+    return ratio < 0.25 ? "before" : ratio > 0.75 ? "after" : "inside";
+  };
   const reparent = (id: string, parentId: string | null) => update(current => {
     if (parentId && subtreeIds(current.units, id).includes(parentId)) return current;
     const order = childrenOf(current.units, parentId).filter(unit => unit.id !== id).length;
@@ -197,8 +220,10 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
       if (!manage) return;
       const staff = drag.kind === "person" ? staffById.get(drag.id) : undefined, unit = drag.kind === "unit" ? unitById.get(drag.id) : undefined;
       setGhost({ x: event.clientX, y: event.clientY, label: staff?.name ?? unit?.name ?? "",
-        hint: drag.kind === "unit" ? m.parent : overReserve(event.clientX, event.clientY) ? m.rosterReserve : drag.from ? (event.altKey ? m.alsoTo : m.moveTo) : m.addTo });
-      setDropTarget(drag.kind === "person" && overReserve(event.clientX, event.clientY) ? "reserve" : unitAt(event.clientX, event.clientY, drag.kind === "unit" ? drag.id : undefined));
+        hint: drag.kind === "unit" ? (() => { const over = unitAt(event.clientX, event.clientY, drag.id); const side = over ? sideAt(over, event.clientX) : "inside";
+          return side === "before" ? m.placeBefore : side === "after" ? m.placeAfter : m.placeInside; })() : overReserve(event.clientX, event.clientY) ? m.rosterReserve : drag.from ? (event.altKey ? m.alsoTo : m.moveTo) : m.addTo });
+      const over = drag.kind === "person" && overReserve(event.clientX, event.clientY) ? "reserve" : unitAt(event.clientX, event.clientY, drag.kind === "unit" ? drag.id : undefined);
+      setDropTarget(over); setDropSide(drag.kind === "unit" && over && over !== "reserve" ? sideAt(over, event.clientX) : "inside");
     };
     const up = (event: PointerEvent) => {
       const drag = dragRef.current; dragRef.current = null; setGhost(null); setDropTarget(null);
@@ -217,7 +242,11 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
       const target = unitAt(event.clientX, event.clientY, drag.kind === "unit" ? drag.id : undefined);
       if (!target) return;
       if (drag.kind === "person") { if (target !== drag.from) { addMember(drag.id, target, event.altKey ? null : drag.from); setSelection({ kind: "person", id: drag.id }); } }
-      else if (unitById.get(drag.id)?.parentId !== target) reparent(drag.id, target);
+      else {
+        const side = sideAt(target, event.clientX);
+        if (side !== "inside") placeBeside(drag.id, target, side);
+        else if (unitById.get(drag.id)?.parentId !== target) reparent(drag.id, target);
+      }
     };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up); window.addEventListener("pointercancel", up);
     return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); window.removeEventListener("pointercancel", up); };
@@ -291,7 +320,8 @@ export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initi
         const count = manage ? rows.length : baseGroups.get(unit.id)?.memberIds.length ?? 0;
         return <section key={unit.id} data-org-unit={unit.id} aria-label={`${unit.name} · ${m.kinds[unit.kind]} · ${count}`}
           className={cn("absolute rounded-[10px] border border-line bg-card shadow-sm transition-[left,top] duration-200 motion-reduce:transition-none",
-            selected && "border-crater ring-2 ring-crater/35", dropTarget === unit.id && "border-[#4C7BD9] ring-[3px] ring-[#4C7BD9]/30")}
+            selected && "border-crater ring-2 ring-crater/35", dropTarget === unit.id && dropSide === "inside" && "border-[#4C7BD9] ring-[3px] ring-[#4C7BD9]/30",
+            dropTarget === unit.id && dropSide === "before" && "shadow-[-4px_0_0_0_#4C7BD9]", dropTarget === unit.id && dropSide === "after" && "shadow-[4px_0_0_0_#4C7BD9]")}
           style={{ left: box.x, top: box.y, width: ORG_NODE.width, height: box.h }}>
           <div role="button" tabIndex={0}
             className={cn("flex touch-none select-none items-center gap-2 rounded-t-[10px] border-b border-line px-2.5", manage ? "cursor-grab" : "cursor-pointer",
