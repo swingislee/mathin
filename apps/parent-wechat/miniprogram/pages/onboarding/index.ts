@@ -2,16 +2,16 @@ import { ApiError, authorizeWechatPhone, bindWechat, completeWechatFamily, login
 import { pageData, currentLocale, errorText, loginPage } from "../../lib/page";
 import { clearNavigation, selectParticipant } from "../../lib/navigation";
 import { onboardingCopy, promotionScene, saveOnboardingPreferences, takeOnboardingProof, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
-import { familyAnswerErrors, type FamilyField, type FamilyForm } from "../../lib/onboarding-form";
+import { familyAnswerErrors, type FamilyForm } from "../../lib/onboarding-form";
+import { displayFamilyForm, onboardingChoices, type DisplayFamilyField } from "../../lib/onboarding-presentation";
 import { registrationLocation } from "../../lib/registration-location";
 import { participantWording } from "../../lib/participant-wording";
 
-type DisplayField = FamilyField & { text: string; kind: "text" | "picker" | "interests"; choices: { id: string; text: string }[] };
 Page({
   data: { ...pageData("account"), words: onboardingCopy.zh, stage: "wechat", busy: false, ticket: "", scene: "", maskedPhone: "",
     canBindDirect: false, password: "", participantIndex: 0, participantChoices: [] as string[],
     values: { parentName: "", childName: "", school: "" }, selection: { relation: 0, gender: 0, grade: 0 },
-    choices: {} as Record<string, string[]>, fields: [] as DisplayField[], formTitle: "", formDescription: "",
+    choices: {} as Record<string, string[]>, fields: [] as DisplayFamilyField[], formTitle: "", formDescription: "",
     interests: [] as string[], selectedInterests: {} as Record<string, boolean>, consent: false,
     policy: null as PhoneResult | null },
   active: true,
@@ -21,11 +21,7 @@ Page({
     this.submissionLocation = null;
     const locale = currentLocale(), words = onboardingCopy[locale];
     wx.setNavigationBarTitle({ title: words.navigationTitle });
-    this.setData({ locale, words, choices: {
-      relation: [locale === "zh" ? "请选择" : "Choose", ...words.relations], gender: words.genders,
-      grade: locale === "zh" ? [words.chooseGrade, "幼中班", "幼大班", "一年级", "二年级", "三年级", "四年级", "五年级", "六年级", "初一", "初二", "初三", "高一", "高二", "高三"]
-        : [words.chooseGrade, "K2", "K3", ...Array.from({ length: 12 }, (_, index) => `Grade ${index + 1}`)],
-    } });
+    this.setData({ locale, words, choices: onboardingChoices(locale) });
     const proof = takeOnboardingProof();
     const scene = promotionScene(query.scene || proof?.scene);
     this.setData({ scene });
@@ -92,17 +88,12 @@ Page({
   },
   chooseParticipant(event: WechatMiniprogram.PickerChange) { this.selectExistingParticipant(Number(event.detail.value)); },
   configureForm(form: FamilyForm) {
-    const locale = currentLocale();
-    const text = (value: { zh: string; en: string }) => participantWording(value[locale] || value.zh);
-    const fields: DisplayField[] = form.fields.filter(field => field.mode !== "hidden").map(field => ({ ...field,
-      text: text(field.label), kind: field.id === "interests" ? "interests" : ["relation", "gender", "grade"].includes(field.id) ? "picker" : "text",
-      choices: (field.options || []).map(option => ({ id: option.id, text: text(option.label) })),
-    }));
+    const { title, description, fields } = displayFamilyForm(form, currentLocale());
     const options = fields.find(field => field.id === "interests")?.choices || [];
     const interests = this.data.interests.filter(id => options.some(option => option.id === id));
     const selectedInterests: Record<string, boolean> = {};
     interests.forEach(id => { selectedInterests[id] = true; });
-    this.setData({ fields, formTitle: text(form.title), formDescription: text(form.description), interests, selectedInterests });
+    this.setData({ fields, formTitle: title, formDescription: description, interests, selectedInterests });
   },
   async phone(event: WechatMiniprogram.CustomEvent<{ code?: string; errMsg?: string }>) {
     if (this.data.busy || !this.data.ticket) return;

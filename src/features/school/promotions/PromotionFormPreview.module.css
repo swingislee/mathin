@@ -1,23 +1,36 @@
-.phone { width: min(100%, 375px); margin-inline: auto; border: 1px solid var(--line); border-radius: 26px; background: var(--paper); color: var(--ink); overflow: hidden; font-family: system-ui, sans-serif; }
-.navigation { display: flex; align-items: center; justify-content: space-between; padding: 20px 16px 14px; font-size: 13px; border-bottom: 1px solid var(--line); }
-.capsule { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 20px; padding: 3px 10px; }
-.page { padding: 20px 18px 28px; }
-.introduction, .field { display: block; width: 100%; text-align: left; border-radius: 6px; cursor: pointer; outline: 1px solid transparent; outline-offset: 5px; transition: outline-color .15s; }
+/* The Mini Program's 750rpx layout at a 375px preview width. */
+.phone {
+  --ink: #29251f; --muted: #766f65; --line: #e8e1d5; --card: #fff; --leaf-deep: #6f8b48;
+  width: min(100%, 375px); margin-inline: auto; border: 1px solid var(--line); border-radius: 26px;
+  background: radial-gradient(ellipse at 0 28%, #e4edd7 0, transparent 60%), radial-gradient(ellipse at 100% 35%, #f6efdc 0, transparent 55%), linear-gradient(155deg, #e7ecd9, #edf1e4 70%);
+  color: var(--ink); overflow: hidden; font: 14px/normal system-ui, sans-serif;
+}
+.navigation { position: relative; display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 64px; padding-top: 20px; background: #fffdf8; font-size: 17px; font-weight: 600; }
+.capsule { position: absolute; right: 12px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 20px; padding: 3px 10px; font-size: 13px; font-weight: 400; }
+.page { display: flex; flex-direction: column; padding: 24px 14px 40px; }
+.introduction, .field { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; border-radius: 6px; cursor: pointer; outline: 1px solid transparent; outline-offset: 5px; transition: outline-color .15s; }
 .introduction:focus-visible, .field:focus-visible, .introduction[data-selected=true], .field[data-selected=true] { outline-color: var(--crater); }
 .introduction:hover, .field:hover { background: color-mix(in srgb, var(--moon) 14%, transparent); }
 .eyebrow { display: block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
 .title { display: block; font-size: 24px; line-height: 1.35; overflow-wrap: anywhere; }
-.description { display: block; font-size: 14px; line-height: 1.7; margin-top: 10px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
-.phoneNumber { display: flex; align-items: center; gap: 6px; color: var(--leaf-deep); font-size: 13px; margin: 20px 0 12px; }
-.field { margin: 18px 0; }
-.label { display: block; font-size: 14px; margin-bottom: 7px; line-height: 1.6; overflow-wrap: anywhere; }
+.description { display: block; font-size: 14px; line-height: 1.7; margin: 10px 0 20px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.phoneNumber { color: var(--leaf-deep); font-size: 14px; margin: 12px 0; }
+.field { margin-top: 15px; }
+.label { display: block; font-size: 14px; margin-bottom: 7px; overflow-wrap: anywhere; }
 .label > span { color: var(--muted); font-size: 12px; }
-.input { display: flex; align-items: center; justify-content: space-between; min-height: 47px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--muted); font-size: 15px; line-height: 1.6; }
-.interests { display: flex; flex-wrap: wrap; gap: 10px; font-size: 14px; line-height: 1.6; }
-.interests > span { display: flex; align-items: center; gap: 6px; overflow-wrap: anywhere; }
-.interests i, .checkbox { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 15px; height: 15px; border: 1px solid var(--line); background: var(--card); }
-.consent { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.8; margin-top: 22px; }
-.checkbox { margin-top: 4px; color: var(--leaf-deep); }
-.policy { color: var(--leaf-deep); font-size: 12px; margin: 12px 0 20px; }
-.submit { text-align: center; padding: 13px 8px; border-radius: 7px; background: var(--leaf-deep); color: var(--paper); font-size: 15px; line-height: 1.5; }
+.input { display: flex; align-items: center; box-sizing: border-box; min-height: 42px; padding: 11px 12px; border: .5px solid var(--line); border-radius: 8px; background: #f4f5f0; color: var(--ink); font-size: 14px; line-height: 1.6; }
+.input[data-picker=true] { min-height: 40px; }
+.interests { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 16px; font-size: 14px; }
+.interests > span { display: flex; align-items: center; overflow-wrap: anywhere; }
+.interests i, .checkbox { display: inline-block; flex-shrink: 0; width: 22px; height: 22px; margin-right: 5px; border: 1px solid #d1d1d1; border-radius: 3px; background: var(--card); }
+.consent { display: flex; align-items: flex-start; font-size: 12.5px; line-height: 1.8; }
+.policy { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 16px; color: var(--leaf-deep); font-size: 12.5px; }
+.policy > span { box-sizing: border-box; min-height: 36px; padding: 8px 4px; line-height: 1.5; }
+.hint { margin-top: 11px; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+.submit { box-sizing: border-box; min-height: 44px; margin-top: 12px; text-align: center; padding: 12px; border-radius: 30px; background: #6f8b48; color: #fff; font-size: 15px; font-weight: 600; line-height: 1.4; }
 .empty { color: var(--muted); font-size: 13px; padding: 28px 0; }
+@media (prefers-color-scheme: dark) {
+  .phone { --ink: #f2eddf; --muted: #9ba0b0; --line: #333a4e; --card: #212637; --leaf-deep: #a9c284; }
+  .navigation { background: #191d2b; }
+  .policy { color: #6f8b48; }
+}

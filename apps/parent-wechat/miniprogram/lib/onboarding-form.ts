@@ -24,15 +24,15 @@ export function familyChildren(answers: FamilyAnswers): FamilyChild[] {
 
 export const FAMILY_FIELD_IDS: FamilyFieldId[] = ["parentName", "relation", "childName", "grade", "school", "gender", "interests"];
 export const DEFAULT_FAMILY_FORM: FamilyFormConfig = {
-  title: { zh: "认识你的家庭", en: "Your family" },
+  title: { zh: "参与信息", en: "Participation details" },
   description: { zh: "称呼或昵称都可以，方便我们与你联系。", en: "A preferred name or nickname helps us keep in touch." },
   fields: [
-    { id: "parentName", mode: "optional", label: { zh: "家长怎么称呼", en: "Parent’s preferred name" } },
-    { id: "relation", mode: "required", label: { zh: "与孩子的关系", en: "Relationship" } },
-    { id: "childName", mode: "required", label: { zh: "孩子怎么称呼", en: "Child’s preferred name" } },
-    { id: "grade", mode: "required", label: { zh: "孩子年级", en: "Child’s grade" } },
+    { id: "parentName", mode: "optional", label: { zh: "联系人怎么称呼", en: "Contact’s preferred name" } },
+    { id: "relation", mode: "required", label: { zh: "与参与人的关系", en: "Relationship to the participant" } },
+    { id: "childName", mode: "required", label: { zh: "参与人怎么称呼", en: "Participant’s preferred name" } },
+    { id: "grade", mode: "required", label: { zh: "参与人年级", en: "Participant’s grade" } },
     { id: "school", mode: "optional", label: { zh: "就读学校", en: "School" } },
-    { id: "gender", mode: "optional", label: { zh: "孩子性别", en: "Child’s gender" } },
+    { id: "gender", mode: "optional", label: { zh: "参与人性别", en: "Participant’s gender" } },
     { id: "interests", mode: "required", label: { zh: "感兴趣的内容", en: "Interests" }, options: [
       { id: "math", label: { zh: "数学思维", en: "Math thinking" } },
       { id: "science", label: { zh: "科学探索", en: "Science" } },

@@ -1,5 +1,4 @@
 <view class="portal-page onboarding-page">
-  <app-nav />
   <view class="portal-content onboarding-content">
     <text class="onboarding-eyebrow">格致未来思维</text>
     <text class="onboarding-title">{{stage === 'family' ? formTitle : words.title}}</text>
@@ -23,7 +22,7 @@
         <text class="auth-hint">{{words.existingParticipantNote}}</text>
       </block>
       <block wx:for="{{fields}}" wx:key="id">
-        <label class="field-label">{{item.text}}<text class="field-requirement">{{item.mode === 'required' ? (locale === 'zh' ? '（必填）' : ' (required)') : (locale === 'zh' ? '（选填）' : ' (optional)')}}</text></label>
+        <label class="field-label">{{item.text}}<text class="field-requirement">{{item.requirement}}</text></label>
         <input wx:if="{{item.kind === 'text'}}" class="input" value="{{values[item.id]}}" bindinput="input" data-field="{{item.id}}" maxlength="{{item.id === 'school' ? 120 : 100}}" disabled="{{busy}}" />
         <picker wx:elif="{{item.kind === 'picker'}}" range="{{choices[item.id]}}" value="{{selection[item.id]}}" bindchange="picker" data-field="{{item.id}}" disabled="{{busy}}"><view class="input picker-input">{{choices[item.id][selection[item.id]]}}</view></picker>
         <checkbox-group wx:else bindchange="chooseInterests" class="interest-options"><label wx:for="{{item.choices}}" wx:for-item="option" wx:key="id"><checkbox value="{{option.id}}" checked="{{selectedInterests[option.id]}}" disabled="{{busy}}" />{{option.text}}</label></checkbox-group>
