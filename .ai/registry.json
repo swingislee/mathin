@@ -3,6 +3,41 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ASSESSMENT-INLINE-CALENDAR-20261010",
+      "title": "诊断行内规则、简明日历与员工分组",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ASSESSMENT-INLINE-CALENDAR-20261010.md",
+      "writePaths": [
+        ".ai/tasks/ASSESSMENT-INLINE-CALENDAR-20261010.md",
+        ".tmp/assessment-inline-calendar-20261010/",
+        "src/features/school/AssessmentRulesWorkbench.tsx",
+        "src/features/school/AssessmentInlineRule.tsx",
+        "src/features/school/AssessmentTeacherCalendar.tsx",
+        "src/features/school/assessment-rules-contract.ts",
+        "src/features/school/assessment-rules-actions.ts",
+        "src/features/school/SchoolCollaborationSettings.tsx",
+        "src/features/school/school-collaboration-contract.ts",
+        "src/app/[locale]/dashboard/staff/groups/page.tsx",
+        "src/app/[locale]/dashboard/staff/page.tsx",
+        "supabase/migrations/20261010170000_assessment_shared_rules.sql",
+        "supabase/tests/assessment_shared_rules.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json",
+        "src/lib/database.types.ts",
+        "src/features/school/dashboard-routes.ts",
+        "src/features/school/nav.ts",
+        "src/features/school/DashboardShell.tsx"
+      ],
+      "checkpoint": null,
+      "next": "开发版已接通行内开放／排除、老师两周时段小表、全体／员工组／指定老师统一规则与员工分组入口。开发库迁移、定向权限与预约保护 SQL、类型和静态检查通过，待实际使用验收；生产未发布。"
+    },
+    {
       "id": "ASSESSMENT-TEACHER-RULES-20261010",
       "title": "诊断主题与老师预约规则表",
       "agent": "codex",

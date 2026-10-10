@@ -61,6 +61,7 @@ const STAFF_NAV_KEYS: readonly DashboardRouteKey[] = [
   "organization",
   "campuses",
   "staff",
+  "staffGroups",
   "accessControl",
   "academicYears",
   "registrationSettings",

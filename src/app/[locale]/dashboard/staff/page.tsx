@@ -1,5 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { DashboardPage } from "@/features/school/dashboard-page";
+import { DashboardPage, DashboardCommandPanel, DashboardCommandActions } from "@/features/school/dashboard-page";
+import { Link } from "@/i18n/navigation";
+import { buttonVariants } from "@/components/ui/button";
+import { schoolCollaborationMessages } from "@/features/school/school-collaboration-contract";
 import { StaffMembersPanel } from "@/features/school/StaffMembersPanel";
 import { listRecentStaffImportBatches } from "@/features/school/staff-imports";
 import { listStaffMembers, listStaffRoles } from "@/features/school/staff";
@@ -19,7 +22,9 @@ export default async function StaffPage({ params }: { params: Promise<{ locale: 
   ]);
 
   return (
-    <DashboardPage title={t("title")}>
+    <DashboardPage title={t("title")} commandPanel={<DashboardCommandPanel><DashboardCommandActions>
+      <Link href="/dashboard/staff/groups" className={buttonVariants({ size: "sm", variant: "ghost" })}>{schoolCollaborationMessages(locale).title}</Link>
+    </DashboardCommandActions></DashboardCommandPanel>}>
       <StaffMembersPanel
         members={members}
         roles={roles}

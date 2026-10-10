@@ -5,7 +5,7 @@ import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
 import { getMyPerms } from "@/lib/auth";
 import { parse, uuid } from "./actions/schemas";
-import type { AssessmentRulesWorkspace, SaveAssessmentRuleInput, AssessmentTopicDefinition } from "./assessment-rules-contract";
+import type { AssessmentRulesWorkspace, SaveAssessmentRuleInput, AssessmentTopicDefinition, AssessmentCalendarSlot } from "./assessment-rules-contract";
 
 const errors = ["UNAUTHENTICATED", "FORBIDDEN", "VALIDATION", "NOT_FOUND", "CONFLICT", "TIME_UNAVAILABLE", "NO_ELIGIBLE_TEACHER", "CAMPUS_UNAVAILABLE", "RULE_TOO_LARGE"];
 const instant = z.string().datetime({ offset: true });
@@ -19,11 +19,14 @@ const definitionSchema = z.object({
   durationMinutes: z.number().int().min(5).max(240).nullable(), timeZone: z.string().min(1).max(100), enabled: z.boolean(),
 }).strict();
 const topicSchema = z.object({ id: topicId, name: z.string().min(1).max(80), nameEn: z.string().max(80), enabled: z.boolean(), updatedAt: instant });
+const scopeSchema = z.object({ kind: z.enum(["all", "groups", "teachers"]), ids: z.array(uuid).max(500).refine(unique) }).strict()
+  .refine(scope => scope.kind === "all" ? scope.ids.length === 0 : scope.ids.length > 0);
 const workspaceSchema = z.object({
-  currentUserId: uuid, canManageAll: z.boolean(),
-  teachers: z.array(z.object({ id: uuid, displayName: z.string(), canReceive: z.boolean(), standaloneCount: z.number().int().nonnegative() })),
+  currentUserId: uuid, canManageAll: z.boolean(), canManageStaff: z.boolean(),
+  teachers: z.array(z.object({ id: uuid, displayName: z.string(), canReceive: z.boolean(), standaloneCount: z.number().int().nonnegative(), groupIds: z.array(uuid) })),
+  groups: z.array(z.object({ id: uuid, name: z.string() })),
   campuses: z.array(z.object({ id: uuid, name: z.string(), active: z.boolean() })), topics: z.array(topicSchema),
-  rules: z.array(definitionSchema.extend({ id: uuid, teacherId: uuid, updatedAt: instant,
+  rules: z.array(definitionSchema.extend({ id: uuid, teacherId: uuid.nullable(), scope: scopeSchema.nullable(), updatedAt: instant,
     availableCount: z.number().int().nonnegative(), bookedCount: z.number().int().nonnegative() })),
 });
 
@@ -47,17 +50,34 @@ export async function loadAssessmentRulesAction(): Promise<ActionResult<Assessme
 
 export async function saveAssessmentRuleAction(input: SaveAssessmentRuleInput): Promise<ActionResult<AssessmentRulesWorkspace>> {
   try {
-    const value = parse(z.object({ id: uuid, teacherId: uuid, definition: definitionSchema, expectedUpdatedAt: instant.nullable() }).strict().refine(({ definition: d }) => {
+    const value = parse(z.object({ id: uuid, teacherId: uuid.nullable(), scope: scopeSchema.nullable().optional(), definition: definitionSchema, expectedUpdatedAt: instant.nullable() }).strict()
+      .refine(value => value.teacherId ? !value.scope : Boolean(value.scope)).refine(({ definition: d }) => {
       const days = (Date.parse(d.until) - Date.parse(d.from)) / 86400000;
       return days >= 0 && days <= 370 && d.endMinute > d.startMinute && (d.kind === "open"
         ? Boolean(d.campusId && d.topics.length && d.weekdays.length && d.durationMinutes && d.durationMinutes <= d.endMinute - d.startMinute)
         : d.topics.length === 0 && d.grades.length === 0 && d.durationMinutes === null);
     }), input);
     const client = await authorizedClient();
-    const result = await client.rpc("save_assessment_rule", { p_id: value.id, p_teacher_id: value.teacherId,
-      p_definition: value.definition, p_expected_updated_at: value.expectedUpdatedAt ?? undefined });
+    const result = value.teacherId
+      ? await client.rpc("save_assessment_rule", { p_id: value.id, p_teacher_id: value.teacherId,
+        p_definition: value.definition, p_expected_updated_at: value.expectedUpdatedAt ?? undefined })
+      : await client.rpc("save_assessment_shared_rule", { p_id: value.id, p_scope: value.scope!,
+        p_definition: value.definition, p_expected_updated_at: value.expectedUpdatedAt ?? undefined });
     if (result.error) throw new Error(result.error.message);
     return { ok: true, data: workspaceSchema.parse(result.data) };
+  } catch (error) { return actionError(error, errors); }
+}
+
+export async function loadAssessmentTeacherCalendarAction(input: { teacherId: string; from: string; to: string }): Promise<ActionResult<AssessmentCalendarSlot[]>> {
+  try {
+    const value = parse(z.object({ teacherId: uuid, from: z.iso.date(), to: z.iso.date() }).strict()
+      .refine(value => { const days = (Date.parse(value.to) - Date.parse(value.from)) / 86400000; return days >= 0 && days <= 30; }), input);
+    const client = await authorizedClient();
+    const result = await client.rpc("get_assessment_teacher_calendar", { p_teacher_id: value.teacherId, p_from: value.from, p_to: value.to });
+    if (result.error) throw new Error(result.error.message);
+    const schema = z.array(z.object({ id: uuid, campusId: uuid, subjects: z.array(topicId), startsAt: instant, endsAt: instant,
+      enabled: z.boolean(), activeBooked: z.boolean(), blocked: z.boolean() }));
+    return { ok: true, data: schema.parse(result.data) };
   } catch (error) { return actionError(error, errors); }
 }
 

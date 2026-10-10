@@ -25,7 +25,8 @@ export function SchoolCollaborationSettings({ initial, locale }: { initial: Sett
   });
   return <DashboardPage title={m.title} density="compact" summary={<p className="text-sm text-muted">{m.description} {m.sourceHint}</p>}
     commandPanel={<DashboardCommandPanel><DashboardCommandActions>
-      <Link href="/dashboard/students" className="text-sm text-muted">{m.back}</Link>
+      <Link href="/dashboard/staff" className="text-sm text-muted">{m.back}</Link>
+      <Link href="/dashboard/assessments/availability" className="text-sm text-muted">{m.assessmentSettings}</Link>
       {settings.canManage ? <Button size="sm" onClick={() => setEditing({ id: null, name: "" })}>{m.add}</Button> : null}
     </DashboardCommandActions></DashboardCommandPanel>}>
     <p role="status" className="text-sm text-muted">{message}</p>
@@ -43,7 +44,8 @@ export function SchoolCollaborationSettings({ initial, locale }: { initial: Sett
               <SelectItem value="unset">{m.noRole}</SelectItem>
               {SCHOOL_BUSINESS_ROLES.map(role => <SelectItem key={role} value={role} disabled={role === "school_support" && !staff.canFollowUp}>{role === "school_support" ? m.supportOwner : m.roles[role]}</SelectItem>)}
             </SelectContent>
-          </Select>{!staff.canFollowUp ? <p className="mt-1 text-xs text-muted">{m.needsFollowup}</p> : null}</TableCell>{settings.groups.map(group => <TableCell key={group.id}><Checkbox aria-label={`${staff.name} · ${group.name}`} disabled={pending}
+          </Select>{staff.role === "school_support" && !staff.canFollowUp ? <p className="mt-1 text-xs text-muted">{m.needsFollowup}</p> : null}
+          {(staff.role === "teacher" || staff.role === "assessment_teacher") && !staff.canReview ? <p className="mt-1 text-xs text-muted">{m.needsReview}</p> : null}</TableCell>{settings.groups.map(group => <TableCell key={group.id}><Checkbox aria-label={`${staff.name} · ${group.name}`} disabled={pending}
             checked={group.memberIds.includes(staff.id)} onCheckedChange={active => save({ kind: "member", userId: staff.id, groupId: group.id, active: active === true })} /></TableCell>)}</TableRow>)}</TableBody>
       </Table></DashboardTableShell></DashboardSection> : null}
     <Dialog open={Boolean(editing)} onOpenChange={open => { if (!open && !pending) setEditing(null); }}><DialogContent><DialogHeader><DialogTitle>{editing?.id ? m.rename : m.add}</DialogTitle></DialogHeader>

@@ -10,6 +10,10 @@ export interface AssessmentTopicDefinition {
   updatedAt: string;
 }
 export type AssessmentRuleKind = "open" | "exclude";
+export interface AssessmentRuleScope {
+  kind: "all" | "groups" | "teachers";
+  ids: string[];
+}
 
 export interface AssessmentRuleDefinition {
   kind: AssessmentRuleKind;
@@ -30,7 +34,8 @@ export interface AssessmentRuleDefinition {
 
 export interface AssessmentRule extends AssessmentRuleDefinition {
   id: string;
-  teacherId: string;
+  teacherId: string | null;
+  scope: AssessmentRuleScope | null;
   updatedAt: string;
   availableCount: number;
   bookedCount: number;
@@ -39,7 +44,9 @@ export interface AssessmentRule extends AssessmentRuleDefinition {
 export interface AssessmentRulesWorkspace {
   currentUserId: string;
   canManageAll: boolean;
-  teachers: { id: string; displayName: string; canReceive: boolean; standaloneCount: number }[];
+  canManageStaff: boolean;
+  teachers: { id: string; displayName: string; canReceive: boolean; standaloneCount: number; groupIds: string[] }[];
+  groups: { id: string; name: string }[];
   campuses: { id: string; name: string; active: boolean }[];
   topics: AssessmentTopicDefinition[];
   rules: AssessmentRule[];
@@ -47,15 +54,16 @@ export interface AssessmentRulesWorkspace {
 
 export interface SaveAssessmentRuleInput {
   id: string;
-  teacherId: string;
+  teacherId: string | null;
+  scope?: AssessmentRuleScope | null;
   definition: AssessmentRuleDefinition;
   expectedUpdatedAt: string | null;
 }
 
-export function newAssessmentRule(teacherId: string, kind: AssessmentRuleKind, timeZone: string, now: number, campusId: string | null, topics: string[]): SaveAssessmentRuleInput {
+export function newAssessmentRule(teacherId: string | null, kind: AssessmentRuleKind, timeZone: string, now: number, campusId: string | null, topics: string[]): SaveAssessmentRuleInput {
   const today = calendarDayKey(new Date(now), timeZone);
   return {
-    id: newId(), teacherId, expectedUpdatedAt: null,
+    id: newId(), teacherId, scope: teacherId ? null : { kind: "all", ids: [] }, expectedUpdatedAt: null,
     definition: {
       kind, label: "", campusId: kind === "open" ? campusId : null,
       topics: kind === "open" ? topics : [], grades: [],
@@ -69,12 +77,29 @@ export function newAssessmentRule(teacherId: string, kind: AssessmentRuleKind, t
 }
 
 export function editAssessmentRule(rule: AssessmentRule): SaveAssessmentRuleInput {
-  return { id: rule.id, teacherId: rule.teacherId, expectedUpdatedAt: rule.updatedAt, definition: {
+  return { id: rule.id, teacherId: rule.teacherId, scope: rule.scope, expectedUpdatedAt: rule.updatedAt, definition: {
     kind: rule.kind, label: rule.label, campusId: rule.campusId,
     topics: [...rule.topics], grades: [...rule.grades], weekdays: [...rule.weekdays],
     from: rule.from, until: rule.until, startMinute: rule.startMinute, endMinute: rule.endMinute,
     durationMinutes: rule.durationMinutes, timeZone: rule.timeZone, enabled: rule.enabled,
   } };
+}
+
+export function assessmentRuleApplies(rule: AssessmentRule, teacher: AssessmentRulesWorkspace["teachers"][number]): boolean {
+  return rule.teacherId === teacher.id || (rule.teacherId === null && Boolean(rule.scope && (
+    rule.scope.kind === "all" || (rule.scope.kind === "teachers" && rule.scope.ids.includes(teacher.id)) ||
+    (rule.scope.kind === "groups" && rule.scope.ids.some(id => teacher.groupIds.includes(id))))));
+}
+
+export interface AssessmentCalendarSlot {
+  id: string;
+  campusId: string;
+  subjects: string[];
+  startsAt: string;
+  endsAt: string;
+  enabled: boolean;
+  activeBooked: boolean;
+  blocked: boolean;
 }
 
 export function ruleMinuteLabel(minute: number): string {

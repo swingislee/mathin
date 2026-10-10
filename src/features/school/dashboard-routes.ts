@@ -592,6 +592,14 @@ export const DASHBOARD_ROUTES = {
     createSurface: "dialog",
     nav: { labelKey: "staff", group: "organization" },
   },
+  staffGroups: {
+    href: "/dashboard/staff/groups",
+    kind: "collection",
+    environments: STAFF_ONLY,
+    createSurface: "dialog",
+    parent: "staff",
+    nav: { labelKey: "staffGroups", group: "organization" },
+  },
   accessControl: {
     // 岗位权限是独立配置控制台，不依赖具体员工——与 staff 是同级而非父子（§5.23）。
     href: "/dashboard/access-control",
