@@ -1,12 +1,17 @@
-import { get, post, session } from "../../lib/api";
-import type { Account, Booking, Participant } from "../../lib/api-types";
+import { get, getAssessments, post, session } from "../../lib/api";
+import type { Account, AssessmentOverview, Booking, Participant } from "../../lib/api-types";
 import { canCancel } from "../../lib/discovery";
 import { pageData, syncPage, date, text, errorText, loginPage } from "../../lib/page";
+import { assessmentFields, bookedTimeLabel } from "../../lib/assessment-booking";
+import { selectParticipant } from "../../lib/navigation";
 
-type BookingView = Booking & { label: string; when: string; statusText: string; cancellable: boolean };
+type AssessmentSource = { participant: Participant; overview: AssessmentOverview };
+type BookingView = { key: string; id: string; kind: "activity" | "assessment"; participantId: string; participantName: string;
+  label: string; when: string; startsAt: string | null; location: string; details: string; statusText: string;
+  phase: "upcoming" | "attended" | "cancelled" | "other"; cancellable: boolean };
 Page({
   data: { ...pageData("reservations"), authenticated: false, busy: false, loaded: false,
-    source: [] as Booking[], bookings: [] as BookingView[], participants: [] as Participant[],
+    source: [] as Booking[], assessments: [] as AssessmentSource[], bookings: [] as BookingView[], participants: [] as Participant[],
     participantNames: [] as string[], participantIndex: 0, participantId: "", filter: "upcoming", upcomingCount: 0, historyCount: 0 },
   loadVersion: 0,
   onLoad(query: Record<string, string>) {
@@ -14,7 +19,7 @@ Page({
   },
   onShow() {
     syncPage(this, "reservations");
-    this.setData({ authenticated: Boolean(session()), source: [], bookings: [], participants: [], participantNames: [],
+    this.setData({ authenticated: Boolean(session()), source: [], assessments: [], bookings: [], participants: [], participantNames: [],
       participantIndex: 0, loaded: false, error: "", loading: false });
     if (session()) void this.load();
   },
@@ -24,10 +29,21 @@ Page({
     const version = ++this.loadVersion;
     this.setData({ loading: true, error: "" });
     try {
-      const [account, bookings] = await Promise.all([get<Account>("account"), get<Booking[]>("bookings")]);
+      const account = await get<Account>("account");
       if (version !== this.loadVersion) return;
+      let partial = false;
+      const [bookings, assessmentReads] = await Promise.all([
+        get<Booking[]>("bookings").catch(() => { partial = true; return [] as Booking[]; }),
+        Promise.all(account.participants.map(async participant => {
+          try { return { participant, overview: await getAssessments(participant.id) }; }
+          catch { partial = true; return null; }
+        })),
+      ]);
+      if (version !== this.loadVersion) return;
+      const assessments = assessmentReads.filter((row): row is AssessmentSource => row !== null);
       const participantIndex = account.participants.findIndex(row => row.id === this.data.participantId) + 1;
-      this.setData({ source: bookings, participants: account.participants, loaded: true,
+      this.setData({ source: bookings, assessments, participants: account.participants, loaded: true,
+        authenticated: Boolean(session()), error: partial ? this.data.copy.bookingsReadIncomplete : "",
         participantNames: [this.data.copy.allParticipants, ...account.participants.map(row => row.name)],
         participantIndex, participantId: participantIndex ? account.participants[participantIndex - 1].id : "" });
       this.applyFilter();
@@ -37,14 +53,38 @@ Page({
   applyFilter() {
     const c = this.data.copy;
     const labels = { booked: c.booked, attended: c.attended, no_show: c.noShow, cancelled: c.cancelled };
-    const rows = this.data.source.filter(row => !this.data.participantId || row.participantId === this.data.participantId);
-    const upcoming = rows.filter(row => canCancel(row));
-    const history = rows.filter(row => !canCancel(row));
+    const source: BookingView[] = this.data.source.map(row => ({ ...row, key: "activity:" + row.id, kind: "activity",
+      label: text(row.title), when: date(row.startsAt), details: "", statusText: labels[row.status], cancellable: canCancel(row),
+      phase: canCancel(row) ? "upcoming" : row.status === "attended" ? "attended" : row.status === "cancelled" ? "cancelled" : "other" }));
+    const assessmentLabels = { coordinating_time: c.assessmentCoordinating, awaiting_facilitator: c.awaitingFacilitator,
+      awaiting_participant: c.awaitingParticipant, confirmed: c.assessmentConfirmed, completed: c.assessmentCompleted, cancelled: c.cancelled };
+    for (const { participant, overview } of this.data.assessments) {
+      for (const row of overview.requests) {
+        if (row.participantId !== participant.id) continue;
+        const startsAt = ["confirmed", "completed"].includes(row.state) ? row.confirmedStartsAt : null;
+        const fields = row.booking ? assessmentFields(this.data.locale === "en" ? "en" : "zh",
+          row.booking.topics, row.booking.stageNumber, overview.topics) : null;
+        source.push({ key: "assessment:" + row.id, id: row.id, kind: "assessment", participantId: participant.id,
+          participantName: participant.name, label: c.assessmentKind, startsAt,
+          when: startsAt ? row.booking ? bookedTimeLabel(startsAt, row.booking.endsAt, c.fullWeekdays.split(",")) : date(startsAt) : c.toBeConfirmed,
+          location: row.booking?.campus.name || "", details: [fields?.topicLabel, fields?.stageLabel,
+            row.facilitator ? c.assessmentFacilitator + " · " + row.facilitator.displayName : ""].filter(Boolean).join(" · "),
+          statusText: assessmentLabels[row.state], cancellable: false,
+          phase: row.state === "cancelled" ? "cancelled" : row.state === "completed" ? "attended"
+            : !startsAt || Date.parse(startsAt) > Date.now() ? "upcoming" : "other" });
+      }
+    }
+    const rows = source.filter(row => !this.data.participantId || row.participantId === this.data.participantId);
+    const upcoming = rows.filter(row => row.phase === "upcoming");
+    const history = rows.filter(row => row.phase !== "upcoming");
     const visible = this.data.filter === "upcoming" ? upcoming : this.data.filter === "all" ? rows
-      : rows.filter(row => row.status === this.data.filter);
-    visible.sort((a, b) => (Date.parse(a.startsAt) - Date.parse(b.startsAt)) * (this.data.filter === "upcoming" ? 1 : -1));
-    this.setData({ upcomingCount: upcoming.length, historyCount: history.length,
-      bookings: visible.map(row => ({ ...row, label: text(row.title), when: date(row.startsAt), statusText: labels[row.status], cancellable: canCancel(row) })) });
+      : rows.filter(row => row.phase === this.data.filter);
+    visible.sort((a, b) => {
+      if (!a.startsAt) return b.startsAt ? 1 : a.key.localeCompare(b.key);
+      if (!b.startsAt) return -1;
+      return (Date.parse(a.startsAt) - Date.parse(b.startsAt)) * (this.data.filter === "upcoming" ? 1 : -1);
+    });
+    this.setData({ upcomingCount: upcoming.length, historyCount: history.length, bookings: visible });
   },
   filter(e: WechatMiniprogram.TouchEvent) {
     const filter = String(e.currentTarget.dataset.value);
@@ -57,6 +97,12 @@ Page({
   login() { loginPage("/pages/reservations/index?filter=" + this.data.filter); },
   discover() { wx.switchTab({ url: "/pages/discover/index" }); },
   register() { wx.navigateTo({ url: "/pages/register/index?source=reservations" }); },
+  openAssessment(e: WechatMiniprogram.TouchEvent) {
+    const row = this.data.bookings.find(item => item.key === e.currentTarget.dataset.key && item.kind === "assessment");
+    if (!row) return;
+    selectParticipant(row.participantId);
+    wx.navigateTo({ url: "/pages/assessment/index?view=history" });
+  },
   cancel(e: WechatMiniprogram.TouchEvent) {
     if (this.data.busy) return;
     const id = String(e.currentTarget.dataset.id);
