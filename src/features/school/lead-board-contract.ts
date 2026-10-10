@@ -19,7 +19,8 @@ export const leadBoardSchema = z.object({
   support: z.array(z.object({ key: z.string(), name: z.string(), ownerId: z.string().uuid(), stage: z.string(), detail: z.string().nullable(),
     sinceContact: num, sinceAttempt: num, lastResult: z.string().nullable(), summaryLength: z.number().int(), attempts7d: z.number().int(), nextDueInDays: num })),
   teach: z.array(z.object({ key: z.string(), name: z.string(), ownerId: z.string().uuid(), classId: z.string().uuid(), className: z.string(),
-    learningLogged: z.boolean().nullable(), hoursSinceLesson: num, sinceContact: z.number().int(), contactedEver: z.boolean() })),
+    learningLogged: z.boolean().nullable(), hoursSinceLesson: num, sinceContact: z.number().int(), contactedEver: z.boolean(),
+    label: z.enum(["A", "B", "C", "D"]).nullable().default(null) })),
   assess: z.array(z.object({ key: z.string(), name: z.string(), ownerId: z.string().uuid(), scheduledAt: z.string(),
     step: z.enum(["arrival", "record", "explain", "done"]), hoursOver: z.number().int() })),
   rules: z.record(z.string(), z.object({ config: z.unknown(), unitId: z.string().uuid(), updatedAt: z.string() })).default({}),
@@ -51,6 +52,7 @@ export const LEAD_FIELDS: Record<LeadLane, LeadFieldDef[]> = {
     { key: "paused", type: "bool" },
   ],
   teach: [
+    { key: "label", type: "enum", options: ["A", "B", "C", "D", "none"] },
     { key: "learningLogged", type: "bool" }, { key: "hoursSinceLesson", type: "num", unit: "hour" },
     { key: "contactOver", type: "num", unit: "day" }, { key: "sinceContact", type: "num", unit: "day" }, { key: "contactedEver", type: "bool" },
   ],
@@ -76,7 +78,8 @@ export const DEFAULT_LEAD_RULES: Record<LeadLane, LeadRuleConfig> = {
     else: "green",
   },
   teach: {
-    cadence: { contact: 30 },
+    // 沟通频率按班级名册的 A／B／C／D 标签分别设定（天）。
+    cadence: { A: 7, B: 14, C: 30, D: 30, none: 30 },
     rules: [
       { color: "red", all: [["learningLogged", "is", false], ["hoursSinceLesson", ">", 48]] },
       { color: "orange", all: [["learningLogged", "is", false], ["hoursSinceLesson", ">", 24]] },
@@ -125,8 +128,9 @@ export function supportFacts(row: LeadBoard["support"][number], config: LeadRule
   };
 }
 export function teachFacts(row: LeadBoard["teach"][number], config: LeadRuleConfig): LeadFacts {
-  return { learningLogged: row.learningLogged, hoursSinceLesson: row.hoursSinceLesson, sinceContact: row.sinceContact,
-    contactedEver: row.contactedEver, contactOver: row.sinceContact - (config.cadence.contact ?? 30) };
+  const label = row.label ?? "none";
+  return { label, learningLogged: row.learningLogged, hoursSinceLesson: row.hoursSinceLesson, sinceContact: row.sinceContact,
+    contactedEver: row.contactedEver, contactOver: row.sinceContact - (config.cadence[label] ?? config.cadence.contact ?? 30) };
 }
 export function assessFacts(row: LeadBoard["assess"][number]): LeadFacts {
   return { step: row.step, hoursOver: row.hoursOver };

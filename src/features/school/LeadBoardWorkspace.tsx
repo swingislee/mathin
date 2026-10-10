@@ -163,7 +163,7 @@ function conditionText(m: LeadBoardMessages, lane: LeadLane, [field, op, value]:
   return `${m.fields[field] ?? field} ${m.ops[op]} ${shown}`;
 }
 function optionLabel(m: LeadBoardMessages, field: string, value: string) {
-  return field === "cluster" ? m.clusters[value] ?? value : field === "step" ? m.steps[value] ?? value : field === "lastResult" ? m.results[value] ?? value : value;
+  return field === "label" ? m.labels[value] ?? value : field === "cluster" ? m.clusters[value] ?? value : field === "step" ? m.steps[value] ?? value : field === "lastResult" ? m.results[value] ?? value : value;
 }
 function factText(m: LeadBoardMessages, lane: LeadLane, key: string, value: LeadFacts[string]) {
   const def = LEAD_FIELDS[lane].find(item => item.key === key);
@@ -222,7 +222,7 @@ function RuleEditor({ m, lane, onLane, config, source, pending, onChange, onSave
     {cadenceKeys.length ? <div className="rounded-lg border border-line p-2.5">
       <p className="mb-1.5 text-xs text-muted">{lane === "teach" ? m.teachCadence : m.cadence}</p>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">{cadenceKeys.map(key => <label key={key} className="flex items-center justify-between gap-2 text-sm">
-        <span className="truncate">{lane === "teach" ? m.fields.contactOver : m.clusters[key]}</span>
+        <span className="truncate">{lane === "teach" ? m.labels[key] ?? key : m.clusters[key]}</span>
         <Input type="number" min={0} max={365} className="h-7 w-16 px-1.5 text-right" value={config.cadence[key] ?? 0}
           onChange={event => update(next => { next.cadence[key] = Math.max(0, Math.min(365, Math.round(Number(event.target.value) || 0))); })} /></label>)}</div>
     </div> : null}
