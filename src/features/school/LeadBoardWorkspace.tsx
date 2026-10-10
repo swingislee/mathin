@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Plus, Settings2, X } from "lucide-react";
+import { toast } from "sonner";
 import { Link, useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DashboardPage, DashboardCommandPanel, DashboardCommandActions, DashboardCommandFilters } from "./dashboard-page";
 import {
-  DEFAULT_LEAD_RULES, LEAD_FIELDS, LEAD_LANES, LEAD_LIGHTS, LEAD_LIGHT_DOT, LEAD_OPS, assessFacts, judgeLead, resolveLeadRules, supportFacts, teachFacts,
+  DEFAULT_LEAD_RULES, LEAD_FIELDS, LEAD_INTERVAL_KEYS, LEAD_PARAM_KEYS, isStandardLeadRules, standardLeadRules, LEAD_LANES, LEAD_LIGHTS, LEAD_LIGHT_DOT, LEAD_OPS, assessFacts, judgeLead, resolveLeadRules, supportFacts, teachFacts,
   type LeadBoard, type LeadCondition, type LeadGrain, type LeadFacts, type LeadLane, type LeadLight, type LeadRuleConfig, type LeadSubject,
 } from "./lead-board-contract";
 import { leadBoardMessages, type LeadBoardMessages } from "./lead-board-messages";
@@ -62,7 +63,6 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
   const [hover, setHover] = useState<string | null>(null);
   const [selected, setSelected] = useState<{ lane: LeadLane; key: string; ownerId: string } | null>(null);
   const [records, setRecords] = useState<Record<string, LeadSubject | "error">>({});
-  const [status, setStatus] = useState("");
   const [pending, start] = useTransition();
   const rules = draft ?? savedRules(board);
   const go = (next: { unit?: string; grain?: LeadGrain; date?: string | null }) => {
@@ -93,9 +93,9 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
     const unitId = board.unitId;
     start(async () => {
       const result = await saveLeadRulesAction({ unitId, lane: editLane, config });
-      if (!result.ok) { setStatus(m.saveFailed); return; }
+      if (!result.ok) { toast.error(m.saveFailed); return; }
       const next = { ...board, rules: result.data.rules };
-      setBoard(next); setDraft(current => current ? { ...current, [editLane]: resolveLeadRules(next, editLane) } : current); setStatus(m.saved);
+      setBoard(next); setDraft(current => current ? { ...current, [editLane]: resolveLeadRules(next, editLane) } : current); toast.success(m.saved);
     });
   };
 
@@ -104,36 +104,34 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
   const counts = Object.fromEntries(LEAD_LIGHTS.map(light => [light, items.filter(item => item.color === light).length])) as Record<LeadLight, number>;
   const selectedItem = selected ? items.find(item => item.lane === selected.lane && item.key === selected.key && item.ownerId === selected.ownerId) : undefined;
 
-  return <DashboardPage title={m.title} density="compact" description={m.info}
+  return <DashboardPage title={m.title} density="compact"
     commandPanel={<DashboardCommandPanel>
       <DashboardCommandFilters>
         <Select value={board.unitId} onValueChange={value => go({ unit: value })}>
-          <SelectTrigger aria-label={m.unit} className="h-8 min-w-48"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label={m.unit} className="h-8 w-auto min-w-28 max-w-56"><SelectValue /></SelectTrigger>
           <SelectContent>{board.units.map(unit => <SelectItem key={unit.id} value={unit.id}>{unitLabel(unit.id)}</SelectItem>)}</SelectContent>
         </Select>
-        <div role="group" aria-label={m.grains.week} className="inline-flex rounded-lg bg-line/55 p-[3px]">
+        <div className="inline-flex h-8 items-center rounded-lg border border-line bg-card">
           {(["week", "month"] as const).map(grain => <button key={grain} type="button" aria-pressed={board.period.grain === grain} onClick={() => go({ grain, date: null })}
-            className={cn("rounded-md px-3 py-0.5 text-sm text-muted", board.period.grain === grain && "bg-card text-ink shadow-sm")}>{m.grains[grain]}</button>)}
-        </div>
-        <div className="inline-flex items-center gap-0.5">
-          <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={m.previous} onClick={() => go({ date: shiftAnchor(board.period.from, board.period.grain, -1) })}><ChevronLeft className="size-4" /></Button>
-          <span className="min-w-28 text-center text-sm tabular-nums">{periodLabel(board.period, locale)}</span>
-          <Button size="sm" variant="ghost" className="size-8 p-0" aria-label={m.next} disabled={board.period.isCurrent} onClick={() => go({ date: shiftAnchor(board.period.from, board.period.grain, 1) })}><ChevronRight className="size-4" /></Button>
-          {!board.period.isCurrent ? <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => go({ date: null })}>{m.current[board.period.grain]}</Button> : null}
+            className={cn("h-full px-2.5 text-sm text-muted first:rounded-l-lg", board.period.grain === grain && "bg-table-selected text-ink")}>{m.grains[grain]}</button>)}
+          <span aria-hidden className="h-4 w-px bg-line" />
+          <Button size="sm" variant="ghost" className="size-7 p-0" aria-label={m.previous} onClick={() => go({ date: shiftAnchor(board.period.from, board.period.grain, -1) })}><ChevronLeft className="size-4" /></Button>
+          <button type="button" disabled={board.period.isCurrent} title={board.period.isCurrent ? undefined : m.current[board.period.grain]} onClick={() => go({ date: null })}
+            className="min-w-24 px-1 text-center text-sm tabular-nums disabled:cursor-default">{board.period.isCurrent ? m.current[board.period.grain] : periodLabel(board.period, locale)}</button>
+          <Button size="sm" variant="ghost" className="size-7 p-0" aria-label={m.next} disabled={board.period.isCurrent} onClick={() => go({ date: shiftAnchor(board.period.from, board.period.grain, 1) })}><ChevronRight className="size-4" /></Button>
         </div>
       </DashboardCommandFilters>
       <DashboardCommandActions>
-        {board.canManageRules ? <Button size="sm" variant={draft ? "primary" : "secondary"} onClick={() => setDraft(current => current ? null : clone(savedRules(board)))}>
-          <Settings2 className="size-4" />{draft ? m.done : m.settings}</Button> : null}
+        <div className="flex items-center gap-0.5" aria-label={m.whole}>
+          {LEAD_LIGHTS.map(light => <button key={light} type="button" aria-pressed={only === light} title={m.lights[light]} aria-label={`${m.lights[light]} ${counts[light]}`}
+            onClick={() => setOnly(current => current === light ? null : light)}
+            className={cn("inline-flex h-7 items-center gap-1 rounded-full border border-transparent px-1.5 text-xs tabular-nums text-muted", only === light && "border-crater bg-table-selected text-ink")}>
+            <i className={cn("size-2.5 rounded-full", LEAD_LIGHT_DOT[light])} aria-hidden />{counts[light]}</button>)}
+        </div>
+        {board.canManageRules ? <Button size="sm" variant={draft ? "primary" : "ghost"} className="size-8 p-0" aria-label={m.rulesTitle} title={m.rulesTitle}
+          onClick={() => setDraft(current => current ? null : clone(savedRules(board)))}><Settings2 className="size-4" /></Button> : null}
       </DashboardCommandActions>
     </DashboardCommandPanel>}>
-    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-      <span>{m.whole}</span>
-      {LEAD_LIGHTS.map(light => <button key={light} type="button" aria-pressed={only === light} onClick={() => setOnly(current => current === light ? null : light)}
-        className={cn("inline-flex items-center gap-1.5 rounded-full border border-transparent px-2 py-0.5", only === light && "border-crater bg-table-selected text-ink")}>
-        <i className={cn("size-2.5 rounded-full", LEAD_LIGHT_DOT[light])} aria-hidden />{m.lights[light]}<span className="tabular-nums text-ink">{counts[light]}</span></button>)}
-      <span role="status" className="ml-auto">{status}</span>
-    </div>
     <div className="grid min-w-0 overflow-hidden rounded-[10px] border border-line bg-card @5xl/page:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="min-w-0">
         {!board.members.length ? <p className="p-8 text-center text-sm text-muted">{m.noMembers}</p> : null}
@@ -175,7 +173,7 @@ export function LeadBoardWorkspace({ initial, locale }: { initial: LeadBoard; lo
           </section>; })}
       </div>
       <aside aria-live="polite" className="min-w-0 border-t border-line p-4 @5xl/page:max-h-[calc(100dvh-12rem)] @5xl/page:overflow-y-auto @5xl/page:border-l @5xl/page:border-t-0">
-        {draft ? <RuleEditor m={m} lane={editLane} onLane={setEditLane} config={draft[editLane]} pending={pending}
+        {draft ? <RulePanel m={m} lane={editLane} onLane={setEditLane} config={draft[editLane]} pending={pending}
           source={board.rules[editLane] ? m.inherited(unitName(board.rules[editLane].unitId)) : m.defaults}
           onChange={config => setDraft(current => current ? { ...current, [editLane]: config } : current)}
           onSave={() => saveRules(draft[editLane])} onReset={() => setDraft(current => current ? { ...current, [editLane]: clone(DEFAULT_LEAD_RULES[editLane]) } : current)}
@@ -235,7 +233,38 @@ function SubjectPanel({ m, item, rules, board, items, record, onClose }: {
   </div>;
 }
 
-function RuleEditor({ m, lane, onLane, config, source, pending, onChange, onSave, onReset, onDiscard }: {
+function RulePanel(props: Parameters<typeof RuleEditor>[0]) {
+  const { m, lane, onLane, config, onChange, onSave, pending, onDiscard, source } = props;
+  const standard = isStandardLeadRules(lane, config);
+  const setParam = (key: string, value: number) => onChange(standardLeadRules(lane, { ...config.cadence, [key]: Math.max(0, Math.min(365, Math.round(value) || 0)) }));
+  const numberField = (key: string, label: string) => <label key={key} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 text-sm">
+    <span>{label}</span><Input type="number" min={0} max={365} className="h-7 w-16 px-1.5 text-right" value={config.cadence[key] ?? 0} onChange={event => setParam(key, Number(event.target.value))} /></label>;
+  return <div className="flex flex-col gap-3">
+    <div className="flex items-center justify-between gap-2"><p className="text-base font-semibold">{m.rulesTitle}</p>
+      <div className="flex flex-wrap gap-1">{LEAD_LANES.map(item => <button key={item} type="button" aria-pressed={item === lane} onClick={() => onLane(item)}
+        className={cn("rounded-full border border-line bg-paper px-3 py-0.5 text-sm", item === lane && "border-crater bg-table-selected")}>{m.lanes[item]}</button>)}</div></div>
+    <div><p className="text-xs text-muted">{m.rulesNow} · {m.rulesOrder}</p>
+      <ol className="mt-1.5 flex flex-col gap-1 border-t border-line pt-1.5 text-sm leading-6">
+        {config.rules.map((rule, index) => <li key={index} className="flex gap-2"><i className={cn("mt-[7px] size-2.5 shrink-0 rounded-full", LEAD_LIGHT_DOT[rule.color])} aria-hidden />
+          <span>{rule.all.map(condition => conditionText(m, lane, condition)).join(m.and) || m.allCases} → {m.lightShort[rule.color]}</span></li>)}
+        <li className="flex gap-2 text-muted"><i className={cn("mt-[7px] size-2.5 shrink-0 rounded-full", LEAD_LIGHT_DOT[config.else])} aria-hidden />{m.otherwiseLine(m.lightShort[config.else])}</li>
+      </ol></div>
+    <div className="flex flex-col gap-2 rounded-lg border border-line p-2.5">
+      <p className="text-xs font-semibold text-muted">{m.standardTitle}</p>
+      {LEAD_INTERVAL_KEYS[lane].length ? <><p className="text-xs text-muted">{m.intervals[lane]}</p>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">{LEAD_INTERVAL_KEYS[lane].map(key => numberField(key, lane === "teach" ? m.labels[key] : m.clusters[key]))}</div></> : null}
+      <div className="flex flex-col gap-1.5">{LEAD_PARAM_KEYS[lane].map(key => numberField(key, m.params[lane][key]))}</div>
+      {!standard ? <p className="text-xs text-rose">{m.customNotice}</p> : null}
+      <p className="text-[11px] text-muted">{source}</p>
+      <div className="flex flex-wrap gap-2"><Button size="sm" disabled={pending} onClick={onSave}>{pending ? m.saving : m.save}</Button>
+        <Button size="sm" variant="ghost" onClick={onDiscard}>{m.discard}</Button></div>
+    </div>
+    <details className="group rounded-lg border border-dashed border-line p-2"><summary className="cursor-pointer text-xs text-muted">{m.advanced}</summary>
+      <div className="mt-2"><RuleEditor {...props} /></div></details>
+  </div>;
+}
+
+function RuleEditor({ m, lane, config, pending, onChange, onSave, onReset, onDiscard }: {
   m: LeadBoardMessages; lane: LeadLane; onLane: (lane: LeadLane) => void; config: LeadRuleConfig; source: string; pending: boolean;
   onChange: (config: LeadRuleConfig) => void; onSave: () => void; onReset: () => void; onDiscard: () => void;
 }) {
@@ -245,18 +274,8 @@ function RuleEditor({ m, lane, onLane, config, source, pending, onChange, onSave
     const def = fields.find(field => field.key === key)!;
     return [key, LEAD_OPS[def.type][0], def.type === "num" ? 0 : def.type === "bool" ? true : def.options![0]];
   };
-  const cadenceKeys = Object.keys(DEFAULT_LEAD_RULES[lane].cadence);
   return <div className="flex flex-col gap-3">
-    <div className="flex flex-wrap gap-1">{LEAD_LANES.map(item => <button key={item} type="button" aria-pressed={item === lane} onClick={() => onLane(item)}
-      className={cn("rounded-full border border-line bg-paper px-3 py-0.5 text-sm", item === lane && "border-crater bg-table-selected")}>{m.lanes[item]}</button>)}</div>
-    <p className="text-xs leading-5 text-muted">{m.editorHint}<br />{source}</p>
-    {cadenceKeys.length ? <div className="rounded-lg border border-line p-2.5">
-      <p className="mb-1.5 text-xs text-muted">{lane === "teach" ? m.teachCadence : m.cadence}</p>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">{cadenceKeys.map(key => <label key={key} className="flex items-center justify-between gap-2 text-sm">
-        <span className="truncate">{lane === "teach" ? m.labels[key] ?? key : m.clusters[key]}</span>
-        <Input type="number" min={0} max={365} className="h-7 w-16 px-1.5 text-right" value={config.cadence[key] ?? 0}
-          onChange={event => update(next => { next.cadence[key] = Math.max(0, Math.min(365, Math.round(Number(event.target.value) || 0))); })} /></label>)}</div>
-    </div> : null}
+    <p className="text-xs leading-5 text-muted">{m.editorHint}</p>
     {config.rules.map((rule, index) => <div key={index} className="flex flex-col gap-1.5 rounded-lg border border-line bg-moon/15 p-2">
       <div className="flex items-center gap-1 text-xs text-muted">
         <i className={cn("size-2.5 rounded-full", LEAD_LIGHT_DOT[rule.color])} aria-hidden />{m.ruleN(index + 1)}<span className="flex-1" />

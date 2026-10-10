@@ -64,44 +64,54 @@ export const LEAD_FIELDS: Record<LeadLane, LeadFieldDef[]> = {
 };
 export const LEAD_OPS: Record<LeadFieldDef["type"], LeadOp[]> = { num: [">", ">=", "<", "<=", "="], enum: ["in", "notin"], bool: ["is"] };
 
+/* 标准规则：组长只需调整几个天数或小时数，规则按固定模板生成；参数与间隔一起存放在 cadence 中（以 _ 开头）。 */
+export const LEAD_STANDARD_PARAMS: Record<LeadLane, Record<string, number>> = {
+  support: { first: 1, assess: 7, after: 2, enroll: 3, serve: 30, renew: 7, other: 30, _red: 7, _warn: 1, _quality: 30 },
+  teach: { A: 7, B: 14, C: 30, D: 30, none: 30, _learnLate: 24, _learnVeryLate: 48, _red: 14, _warn: 3 },
+  assess: { _red: 24 },
+};
+export const LEAD_INTERVAL_KEYS: Record<LeadLane, string[]> = {
+  support: ["first", "assess", "after", "enroll", "serve", "renew", "other"], teach: ["A", "B", "C", "D", "none"], assess: [],
+};
+export const LEAD_PARAM_KEYS: Record<LeadLane, string[]> = {
+  support: ["_red", "_warn", "_quality"], teach: ["_learnLate", "_learnVeryLate", "_red", "_warn"], assess: ["_red"],
+};
+export function standardLeadRules(lane: LeadLane, cadence: Record<string, number>): LeadRuleConfig {
+  const p = { ...LEAD_STANDARD_PARAMS[lane], ...cadence };
+  const rules: LeadRule[] = lane === "support" ? [
+    { color: "gray", all: [["paused", "is", true]] },
+    { color: "red", all: [["neverContacted", "is", true], ["attempts7d", "=", 0]] },
+    { color: "orange", all: [["neverContacted", "is", true]] },
+    { color: "red", all: [["cadenceOver", ">", p._red]] },
+    { color: "orange", all: [["cadenceOver", ">", 0]] },
+    { color: "orange", all: [["nextOverdue", "is", true]] },
+    { color: "yellow", all: [["cadenceOver", ">=", -p._warn]] },
+    { color: "blue", all: [["lastResult", "in", "connected"], ["summaryLength", ">=", p._quality], ["hasNext", "is", true]] },
+    { color: "green", all: [["lastResult", "in", "connected"]] },
+  ] : lane === "teach" ? [
+    { color: "red", all: [["learningLogged", "is", false], ["hoursSinceLesson", ">", p._learnVeryLate]] },
+    { color: "orange", all: [["learningLogged", "is", false], ["hoursSinceLesson", ">", p._learnLate]] },
+    { color: "red", all: [["contactOver", ">", p._red]] },
+    { color: "orange", all: [["contactOver", ">", 0]] },
+    { color: "yellow", all: [["contactOver", ">=", -p._warn]] },
+    { color: "yellow", all: [["learningLogged", "is", false]] },
+    { color: "blue", all: [["learningLogged", "is", true], ["contactedEver", "is", true]] },
+    { color: "green", all: [["contactedEver", "is", true]] },
+  ] : [
+    { color: "red", all: [["hoursOver", ">", p._red]] },
+    { color: "orange", all: [["hoursOver", ">", 0]] },
+    { color: "gray", all: [["step", "in", "arrival"]] },
+    { color: "yellow", all: [["step", "notin", "done"]] },
+    { color: "green", all: [["step", "in", "done"]] },
+  ];
+  return { rules, else: "gray", cadence: p };
+}
+export function isStandardLeadRules(lane: LeadLane, config: LeadRuleConfig) {
+  const standard = standardLeadRules(lane, config.cadence);
+  return config.else === standard.else && JSON.stringify(config.rules) === JSON.stringify(standard.rules);
+}
 export const DEFAULT_LEAD_RULES: Record<LeadLane, LeadRuleConfig> = {
-  support: {
-    cadence: { first: 1, assess: 7, after: 2, enroll: 3, serve: 30, renew: 7, other: 30 },
-    rules: [
-      { color: "gray", all: [["paused", "is", true]] },
-      { color: "red", all: [["neverContacted", "is", true], ["attempts7d", "=", 0]] },
-      { color: "orange", all: [["neverContacted", "is", true]] },
-      { color: "red", all: [["cadenceOver", ">", 7]] },
-      { color: "orange", all: [["cadenceOver", ">", 0]] },
-      { color: "orange", all: [["nextOverdue", "is", true]] },
-      { color: "yellow", all: [["cadenceOver", ">=", -1]] },
-      { color: "blue", all: [["lastResult", "in", "connected"], ["summaryLength", ">=", 30], ["hasNext", "is", true]] },
-    ],
-    else: "green",
-  },
-  teach: {
-    // 沟通频率按班级名册的 A／B／C／D 标签分别设定（天）。
-    cadence: { A: 7, B: 14, C: 30, D: 30, none: 30 },
-    rules: [
-      { color: "red", all: [["learningLogged", "is", false], ["hoursSinceLesson", ">", 48]] },
-      { color: "orange", all: [["learningLogged", "is", false], ["hoursSinceLesson", ">", 24]] },
-      { color: "red", all: [["contactOver", ">", 14]] },
-      { color: "orange", all: [["contactOver", ">", 0]] },
-      { color: "yellow", all: [["contactOver", ">=", -3]] },
-      { color: "blue", all: [["learningLogged", "is", true], ["contactOver", "<=", -14]] },
-    ],
-    else: "green",
-  },
-  assess: {
-    cadence: {},
-    rules: [
-      { color: "red", all: [["hoursOver", ">", 24]] },
-      { color: "orange", all: [["hoursOver", ">", 0]] },
-      { color: "gray", all: [["step", "in", "arrival"]] },
-      { color: "yellow", all: [["step", "notin", "done"]] },
-    ],
-    else: "green",
-  },
+  support: standardLeadRules("support", {}), teach: standardLeadRules("teach", {}), assess: standardLeadRules("assess", {}),
 };
 
 export function resolveLeadRules(board: LeadBoard, lane: LeadLane): LeadRuleConfig {
