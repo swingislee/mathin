@@ -3,6 +3,28 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "RELEASE-V050-20261010",
+      "title": "v0.5.0 周内改动生产发布与团队说明",
+      "agent": "codex",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/RELEASE-V050-20261010.md",
+      "writePaths": [
+        ".ai/tasks/RELEASE-V050-20261010.md",
+        ".tmp/release-v050-20261010/",
+        "package.json",
+        "CHANGELOG.md",
+        "docs/releases/v0.5.0.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md"
+      ],
+      "checkpoint": null,
+      "next": "核对近一周提交与生产，发布最新网站及共用后端、必要迁移，记录 v0.5.0 团队说明。"
+    },
+    {
       "id": "ORG-AUTOSAVE-20261010",
       "title": "组织与分工：当场生效与备用账号拖放",
       "agent": "claude",
