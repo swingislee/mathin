@@ -6,5 +6,8 @@
 - 小程序与后台预览共用 `contracts/participant-api/onboarding-presentation.ts` 的语言回退、字段展示、必填标记、选项和提示文案。小程序生成文件通过 `scripts/sync-participant-contract.mjs` 同步；表单内容直接显示保存值。
 - 后台预览按小程序现行尺寸、背景、输入框、勾选项、政策链接、定位提示和提交按钮调整。登记页保留系统导航栏，移除额外的空白 app-nav 占位。机器检查不能代替实际手机视觉验收。
 - 开发库已识别主机 WhiteHouse、origin `http://127.0.0.1:35421`、监听进程及隔离数据库指纹后应用 `20261010143000_miniapp_participant_form_copy`。默认表单版本 2 → 3；事务内核对字段配置、其他表单元数据及 6 条历史登记未改变。
-- 已通过小程序 TypeScript、预览组件定向 TypeScript、相关 ESLint、生成合同同步和差异格式检查；未运行浏览器自动化、全量回归或生产写入。
-- 开发入口：[推广表单](http://192.168.5.213:3130/zh/dashboard/promotions)，小程序 `pages/onboarding/index`。生产后台、生产表单数据及手机包尚未同步本增量，待本次发布授权及实际使用验收。
+- 开发阶段已通过小程序 TypeScript、预览组件定向 TypeScript、相关 ESLint、生成合同同步和差异格式检查；未运行浏览器自动化或全量回归。
+- 用户于 2026-10-10 明确授权发布。生产源码 `a449c6eaed8ca4d1150fbcb8e2c87ff7fad9d3bc`，current `20261010-060951`，previous `20261010-051745`；Linux 构建和完整类型检查通过，14:14（Asia/Shanghai）公网健康、两组微信能力及匿名访问保护检查通过。
+- 按实际主机、生产 origin、监听进程、服务目录和数据库指纹核对后应用文字迁移；生产默认表单版本 3 → 4。事务内确认字段绑定、顺序、必填／隐藏和选项 ID 保留，2 条既有登记及其快照未改变。
+- 小程序 0.1.4 从同一源码准备，连接 `https://mathin.club` 并开启域名校验，包含最新统一绑定入口。首次上传任务丢失回执后，用户确认平台只有旧版并明确授权重试；第二次经开发者工具窗口确认，微信任务返回 `success / execution_success`，包大小 373,842 字节。结果保存在忽略目录 `.tmp/mini-form-release-20261010/query-retry-upload-result.json`，无需再次上传。
+- 开发入口：[推广表单](http://192.168.5.213:3130/zh/dashboard/promotions)；生产入口：[推广表单](https://mathin.club/zh/dashboard/promotions)；小程序 `pages/onboarding/index`。生产已部署、客户端已上传；0.1.4 体验版本选择、手机视觉与业务验收、提审及正式发布尚未确认。
