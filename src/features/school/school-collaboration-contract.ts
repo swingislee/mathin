@@ -3,6 +3,8 @@ import type { DashboardFieldQuery } from "./dashboard-page/dashboard-table-field
 
 export const SCHOOL_BUSINESS_ROLES = ["school_support", "assessment_teacher", "teacher"] as const;
 export type SchoolBusinessRole = typeof SCHOOL_BUSINESS_ROLES[number];
+export const SCHOOL_STAFF_RESERVE_REASONS = ["test", "assessment", "placeholder", "other"] as const;
+export type SchoolStaffReserveReason = typeof SCHOOL_STAFF_RESERVE_REASONS[number];
 export const SCHOOL_ORGANIZATION_KINDS = ["org", "campus", "dept", "group"] as const;
 export type SchoolOrganizationKind = typeof SCHOOL_ORGANIZATION_KINDS[number];
 export const schoolCollaborationSchema = z.object({
@@ -17,6 +19,7 @@ export const schoolCollaborationSchema = z.object({
     roles: z.array(z.enum(SCHOOL_BUSINESS_ROLES)).default([]), jobs: z.array(z.string()).default([]),
     canFollowUp: z.boolean().default(false), canReview: z.boolean().default(false),
     studentCount: z.number().int().default(0), classCount: z.number().int().default(0), upcomingAssessmentCount: z.number().int().default(0),
+    reserve: z.enum(SCHOOL_STAFF_RESERVE_REASONS).nullable().default(null), fixedTest: z.boolean().default(false),
   })),
   rules: z.array(z.object({ id: z.string().uuid(), kind: z.string(), label: z.string(), groupIds: z.array(z.string().uuid()) })).default([]),
 });

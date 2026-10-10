@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { studentStageRpc } from "../student-stage-data";
-import { schoolCollaborationSchema, SCHOOL_BUSINESS_ROLES, SCHOOL_ORGANIZATION_KINDS, type SchoolCollaborationSettings } from "../school-collaboration-contract";
+import { schoolCollaborationSchema, SCHOOL_BUSINESS_ROLES, SCHOOL_ORGANIZATION_KINDS, SCHOOL_STAFF_RESERVE_REASONS, type SchoolCollaborationSettings } from "../school-collaboration-contract";
 import { parse, requiredText, uuid } from "./schemas";
 
 const schema = z.object({
@@ -28,5 +28,17 @@ export async function saveSchoolOrganizationAction(input: z.infer<typeof schema>
   } catch (error) {
     return actionError(error, ["VALIDATION", "UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "TARGET_CANNOT_FOLLOW_UP",
       "GROUP_NAME_TAKEN", "ORGANIZATION_CYCLE", "GROUP_NOT_EMPTY", "GROUP_IN_USE"]);
+  }
+}
+
+const reserveSchema = z.object({ userId: uuid, reason: z.enum(SCHOOL_STAFF_RESERVE_REASONS).nullable() });
+export async function setStaffReserveAction(input: z.infer<typeof reserveSchema>): Promise<ActionResult<{ settings: SchoolCollaborationSettings }>> {
+  try {
+    const value = parse(reserveSchema, input), client = await createClient();
+    const settings = schoolCollaborationSchema.parse(await studentStageRpc(client, "set_school_staff_reserve", { p_user_id: value.userId, p_reason: value.reason }));
+    revalidatePath("/[locale]/dashboard/staff", "page");
+    return { ok: true, data: { settings } };
+  } catch (error) {
+    return actionError(error, ["VALIDATION", "UNAUTHENTICATED", "FORBIDDEN", "STAFF_IN_ORGANIZATION"]);
   }
 }

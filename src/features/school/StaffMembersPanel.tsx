@@ -8,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useLocale, useTranslations } from "next-intl";
 import { Copy, LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -52,6 +53,11 @@ export function StaffMembersPanel({
   isAdmin,
   canInviteStaff,
   canManageStaff,
+  visibleIds,
+  extraColumns,
+  selectedId,
+  onSelect,
+  onboarding,
 }: {
   members: StaffMember[];
   roles: StaffRoleInfo[];
@@ -60,7 +66,14 @@ export function StaffMembersPanel({
   isAdmin: boolean;
   canInviteStaff: boolean;
   canManageStaff: boolean;
+  /** 嵌入组织与分工名册时：只显示这些员工、追加组织列、行可选中，新增员工收进侧边面板。 */
+  visibleIds?: ReadonlySet<string>;
+  extraColumns?: Array<{ key: string; header: ReactNode; cell: (member: StaffMember) => ReactNode }>;
+  selectedId?: string | null;
+  onSelect?: (userId: string) => void;
+  onboarding?: { open: boolean; onOpenChange: (open: boolean) => void; title: string };
 }) {
+  const compact = Boolean(extraColumns);
   const t = useTranslations("school.staff");
   const locale = useLocale();
   const router = useRouter();
@@ -222,84 +235,7 @@ export function StaffMembersPanel({
   // 查到的已是员工：直接从成员列表里找到对应行进授岗弹窗
   const foundMember = found ? members.find((member) => member.userId === found.userId) ?? null : null;
 
-  return (
-    <div className="space-y-6">
-      <DashboardTableShell>
-        <Table className="w-full border-collapse text-left text-sm">
-          <TableHeader className="border-b border-line text-xs text-muted">
-            <TableRow>
-              <TableHead className="px-4 py-3 font-medium">{t("colName")}</TableHead>
-              <TableHead className="px-4 py-3 font-medium">{t("colEmail")}</TableHead>
-              <TableHead className="px-4 py-3 font-medium">{t("colIdentity")}</TableHead>
-              <TableHead className="px-4 py-3 font-medium">{t("colRoles")}</TableHead>
-              <TableHead className="px-4 py-3 font-medium"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.map((member) => (
-              <TableRow key={member.userId}>
-                <TableCell className="px-4 py-3 font-medium">
-                  {member.displayName}
-                  {member.purpose === "test" && <Badge variant="outline" className="ml-2">{locale === "en" ? "Test" : "测试"}</Badge>}
-                  {!member.isActive && <Badge variant="secondary" className="ml-2">{t("inactive")}</Badge>}
-                  {member.passwordChangeRequired && <Badge variant="outline" className="ml-2">{t("initialPasswordPending")}</Badge>}
-                </TableCell>
-                <TableCell className="px-4 py-3 text-muted">{member.email}</TableCell>
-                <TableCell className="px-4 py-3">
-                  {member.identity === "admin" ? (
-                    <span className="rounded-full bg-moon/30 px-2 py-0.5 text-xs text-ink">{t("identityAdmin")}</span>
-                  ) : (
-                    <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("identityStaff")}</span>
-                  )}
-                </TableCell>
-                <TableCell className="px-4 py-3">
-                  {member.roleNames.length === 0 ? (
-                    <span className="text-xs text-muted">{t("noRoles")}</span>
-                  ) : (
-                    <span className="flex flex-wrap gap-1.5">
-                      {member.roleNames.map((name) => (
-                        <span key={name} className="rounded-full bg-cheek/30 px-2 py-0.5 text-xs text-ink">{name}</span>
-                      ))}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="px-4 py-3 text-right">
-                  <span className="inline-flex items-center gap-3">
-                    {member.userId === selfId && <span className="text-xs text-muted">{t("selfRow")}</span>}
-                    {canManageRoles(member) && (
-                      <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
-                    )}
-                    {canInviteStaff && member.passwordChangeRequired && !member.passwordResetPending && member.isActive && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto px-0 py-0 text-xs underline underline-offset-2"
-                        onClick={() => openReissue(member)}
-                      >
-                        {t("reissueInitialPassword")}
-                      </Button>
-                    )}
-                    {isAdmin && member.identity === "staff" && (!member.passwordChangeRequired || member.passwordResetPending) && member.isActive && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto px-0 py-0 text-xs underline underline-offset-2"
-                        onClick={() => openReset(member)}
-                      >
-                        {member.passwordResetPending ? t("reissueStaffPasswordReset") : t("resetStaffPassword")}
-                      </Button>
-                    )}
-                    {canManageStaff && member.userId !== selfId && member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
-                  </span>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </DashboardTableShell>
-
+  const onboardingSections = <>
       {canInviteStaff ? <StaffBulkInvitePanel roles={roles} recentBatches={recentImportBatches} isAdmin={isAdmin} /> : null}
 
       {canManageStaff ? <section className="rounded-2xl border border-line bg-card p-5">
@@ -354,6 +290,97 @@ export function StaffMembersPanel({
           </div>
         )}
       </section> : null}
+  </>;
+
+  return (
+    <div className="space-y-6">
+      <DashboardTableShell>
+        <Table className="w-full border-collapse text-left text-sm">
+          <TableHeader className="border-b border-line text-xs text-muted">
+            <TableRow>
+              <TableHead className="px-4 py-3 font-medium">{t("colName")}</TableHead>
+              {compact ? null : <TableHead className="px-4 py-3 font-medium">{t("colEmail")}</TableHead>}
+              {compact ? null : <TableHead className="px-4 py-3 font-medium">{t("colIdentity")}</TableHead>}
+              <TableHead className="px-4 py-3 font-medium">{t("colRoles")}</TableHead>
+              {extraColumns?.map((column) => <TableHead key={column.key} className="px-4 py-3 font-medium">{column.header}</TableHead>)}
+              <TableHead className="px-4 py-3 font-medium"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {members.filter((member) => !visibleIds || visibleIds.has(member.userId)).map((member) => (
+              <TableRow key={member.userId} data-state={selectedId === member.userId ? "selected" : undefined}
+                className={onSelect ? "cursor-pointer" : undefined} onClick={onSelect ? () => onSelect(member.userId) : undefined}>
+                <TableCell className="px-4 py-3 font-medium">
+                  {member.displayName}
+                  {compact && member.identity === "admin" && <span className="ml-2 rounded-full bg-moon/30 px-2 py-0.5 text-xs font-normal text-ink">{t("identityAdmin")}</span>}
+                  {member.purpose === "test" && <Badge variant="outline" className="ml-2">{locale === "en" ? "Test" : "测试"}</Badge>}
+                  {!member.isActive && <Badge variant="secondary" className="ml-2">{t("inactive")}</Badge>}
+                  {member.passwordChangeRequired && <Badge variant="outline" className="ml-2">{t("initialPasswordPending")}</Badge>}
+                  {compact && <span className="block text-xs font-normal text-muted">{member.email}</span>}
+                </TableCell>
+                {compact ? null : <TableCell className="px-4 py-3 text-muted">{member.email}</TableCell>}
+                {compact ? null : <TableCell className="px-4 py-3">
+                  {member.identity === "admin" ? (
+                    <span className="rounded-full bg-moon/30 px-2 py-0.5 text-xs text-ink">{t("identityAdmin")}</span>
+                  ) : (
+                    <span className="rounded-full bg-line/50 px-2 py-0.5 text-xs text-muted">{t("identityStaff")}</span>
+                  )}
+                </TableCell>}
+                <TableCell className="px-4 py-3">
+                  {member.roleNames.length === 0 ? (
+                    <span className="text-xs text-muted">{t("noRoles")}</span>
+                  ) : (
+                    <span className="flex flex-wrap gap-1.5">
+                      {member.roleNames.map((name) => (
+                        <span key={name} className="rounded-full bg-cheek/30 px-2 py-0.5 text-xs text-ink">{name}</span>
+                      ))}
+                    </span>
+                  )}
+                </TableCell>
+                {extraColumns?.map((column) => <TableCell key={column.key} className="px-4 py-3 text-sm">{column.cell(member)}</TableCell>)}
+                <TableCell className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
+                  <span className="inline-flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+                    {member.userId === selfId && <span className="text-xs text-muted">{t("selfRow")}</span>}
+                    {canManageRoles(member) && (
+                      <button type="button" onClick={() => openDialog(member)} className="text-xs text-muted underline underline-offset-2 hover:text-ink">{t("manageRoles")}</button>
+                    )}
+                    {canInviteStaff && member.passwordChangeRequired && !member.passwordResetPending && member.isActive && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 py-0 text-xs underline underline-offset-2"
+                        onClick={() => openReissue(member)}
+                      >
+                        {t("reissueInitialPassword")}
+                      </Button>
+                    )}
+                    {isAdmin && member.identity === "staff" && (!member.passwordChangeRequired || member.passwordResetPending) && member.isActive && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 py-0 text-xs underline underline-offset-2"
+                        onClick={() => openReset(member)}
+                      >
+                        {member.passwordResetPending ? t("reissueStaffPasswordReset") : t("resetStaffPassword")}
+                      </Button>
+                    )}
+                    {canManageStaff && member.userId !== selfId && member.isActive && <button type="button" onClick={() => { setDeactivateTarget(member); setReassignTo(""); setHandoverPreview(null); void getStaffHandoverPreviewAction(member.userId).then(setHandoverPreview).catch(()=>{}); }} className="text-xs text-rose underline underline-offset-2">{t("deactivate")}</button>}
+                  </span>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </DashboardTableShell>
+
+      {onboarding ? <Sheet open={onboarding.open} onOpenChange={onboarding.onOpenChange}>
+        <SheetContent side="right" closeLabel={t("cancel")} className="w-[min(96vw,52rem)] overflow-y-auto p-5">
+          <SheetHeader className="mb-4 pr-10"><SheetTitle>{onboarding.title}</SheetTitle></SheetHeader>
+          <div className="space-y-6">{onboardingSections}</div>
+        </SheetContent>
+      </Sheet> : onboardingSections}
 
       <Dialog open={Boolean(target)} onOpenChange={(open) => !open && setTarget(null)}>
         <DialogContent>

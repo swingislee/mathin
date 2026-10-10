@@ -3,6 +3,33 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "STAFF-ORG-ROSTER-20261010",
+      "title": "组织与分工：名册合并、备用账号与组长设置",
+      "agent": "claude",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/STAFF-ORG-ROSTER-20261010.md",
+      "writePaths": [
+        ".ai/tasks/STAFF-ORG-ROSTER-20261010.md",
+        "src/features/school/SchoolOrganizationBoard.tsx",
+        "src/features/school/StaffMembersPanel.tsx",
+        "src/features/school/school-organization-messages.ts",
+        "src/features/school/actions/school-organization.ts",
+        "src/features/school/school-collaboration-contract.ts",
+        "src/app/[locale]/dashboard/staff/page.tsx",
+        "supabase/migrations/20261010220000_school_staff_reserve.sql",
+        "supabase/tests/school_staff_reserve.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": null,
+      "next": "名册合并、备用账号与画板设组长已在开发端可用，待实际使用验收；生产未发布。"
+    },
+    {
       "id": "LEAD-BOARD-20261010",
       "title": "组长观察台",
       "agent": "claude",

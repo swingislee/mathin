@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, Maximize, Minus, Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Crown, Maximize, Minus, Plus, UserPlus, X } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { newId } from "@/lib/uuid";
 import { cn } from "@/lib/utils";
@@ -13,13 +13,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DashboardPage, DashboardCommandPanel, DashboardCommandActions, DashboardCommandState } from "./dashboard-page";
-import { SCHOOL_ORGANIZATION_KINDS, type SchoolBusinessRole, type SchoolCollaborationSettings as Settings, type SchoolOrganizationKind } from "./school-collaboration-contract";
+import { SCHOOL_ORGANIZATION_KINDS, SCHOOL_STAFF_RESERVE_REASONS, type SchoolStaffReserveReason, type SchoolBusinessRole, type SchoolCollaborationSettings as Settings, type SchoolOrganizationKind } from "./school-collaboration-contract";
 import {
   ORG_NODE, ORG_ROLE_ORDER, changeCount, childrenOf, departmentOf, diffOrganization, draftFromSettings, layoutOrganization, lineage,
   orderedUnits, subtreeIds, unitPath, type OrgChanges, type OrgDraft, type OrgUnit,
 } from "./school-organization-model";
 import { schoolOrganizationMessages, type SchoolOrganizationMessages } from "./school-organization-messages";
-import { saveSchoolOrganizationAction } from "./actions/school-organization";
+import { saveSchoolOrganizationAction, setStaffReserveAction } from "./actions/school-organization";
+import { StaffMembersPanel } from "./StaffMembersPanel";
+import type { StaffMember, StaffRoleInfo } from "./staff";
+import type { StaffImportBatchSummary } from "./actions/types";
 
 type Staff = Settings["staff"][number];
 type Selection = { kind: "person" | "unit"; id: string } | null;
@@ -37,7 +40,12 @@ function DutyDots({ roles }: { roles: SchoolBusinessRole[] }) {
     <i key={role} className={cn("size-2 rounded-full", DUTY_DOT[role])} />)}</span>;
 }
 
-export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { initial: Settings; locale: string; title: string; tabs?: ReactNode }) {
+export type StaffAdministration = {
+  members: StaffMember[]; roles: StaffRoleInfo[]; recentImportBatches: StaffImportBatchSummary[];
+  selfId: string; isAdmin: boolean; canInviteStaff: boolean; canManageStaff: boolean;
+};
+
+export function SchoolOrganizationBoard({ initial, locale, staffAdmin }: { initial: Settings; locale: string; staffAdmin?: StaffAdministration }) {
   const m = schoolOrganizationMessages(locale), router = useRouter();
   const [settings, setSettings] = useState(initial);
   const [draft, setDraft] = useState<OrgDraft>(() => draftFromSettings(initial));
@@ -50,6 +58,9 @@ export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { init
   const [view, setView] = useState<View>({ x: 24, y: 24, k: 0.9 });
   const [confirming, setConfirming] = useState(false);
   const [status, setStatus] = useState("");
+  const [rosterView, setRosterView] = useState<"active" | "reserve">("active");
+  const [onboarding, setOnboarding] = useState(false);
+  const [reserveOpen, setReserveOpen] = useState(false);
   const [pending, start] = useTransition();
   const canvasRef = useRef<HTMLDivElement>(null), dragRef = useRef<Drag | null>(null);
   const manage = settings.canManage;
@@ -191,8 +202,14 @@ export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { init
   const discard = () => { setDraft(draftFromSettings(settings)); setSelection(null); setStatus(""); };
 
   const units = orderedUnits(draft.units);
-  const people = settings.staff.filter(staff => !query.trim() || staff.name.includes(query.trim()));
-  const traySections = useMemo(() => {
+  const active = settings.staff.filter(staff => !staff.reserve), reserved = settings.staff.filter(staff => staff.reserve);
+  const people = active.filter(staff => !query.trim() || staff.name.includes(query.trim()));
+  const setReserve = (userId: string, reason: SchoolStaffReserveReason | null) => start(async () => {
+    const result = await setStaffReserveAction({ userId, reason });
+    if (!result.ok) { setStatus(m.errors[result.code] ?? m.errors.UNKNOWN); return; }
+    setSettings(result.data.settings); setStatus(reason ? m.reserveMoved : m.reserveRestored); router.refresh();
+  });
+  const traySections = (() => {
     const unassigned = people.filter(staff => !linksOf(staff.id).length);
     const buckets = new Map<string, { unit: OrgUnit; staff: Staff[] }>();
     for (const unit of units) {
@@ -204,7 +221,7 @@ export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { init
       if (bucket && !bucket.staff.includes(staff)) bucket.staff.push(staff);
     }
     return { unassigned, departments: [...buckets.values()].filter(bucket => bucket.staff.length) };
-  }, [people, linksOf, units, draft.units]);
+  })();
 
   const selectedStaff = selection?.kind === "person" ? staffById.get(selection.id) : undefined;
   const selectedUnit = selection?.kind === "unit" ? unitById.get(selection.id) : undefined;
@@ -271,7 +288,7 @@ export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { init
             {rows.map(row => { const staff = staffById.get(row.userId); if (!staff) return null;
               const twin = hoverPerson === row.userId && linksOf(row.userId).length > 1, active = selection?.kind === "person" && selection.id === row.userId;
               return <div key={row.userId} role="button" tabIndex={0} data-org-person={row.userId}
-                className={cn("flex cursor-grab touch-none select-none items-center gap-2 rounded-md px-2 text-sm hover:bg-table-hover",
+                className={cn("group flex cursor-grab touch-none select-none items-center gap-2 rounded-md px-2 text-sm hover:bg-table-hover",
                   twin && "bg-[#4C7BD9]/12", active && "bg-table-selected")}
                 style={{ height: ORG_NODE.row }}
                 onPointerDown={event => beginDrag(event, { kind: "person", id: row.userId, from: unit.id, sx: event.clientX, sy: event.clientY, moved: false })}
@@ -280,6 +297,9 @@ export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { init
                 <DutyDots roles={rolesOf(row.userId)} /><span className="min-w-0 flex-1 truncate">{staff.name}</span>
                 {linksOf(row.userId).length > 1 ? <span className="shrink-0 text-[10px] text-[#4C7BD9]" title={m.also}>{m.alsoShort}</span> : null}
                 {row.lead ? <span className="shrink-0 rounded-[3px] border border-crater px-1 text-[10px] leading-4 text-crater">{m.lead}</span> : null}
+                {!row.lead ? <button type="button" aria-label={m.setLead} title={m.setLead}
+                  className="invisible shrink-0 rounded p-0.5 text-crater hover:bg-moon/40 focus-visible:visible group-hover:visible"
+                  onPointerDown={event => event.stopPropagation()} onClick={event => { event.stopPropagation(); setLead(row.userId, unit.id, true); }}><Crown className="size-3.5" /></button> : null}
               </div>; })}
             {!rows.length ? <p className="px-2 text-xs leading-[30px] text-muted">{manage ? m.emptyUnit : m.memberTotal(count)}</p> : null}
           </div>
@@ -299,26 +319,50 @@ export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { init
     </div>
   </div>;
 
-  const roster = <div className="min-h-[26rem] overflow-auto bg-card"><Table><TableHeader><TableRow>
-    <TableHead>{m.staffCount}</TableHead><TableHead>{m.jobs.split(" · ")[0]}</TableHead><TableHead>{m.duties.split(" · ")[0]}</TableHead><TableHead>{m.units}</TableHead>
-  </TableRow></TableHeader><TableBody>{settings.staff.map(staff => <TableRow key={staff.id} className="cursor-pointer" data-state={selection?.id === staff.id ? "selected" : undefined}
-    onClick={() => setSelection({ kind: "person", id: staff.id })}>
-    <TableCell>{staff.name}</TableCell><TableCell>{staff.jobs.join("、") || "—"}</TableCell>
-    <TableCell>{rolesOf(staff.id).map(role => m.roles[role]).join("、") || "—"}</TableCell>
-    <TableCell className="whitespace-normal">{linksOf(staff.id).map(row => `${unitById.get(row.groupId)?.name}${row.lead ? `（${m.lead}）` : ""}`).join("、") || m.unassigned}</TableCell>
-  </TableRow>)}</TableBody></Table></div>;
+  const rosterIds = new Set((rosterView === "reserve" ? reserved : active).map(staff => staff.id));
+  const rosterColumns = [
+    { key: "duties", header: m.duties.split(" · ")[0], cell: (member: StaffMember) => rolesOf(member.userId).map(role => m.roles[role]).join("、") || "—" },
+    { key: "units", header: m.units, cell: (member: StaffMember) => {
+      const reserve = staffById.get(member.userId)?.reserve;
+      return linksOf(member.userId).map(row => `${unitById.get(row.groupId)?.name}${row.lead ? `（${m.lead}）` : ""}`).join("、") || (reserve ? m.reasons[reserve] : m.unassigned);
+    } },
+  ];
+  const roster = <div className="flex min-h-[26rem] flex-col overflow-hidden bg-card">
+    <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+      <div role="group" aria-label={m.roster} className="inline-flex rounded-lg bg-line/55 p-[3px]">
+        {(["active", "reserve"] as const).map(value => <button key={value} type="button" aria-pressed={rosterView === value} onClick={() => setRosterView(value)}
+          className={cn("rounded-md px-3 py-0.5 text-sm text-muted", rosterView === value && "bg-card text-ink shadow-sm")}>
+          {value === "active" ? m.rosterActive : m.rosterReserve} <span className="tabular-nums">{value === "active" ? active.length : reserved.length}</span></button>)}
+      </div>
+      {rosterView === "reserve" ? <p className="text-xs text-muted">{m.reserveHint}</p> : null}
+    </div>
+    <div className="min-h-0 flex-1 overflow-auto">
+      {staffAdmin ? <StaffMembersPanel members={staffAdmin.members} roles={staffAdmin.roles} recentImportBatches={staffAdmin.recentImportBatches}
+        selfId={staffAdmin.selfId} isAdmin={staffAdmin.isAdmin} canInviteStaff={staffAdmin.canInviteStaff} canManageStaff={staffAdmin.canManageStaff}
+        visibleIds={rosterIds} extraColumns={rosterColumns} selectedId={selection?.kind === "person" ? selection.id : null}
+        onSelect={id => setSelection({ kind: "person", id })} onboarding={{ open: onboarding, onOpenChange: setOnboarding, title: m.addStaff }} />
+      : <Table><TableHeader><TableRow>
+        <TableHead>{m.staffCount}</TableHead><TableHead>{m.jobs.split(" · ")[0]}</TableHead><TableHead>{m.duties.split(" · ")[0]}</TableHead><TableHead>{m.units}</TableHead>
+      </TableRow></TableHeader><TableBody>{settings.staff.filter(staff => rosterIds.has(staff.id)).map(staff => <TableRow key={staff.id} className="cursor-pointer" data-state={selection?.id === staff.id ? "selected" : undefined}
+        onClick={() => setSelection({ kind: "person", id: staff.id })}>
+        <TableCell>{staff.name}</TableCell><TableCell>{staff.jobs.join("、") || "—"}</TableCell>
+        <TableCell>{rolesOf(staff.id).map(role => m.roles[role]).join("、") || "—"}</TableCell>
+        <TableCell className="whitespace-normal">{linksOf(staff.id).map(row => `${unitById.get(row.groupId)?.name}${row.lead ? `（${m.lead}）` : ""}`).join("、") || m.unassigned}</TableCell>
+      </TableRow>)}</TableBody></Table>}
+    </div>
+  </div>;
 
-  return <DashboardPage title={title} density="compact" description={m.info}
+  return <DashboardPage title={m.tab} density="compact"
     commandPanel={<DashboardCommandPanel>
       <DashboardCommandState>
-        {tabs}
         <div role="group" aria-label={m.board} className="inline-flex rounded-lg bg-line/55 p-[3px]">
           {(["board", "roster"] as const).map(value => <button key={value} type="button" aria-pressed={mode === value} onClick={() => setMode(value)}
             className={cn("rounded-md px-3 py-1 text-sm text-muted", mode === value && "bg-card text-ink shadow-sm")}>{value === "board" ? m.board : m.roster}</button>)}
         </div>
       </DashboardCommandState>
       <DashboardCommandActions>
-        <Link href="/dashboard/assessments/availability" className="text-sm text-muted">{m.assessmentSettings}</Link>
+        {staffAdmin && (staffAdmin.canInviteStaff || staffAdmin.canManageStaff) ? <Button size="sm" variant="secondary" onClick={() => { setMode("roster"); setOnboarding(true); }}>
+          <UserPlus className="size-4" />{m.addStaff}</Button> : null}
         {manage ? <>
           <Button size="sm" variant="secondary" disabled={pending} onClick={() => addUnit(selectedUnit?.id ?? null)}><Plus className="size-4" />{selectedUnit ? m.addChild : m.addUnit}</Button>
           {dirty ? <Button size="sm" variant="ghost" disabled={pending} onClick={discard}>{m.discard}</Button> : null}
@@ -343,20 +387,29 @@ export function SchoolOrganizationBoard({ initial, locale, title, tabs }: { init
             {bucket.staff.map(staff => trayPerson(staff, `${bucket.unit.id}:${staff.id}`))}
           </div>)}
         </div>
+        {reserved.length ? <div className="mt-auto border-t border-line pt-2">
+          <button type="button" aria-expanded={reserveOpen} onClick={() => setReserveOpen(value => !value)} className="flex w-full items-center justify-between text-xs text-muted">
+            <span>{m.rosterReserve} · {reserved.length}</span><span aria-hidden>{reserveOpen ? "−" : "+"}</span></button>
+          {reserveOpen ? <div className="mt-1 flex max-h-40 flex-col gap-0.5 overflow-auto">{reserved.map(staff => <button key={staff.id} type="button"
+            onClick={() => setSelection({ kind: "person", id: staff.id })}
+            className={cn("flex items-center gap-2 rounded-md px-2 py-1 text-left text-sm text-muted hover:bg-table-hover", selection?.id === staff.id && "bg-table-selected text-ink")}>
+            <span className="min-w-0 flex-1 truncate">{staff.name}</span><span className="shrink-0 text-[11px]">{m.reasons[staff.reserve!]}</span></button>)}</div> : null}
+        </div> : null}
       </aside> : null}
       <div className="h-[60vh] min-h-0 min-w-0 @5xl/page:h-auto [&>*]:h-full">{mode === "board" ? board : roster}</div>
       <aside aria-live="polite" className="min-h-0 overflow-y-auto border-t border-line p-4 @5xl/page:border-l @5xl/page:border-t-0">
         {selectedStaff && manage ? <PersonCard key={selectedStaff.id} staff={selectedStaff} m={m} draft={draft} settings={settings} studentsUnder={studentsUnder}
           roles={rolesOf(selectedStaff.id)} onRoles={roles => setRoles(selectedStaff.id, roles)} onClose={() => setSelection(null)}
           onLead={(groupId, lead) => setLead(selectedStaff.id, groupId, lead)} onRemove={groupId => removeMember(selectedStaff.id, groupId)}
-          onJoin={groupId => addMember(selectedStaff.id, groupId, null)} onOpenUnit={id => setSelection({ kind: "unit", id })} />
+          onJoin={groupId => addMember(selectedStaff.id, groupId, null)} onOpenUnit={id => setSelection({ kind: "unit", id })}
+          pending={pending} onReserve={reason => setReserve(selectedStaff.id, reason)} />
         : selectedUnit ? <UnitCard key={`${selectedUnit.id}:${selectedUnit.name}`} unit={selectedUnit} m={m} draft={draft} settings={settings} manage={manage} pending={pending}
           studentCount={studentsUnder(selectedUnit.id)} members={manage ? sortedMembers(selectedUnit.id) : []} staffById={staffById}
           onClose={() => setSelection(null)} onPatch={patch => patchUnit(selectedUnit.id, patch)} onParent={parentId => reparent(selectedUnit.id, parentId)}
           onMove={delta => moveSibling(selectedUnit.id, delta)} onAddChild={() => addUnit(selectedUnit.id)} onArchive={() => archiveUnit(selectedUnit.id)}
-          onOpenPerson={id => setSelection({ kind: "person", id })} />
-        : <Overview m={m} manage={manage} staff={settings.staff.length} units={draft.units.length}
-          unassigned={settings.staff.filter(staff => !linksOf(staff.id).length).length} />}
+          onOpenPerson={id => setSelection({ kind: "person", id })} onLead={(userId, lead) => setLead(userId, selectedUnit.id, lead)} />
+        : <Overview m={m} manage={manage} staff={active.length} units={draft.units.length}
+          unassigned={active.filter(staff => !linksOf(staff.id).length).length} />}
       </aside>
     </div>
     {ghost ? <div className="pointer-events-none fixed z-50 rounded-md border border-crater bg-card px-2.5 py-1 text-sm shadow-sm" style={{ left: ghost.x + 12, top: ghost.y + 10 }}>
@@ -399,7 +452,8 @@ function Overview({ m, manage, staff, units, unassigned }: { m: SchoolOrganizati
   </div>;
 }
 
-function PersonCard({ staff, m, draft, settings, roles, studentsUnder, onRoles, onClose, onLead, onRemove, onJoin, onOpenUnit }: {
+function PersonCard({ staff, m, draft, settings, roles, studentsUnder, onRoles, onClose, onLead, onRemove, onJoin, onOpenUnit, pending, onReserve }: {
+  pending: boolean; onReserve: (reason: SchoolStaffReserveReason | null) => void;
   staff: Staff; m: SchoolOrganizationMessages; draft: OrgDraft; settings: Settings; roles: SchoolBusinessRole[]; studentsUnder: (id: string) => number;
   onRoles: (roles: SchoolBusinessRole[]) => void; onClose: () => void; onLead: (groupId: string, lead: boolean) => void;
   onRemove: (groupId: string) => void; onJoin: (groupId: string) => void; onOpenUnit: (id: string) => void;
@@ -455,10 +509,19 @@ function PersonCard({ staff, m, draft, settings, roles, studentsUnder, onRoles, 
         <SelectContent>{joinable.map(unit => <SelectItem key={unit.id} value={unit.id}>{unitPath(draft.units, unit.id)}</SelectItem>)}</SelectContent></Select> : null}
     </Field>
     <Field label={m.effects}><Effects items={effects} /></Field>
+    <Field label={m.rosterReserve}>
+      {staff.fixedTest ? <p className="text-sm text-muted">{m.fixedTest}</p>
+      : staff.reserve ? <div className="flex flex-wrap items-center gap-2 text-sm"><span>{m.reasons[staff.reserve]}</span>
+        <Button size="sm" variant="secondary" disabled={pending} onClick={() => onReserve(null)}>{m.restore}</Button></div>
+      : links.length ? <p className="text-xs text-muted">{m.reserveBlocked}</p>
+      : <Select value="" onValueChange={value => onReserve(value as SchoolStaffReserveReason)}><SelectTrigger aria-label={m.moveToReserve} className="h-8"><SelectValue placeholder={m.moveToReserve} /></SelectTrigger>
+        <SelectContent>{SCHOOL_STAFF_RESERVE_REASONS.filter(reason => reason !== "test").map(reason => <SelectItem key={reason} value={reason}>{m.reasons[reason]}</SelectItem>)}</SelectContent></Select>}
+    </Field>
   </div>;
 }
 
-function UnitCard({ unit, m, draft, settings, manage, pending, studentCount, members, staffById, onClose, onPatch, onParent, onMove, onAddChild, onArchive, onOpenPerson }: {
+function UnitCard({ unit, m, draft, settings, manage, pending, studentCount, members, staffById, onClose, onPatch, onParent, onMove, onAddChild, onArchive, onOpenPerson, onLead }: {
+  onLead: (userId: string, lead: boolean) => void;
   unit: OrgUnit; m: SchoolOrganizationMessages; draft: OrgDraft; settings: Settings; manage: boolean; pending: boolean; studentCount: number;
   members: OrgDraft["members"]; staffById: Map<string, Staff>; onClose: () => void; onPatch: (patch: Partial<OrgUnit>) => void;
   onParent: (parentId: string | null) => void; onMove: (delta: number) => void; onAddChild: () => void; onArchive: () => void; onOpenPerson: (id: string) => void;
@@ -493,9 +556,10 @@ function UnitCard({ unit, m, draft, settings, manage, pending, studentCount, mem
       <Field label={m.order(index + 1, siblings.length)}><div className="flex gap-2">
         <Button size="sm" variant="secondary" disabled={index <= 0} onClick={() => onMove(-1)}><ArrowUp className="size-4" />{m.moveEarlier}</Button>
         <Button size="sm" variant="secondary" disabled={index >= siblings.length - 1} onClick={() => onMove(1)}><ArrowDown className="size-4" />{m.moveLater}</Button></div></Field>
-      {members.length ? <Field label={m.directMembers}><div className="flex flex-wrap gap-1.5">{members.map(row => <button key={row.userId} type="button" onClick={() => onOpenPerson(row.userId)}
-        className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-sm hover:bg-table-hover">
-        {staffById.get(row.userId)?.name}{row.lead ? <span className="text-[10px] text-crater">{m.lead}</span> : null}</button>)}</div></Field> : null}
+      {members.length ? <Field label={m.directMembers}><div className="flex flex-col border-t border-line">{members.map(row => <div key={row.userId} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-line py-1">
+        <button type="button" className="min-w-0 truncate text-left text-sm hover:underline" onClick={() => onOpenPerson(row.userId)}>{staffById.get(row.userId)?.name}</button>
+        <Button size="sm" variant="secondary" aria-pressed={row.lead} className={cn("h-7 gap-1 px-2 text-xs", row.lead && "border-crater text-crater")} onClick={() => onLead(row.userId, !row.lead)}>
+          <Crown className="size-3.5" />{row.lead ? m.lead : m.setLead}</Button></div>)}</div></Field> : null}
     </> : null}
     <Field label={m.unitGrants}><Effects items={[
       { text: studentCount ? m.unitSees(studentCount) : m.unitStructure },
