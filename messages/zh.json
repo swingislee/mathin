@@ -3291,7 +3291,8 @@
       "group_organization": "组织管理",
       "group_system": "系统管理",
       "coordination": "协同记录",
-      "staffGroups": "员工分组与分工"
+      "staffGroups": "员工分组与分工",
+      "leadBoard": "组长观察台"
     },
     "coordinationHistory": {
       "title": "协同与审批记录",

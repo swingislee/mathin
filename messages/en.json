@@ -3291,7 +3291,8 @@
       "group_organization": "Organization management",
       "group_system": "System management",
       "coordination": "Coordination",
-      "staffGroups": "Staff groups & responsibilities"
+      "staffGroups": "Staff groups & responsibilities",
+      "leadBoard": "Lead board"
     },
     "coordinationHistory": {
       "title": "Coordination and approval history",

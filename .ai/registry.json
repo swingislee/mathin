@@ -3,6 +3,36 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "LEAD-BOARD-20261010",
+      "title": "组长观察台",
+      "agent": "claude",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/LEAD-BOARD-20261010.md",
+      "writePaths": [
+        ".ai/tasks/LEAD-BOARD-20261010.md",
+        "src/features/school/LeadBoardWorkspace.tsx",
+        "src/features/school/lead-board-contract.ts",
+        "src/features/school/lead-board-messages.ts",
+        "src/features/school/lead-board-data.ts",
+        "src/features/school/actions/lead-board.ts",
+        "src/app/[locale]/dashboard/lead-board/page.tsx",
+        "supabase/migrations/20261010210000_school_lead_board.sql",
+        "supabase/tests/school_lead_board.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/dashboard-routes.ts",
+        "src/features/school/nav.ts",
+        "src/features/school/DashboardShell.tsx",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": null,
+      "next": "组长观察台已在开发端可用，迁移已应用本地开发库，待实际使用验收；生产未发布。"
+    },
+    {
       "id": "STAFF-ORGANIZATION-BOARD-20261010",
       "title": "员工组织画板",
       "agent": "claude",

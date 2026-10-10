@@ -191,6 +191,15 @@ export const DASHBOARD_ROUTES = {
     createSurface: "derived",
     nav: { labelKey: "assessments", group: "subjectOperations" },
   },
+  leadBoard: {
+    // 组长观察台：组织内成员负责学生的跟进状态；页面内按组长身份或主管权限决定可见组织。
+    href: "/dashboard/lead-board",
+    kind: "queue",
+    environments: STAFF_ONLY,
+    permissionAny: ["followup.view", "review.write", "staff.manage"],
+    createSurface: "derived",
+    nav: { labelKey: "leadBoard", group: "subjectOperations" },
+  },
   assessmentAvailability: {
     href: "/dashboard/assessments/availability",
     kind: "queue",

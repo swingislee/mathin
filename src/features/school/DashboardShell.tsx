@@ -87,7 +87,7 @@ const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number 
   renewals: RotateCcw,
   managementAnalytics: ChartSpline,
   staff: UserCog,
-  staffGroups: Users,
+  leadBoard: Users,
   organizationProfile: Building2,
   campuses: MapPinned,
   roles: ShieldCheck,
