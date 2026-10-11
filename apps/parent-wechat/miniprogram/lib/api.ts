@@ -1,4 +1,5 @@
 import { config } from "../config.local";
+import type { GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "./api-types";
 import type { FamilyRegistration, PhoneResult, RegistrationResult } from "./onboarding";
 import type { ActivityOffer, ActivityRequest, ActivityRequestCommand, RegistrationHistory, RegistrationForm, RegistrationSubmission } from "./api-types";
 import type { Session, Media, ParticipantCalendar, AssessmentOverview, AssessmentRequest, AssessmentAvailability, AssessmentTopic, AssessmentCommand, WechatAuthStatus, WechatAuthResult } from "./api-types";
@@ -15,7 +16,7 @@ function origin(){const value=String(config.apiOrigin);if(!value)throw new ApiEr
 function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Promise<T> {
   return new Promise((resolve,reject)=>{
     // WeChat entry can wait for development compilation before the server exchanges its one-time code.
-    const wechatEntry = path === "auth/wechat" || path === "auth/wechat/onboarding";
+    const wechatEntry = path === "auth/wechat" || path === "auth/wechat/onboarding" || path === "guardian-binding";
     wx.request({url:origin()+"/api/v1/participant/"+path,method,data,timeout:wechatEntry ? 60000 : 20000,
       header:{"content-type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},
       success:result=>{
@@ -119,6 +120,26 @@ export async function bindWechat(password?:string):Promise<void>{
   if(session()?.accessToken!==token)throw new ApiError("UNAUTHENTICATED");
   const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"bind",code,...(password?{password}:{}),confirm:true},token);
   if(result.state!=="bound")throw new ApiError("UNAVAILABLE");
+}
+export function guardianBindingPreview(invitation: string): Promise<GuardianBindingPreview> {
+  return send("guardian-binding", "POST", { action: "preview", invitation });
+}
+export async function beginGuardianBinding(invitation: string): Promise<GuardianBindingStep> {
+  const token = session() ? await accessToken() : undefined, version = sessionVersion;
+  const code = await wechatCode();
+  if (version !== sessionVersion) throw new ApiError("UNAUTHENTICATED");
+  const result = await send<GuardianBindingStep>("guardian-binding", "POST", { action: "login", invitation, code }, token);
+  if (version !== sessionVersion) throw new ApiError("UNAUTHENTICATED");
+  return result;
+}
+export function guardianBindingPhone(ticket: string, code: string): Promise<GuardianBindingStep> {
+  return send("guardian-binding", "POST", { action: "phone", ticket, code });
+}
+export async function confirmGuardianBinding(ticket: string, confirmation: GuardianConfirmation): Promise<RegistrationResult> {
+  const token = session() ? await accessToken() : undefined, version = sessionVersion;
+  const result = await send<RegistrationResult>("guardian-binding", "POST", { action: "confirm", ticket, confirmation }, token);
+  if (version !== sessionVersion) throw new ApiError("UNAUTHENTICATED");
+  saveSession(result.session); return result;
 }
 export async function logout(){try{await send("auth","POST",{action:"logout"},await accessToken());}finally{clearSession();}}
 export function upload(filePath:string,taskId:string,participantId:string,onProgress:(progress:number)=>void):Promise<Media>{

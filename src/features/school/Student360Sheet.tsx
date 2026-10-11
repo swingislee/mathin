@@ -1,5 +1,6 @@
 "use client";
 import {SourceCompletionNotice} from './SourceCompletionNotice';
+import { MiniappGuardianInvite } from "./MiniappGuardianInvite";
 
 import dynamic from "next/dynamic";
 import {
@@ -445,6 +446,7 @@ function Student360PanelBody({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            {identity?.accessScope === "full" && identity.studentId ? <MiniappGuardianInvite key={`guardian:${identity.studentId}`} studentId={identity.studentId} compact /> : null}
             {identity?.accessScope === "full" && identity.studentId ? <StudentMergePanel key={identity.studentId} studentId={identity.studentId} name={name} phone={identity.phone ?? ""} compact onSaved={refresh} /> : null}
             {identity?.accessScope === "full" ? <SchoolSupportProfileButton studentId={identity.studentId} leadId={identity.studentId ? null : identity.primaryLeadId} onSaved={refresh} /> : null}
             <Button

@@ -27,6 +27,7 @@
       </view>
       <text class="section-title tools-heading">{{copy.commonTools}}</text>
       <view class="service-grid">
+        <button class="service-entry" data-url="/pages/guardian-binding/index" bindtap="open"><image class="line-icon" src="/assets/icons/participants.png" aria-hidden="true" /><text>{{locale === 'zh' ? '关联已有孩子' : 'Link an existing child'}}</text></button>
         <button class="service-entry" data-url="/pages/register/index?source=account" bindtap="open"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.registrationTitle}}</text></button>
         <button class="service-entry" bindtap="showAccount"><image class="line-icon" src="/assets/icons/account.png" aria-hidden="true" /><text>{{copy.accountLabel}}</text></button>
         <button class="service-entry" bindtap="privacy"><image class="line-icon" src="/assets/icons/privacy.png" aria-hidden="true" /><text>{{copy.privacyEntry}}</text></button>

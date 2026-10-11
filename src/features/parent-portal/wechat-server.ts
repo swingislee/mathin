@@ -10,6 +10,7 @@ import { authorize, failure, PortalError, readJson, response } from "./server";
 import { parentWechatAuthCommandSchema } from "./wechat-contract";
 import { beginFamilyOnboarding, familyOnboardingAvailable, needsFamilyOnboarding, resumePendingFamily, verifiedAccountPhone } from "./onboarding-server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { hasConfirmedGuardianBinding } from "./guardian-binding-server";
 
 async function loginStep<T>(step: "rate_limit" | "wechat_exchange" | "identity_lookup" | "onboarding_proof", run: () => Promise<T>): Promise<T> {
   const started = Date.now();
@@ -78,7 +79,7 @@ export async function parentWechatAuthPost(request: Request) {
       const context = await miniappSessionContext(config, session.access_token, userId);
       // Native Auth has verified the existing WeChat identity; keep its actual assurance level.
       if (!session.expires_at) throw new MiniappWechatError("UNAVAILABLE");
-      if (familyOnboardingAvailable(config) && await needsFamilyOnboarding(userId)) {
+      if (familyOnboardingAvailable(config) && await needsFamilyOnboarding(userId) && !await hasConfirmedGuardianBinding(userId)) {
         const onboarding = await beginFamilyOnboarding(identity, input.scene ?? null, context.user);
         await revokeMiniappSession(session.access_token);
         return response(onboarding);

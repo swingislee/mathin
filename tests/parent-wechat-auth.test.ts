@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 const h = vi.hoisted(() => ({ config: true, authorize: vi.fn(), active: vi.fn(), limit: vi.fn(),
   exchange: vi.fn(), native: vi.fn(), context: vi.fn(), password: vi.fn(), revoke: vi.fn(), owner: vi.fn(), conflict: vi.fn(),
-  onboarding: vi.fn(), needsFamily: vi.fn(), resume: vi.fn(), touch: vi.fn() }));
+  onboarding: vi.fn(), needsFamily: vi.fn(), resume: vi.fn(), touch: vi.fn(), confirmedGuardian: vi.fn() }));
+vi.mock("@/features/parent-portal/guardian-binding-server", () => ({ hasConfirmedGuardianBinding: (...args: unknown[]) => h.confirmedGuardian(...args) }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: h.touch }) }));
 vi.mock("@/features/parent-portal/onboarding-server", async original => ({
   ...await original<object>(),
@@ -37,6 +38,7 @@ beforeEach(() => {
   h.config = true;
   vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "false");
   h.needsFamily.mockResolvedValue(false); h.resume.mockResolvedValue(null);
+  h.confirmedGuardian.mockResolvedValue(false);
   h.touch.mockResolvedValue({ error: null });
   h.onboarding.mockResolvedValue({ state: "onboarding_required", ticket: "family-proof" });
   h.authorize.mockResolvedValue({ user: { ...user, identities: [] }, token: "original-access" });
@@ -96,6 +98,12 @@ describe("parent mini program auth HTTP", () => {
   });
   it("does not force already associated work accounts to register again", async () => {
     vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
+    expect(await (await POST(body({ action: "login", code: "fresh-code" }))).json()).toMatchObject({ state: "authenticated" });
+    expect(h.onboarding).not.toHaveBeenCalled(); expect(h.revoke).not.toHaveBeenCalled();
+  });
+  it("lets an explicitly confirmed guardian log in without creating or registering another child", async () => {
+    vi.stubEnv("WECHAT_FAMILY_ONBOARDING_ENABLED", "true"); h.owner.mockResolvedValue(userId);
+    h.needsFamily.mockResolvedValue(true); h.confirmedGuardian.mockResolvedValue(true);
     expect(await (await POST(body({ action: "login", code: "fresh-code" }))).json()).toMatchObject({ state: "authenticated" });
     expect(h.onboarding).not.toHaveBeenCalled(); expect(h.revoke).not.toHaveBeenCalled();
   });

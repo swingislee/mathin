@@ -7072,6 +7072,7 @@ export type Database = {
           id: string
           issued_by: string
           relation: string
+          revoked_at: string | null
           scope: string[]
           student_id: string
           used_at: string | null
@@ -7084,6 +7085,7 @@ export type Database = {
           id?: string
           issued_by: string
           relation?: string
+          revoked_at?: string | null
           scope?: string[]
           student_id: string
           used_at?: string | null
@@ -7096,6 +7098,7 @@ export type Database = {
           id?: string
           issued_by?: string
           relation?: string
+          revoked_at?: string | null
           scope?: string[]
           student_id?: string
           used_at?: string | null
@@ -7109,9 +7112,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "guardian_bind_invitations_issued_by_fkey"
+            columns: ["issued_by"]
+            referencedRelation: "statistics_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "guardian_bind_invitations_student_id_fkey"
             columns: ["student_id"]
             referencedRelation: "operational_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardian_bind_invitations_student_id_fkey"
+            columns: ["student_id"]
+            referencedRelation: "statistics_students"
             referencedColumns: ["id"]
           },
           {
@@ -7124,6 +7139,12 @@ export type Database = {
             foreignKeyName: "guardian_bind_invitations_used_by_fkey"
             columns: ["used_by"]
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardian_bind_invitations_used_by_fkey"
+            columns: ["used_by"]
+            referencedRelation: "statistics_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -9826,47 +9847,173 @@ export type Database = {
       }
       miniapp_intakes: {
         Row: {
+          acquisition_state: string | null
           answers: Json
+          child_leads: Json
+          child_participants: Json
+          completed_at: string | null
           consent_at: string
           created_at: string
+          family_id: string | null
           form_slug: string
           form_snapshot: Json
           form_version: number
+          guardian_invitation_id: string | null
           id: string
+          intake_kind: string
+          lead_id: string | null
+          lease_key: string | null
+          lease_until: string | null
+          local_phone: string | null
+          profile_created_at: string | null
+          registration_user_id: string | null
           request_id: string
           source: string
+          student_id: string | null
           submitted_by: string | null
+          uses_existing_account: boolean
+          verified_at: string | null
+          verified_by: string | null
+          verified_details: Json | null
+          verified_phone: string | null
+          wechat_subject: string | null
         }
         Insert: {
+          acquisition_state?: string | null
           answers: Json
+          child_leads?: Json
+          child_participants?: Json
+          completed_at?: string | null
           consent_at?: string
           created_at?: string
+          family_id?: string | null
           form_slug: string
           form_snapshot: Json
           form_version: number
+          guardian_invitation_id?: string | null
           id?: string
+          intake_kind?: string
+          lead_id?: string | null
+          lease_key?: string | null
+          lease_until?: string | null
+          local_phone?: string | null
+          profile_created_at?: string | null
+          registration_user_id?: string | null
           request_id: string
           source?: string
+          student_id?: string | null
           submitted_by?: string | null
+          uses_existing_account?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_details?: Json | null
+          verified_phone?: string | null
+          wechat_subject?: string | null
         }
         Update: {
+          acquisition_state?: string | null
           answers?: Json
+          child_leads?: Json
+          child_participants?: Json
+          completed_at?: string | null
           consent_at?: string
           created_at?: string
+          family_id?: string | null
           form_slug?: string
           form_snapshot?: Json
           form_version?: number
+          guardian_invitation_id?: string | null
           id?: string
+          intake_kind?: string
+          lead_id?: string | null
+          lease_key?: string | null
+          lease_until?: string | null
+          local_phone?: string | null
+          profile_created_at?: string | null
+          registration_user_id?: string | null
           request_id?: string
           source?: string
+          student_id?: string | null
           submitted_by?: string | null
+          uses_existing_account?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+          verified_details?: Json | null
+          verified_phone?: string | null
+          wechat_subject?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "miniapp_intakes_family_id_fkey"
+            columns: ["family_id"]
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "miniapp_intakes_form_slug_fkey"
             columns: ["form_slug"]
             referencedRelation: "miniapp_forms"
             referencedColumns: ["slug"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_guardian_invitation_id_fkey"
+            columns: ["guardian_invitation_id"]
+            referencedRelation: "guardian_bind_invitations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "collaborative_lead_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "collaborative_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "operational_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "statistics_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "statistics_operational_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_student_id_fkey"
+            columns: ["student_id"]
+            referencedRelation: "operational_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_student_id_fkey"
+            columns: ["student_id"]
+            referencedRelation: "statistics_students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_student_id_fkey"
+            columns: ["student_id"]
+            referencedRelation: "students"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "miniapp_intakes_submitted_by_fkey"
@@ -9877,6 +10024,18 @@ export type Database = {
           {
             foreignKeyName: "miniapp_intakes_submitted_by_fkey"
             columns: ["submitted_by"]
+            referencedRelation: "statistics_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_verified_by_fkey"
+            columns: ["verified_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "miniapp_intakes_verified_by_fkey"
+            columns: ["verified_by"]
             referencedRelation: "statistics_profiles"
             referencedColumns: ["id"]
           },
@@ -31367,6 +31526,30 @@ export type Database = {
           key: string
           status: Json
         }[]
+      }
+      issue_miniapp_guardian_invite: {
+        Args: { p_student_id: string }
+        Returns: Json
+      }
+      revoke_miniapp_guardian_invite: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      miniapp_guardian_preview: { Args: { p_code: string }; Returns: Json }
+      miniapp_prepare_guardian: {
+        Args: {
+          p_answers: Json
+          p_code: string
+          p_lease: string
+          p_local_phone: string
+          p_phone: string
+          p_subject: string
+        }
+        Returns: Json
+      }
+      miniapp_complete_guardian: {
+        Args: { p_id: string; p_lease: string; p_subject: string }
+        Returns: Json
       }
     }
     Enums: {

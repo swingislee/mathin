@@ -111,6 +111,17 @@ async function establishAccount(config: MiniappWechatConfig, identity: WechatIde
     p_subject: identity.subject, p_phone: proof.phone, p_local_phone: proof.localPhone,
     p_scene: proof.scene, p_family: family, p_lease: lease,
   })));
+  return establishReservedMiniappAccount(config, identity, proof, reservation, lease, async () =>
+    completionSchema.parse(requireResult(await admin.rpc("miniapp_complete_family", {
+      p_id: reservation.id, p_subject: identity.subject, p_lease: lease,
+    }))));
+}
+
+/** Shared account bootstrap. The caller supplies its own explicit, transactionally confirmed action. */
+export async function establishReservedMiniappAccount(config: MiniappWechatConfig, identity: WechatIdentity, proof: { phone: string },
+  reservation: { id: string; userId: string; created: boolean; completed: boolean }, lease: string,
+  complete: () => Promise<z.infer<typeof completionSchema>>) {
+  const admin = createAdminClient();
   let session: Session | undefined;
   let bootstrap: Session | undefined;
   try {
@@ -156,9 +167,7 @@ async function establishAccount(config: MiniappWechatConfig, identity: WechatIde
     // A verified WeChat login can complete registration without repeating the account's MFA.
     // Bootstrap/linking checks above still protect accounts without an established WeChat identity.
     if (!session.expires_at) throw new PortalError("ACCOUNT_SECURITY");
-    const completed = completionSchema.parse(requireResult(await admin.rpc("miniapp_complete_family", {
-      p_id: reservation.id, p_subject: identity.subject, p_lease: lease,
-    })));
+    const completed = await complete();
     await saveWechatSnapshot(reservation.userId, identity);
     await authorize(new Request(config.completionUrl, { headers: { authorization: `Bearer ${session.access_token}` } }));
     if (bootstrap) await revokeMiniappSession(bootstrap.access_token, context.sessionId);

@@ -3,7 +3,7 @@ let returnPath = "";
 let loginRequested = false;
 let participantId = "";
 const tabs = ["discover", "calendar", "account"];
-const destinations = /^(?:\/pages\/(?:onboarding|activity|assessment|register|reflections|records|task|reservations|agenda|activity-catalog|activity-detail|activity-signup|activity-requests|service)\/index(?:\?[^#]*)?|\/pages\/(?:discover|calendar|account)\/index)$/;
+const destinations = /^(?:\/pages\/(?:onboarding|guardian-binding|activity|assessment|register|reflections|records|task|reservations|agenda|activity-catalog|activity-detail|activity-signup|activity-requests|service)\/index(?:\?[^#]*)?|\/pages\/(?:discover|calendar|account)\/index)$/;
 
 export function openPage(url: string) {
   if (tabs.some(tab => url === `/pages/${tab}/index`)) wx.switchTab({ url });

@@ -1,0 +1,41 @@
+<view class="portal-page">
+  <app-nav />
+  <view class="portal-content binding-content">
+    <text class="binding-title">{{stage === 'done' ? words.done : words.title}}</text>
+    <block wx:if="{{stage === 'done'}}">
+      <text wx:if="{{childName}}" class="binding-name">{{childName}}</text>
+      <text class="binding-intro">{{words.doneNote}}</text>
+      <button class="primary" bindtap="account">{{words.account}}</button>
+    </block>
+    <block wx:else>
+      <text class="binding-intro">{{words.intro}}</text>
+      <block wx:if="{{!invitation}}">
+        <label class="field-label">{{words.codeLabel}}</label>
+        <input class="input" maxlength="32" value="{{code}}" bindinput="input" disabled="{{busy}}" placeholder="{{words.codePlaceholder}}" />
+        <button class="primary" bindtap="preview" loading="{{busy}}" disabled="{{busy || !code}}">{{words.preview}}</button>
+        <button class="text-button" bindtap="scan" disabled="{{busy}}">{{words.scan}}</button>
+      </block>
+      <block wx:else>
+        <text class="binding-name">{{invitation.maskedName}}</text>
+        <text class="binding-meta">{{words.expires}} {{expires}}</text>
+        <text class="binding-intro">{{words.boundary}}</text>
+        <text class="binding-intro">{{words.scope}}</text>
+        <button wx:if="{{stage === 'preview'}}" class="primary" bindtap="start" loading="{{busy}}" disabled="{{busy}}">{{words.continue}}</button>
+        <block wx:if="{{stage === 'phone'}}">
+          <text class="binding-intro">{{words.phoneNote}}</text>
+          <button class="primary" open-type="getPhoneNumber" bindgetphonenumber="phone" loading="{{busy}}" disabled="{{busy}}">{{words.phone}}</button>
+        </block>
+        <block wx:if="{{stage === 'confirm'}}">
+          <text class="binding-meta">{{policy.maskedPhone}}</text>
+          <label class="field-label">{{words.name}}</label><input class="input" value="{{parentName}}" bindinput="name" maxlength="100" disabled="{{busy}}" />
+          <label class="field-label">{{words.relation}}</label><picker range="{{words.relations}}" value="{{relation}}" bindchange="relation" disabled="{{busy}}"><view class="input picker-input">{{words.relations[relation]}}</view></picker>
+          <view class="policy-links"><button class="text-button" data-kind="privacy" bindtap="policy">{{words.privacy}}</button><button class="text-button" data-kind="children" bindtap="policy">{{words.children}}</button></view>
+          <checkbox-group bindchange="consent"><label class="binding-consent"><checkbox value="consent" checked="{{consent}}" disabled="{{busy}}" />{{words.consent}}</label></checkbox-group>
+          <button class="primary" bindtap="confirm" loading="{{busy}}" disabled="{{busy || !consent || !parentName || !relation}}">{{words.confirm}}</button>
+        </block>
+      </block>
+      <button class="text-button" bindtap="browse" disabled="{{busy}}">{{words.cancel}}</button>
+    </block>
+    <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
+  </view>
+</view>

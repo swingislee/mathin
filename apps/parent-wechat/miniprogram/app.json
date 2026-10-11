@@ -4,6 +4,7 @@
     "pages/calendar/index",
     "pages/account/index",
     "pages/onboarding/index",
+    "pages/guardian-binding/index",
     "pages/reservations/index",
     "pages/agenda/index",
     "pages/reflections/index",

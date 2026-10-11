@@ -2,6 +2,14 @@
 import type { FamilyForm, FamilyChild } from "./onboarding-form";
 /** 小程序专用 API 合同。服务端映射既有业务数据；共享表和其他客户端沿用原合同。 */
 export type Locale = "zh" | "en";
+export type GuardianBindingPreview = { maskedName: string; expiresAt: string };
+export type GuardianConfirmation = { parentName: string; relation: "mother" | "father" | "guardian";
+  consent: true; privacyVersion: string; childrenPrivacyVersion: string };
+export type GuardianBindingStep = { state: "phone_required"; ticket: string } | {
+  state: "confirmation_required"; ticket: string; maskedPhone: string;
+  privacyVersion: string; childrenPrivacyVersion: string;
+  policyText: { zh: { privacy: string; children: string }; en: { privacy: string; children: string } };
+};
 export type LocalizedText = { zh: string; en: string };
 export type FormField = {
   id: string;
