@@ -6,7 +6,7 @@
       "id": "ACTIVITY-COURSE-IMPORT-20261011",
       "title": "公益活动与短期课生产录入及小程序报名",
       "agent": "codex",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/ACTIVITY-COURSE-IMPORT-20261011.md",
@@ -30,8 +30,8 @@
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": null,
-      "next": "补齐短期课报名和中大班年级，按用户表格生产录入并核对"
+      "checkpoint": "56869a74bebe0bc3736be18ec0a678f10299cee1",
+      "next": "生产已录入12场活动、12个短期班及33次课；23个入口开放，生产目录与后台读取通过，隔离报名链路通过。手机实点和两处原表时间冲突待负责人确认。"
     },
     {
       "id": "MINI-GUEST-ENTRY-20261011",
