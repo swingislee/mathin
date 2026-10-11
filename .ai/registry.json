@@ -3,6 +3,41 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-GUEST-ENTRY-20261011",
+      "title": "小程序先浏览、按需登录与登记",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-GUEST-ENTRY-20261011.md",
+      "writePaths": [
+        ".ai/tasks/MINI-GUEST-ENTRY-20261011.md",
+        ".tmp/mini-guest-entry-20261011/",
+        "apps/parent-wechat/miniprogram/app.json",
+        "apps/parent-wechat/miniprogram/app.ts",
+        "apps/parent-wechat/miniprogram/lib/navigation.ts",
+        "apps/parent-wechat/miniprogram/lib/onboarding.ts",
+        "apps/parent-wechat/miniprogram/lib/onboarding-presentation.ts",
+        "apps/parent-wechat/miniprogram/lib/page.ts",
+        "apps/parent-wechat/miniprogram/pages/account/index.ts",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.ts",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.wxml",
+        "apps/parent-wechat/miniprogram/pages/register/index.ts",
+        "contracts/participant-api/onboarding-presentation.ts",
+        "src/features/wechat/miniapp-phone.ts",
+        "tests/parent-wechat-auth-client.test.ts",
+        "tests/wechat-registration-location.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/docs/portal.md"
+      ],
+      "checkpoint": null,
+      "next": "开发代码与定向检查完成，待实际验收；按用户要求暂不上传 0.1.8、不提交审核或部署生产。"
+    },
+    {
       "id": "MINI-RESERVATIONS-REGISTRATION-20261010",
       "title": "小程序预约汇总与参与登记",
       "agent": "codex",

@@ -1,9 +1,9 @@
 import { ApiError, bindWechat, get, login, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
 import type { Account, WechatAuthStatus } from "../../lib/api-types";
-import { clearNavigation, hasReturn, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
+import { cancelLogin, clearNavigation, takeLoginRequest, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
 import { activityCopy } from "../../lib/activity-catalog";
-import { onboardingCopy, setOnboardingProof } from "../../lib/onboarding";
+import { clearOnboardingEntry, clearPromotionScene, onboardingCopy, openOnboarding, pendingPromotionScene, setOnboardingProof } from "../../lib/onboarding";
 import { participantAccountName } from "../../lib/participant-wording";
 
 Page({
@@ -17,15 +17,19 @@ Page({
     syncPage(this, "account");
     this.setData({ activityCopy: activityCopy[currentLocale()] });
     const current = session(), authenticated = Boolean(current), token = current?.accessToken || "";
+    const loginRequested = takeLoginRequest();
     const reset = !current || token !== this.sessionToken;
     this.sessionToken = token;
     this.setData({ authenticated, error: "", password: "", loading: false,
       ...(reset ? { account: null, accountName: "", wechat: null } : {}),
-      sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && hasReturn() ? "login" : "" });
+      sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && loginRequested ? "login" : "" });
     void this.loadWechat();
     if (authenticated) void this.load();
   },
-  onHide() { this.loadVersion++; this.statusVersion++; this.setData({ password: "", sheet: "" }); },
+  onHide() {
+    if (this.data.sheet === "login" && !this.data.busy) cancelLogin();
+    this.loadVersion++; this.statusVersion++; this.setData({ password: "", sheet: "" });
+  },
   identifierInput(e: WechatMiniprogram.Input) { this.setData({ identifier: e.detail.value }); },
   passwordInput(e: WechatMiniprogram.Input) { this.setData({ password: e.detail.value }); },
   showAccount() { this.setData({ sheet: this.data.authenticated ? "account" : "login", error: "", info: "" }); },
@@ -33,7 +37,7 @@ Page({
   closeSheet() {
     if (this.data.busy) return;
     if (this.data.sheet === "bind") this.skipWechatBinding();
-    else this.setData({ sheet: "", password: "", error: "", info: "", wantsWechatBinding: false });
+    else { cancelLogin(); this.setData({ sheet: "", password: "", error: "", info: "", wantsWechatBinding: false }); }
   },
   noop() {},
   async signIn() {
@@ -51,14 +55,16 @@ Page({
   async signInWithWechat() {
     if (this.data.busy || !this.data.wechat?.available) return;
     this.setData({ busy: true, error: "", info: "", password: "", wantsWechatBinding: false });
+    const scene = pendingPromotionScene();
     try {
-      const result = await loginWithWechat();
+      const result = await loginWithWechat(scene || undefined);
       if (result.state === "onboarding_required") {
-        setOnboardingProof(result.ticket, "", Boolean(result.phoneVerified));
-        this.setData({ sheet: "" }); wx.navigateTo({ url: "/pages/onboarding/index" });
+        setOnboardingProof(result.ticket, scene, Boolean(result.phoneVerified));
+        this.setData({ sheet: "" }); openOnboarding();
       } else if (result.state === "binding_required") {
         this.setData({ info: onboardingCopy[currentLocale()].binding });
       } else if (result.state === "authenticated") {
+        clearPromotionScene(scene);
         this.setData({ authenticated: true, sheet: "" });
         await this.load();
         await this.loadWechat();
@@ -114,6 +120,7 @@ Page({
     try { await logout(); } catch { /* 本机会话由 API finally 清除。 */ }
     finally {
       clearNavigation();
+      clearOnboardingEntry(); clearPromotionScene();
       this.sessionToken = "";
       this.setData({ busy: false, authenticated: false, account: null, accountName: "", error: "", password: "", identifier: "", loading: false, sheet: "",
         info: "", wantsWechatBinding: false, wechat: null });

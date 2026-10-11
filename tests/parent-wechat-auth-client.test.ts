@@ -52,9 +52,10 @@ type Page = {
   signIn: () => Promise<void>; signInWithWechat: () => Promise<void>;
   confirmWechatBinding: () => Promise<void>; showWechatBinding: () => void;
   skipWechatBinding: () => void; loadWechat: () => Promise<void>;
+  closeSheet: () => void; showAccount: () => void;
 };
 class ClientError extends Error { constructor(public code: string, public reason?: string) { super(code); } }
-function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN") {
+function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN", returnTo: string | null = "/pages/assessment/index") {
   let page: Page;
   const wx = {
     getAppBaseInfo: () => ({ language }), setNavigationBarTitle: vi.fn(), setTabBarItem: vi.fn(),
@@ -79,8 +80,8 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
     });
     return exports;
   }
-  const navigation = load(path.join(miniRoot, "lib/navigation.ts")) as { rememberReturn: (url: string) => void };
-  navigation.rememberReturn("/pages/assessment/index");
+  const navigation = load(path.join(miniRoot, "lib/navigation.ts")) as { requestLogin: (url: string) => void };
+  if (returnTo) navigation.requestLogin(returnTo);
   load(path.join(miniRoot, "pages/account/index.ts"));
   return { page: page!, wx, api };
 }
@@ -194,6 +195,28 @@ describe("小程序微信鉴权传输", () => {
 });
 
 describe("小程序微信登录与明确绑定", () => {
+  it("游客进入我的仅展示入口，主动点击登录后才显示登录选择", () => {
+    const loginWithWechat = vi.fn(), run = pageRuntime({ loginWithWechat }, "zh_CN", null);
+    run.page.onShow();
+    expect(run.page.data.sheet).toBe("");
+    expect(loginWithWechat).not.toHaveBeenCalled();
+    expect(run.api.get).not.toHaveBeenCalled();
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+    expect(run.wx.getLocation).not.toHaveBeenCalled();
+    run.page.showAccount();
+    expect(run.page.data.sheet).toBe("login");
+    expect(loginWithWechat).not.toHaveBeenCalled();
+  });
+  it("关闭登录后重新打开我的不重复弹层，也不自动返回未完成的业务", async () => {
+    const loginWithWechat = vi.fn(), run = pageRuntime({ login: vi.fn(), loginWithWechat });
+    run.page.onShow(); expect(run.page.data.sheet).toBe("login");
+    run.page.closeSheet(); run.page.onHide(); run.page.onShow();
+    expect(run.page.data.sheet).toBe("");
+    expect(loginWithWechat).not.toHaveBeenCalled();
+    run.page.showAccount(); run.page.setData({ identifier: "example-account", password: "example-password" });
+    await run.page.signIn();
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+  });
   it("未配置时不调用微信登录，密码仍可进入并返回测评页", async () => {
     const login = vi.fn(async () => {}), loginWithWechat = vi.fn();
     const run = pageRuntime({ login, loginWithWechat,
@@ -216,8 +239,8 @@ describe("小程序微信登录与明确绑定", () => {
     await run.page.signInWithWechat();
     expect(run.page.data.authenticated).toBe(false);
     expect(run.page.data.wantsWechatBinding).toBe(false);
-    expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/onboarding/index" });
-    expect(run.api.loginWithWechat).toHaveBeenCalledWith();
+    expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/onboarding/index", fail: expect.any(Function) });
+    expect(run.api.loginWithWechat).toHaveBeenCalledWith(undefined);
     expect(run.wx.getLocation).not.toHaveBeenCalled();
     expect(run.wx.getSetting).not.toHaveBeenCalled();
   });

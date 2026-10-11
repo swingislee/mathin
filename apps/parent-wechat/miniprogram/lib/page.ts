@@ -2,7 +2,7 @@ import { brandName,messages,resolveLocale,sections,type Section,type Locale } fr
 import { copy,type Copy } from "./copy";
 import { ApiError } from "./api";
 import type { LocalizedText } from "./api-types";
-import { rememberReturn } from "./navigation";
+import { requestLogin } from "./navigation";
 import { simulatorTabIcons } from "../assets/tabs/simulator-icons";
 let tabsLocale="";
 export function currentLocale(){return resolveLocale(wx.getAppBaseInfo().language);}
@@ -25,5 +25,5 @@ export function errorText(error:unknown){
   const keys:Record<string,keyof typeof c>={VALIDATION:"invalid",UNAUTHENTICATED:"credentials",FORBIDDEN:"forbidden",ACCOUNT_SECURITY:"security",FORM_CHANGED:"changed",CONFLICT:"conflict",ACTIVITY_FULL:"full",BOOKING_CLOSED:"closed",TOO_LARGE:"tooLarge",FILE_TYPE:"fileType",RATE_LIMIT:"rateLimit",NOT_FOUND:"notFound"};
   return c[keys[code]||"network"];
 }
-export function loginPage(target?:unknown){rememberReturn(target);wx.switchTab({url:"/pages/account/index"});}
+export function loginPage(target?:unknown){requestLogin(target);wx.switchTab({url:"/pages/account/index"});}
 export function localized(locale:Locale){return copy[locale];}

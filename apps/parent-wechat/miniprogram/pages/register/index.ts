@@ -2,6 +2,7 @@ import {get,post,requestId,getRegistrationHistory,session} from "../../lib/api";
 import type {IntakeForm,RegistrationRecord} from "../../lib/api-types";
 import {pageData,syncPage,text,errorText,date,loginPage} from "../../lib/page";
 import {participantWording} from "../../lib/participant-wording";
+import {openOnboarding} from "../../lib/onboarding";
 const formText=(value:Parameters<typeof text>[0])=>participantWording(text(value));
 type FieldView={id:string;type:string;label:string;required:boolean;value:string;index:number;options:{id:string;label:string;checked:boolean}[]};
 function recordView(record:RegistrationRecord){return {id:record.id,title:formText(record.title),submittedAt:date(record.submittedAt),expanded:false,
@@ -24,7 +25,7 @@ Page({
   },
   moreHistory(){void this.loadHistory(true);},
   toggleRecord(e:WechatMiniprogram.TouchEvent){const index=Number(e.currentTarget.dataset.index);if(this.data.records[index])this.setData({[`records[${index}].expanded`]:!this.data.records[index].expanded});},
-  fillRegistration(){wx.navigateTo({url:"/pages/onboarding/index"+(this.data.loggedIn&&!this.data.registrationRequired?"?registration=1":"")});},
+  fillRegistration(){openOnboarding(this.data.loggedIn&&!this.data.registrationRequired);},
   login(){loginPage("/pages/register/index");},
   showOptions(e:WechatMiniprogram.TouchEvent){if(!this.data.busy)this.setData({optionField:Number(e.currentTarget.dataset.index)});},
   closeOptions(){this.setData({optionField:-1});},

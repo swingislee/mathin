@@ -59,7 +59,7 @@ export async function miniappPromotionCode(config: MiniappWechatConfig, scene: s
   if (!/^[a-f0-9]{24}$/.test(scene)) throw new MiniappWechatError("VALIDATION");
   const url = new URL("https://api.weixin.qq.com/wxa/getwxacodeunlimit");
   url.searchParams.set("access_token", await accessToken(config));
-  const response = await privateRequest(url, { scene, page: "pages/onboarding/index", env_version: environment,
+  const response = await privateRequest(url, { scene, page: "pages/discover/index", env_version: environment,
     check_path: environment === "release", width: 430 });
   const mime = response.headers.get("content-type")?.split(";")[0];
   if (!response.ok || !mime || !["image/png", "image/jpeg"].includes(mime)) throw new MiniappWechatError("UNAVAILABLE");

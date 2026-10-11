@@ -1,9 +1,9 @@
 {
   "pages": [
-    "pages/onboarding/index",
     "pages/discover/index",
     "pages/calendar/index",
     "pages/account/index",
+    "pages/onboarding/index",
     "pages/reservations/index",
     "pages/agenda/index",
     "pages/reflections/index",

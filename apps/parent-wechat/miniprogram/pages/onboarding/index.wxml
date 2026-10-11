@@ -34,5 +34,6 @@
     </block>
     <button wx:if="{{stage === 'phone' || stage === 'wechat'}}" class="text-button" bindtap="existingLogin" disabled="{{busy}}">{{words.existingLogin}}</button>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
+    <button class="text-button" bindtap="discover" disabled="{{busy}}">{{copy.seeActivities}}</button>
   </view>
 </view>
