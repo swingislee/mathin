@@ -25,13 +25,15 @@
         "supabase/migrations/20261011100000_participant_short_course_registration.sql",
         "supabase/tests/participant_short_course_registration.sql",
         "tests/participant-short-course-registration.test.ts",
-        ".tmp/activity-course-import-20261011/"
+        ".tmp/activity-course-import-20261011/",
+        "supabase/migrations/20261011110000_miniapp_activity_labels.sql",
+        "apps/parent-wechat/README.md"
       ],
       "sharedPaths": [
         ".ai/registry.json"
       ],
       "checkpoint": "56869a74bebe0bc3736be18ec0a678f10299cee1",
-      "next": "生产已录入12场活动、12个短期班及33次课；23个入口开放，生产目录与后台读取通过，隔离报名链路通过。手机实点和两处原表时间冲突待负责人确认。"
+      "next": "生产12场活动、12个短期班及33次课已录入，23个入口开放；展示标签与说明改用活动、场次、主理人。生产目录核对和隔离报名链路通过，无小程序客户端改动，无需新二维码；手机实点及两处原表时间冲突待验收。"
     },
     {
       "id": "MINI-GUEST-ENTRY-20261011",
