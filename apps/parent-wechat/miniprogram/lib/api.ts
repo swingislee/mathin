@@ -82,7 +82,6 @@ export async function getAssessmentSlots(participant: string, topics: Assessment
   const query = `participant=${encodeURIComponent(participant)}&topics=${encodeURIComponent(topics.join(","))}&stageNumber=${stageNumber}`;
   return send<AssessmentAvailability>("assessment-slots?" + query, "GET", undefined, await accessToken());
 }
-export async function login(identifier:string,password:string){const value=await send<Session>("auth","POST",{action:"login",identifier,password});saveSession(value);}
 export async function wechatAuthStatus():Promise<WechatAuthStatus>{
   return send<WechatAuthStatus>("auth/wechat","GET",undefined,session()?await accessToken():undefined);
 }
@@ -114,11 +113,11 @@ export async function completeWechatFamily(ticket:string,family:FamilyRegistrati
   if(version!==sessionVersion)throw new ApiError("UNAUTHENTICATED");
   saveSession(result.session);return result;
 }
-export async function bindWechat(password?:string):Promise<void>{
+export async function bindWechat():Promise<void>{
   const token=await accessToken();
   const code=await wechatCode();
   if(session()?.accessToken!==token)throw new ApiError("UNAUTHENTICATED");
-  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"bind",code,...(password?{password}:{}),confirm:true},token);
+  const result=await send<WechatAuthResult>("auth/wechat","POST",{action:"bind",code,confirm:true},token);
   if(result.state!=="bound")throw new ApiError("UNAVAILABLE");
 }
 export function guardianBindingPreview(invitation: string): Promise<GuardianBindingPreview> {

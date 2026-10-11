@@ -10,7 +10,7 @@ import { participantWording } from "../../lib/participant-wording";
 Page({
   data: { ...pageData("account"), words: onboardingCopy.zh, stage: "wechat", busy: false, ticket: "", scene: "", maskedPhone: "",
     registration: false, registrationId: "", registrationKey: "",
-    canBindDirect: false, password: "", participantIndex: 0, participantChoices: [] as string[],
+    canBindDirect: false, participantIndex: 0, participantChoices: [] as string[],
     values: { parentName: "", childName: "", school: "" }, selection: { relation: 0, gender: 0, grade: 0 },
     choices: {} as Record<string, string[]>, fields: [] as DisplayFamilyField[], formTitle: "", formDescription: "",
     interests: [] as string[], selectedInterests: {} as Record<string, boolean>, consent: false,
@@ -35,8 +35,6 @@ Page({
   onUnload() { this.active = false; this.submissionLocation = null; this.setData({ ticket: "", policy: null }); },
   discover() { clearNavigation(); clearOnboardingEntry(); wx.switchTab({ url: "/pages/discover/index" }); },
   finish() { clearPromotionScene(this.data.scene); if (!resumeAfterLogin()) wx.switchTab({ url: "/pages/account/index" }); },
-  existingLogin() { loginPage("/pages/register/index"); },
-  passwordInput(event: WechatMiniprogram.Input) { this.setData({ password: event.detail.value }); },
   async acceptProof(proof: { ticket: string; phoneVerified?: boolean }) {
     if (!proof.phoneVerified) { this.setData({ ticket: proof.ticket, stage: "phone" }); return; }
     this.setData({ busy: true, stage: "wechat", error: "" });
@@ -45,22 +43,22 @@ Page({
     finally { if (this.active) this.setData({ busy: false }); }
   },
   async confirmBinding() {
-    if (this.data.busy || (!this.data.canBindDirect && !this.data.password)) return;
+    if (this.data.busy || !this.data.canBindDirect) return;
     this.setData({ busy: true, error: "" });
     try {
-      await bindWechat(this.data.canBindDirect ? undefined : this.data.password);
+      await bindWechat();
       if (!this.active) return;
-      this.setData({ busy: false, password: "" });
+      this.setData({ busy: false });
       await this.start();
     } catch (error) { if (this.active) this.setData({ error: this.authError(error) }); }
-    finally { if (this.active) this.setData({ busy: false, password: "" }); }
+    finally { if (this.active) this.setData({ busy: false }); }
   },
   async start() {
     if (this.data.busy) return;
     this.setData({ busy: true, error: "", stage: "wechat", ticket: "" });
     try {
       if (this.data.registration) {
-        if (!session()) { this.existingLogin(); return; }
+        if (!session()) { loginPage("/pages/register/index"); return; }
         const form = await getRegistrationForm();
         if (!this.active) return;
         const key = "gezhi.registration.pending." + form.accountId;
@@ -77,8 +75,8 @@ Page({
         if (!this.active) return;
         if (status.registrationRequired === false && !this.data.scene) { this.finish(); return; }
         if (!status.linked) {
-          if (!status.canBind) throw new ApiError("ACCOUNT_SECURITY");
-          this.setData({ stage: "bind", canBindDirect: Boolean(status.canBindDirect) }); return;
+          if (!status.canBind || !status.canBindDirect) throw new ApiError("ACCOUNT_SECURITY");
+          this.setData({ stage: "bind", canBindDirect: true }); return;
         }
       }
       const result = await loginWithWechat(this.data.scene || undefined, current);

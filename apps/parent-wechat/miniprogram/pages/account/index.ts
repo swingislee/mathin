@@ -1,4 +1,4 @@
-import { ApiError, bindWechat, get, login, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
+import { ApiError, bindWechat, get, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
 import type { Account, WechatAuthStatus } from "../../lib/api-types";
 import { cancelLogin, clearNavigation, takeLoginRequest, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
@@ -7,7 +7,7 @@ import { clearOnboardingEntry, clearPromotionScene, onboardingCopy, openOnboardi
 import { participantAccountName } from "../../lib/participant-wording";
 
 Page({
-  data: { ...pageData("account"), activityCopy: activityCopy.zh, authenticated: false, identifier: "", password: "", busy: false,
+  data: { ...pageData("account"), activityCopy: activityCopy.zh, authenticated: false, busy: false,
     account: null as Account | null, accountName: "", sheet: "", info: "", wantsWechatBinding: false,
     wechat: null as WechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
   loadVersion: 0,
@@ -20,7 +20,7 @@ Page({
     const loginRequested = takeLoginRequest();
     const reset = !current || token !== this.sessionToken;
     this.sessionToken = token;
-    this.setData({ authenticated, error: "", password: "", loading: false,
+    this.setData({ authenticated, error: "", loading: false,
       ...(reset ? { account: null, accountName: "", wechat: null } : {}),
       sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && loginRequested ? "login" : "" });
     void this.loadWechat();
@@ -28,33 +28,19 @@ Page({
   },
   onHide() {
     if (this.data.sheet === "login" && !this.data.busy) cancelLogin();
-    this.loadVersion++; this.statusVersion++; this.setData({ password: "", sheet: "" });
+    this.loadVersion++; this.statusVersion++; this.setData({ sheet: "" });
   },
-  identifierInput(e: WechatMiniprogram.Input) { this.setData({ identifier: e.detail.value }); },
-  passwordInput(e: WechatMiniprogram.Input) { this.setData({ password: e.detail.value }); },
   showAccount() { this.setData({ sheet: this.data.authenticated ? "account" : "login", error: "", info: "" }); },
   showParticipants() { this.setData({ sheet: this.data.authenticated ? "participants" : "login" }); },
   closeSheet() {
     if (this.data.busy) return;
     if (this.data.sheet === "bind") this.skipWechatBinding();
-    else { cancelLogin(); this.setData({ sheet: "", password: "", error: "", info: "", wantsWechatBinding: false }); }
+    else { cancelLogin(); this.setData({ sheet: "", error: "", info: "", wantsWechatBinding: false }); }
   },
   noop() {},
-  async signIn() {
-    if (this.data.busy || !this.data.identifier.trim() || !this.data.password) return;
-    const identifier = this.data.identifier.trim(), password = this.data.password;
-    this.setData({ busy: true, error: "", password: "" });
-    try {
-      await login(identifier, password);
-      this.setData({ authenticated: true, info: "", sheet: this.data.wantsWechatBinding ? "bind" : "" });
-      await this.load();
-      await this.loadWechat();
-    } catch (error) { this.setData({ error: errorText(error) }); }
-    finally { this.setData({ busy: false }); }
-  },
   async signInWithWechat() {
     if (this.data.busy || !this.data.wechat?.available) return;
-    this.setData({ busy: true, error: "", info: "", password: "", wantsWechatBinding: false });
+    this.setData({ busy: true, error: "", info: "", wantsWechatBinding: false });
     const scene = pendingPromotionScene();
     try {
       const result = await loginWithWechat(scene || undefined);
@@ -73,15 +59,14 @@ Page({
     finally { this.setData({ busy: false }); }
   },
   showWechatBinding() {
-    if (this.data.busy || !this.data.wechat?.canBind) return;
-    this.setData({ sheet: "bind", wantsWechatBinding: true, password: "", error: "", info: "" });
+    if (this.data.busy || !this.data.wechat?.canBind || !this.data.wechat.canBindDirect) return;
+    this.setData({ sheet: "bind", wantsWechatBinding: true, error: "", info: "" });
   },
   async confirmWechatBinding() {
-    if (this.data.busy || !this.data.account || !this.data.wechat?.canBind || (!this.data.wechat.canBindDirect && !this.data.password)) return;
-    const password = this.data.wechat.canBindDirect ? undefined : this.data.password;
-    this.setData({ busy: true, error: "", info: "", password: "" });
+    if (this.data.busy || !this.data.account || !this.data.wechat?.canBind || !this.data.wechat.canBindDirect) return;
+    this.setData({ busy: true, error: "", info: "" });
     try {
-      await bindWechat(password);
+      await bindWechat();
       this.setData({ wantsWechatBinding: false, sheet: "account", info: this.data.copy.wechatBound });
       resumeAfterLogin();
     } catch (error) { this.setData({ error: this.wechatError(error) }); }
@@ -89,7 +74,7 @@ Page({
   },
   skipWechatBinding() {
     if (this.data.busy) return;
-    this.setData({ wantsWechatBinding: false, sheet: "", password: "", error: "", info: "" });
+    this.setData({ wantsWechatBinding: false, sheet: "", error: "", info: "" });
     if (this.data.account) resumeAfterLogin();
     else if (session()) void this.load();
   },
@@ -106,7 +91,7 @@ Page({
   wechatError(error: unknown) {
     const reasons = {
       WECHAT_NOT_CONFIGURED: "wechatUnavailable", WECHAT_CODE_INVALID: "wechatCodeError",
-      WECHAT_UNIONID_REQUIRED: "wechatVerifyUnavailable", WECHAT_CREDENTIALS_INVALID: "wechatPasswordError",
+      WECHAT_UNIONID_REQUIRED: "wechatVerifyUnavailable", WECHAT_CREDENTIALS_INVALID: "wechatBindUnavailable",
       WECHAT_MFA_REQUIRED: "wechatMfaRequired", WECHAT_PHONE_LINKING_UNAVAILABLE: "wechatPhoneUnavailable",
     } as const;
     const reason = error instanceof ApiError ? error.reason : undefined;
@@ -122,7 +107,7 @@ Page({
       clearNavigation();
       clearOnboardingEntry(); clearPromotionScene();
       this.sessionToken = "";
-      this.setData({ busy: false, authenticated: false, account: null, accountName: "", error: "", password: "", identifier: "", loading: false, sheet: "",
+      this.setData({ busy: false, authenticated: false, account: null, accountName: "", error: "", loading: false, sheet: "",
         info: "", wantsWechatBinding: false, wechat: null });
       void this.loadWechat();
     }

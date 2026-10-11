@@ -13,7 +13,7 @@ type Login = { success: (result: { code?: string }) => void; fail: () => void };
 type Api = {
   wechatAuthStatus: () => Promise<WechatAuthStatus>;
   loginWithWechat: (scene?: string, useCurrentSession?: boolean) => Promise<WechatAuthResult>;
-  bindWechat: (password?: string) => Promise<void>;
+  bindWechat: () => Promise<void>;
   saveSession: (value: Session) => void;
   clearSession: () => void;
 };
@@ -43,13 +43,13 @@ function apiRuntime(initial: Session | null = null) {
 
 type Page = {
   data: {
-    authenticated: boolean; identifier: string; password: string; busy: boolean; wantsWechatBinding: boolean;
+    authenticated: boolean; busy: boolean; wantsWechatBinding: boolean;
     sheet: string; error: string; info: string; account: Account | null;
     wechat: WechatAuthStatus | null; wechatLoading: boolean; wechatStatusFailed: boolean;
   };
   setData: (patch: Record<string, unknown>) => void;
   onShow: () => void; onHide: () => void;
-  signIn: () => Promise<void>; signInWithWechat: () => Promise<void>;
+  signInWithWechat: () => Promise<void>;
   confirmWechatBinding: () => Promise<void>; showWechatBinding: () => void;
   skipWechatBinding: () => void; loadWechat: () => Promise<void>;
   closeSheet: () => void; showAccount: () => void;
@@ -147,15 +147,15 @@ describe("小程序微信鉴权传输", () => {
     expect(run.current()?.accessToken).toBe("newer");
   });
 
-  it("绑定带当前Bearer、原密码与显式确认，不替换当前会话", async () => {
+  it("绑定带当前Bearer与显式确认，不替换当前会话", async () => {
     const original = active("current");
     const run = apiRuntime(original);
-    const pending = run.api.bindWechat("example-password");
+    const pending = run.api.bindWechat();
     await vi.waitFor(() => expect(run.logins).toHaveLength(1));
     run.logins[0].success({ code: "new-code" });
     await vi.waitFor(() => expect(run.requests).toHaveLength(1));
     expect(run.requests[0].header.Authorization).toBe("Bearer current");
-    expect(run.requests[0].data).toEqual({ action: "bind", code: "new-code", password: "example-password", confirm: true });
+    expect(run.requests[0].data).toEqual({ action: "bind", code: "new-code", confirm: true });
     run.requests[0].success({ statusCode: 200, data: { state: "bound" } });
     await pending;
     expect(run.current()).toBe(original);
@@ -182,20 +182,10 @@ describe("小程序微信鉴权传输", () => {
     await expect(pending).resolves.toEqual({ state: "current_session" });
     expect(run.current()).toBe(original); expect(run.wx.setStorageSync).not.toHaveBeenCalled();
   });
-  it("直接绑定仍发送当前会话和本人确认", async () => {
-    const run = apiRuntime(active("current"));
-    const pending = run.api.bindWechat();
-    await vi.waitFor(() => expect(run.logins).toHaveLength(1));
-    run.logins[0].success({ code: "current-code" });
-    await vi.waitFor(() => expect(run.requests).toHaveLength(1));
-    expect(run.requests[0].header.Authorization).toBe("Bearer current");
-    expect(run.requests[0].data).toEqual({ action: "bind", code: "current-code", confirm: true });
-    run.requests[0].success({ statusCode: 200, data: { state: "bound" } }); await pending;
-  });
 });
 
 describe("小程序微信登录与明确绑定", () => {
-  it("游客进入我的仅展示入口，主动点击登录后才显示登录选择", () => {
+  it("游客进入我的仅展示入口，主动点击后才显示微信登录", () => {
     const loginWithWechat = vi.fn(), run = pageRuntime({ loginWithWechat }, "zh_CN", null);
     run.page.onShow();
     expect(run.page.data.sheet).toBe("");
@@ -208,27 +198,25 @@ describe("小程序微信登录与明确绑定", () => {
     expect(loginWithWechat).not.toHaveBeenCalled();
   });
   it("关闭登录后重新打开我的不重复弹层，也不自动返回未完成的业务", async () => {
-    const loginWithWechat = vi.fn(), run = pageRuntime({ login: vi.fn(), loginWithWechat });
+    const loginWithWechat = vi.fn(async () => ({ state: "authenticated" })), run = pageRuntime({ loginWithWechat });
     run.page.onShow(); expect(run.page.data.sheet).toBe("login");
     run.page.closeSheet(); run.page.onHide(); run.page.onShow();
     expect(run.page.data.sheet).toBe("");
     expect(loginWithWechat).not.toHaveBeenCalled();
-    run.page.showAccount(); run.page.setData({ identifier: "example-account", password: "example-password" });
-    await run.page.signIn();
+    run.page.showAccount(); await run.page.loadWechat();
+    await run.page.signInWithWechat();
     expect(run.wx.navigateTo).not.toHaveBeenCalled();
   });
-  it("未配置时不调用微信登录，密码仍可进入并返回测评页", async () => {
-    const login = vi.fn(async () => {}), loginWithWechat = vi.fn();
-    const run = pageRuntime({ login, loginWithWechat,
+  it("未配置时保留未登录状态，不能进入受保护的业务页", async () => {
+    const loginWithWechat = vi.fn();
+    const run = pageRuntime({ loginWithWechat,
       wechatAuthStatus: vi.fn(async () => ({ available: false, linked: null, canBind: false })) });
     await run.page.loadWechat();
     await run.page.signInWithWechat();
     expect(loginWithWechat).not.toHaveBeenCalled();
-    run.page.setData({ identifier: "example-account", password: "example-password" });
-    await run.page.signIn();
-    expect(login).toHaveBeenCalledWith("example-account", "example-password");
-    expect(run.page.data.password).toBe("");
-    expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/assessment/index" });
+    expect(run.page.data.authenticated).toBe(false);
+    expect(run.api.get).not.toHaveBeenCalled();
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
   });
 
   it("新微信进入手机号授权与家庭开户，不显示密码选择", async () => {
@@ -245,36 +233,50 @@ describe("小程序微信登录与明确绑定", () => {
     expect(run.wx.getSetting).not.toHaveBeenCalled();
   });
 
-  it("已有账号提示首次绑定，不自动改成密码登录或创建账号", async () => {
+  it("未关联微信提示联系工作人员核对，不自动创建账号", async () => {
     const run = pageRuntime({ loginWithWechat: vi.fn(async () => ({ state: "binding_required" })) });
     await run.page.loadWechat();
     await run.page.signInWithWechat();
     expect(run.page.data.wantsWechatBinding).toBe(false);
     expect(run.wx.navigateTo).not.toHaveBeenCalled();
-    expect(run.page.data.info).toContain("绑定当前微信");
+    expect(run.page.data.info).toContain("联系工作人员");
   });
 
-  it("原密码或MFA被拒绝时不返回业务页，清空密码并显示可理解原因", async () => {
+  it("只有服务端允许直接绑定时才发送确认并返回业务入口", async () => {
+    const bindWechat = vi.fn(async () => {}), run = pageRuntime({ bindWechat });
+    run.page.setData({ account: { id: "account", displayName: "Demo", participants: [] },
+      wechat: { available: true, linked: false, canBind: true, canBindDirect: false } });
+    run.page.showWechatBinding();
+    await run.page.confirmWechatBinding();
+    expect(run.page.data.sheet).toBe("");
+    expect(bindWechat).not.toHaveBeenCalled();
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+    run.page.setData({ wechat: { available: true, linked: false, canBind: true, canBindDirect: true } });
+    run.page.showWechatBinding();
+    await run.page.confirmWechatBinding();
+    expect(bindWechat).toHaveBeenCalledExactlyOnceWith();
+    expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/assessment/index" });
+  });
+
+  it("安全验证被拒绝时不返回业务页，显示可理解原因", async () => {
     const run = pageRuntime({
       bindWechat: vi.fn(async () => { throw new ClientError("ACCOUNT_SECURITY", "WECHAT_MFA_REQUIRED"); }),
       wechatAuthStatus: vi.fn(async () => ({ available: true, linked: false, canBind: false })),
     }, "en_US");
     run.page.onShow();
-    run.page.setData({ account: { id: "account", displayName: "Demo", participants: [] }, password: "example-password",
-      wechat: { available: true, linked: false, canBind: true }, sheet: "bind", wantsWechatBinding: true });
+    run.page.setData({ account: { id: "account", displayName: "Demo", participants: [] },
+      wechat: { available: true, linked: false, canBind: true, canBindDirect: true }, sheet: "bind", wantsWechatBinding: true });
     await run.page.confirmWechatBinding();
     expect(run.page.data.error).toContain("security verification");
-    expect(run.page.data.password).toBe("");
     expect(run.wx.navigateTo).not.toHaveBeenCalled();
     expect(run.page.data.wechat?.canBind).toBe(false);
   });
 
   it("绑定可跳过，继续使用已有账号和原业务入口", () => {
     const run = pageRuntime();
-    run.page.setData({ account: { id: "account", displayName: "Demo", participants: [] }, password: "example-password", sheet: "bind", wantsWechatBinding: true });
+    run.page.setData({ account: { id: "account", displayName: "Demo", participants: [] }, sheet: "bind", wantsWechatBinding: true });
     run.page.skipWechatBinding();
     expect(run.page.data.wantsWechatBinding).toBe(false);
-    expect(run.page.data.password).toBe("");
     expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/assessment/index" });
   });
 

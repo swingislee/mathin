@@ -3,6 +3,36 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-WECHAT-ONLY-LOGIN-20261011",
+      "title": "小程序仅保留微信登录",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-WECHAT-ONLY-LOGIN-20261011.md",
+      "writePaths": [
+        ".ai/tasks/MINI-WECHAT-ONLY-LOGIN-20261011.md",
+        "apps/parent-wechat/miniprogram/pages/account/index.ts",
+        "apps/parent-wechat/miniprogram/pages/account/index.wxml",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.ts",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.wxml",
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "apps/parent-wechat/miniprogram/lib/copy.ts",
+        "apps/parent-wechat/miniprogram/lib/guardian-binding.ts",
+        "apps/parent-wechat/miniprogram/lib/onboarding-presentation.ts",
+        "contracts/participant-api/onboarding-presentation.ts",
+        "tests/parent-wechat-auth-client.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/docs/portal.md"
+      ],
+      "checkpoint": null,
+      "next": "开发代码已只保留微信登录，首次填写基础信息时授权手机号；类型、文案同步及定向登录／登记检查通过。手机体验待验收，本轮未上传 0.1.8、未提审、未部署生产。"
+    },
+    {
       "id": "MINI-GUARDIAN-CONFIRM-20261011",
       "title": "家长主动关联已有孩子",
       "agent": "codex",

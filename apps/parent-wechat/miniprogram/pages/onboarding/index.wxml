@@ -11,8 +11,7 @@
     </block>
     <block wx:elif="{{stage === 'bind'}}">
       <text class="auth-hint">{{words.bindNote}}</text>
-      <block wx:if="{{!canBindDirect}}"><label class="field-label">{{words.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" disabled="{{busy}}" /></block>
-      <button class="primary" bindtap="confirmBinding" loading="{{busy}}" disabled="{{busy || (!canBindDirect && !password)}}">{{words.bind}}</button>
+      <button class="primary" bindtap="confirmBinding" loading="{{busy}}" disabled="{{busy || !canBindDirect}}">{{words.bind}}</button>
     </block>
     <block wx:elif="{{stage === 'family'}}">
       <text class="verified-phone">{{words.verifiedPhone}} · {{maskedPhone}}</text>
@@ -32,7 +31,6 @@
       <text class="auth-hint">{{words.locationNote}}</text>
       <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{registration ? copy.submit : words.complete}}</button>
     </block>
-    <button wx:if="{{stage === 'phone' || stage === 'wechat'}}" class="text-button" bindtap="existingLogin" disabled="{{busy}}">{{words.existingLogin}}</button>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
     <button class="text-button" bindtap="discover" disabled="{{busy}}">{{copy.seeActivities}}</button>
   </view>

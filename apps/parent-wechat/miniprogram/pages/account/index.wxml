@@ -44,19 +44,15 @@
       <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
       <button wx:elif="{{wechat.available}}" class="primary" bindtap="signInWithWechat" loading="{{busy}}" disabled="{{busy}}">{{copy.wechatLogin}}</button>
       <text wx:else class="auth-hint">{{copy.wechatUnavailable}}</text>
-      <label class="field-label">{{copy.identifier}}</label><input class="input" value="{{identifier}}" bindinput="identifierInput" maxlength="160" disabled="{{busy}}" />
-      <label class="field-label">{{copy.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" disabled="{{busy}}" />
-      <button class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy || !identifier || !password}}">{{copy.login}}</button>
     </block>
     <block wx:elif="{{sheet === 'bind'}}">
       <text class="account-display-name">{{accountName || copy.accountLabel}}</text>
       <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
       <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
       <text wx:elif="{{wechat.linked}}" class="auth-hint">{{copy.wechatBound}}</text>
-      <block wx:elif="{{wechat.available && wechat.canBind}}">
-        <text class="auth-hint">{{wechat.canBindDirect ? (locale === 'zh' ? '确认将当前微信绑定到已登录账号，以后可直接使用微信登录。' : 'Confirm linking this WeChat to your signed-in account for future sign-in.') : copy.wechatBindNote}}</text>
-        <block wx:if="{{!wechat.canBindDirect}}"><label class="field-label">{{copy.password}}</label><input class="input" value="{{password}}" bindinput="passwordInput" password maxlength="128" placeholder="{{copy.password}}" disabled="{{busy}}" /></block>
-        <button class="primary" bindtap="confirmWechatBinding" loading="{{busy}}" disabled="{{busy || !account || (!wechat.canBindDirect && !password)}}">{{copy.wechatBindConfirm}}</button>
+      <block wx:elif="{{wechat.available && wechat.canBind && wechat.canBindDirect}}">
+        <text class="auth-hint">{{copy.wechatBindNote}}</text>
+        <button class="primary" bindtap="confirmWechatBinding" loading="{{busy}}" disabled="{{busy || !account}}">{{copy.wechatBindConfirm}}</button>
       </block>
       <text wx:else class="auth-hint">{{wechat.available ? copy.wechatBindUnavailable : copy.wechatUnavailable}}</text>
       <button class="text-button auth-later" bindtap="skipWechatBinding" disabled="{{busy}}">{{copy.wechatLater}}</button>
@@ -68,7 +64,7 @@
       <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
       <block wx:else>
         <text class="auth-hint">{{wechat.linked ? copy.wechatBound : (wechat.available ? copy.wechatUnlinked : copy.wechatUnavailable)}}</text>
-        <button wx:if="{{wechat.canBind}}" class="primary" bindtap="showWechatBinding" disabled="{{busy}}">{{copy.wechatBindTitle}}</button>
+        <button wx:if="{{wechat.canBind && wechat.canBindDirect}}" class="primary" bindtap="showWechatBinding" disabled="{{busy}}">{{copy.wechatBindTitle}}</button>
         <text wx:elif="{{wechat.available && !wechat.linked}}" class="auth-hint">{{copy.wechatBindUnavailable}}</text>
       </block>
       <button class="secondary" bindtap="signOut" disabled="{{busy}}">{{copy.logout}}</button>
