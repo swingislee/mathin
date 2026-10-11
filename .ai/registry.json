@@ -18,11 +18,12 @@
       ],
       "sharedPaths": [
         ".ai/registry.json",
+        "docs/current.md",
         "messages/zh.json",
         "messages/en.json"
       ],
-      "checkpoint": null,
-      "next": "线索页已恢复小地推导入按钮，接回原 Excel 预览、查重和确认导入流程，导入页可返回线索。局部静态检查通过，3130 开发入口可访问；待实际使用验收，生产未部署。"
+      "checkpoint": "68b7b26869c27cf080a0e83df6548298ab681f11",
+      "next": "已于 2026-10-11 18:42:29 增量部署生产 68b7b268（release 20261011-103921）：线索页恢复小地推导入，导入页可返回线索。构建、类型、服务健康及公网入口检查通过；本次无数据库迁移，实际导入待验收。"
     },
     {
       "id": "MINI-WECHAT-ONLY-LOGIN-20261011",
