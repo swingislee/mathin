@@ -12,6 +12,7 @@ export function ActivityGradesDialog({ activity, pending, onClose, onSave }: {
   activity: ActivityRow; pending: boolean; onClose: () => void; onSave: (grades: number[] | null) => void;
 }) {
   const t = useTranslations("school.activityGrades");
+  const stage = useTranslations("school.assessmentAvailability");
   const [mode, setMode] = useState<"unknown" | "all" | "specific">(!activity.targetGrades ? "unknown" : activity.targetGrades.length ? "specific" : "all");
   const [grades, setGrades] = useState((activity.targetGrades ?? []).map(String));
   return <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}><DialogContent>
@@ -20,7 +21,7 @@ export function ActivityGradesDialog({ activity, pending, onClose, onSave }: {
       {(["unknown", "all", "specific"] as const).map((value) => <ToggleGroupItem key={value} value={value}>{t(value)}</ToggleGroupItem>)}
     </ToggleGroup>
     {mode === "specific" ? <ToggleGroup type="multiple" value={grades} onValueChange={setGrades} disabled={pending} variant="outline" aria-label={t("specific")} className="grid grid-cols-4 gap-2">
-      {ACTIVITY_TARGET_GRADES.map((grade) => <ToggleGroupItem key={grade} value={String(grade)}>{t("grade", { grade })}</ToggleGroupItem>)}
+      {ACTIVITY_TARGET_GRADES.map((grade) => <ToggleGroupItem key={grade} value={String(grade)}>{grade > 0 ? t("grade", { grade }) : stage(grade === 0 ? "kindergartenSenior" : "kindergartenMiddle")}</ToggleGroupItem>)}
     </ToggleGroup> : null}
     <DialogFooter><Button type="button" variant="ghost" disabled={pending} onClick={onClose}>{t("cancel")}</Button>
       <Button type="button" disabled={pending || (mode === "specific" && grades.length === 0)}

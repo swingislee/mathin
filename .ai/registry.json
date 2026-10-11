@@ -3,6 +3,37 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ACTIVITY-COURSE-IMPORT-20261011",
+      "title": "公益活动与短期课生产录入及小程序报名",
+      "agent": "codex",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ACTIVITY-COURSE-IMPORT-20261011.md",
+      "writePaths": [
+        ".ai/tasks/ACTIVITY-COURSE-IMPORT-20261011.md",
+        "src/features/parent-portal/course-server.ts",
+        "src/features/participant-portal/server.ts",
+        "src/features/school/ActivitiesManager.tsx",
+        "src/features/school/ActivityGradesDialog.tsx",
+        "src/features/school/ParentRegistrationSettings.tsx",
+        "src/features/school/activity-actions.ts",
+        "src/features/school/activity-grade-contract.ts",
+        "src/features/school/short-courses/DetailPage.tsx",
+        "src/app/[locale]/dashboard/short-courses/[classId]/registration/page.tsx",
+        "src/lib/database.types.ts",
+        "supabase/migrations/20261011100000_participant_short_course_registration.sql",
+        "supabase/tests/participant_short_course_registration.sql",
+        "tests/participant-short-course-registration.test.ts",
+        ".tmp/activity-course-import-20261011/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "补齐短期课报名和中大班年级，按用户表格生产录入并核对"
+    },
+    {
       "id": "MINI-GUEST-ENTRY-20261011",
       "title": "小程序先浏览、按需登录与登记",
       "agent": "codex",

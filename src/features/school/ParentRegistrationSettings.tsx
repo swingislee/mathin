@@ -13,7 +13,7 @@ const words = {
 };
 const field = "w-full rounded-lg border border-line bg-card px-3 py-2";
 const localTime = (v: string) => { const d = new Date(v); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
-export function ParentRegistrationSettings({ value }: { value: RegistrationWorkbench }) {
+export function ParentRegistrationSettings({ value, shortCourse = false }: { value: RegistrationWorkbench; shortCourse?: boolean }) {
   const locale = useLocale() === "en" ? "en" : "zh", router = useRouter();
   const t = { ...words[locale], ...(value.kind === "activity" ? locale === "zh" ? {
     title: "公益活动展示与报名", hint: "家长提交公益活动报名后，由学服联系确认。", closes: "活动报名截止时间",
@@ -24,6 +24,13 @@ export function ParentRegistrationSettings({ value }: { value: RegistrationWorkb
     enabled: "Publish this community activity in the Mini Program", applications: "Activity requests", empty: "No activity requests",
     note: "Community activities published in the Mini Program have no participation fee. Requests do not reserve places; an advisor confirms arrangements.",
   } : { enabled: locale === "zh" ? "在家长网页展示并接受班级预报名" : "Show on the family website and accept class pre-registration" }) };
+  if (shortCourse) Object.assign(t, locale === "zh" ? {
+    title: "短期课展示与报名", hint: "参与人提交报名申请后，由工作人员联系确认。", applications: "短期课报名申请",
+    enabled: "展示并接受短期课报名", note: "报名申请保存在本班；已开通的小程序入口与家长网页同步停止或恢复报名。申请不自动生成入班名册。",
+  } : {
+    title: "Short course listing and registration", hint: "Staff contact participants to confirm their requests.", applications: "Short course requests",
+    enabled: "Publish and accept short course requests", note: "Requests are saved with this class. Its enabled Mini Program listing and family website listing open or close together. Requests do not create roster entries.",
+  });
   const [busy, start] = useTransition(), [notice, setNotice] = useState("");
   const [draft, setDraft] = useState({ ...value.publication, bookingClosesAt: localTime(value.publication.bookingClosesAt) });
   const [revision, setRevision] = useState(value.publication.revision);
@@ -37,7 +44,7 @@ export function ParentRegistrationSettings({ value }: { value: RegistrationWorkb
     if (r.ok || !r.ok && r.code === "FORM_CHANGED") router.refresh();
   });
   return <DashboardPage title={`${value.name} · ${t.title}`} description={t.hint}
-    backHref={value.kind === "class" ? `/dashboard/classes/${value.targetId}` : "/dashboard/activities"} backLabel={t.back}>
+    backHref={value.kind === "class" ? `/dashboard/${shortCourse ? "short-courses" : "classes"}/${value.targetId}` : "/dashboard/activities"} backLabel={t.back}>
     {notice && <p role="status" className="text-sm">{notice}</p>}
     {value.canPublish && <DashboardSection title={t.public} description={draft.enabled ? t.visible : t.hidden}>
       {!value.publishable && <p className="mb-4 text-sm text-muted">{locale === "en" ? "Set a future activity time or restore an active class before publishing." : "活动请先设置未来的举办时间；班级需处于有效的计划或开班状态。"}</p>}

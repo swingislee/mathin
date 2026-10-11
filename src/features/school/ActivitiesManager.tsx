@@ -102,6 +102,7 @@ export function ActivitiesManager({
   const t = useTranslations("school.activities");
   const tableT = useTranslations("school.table");
   const gradeT = useTranslations("school.activityGrades");
+  const stageT = useTranslations("school.assessmentAvailability");
   const assessmentT = useTranslations("school.teacherAssessment");
   const locale = useLocale();
   const recordM=businessRecordMessages(locale);
@@ -246,7 +247,7 @@ export function ActivitiesManager({
                     {!current ? <HistoricalRecordBadge locale={locale} /> : null}
                     <span>{activity.location || "—"}</span>
                     <span>{activity.targetGrades == null ? gradeT("unknown") : activity.targetGrades.length
-                      ? activity.targetGrades.map((grade) => gradeT("grade", { grade })).join("、") : gradeT("all")}</span>
+                      ? activity.targetGrades.map((grade) => grade > 0 ? gradeT("grade", { grade }) : stageT(grade === 0 ? "kindergartenSenior" : "kindergartenMiddle")).join("、") : gradeT("all")}</span>
                   </div>
                 </TableCell>
                 <TableCell mobileLabel={t("participation")} className="tabular-nums">{t("participationCounts", { booked, attended })}{registrationFacts.map(row => <div key={row.id} className="mt-1 text-xs"><p>{row.studentName}</p>{row.registeredOn ? <p className="text-muted">{recordM.registeredOn} {row.registeredOn}</p> : null}</div>)}</TableCell>

@@ -10049,6 +10049,18 @@ export type Database = {
         }
         Relationships: []
       }
+      miniapp_short_course_publications: {
+        Row: { classroom_id: string; created_at: string; location: string; tags: string[] }
+        Insert: { classroom_id: string; created_at?: string; location?: string; tags?: string[] }
+        Update: { classroom_id?: string; created_at?: string; location?: string; tags?: string[] }
+        Relationships: [{
+          foreignKeyName: "miniapp_short_course_publications_classroom_id_fkey"
+          columns: ["classroom_id"]
+          isOneToOne: true
+          referencedRelation: "classrooms"
+          referencedColumns: ["id"]
+        }]
+      }
       notebook_post_lifecycle_events: {
         Row: {
           actor_id: string | null
@@ -27644,6 +27656,13 @@ export type Database = {
       miniapp_family_ready: { Args: never; Returns: boolean }
       miniapp_my_bookings: { Args: never; Returns: Json }
       miniapp_my_practices: { Args: never; Returns: Json }
+      miniapp_participant_activity_catalog: { Args: never; Returns: Json }
+      miniapp_participant_apply_registration: {
+        Args: { p_id: string; p_target_id: string; p_revision: number; p_student_id: string }
+        Returns: string
+      }
+      miniapp_participant_cancel_registration: { Args: { p_id: string }; Returns: undefined }
+      miniapp_participant_registration_applications: { Args: never; Returns: Json }
       miniapp_public_activities: { Args: never; Returns: Json }
       miniapp_reserve_upload: {
         Args: {

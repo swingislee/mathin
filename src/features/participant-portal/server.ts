@@ -68,11 +68,11 @@ async function get(request: Request, endpoint: string) {
     case "registrations": return registrationsGet(request);
     case "assessment-slots": return projected(await assessmentSlotsGet(queryRequest(request, {}, { topics: "subjects", stageNumber: "grade" })), project.assessmentAvailability);
     case "activities": {
-      const result = await courseGet(request, "activity");
+      const result = await courseGet(request, "participant");
       if (!result.ok) return result;
       const resource = new URL(request.url).searchParams.get("resource") || "catalog";
       if (resource === "applications") return projected(result, project.activityRequests);
-      // Activity classifications come from tags saved with the published activity.
+      // Explicit short-course publications share this client DTO and retain class applications in storage.
       return projected(result, project.activityOffers);
     }
     case "services": return projected(await contactsGet(request), project.serviceContacts);
@@ -99,7 +99,7 @@ async function post(request: Request, endpoint: string) {
       renameCommand(await readJson(request), { topics: "subjects", stageNumber: "grade", facilitatorId: "teacherId", participantTimeOptions: "parentTimeOptions" }))), project.assessmentRequest);
     case "activities": {
       const input = activityCommand.parse(await readJson(request));
-      return coursePost(jsonRequest(request, input.action === "apply" ? { ...input, classroomId: null } : input), "activity");
+      return coursePost(jsonRequest(request, input.action === "apply" ? { ...input, classroomId: null } : input), "participant");
     }
     case "media": {
       const headers = new Headers(request.headers);

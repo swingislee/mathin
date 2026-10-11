@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getNow, setRequestLocale } from "next-intl/server";
 import { z } from "zod";
 import { getMyPerms, requireDashboardEnvironment } from "@/lib/auth";
+import { Link } from "@/i18n/navigation";
+import { Button } from "@/components/ui/button";
 import { getClassroomDetailForScope, listStaffOptions } from "../classes";
 import { getOrganizationTimezoneV2, listActiveRoomOptionsV2 } from "../organization-locations";
 import { DashboardCommandActions, DashboardCommandPanel, DashboardPage } from "../dashboard-page";
@@ -44,7 +46,9 @@ export default async function ShortCourseDetailPage({ params, searchParams }: {
       .sort((a, b) => (a.scheduledAt ?? "9999").localeCompare(b.scheduledAt ?? "9999") || a.id.localeCompare(b.id)),
   };
   return <DashboardPage title={classroom.name} backHref={backHref} backLabel={m.back} meta={metadata ? `${metadata.topic} · ${metadata.batchName} · ${m[metadata.level]}` : m.title}
-    commandPanel={management ? <DashboardCommandPanel><DashboardCommandActions><ShortCourseClassSettings classroom={classroom} teachers={teachers} rooms={rooms} locale={locale} plannedLessons={metadata?.sessionCount ?? classroom.sessions.length} /></DashboardCommandActions></DashboardCommandPanel> : undefined}>
+    commandPanel={management ? <DashboardCommandPanel><DashboardCommandActions>
+      <Button size="sm" variant="secondary" asChild><Link href={`${href}/registration`}>{locale.startsWith("en") ? "Registration requests" : "报名申请"}</Link></Button>
+      <ShortCourseClassSettings classroom={classroom} teachers={teachers} rooms={rooms} locale={locale} plannedLessons={metadata?.sessionCount ?? classroom.sessions.length} /></DashboardCommandActions></DashboardCommandPanel> : undefined}>
     <div className="space-y-6"><ShortCourseMatrix rows={[row]} locale={locale} timeZone={timeZone} now={now.getTime()} returnTo={href}
       focusedSessionId={typeof query.lesson === "string" ? query.lesson : undefined} />
       <section className="border-t border-line pt-4">
