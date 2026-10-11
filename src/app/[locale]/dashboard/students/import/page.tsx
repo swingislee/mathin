@@ -6,18 +6,23 @@ import { listRecentLeadImportBatches } from "@/features/school/lead-imports";
 import { listRecentMofaxiaoStudentImportBatches, listRecentStudentImportBatches } from "@/features/school/student-imports";
 import { requirePerm } from "@/lib/auth";
 
-export default async function ImportStudentsPage({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
+export default async function ImportStudentsPage({ params, searchParams }: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ from?: string | string[] }>;
+}) {
+  const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
-  const t = await getTranslations("school.students");
+  const [t, leadT] = await Promise.all([getTranslations("school.students"), getTranslations("school.leads")]);
+  const fromLeads = query.from === "leads";
+  const backHref = fromLeads ? "/dashboard/leads" : "/dashboard/students";
 
   return (
     <DashboardPage
       title={t("importTitle")}
       description={t("importIntro")}
-      backHref="/dashboard/students"
-      backLabel={t("back")}
-      breadcrumbs={[{ label: t("title"), href: "/dashboard/students" }, { label: t("importTitle") }]}
+      backHref={backHref}
+      backLabel={fromLeads ? leadT("back") : t("back")}
+      breadcrumbs={[{ label: fromLeads ? leadT("title") : t("title"), href: backHref }, { label: t("importTitle") }]}
     >
       <Suspense fallback={<ImportWorkspaceSkeleton />}>
         <ImportWorkspace locale={locale} />

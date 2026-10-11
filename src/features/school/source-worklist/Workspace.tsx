@@ -1,8 +1,9 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, ChevronDown, ChevronRight, CornerDownRight, RefreshCw, ChevronsDownUp, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, CornerDownRight, RefreshCw, ChevronsDownUp, ChevronsUpDown, Upload } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-styles';
 import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -36,11 +37,12 @@ const startingCollapsed = (rows: WorkRow[], allMonths: boolean) => {
   return new Set(rows.flatMap(row => collapseKeys(row,allMonths)).filter(key => !first.has(key)));
 };
 
-export function Workspace({ data, query, locale, currentUserId, canEnroll, canViewAll, canAssess, canAssign, assignees, timeZone, now, firstContactContent }: {
+export function Workspace({ data, query, locale, currentUserId, canEnroll, canViewAll, canAssess, canAssign, canImport, assignees, timeZone, now, firstContactContent }: {
   firstContactContent?: ReactNode; data: WorkPage; query: WorkQuery; locale: string; currentUserId: string; canEnroll: boolean; canViewAll: boolean; canAssess: boolean; timeZone: string; now: number;
-  canAssign: boolean; assignees: StudentStageAssignee[];
+  canAssign: boolean; canImport: boolean; assignees: StudentStageAssignee[];
 }) {
   const m = workMessages(locale), stages = studentStageMessages(locale);
+  const leadT = useTranslations('school.leads');
   const firstContact = query.stage === 'awaiting_first_contact';
   const showContext = query.stage === 'awaiting_enrollment' || query.stage === 'former_student';
   const columnCount = showContext ? 6 : 5;
@@ -167,6 +169,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canVi
           onChange={change => navigate({ ...change, marker: '' })} />
       </DashboardCommandFilters>
       <DashboardCommandActions>
+        {firstContact && canImport ? <Link href="/dashboard/students/import?from=leads" className={buttonVariants({ variant: 'secondary', size: 'sm' })}><Upload className="size-4" aria-hidden />{leadT('importXiaoditui')}</Link> : null}
         {canAssign ? <Link href="/dashboard/staff?view=organization" className={buttonVariants({ variant: 'ghost', size: 'sm' })}>{schoolCollaborationMessages(locale).title}</Link> : null}
         {focused ? <Button size="sm" variant="ghost" className="size-8 p-0" title={m.resume} aria-label={m.resume} disabled={busy} onClick={() => { const row = rows.find(r => r.worklist.id === focused); if (row) { const next = new Set(collapsed); for (const key of collapseKeys(row,allMonths)) next.delete(key); setCollapsed(next); open(row); remember(row.worklist.id,next); } }}><CornerDownRight className="size-4" aria-hidden /></Button> : null}
         <Button size="sm" variant="ghost" className="size-8 p-0" title={m.refresh} aria-label={m.refresh} disabled={busy} onClick={() => { setRefreshRequested(true); router.refresh(); }}><RefreshCw className="size-4" aria-hidden /></Button>

@@ -75,6 +75,6 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
   return <Workspace key={JSON.stringify(query)} data={page} query={{ ...query, page: page.page, periodField: page.periodField, period: page.period, group: page.group }} locale={locale}
     currentUserId={user.id} canEnroll={permissions.has('enrollment.manage')} canViewAll={permissions.has('student.view.all')}
     canAssess={permissions.has('review.write')} firstContactContent={firstContactContent}
-    canAssign={canAssign} assignees={assignees}
+    canAssign={canAssign} canImport={permissions.has('student.import')} assignees={assignees}
     timeZone={timeZone} now={now.getTime()} />;
 }

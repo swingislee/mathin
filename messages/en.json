@@ -5696,6 +5696,8 @@
     },
     "leads": {
       "title": "Leads",
+      "importXiaoditui": "Import Xiaoditui leads",
+      "back": "Back to leads",
       "intro": "External lists remain unconfirmed lead seeds first. A student is created or linked only after assignment and phone confirmation. Source interest selections do not imply a visit, confirmed course interest, or enrollment.",
       "scopeLabel": "Lead scope",
       "scopeUnassigned": "Awaiting assignment",

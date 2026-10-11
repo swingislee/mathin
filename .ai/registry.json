@@ -3,6 +3,28 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "XIAODITUI-IMPORT-ENTRY-20261011",
+      "title": "恢复线索页小地推导入入口",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/XIAODITUI-IMPORT-ENTRY-20261011.md",
+      "writePaths": [
+        ".ai/tasks/XIAODITUI-IMPORT-ENTRY-20261011.md",
+        "src/features/school/source-worklist/Page.tsx",
+        "src/features/school/source-worklist/Workspace.tsx",
+        "src/app/[locale]/dashboard/students/import/page.tsx"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": null,
+      "next": "线索页已恢复小地推导入按钮，接回原 Excel 预览、查重和确认导入流程，导入页可返回线索。局部静态检查通过，3130 开发入口可访问；待实际使用验收，生产未部署。"
+    },
+    {
       "id": "MINI-WECHAT-ONLY-LOGIN-20261011",
       "title": "小程序仅保留微信登录",
       "agent": "codex",
