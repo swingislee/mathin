@@ -46,11 +46,11 @@ describe("single location request at submission", () => {
 });
 
 type OnboardingPage = {
-  data: { busy: boolean; consent: boolean; policy: PhoneResult | null; ticket: string;
+  data: { busy: boolean; consent: boolean; policy: PhoneResult | null; ticket: string; stage: string;
     values: { parentName: string; childName: string; school: string }; selection: { relation: number; gender: number; grade: number }; interests: string[] };
   setData: (value: Record<string, unknown>) => void;
   onLoad: (query: Record<string, string>) => void; onUnload: () => void;
-  phone: (event: { detail: { code: string } }) => Promise<void>; complete: () => Promise<void>;
+  phone: (event: { detail: { code?: string } }) => Promise<void>; complete: () => Promise<void>; discover: () => void;
 };
 function formRuntime(locationOverrides: Record<string, unknown> = {}) {
   const miniRoot = path.resolve("apps/parent-wechat/miniprogram");
@@ -58,7 +58,7 @@ function formRuntime(locationOverrides: Record<string, unknown> = {}) {
     maskedPhone: "masked", privacyVersion: "v1", childrenPrivacyVersion: "v1", policyText: { zh: { privacy: "", children: "" }, en: { privacy: "", children: "" } } };
   const wx = { ...runtime(locationOverrides).wx, setNavigationBarTitle: vi.fn(), switchTab: vi.fn(), navigateTo: vi.fn(), setStorageSync: vi.fn(), getStorageSync: vi.fn() };
   class ApiError extends Error { constructor(public code: string) { super(code); } }
-  const api = { ApiError, session: () => null,
+  const api = { ApiError, session: () => null, cancelPendingAuthentication: vi.fn(),
     loginWithWechat: vi.fn(async () => ({ state: "onboarding_required", ticket: "identity-proof" })),
     authorizeWechatPhone: vi.fn(async () => policy),
     getRegistrationForm: vi.fn(async () => ({ ...policy, accountId: "own-account" })), requestId: () => "11111111-1111-4111-8111-111111111111",
@@ -70,7 +70,7 @@ function formRuntime(locationOverrides: Record<string, unknown> = {}) {
   function load(file: string): object {
     if (file === path.join(miniRoot, "lib/api.ts")) return api;
     if (file === path.join(miniRoot, "lib/page.ts")) return { pageData: () => ({}), currentLocale: () => "zh", localized: () => ({}), errorText: () => "request failed" };
-    if (file === path.join(miniRoot, "lib/navigation.ts")) return { clearNavigation: vi.fn(), selectParticipant: vi.fn(), resumeAfterLogin: () => false };
+    if (file === path.join(miniRoot, "lib/navigation.ts")) return { cancelLogin: vi.fn(), clearNavigation: vi.fn(), selectParticipant: vi.fn(), resumeAfterLogin: () => false };
     if (cache.has(file)) return cache.get(file)!;
     const exports = {};
     cache.set(file, exports);
@@ -93,10 +93,35 @@ function formRuntime(locationOverrides: Record<string, unknown> = {}) {
     page.setData({ consent: true, values: { parentName: "Fixture contact", childName: "Fixture participant", school: "" },
       selection: { relation: 1, gender: 0, grade: 5 }, interests: ["math"] });
   }
-  return { wx, api, page, app, entry, openForm };
+  return { wx, api, page, app, entry, openForm, policy };
 }
 
 describe("onboarding location boundary", () => {
+  it("declining phone authorization returns to browsing without submitting a phone code or a registration", async () => {
+    const run = formRuntime(); run.entry.openOnboarding(); run.page.onLoad({});
+    await vi.waitFor(() => expect(run.page.data.ticket).toBe("identity-proof"));
+    await run.page.phone({ detail: {} });
+    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/discover/index" });
+    expect(run.page.data.ticket).toBe("");
+    expect(run.api.authorizeWechatPhone).not.toHaveBeenCalled();
+    expect(run.api.completeWechatFamily).not.toHaveBeenCalled();
+    expect(run.wx.getLocation).not.toHaveBeenCalled();
+  });
+
+  it("cancelling a pending phone verification clears its proof and ignores the late form", async () => {
+    const run = formRuntime(); run.entry.openOnboarding(); run.page.onLoad({});
+    await vi.waitFor(() => expect(run.page.data.ticket).toBe("identity-proof"));
+    let finish!: () => void;
+    run.api.authorizeWechatPhone.mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve(run.policy); }));
+    const pending = run.page.phone({ detail: { code: "phone-code" } });
+    run.page.discover();
+    finish(); await pending;
+    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/discover/index" });
+    expect(run.page.data).toMatchObject({ ticket: "", policy: null, busy: false });
+    expect(run.page.data.stage).not.toBe("family");
+    expect(run.api.completeWechatFamily).not.toHaveBeenCalled();
+  });
+
   it("starts on the public page and sends no identity or permission requests for an old registration QR", () => {
     const config = JSON.parse(fs.readFileSync("apps/parent-wechat/miniprogram/app.json", "utf8"));
     expect(config.pages[0]).toBe("pages/discover/index");

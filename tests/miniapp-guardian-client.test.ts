@@ -17,6 +17,7 @@ type BindingPage = {
   onLoad: (query: Record<string, string>) => void; onUnload: () => void;
   preview: () => Promise<void>; start: () => Promise<void>; confirm: () => Promise<void>;
   phone: (event: { detail: { code?: string } }) => Promise<void>;
+  browse: () => void;
 };
 const invitation = "a".repeat(32), ticket = "b".repeat(64), childId = "child-id";
 const confirmationStep = { state: "confirmation_required", ticket, maskedPhone: "+8619****0001",
@@ -25,7 +26,7 @@ function runtime() {
   let page: BindingPage;
   const wx = { getAppBaseInfo: () => ({ language: "zh_CN" }), setNavigationBarTitle: vi.fn(), switchTab: vi.fn(),
     setStorageSync: vi.fn(), getStorageSync: vi.fn(), login: vi.fn(), request: vi.fn(), showModal: vi.fn() };
-  const api = { ApiError: ClientError,
+  const api = { ApiError: ClientError, cancelPendingAuthentication: vi.fn(),
     guardianBindingPreview: vi.fn(async () => ({ maskedName: "测＊", expiresAt: "2026-10-18T00:00:00Z" })),
     beginGuardianBinding: vi.fn(async () => ({ state: "phone_required", ticket } as object)),
     guardianBindingPhone: vi.fn(async () => confirmationStep),
@@ -54,6 +55,31 @@ async function ready() {
 }
 
 describe("guardian binding native page", () => {
+  it("declining phone authorization returns to browsing without linking a child", async () => {
+    const run = runtime(); run.page.onLoad({}); run.page.data.code = invitation;
+    await run.page.preview(); await run.page.start();
+    await run.page.phone({ detail: {} });
+    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/discover/index" });
+    expect(run.page.data.ticket).toBe("");
+    expect(run.api.guardianBindingPhone).not.toHaveBeenCalled();
+    expect(run.api.confirmGuardianBinding).not.toHaveBeenCalled();
+  });
+
+  it("cancelling pending phone verification ignores the late confirmation form", async () => {
+    const run = runtime(); run.page.onLoad({}); run.page.data.code = invitation;
+    await run.page.preview(); await run.page.start();
+    let finish!: () => void;
+    run.api.guardianBindingPhone.mockImplementationOnce(() => new Promise(resolve => { finish = () => resolve(confirmationStep); }));
+    const pending = run.page.phone({ detail: { code: "phone-code" } });
+    run.page.browse();
+    finish(); await pending;
+    expect(run.page.data).toMatchObject({ busy: false, ticket: "", policy: null, consent: false });
+    expect(run.page.data.stage).not.toBe("confirm");
+    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/discover/index" });
+    expect(run.api.confirmGuardianBinding).not.toHaveBeenCalled();
+    expect(run.api.get).not.toHaveBeenCalled();
+  });
+
   it("scanning reads only the partial-name invitation and never starts authorization", async () => {
     const run = runtime(); run.page.onLoad({ scene: invitation });
     await vi.waitFor(() => expect(run.page.data.stage).toBe("preview"));
@@ -66,7 +92,7 @@ describe("guardian binding native page", () => {
   it("phone authorization requires a tap and still leaves the confirmation unchecked", async () => {
     const run = runtime(); run.page.onLoad({}); run.page.data.code = invitation; await run.page.preview();
     await run.page.start(); expect(run.page.data.stage).toBe("phone");
-    await run.page.phone({ detail: {} }); expect(run.api.guardianBindingPhone).not.toHaveBeenCalled();
+    expect(run.api.guardianBindingPhone).not.toHaveBeenCalled();
     await run.page.phone({ detail: { code: "phone-code" } }); expect(run.page.data.stage).toBe("confirm");
     expect(run.page.data.consent).toBe(false); expect(run.api.confirmGuardianBinding).not.toHaveBeenCalled();
     expect(run.api.get).not.toHaveBeenCalled();

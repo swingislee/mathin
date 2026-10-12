@@ -34,7 +34,7 @@
           <button class="primary" bindtap="confirm" loading="{{busy}}" disabled="{{busy || !consent || !parentName || !relation}}">{{words.confirm}}</button>
         </block>
       </block>
-      <button class="text-button" bindtap="browse" disabled="{{busy}}">{{words.cancel}}</button>
+      <button class="secondary" bindtap="browse" disabled="{{busy && stage === 'confirm'}}">{{words.cancel}}</button>
     </block>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
   </view>

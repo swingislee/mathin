@@ -1,6 +1,6 @@
-import { ApiError, authorizeWechatPhone, bindWechat, completeWechatFamily, getRegistrationForm, getRegistrationReceipt, submitRegistration, requestId, loginWithWechat, session, verifiedWechatForm, wechatAuthStatus } from "../../lib/api";
+import { ApiError, authorizeWechatPhone, bindWechat, cancelPendingAuthentication, completeWechatFamily, getRegistrationForm, getRegistrationReceipt, submitRegistration, requestId, loginWithWechat, session, verifiedWechatForm, wechatAuthStatus } from "../../lib/api";
 import { pageData, currentLocale, errorText, loginPage, localized } from "../../lib/page";
-import { clearNavigation, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
+import { cancelLogin, clearNavigation, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { clearOnboardingEntry, clearPromotionScene, onboardingCopy, pendingPromotionScene, rememberPromotionScene, saveOnboardingPreferences, takeOnboardingProof, takeOnboardingRequest, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
 import { familyAnswerErrors, type FamilyForm } from "../../lib/onboarding-form";
 import { displayFamilyForm, onboardingChoices, type DisplayFamilyField } from "../../lib/onboarding-presentation";
@@ -32,10 +32,19 @@ Page({
     if (proof) void this.acceptProof(proof);
     else void this.start();
   },
-  onUnload() { this.active = false; this.submissionLocation = null; this.setData({ ticket: "", policy: null }); },
-  discover() { clearNavigation(); clearOnboardingEntry(); wx.switchTab({ url: "/pages/discover/index" }); },
-  finish() { clearPromotionScene(this.data.scene); if (!resumeAfterLogin()) wx.switchTab({ url: "/pages/account/index" }); },
+  onUnload() {
+    if (this.active) cancelLogin();
+    this.active = false; this.submissionLocation = null;
+    cancelPendingAuthentication(); clearOnboardingEntry();
+    this.setData({ busy: false, ticket: "", policy: null });
+  },
+  discover() {
+    if (this.data.busy && (this.data.stage === "family" || this.data.stage === "bind")) return;
+    this.onUnload(); clearNavigation(); wx.switchTab({ url: "/pages/discover/index" });
+  },
+  finish() { if (!this.active) return; clearPromotionScene(this.data.scene); if (!resumeAfterLogin()) wx.switchTab({ url: "/pages/account/index" }); },
   async acceptProof(proof: { ticket: string; phoneVerified?: boolean }) {
+    if (!this.active) return;
     if (!proof.phoneVerified) { this.setData({ ticket: proof.ticket, stage: "phone" }); return; }
     this.setData({ busy: true, stage: "wechat", error: "" });
     try { this.showForm(await verifiedWechatForm(proof.ticket)); }
@@ -54,11 +63,11 @@ Page({
     finally { if (this.active) this.setData({ busy: false }); }
   },
   async start() {
-    if (this.data.busy) return;
+    if (!this.active || this.data.busy) return;
     this.setData({ busy: true, error: "", stage: "wechat", ticket: "" });
     try {
       if (this.data.registration) {
-        if (!session()) { loginPage("/pages/register/index"); return; }
+        if (!session()) { this.active = false; loginPage("/pages/register/index"); return; }
         const form = await getRegistrationForm();
         if (!this.active) return;
         const key = "gezhi.registration.pending." + form.accountId;
@@ -113,8 +122,8 @@ Page({
     this.setData({ fields, formTitle: title, formDescription: description, interests, selectedInterests });
   },
   async phone(event: WechatMiniprogram.CustomEvent<{ code?: string; errMsg?: string }>) {
-    if (this.data.busy || !this.data.ticket) return;
-    if (!event.detail.code) { this.setData({ error: this.data.words.denied }); return; }
+    if (!this.active || this.data.busy || !this.data.ticket) return;
+    if (!event.detail.code) { this.discover(); return; }
     this.setData({ busy: true, error: "" });
     try {
       const policy = await authorizeWechatPhone(this.data.ticket, event.detail.code);
@@ -187,6 +196,7 @@ Page({
     } finally { if (this.active) this.setData({ busy: false }); }
   },
   registrationSaved() {
+    if (!this.active) return;
     wx.removeStorageSync(this.data.registrationKey);
     wx.redirectTo({ url: "/pages/register/index?saved=1" });
   },

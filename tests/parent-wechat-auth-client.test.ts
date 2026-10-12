@@ -16,6 +16,7 @@ type Api = {
   bindWechat: () => Promise<void>;
   saveSession: (value: Session) => void;
   clearSession: () => void;
+  cancelPendingAuthentication: () => void;
 };
 const active = (name: string): Session => ({ accessToken: name, refreshToken: `${name}-refresh`, expiresAt: Math.floor(Date.now() / 1000) + 3600 });
 const miniRoot = path.resolve("apps/parent-wechat/miniprogram");
@@ -52,7 +53,7 @@ type Page = {
   signInWithWechat: () => Promise<void>;
   confirmWechatBinding: () => Promise<void>; showWechatBinding: () => void;
   skipWechatBinding: () => void; loadWechat: () => Promise<void>;
-  closeSheet: () => void; showAccount: () => void;
+  closeSheet: () => void; showAccount: () => void; browse: () => void;
 };
 class ClientError extends Error { constructor(public code: string, public reason?: string) { super(code); } }
 function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN", returnTo: string | null = "/pages/assessment/index") {
@@ -62,7 +63,7 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
     navigateTo: vi.fn(), switchTab: vi.fn(), showModal: vi.fn(), getLocation: vi.fn(), getSetting: vi.fn(),
   };
   const api = {
-    ApiError: ClientError, session: () => null,
+    ApiError: ClientError, session: () => null, cancelPendingAuthentication: vi.fn(),
     wechatAuthStatus: vi.fn(async () => ({ available: true, linked: null, canBind: false })),
     get: vi.fn(async () => ({ id: "account", displayName: "Demo account", participants: [] })),
     ...overrides,
@@ -147,6 +148,18 @@ describe("小程序微信鉴权传输", () => {
     expect(run.current()?.accessToken).toBe("newer");
   });
 
+  it("取消授权丢弃迟到登录响应，同时保留已有账号会话", async () => {
+    const original = active("current"), run = apiRuntime(original);
+    const rejected = expect(run.api.loginWithWechat()).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    run.logins[0].success({ code: "temporary-code" });
+    await vi.waitFor(() => expect(run.requests).toHaveLength(1));
+    run.api.cancelPendingAuthentication();
+    run.requests[0].success({ statusCode: 200, data: { state: "authenticated", session: active("late") } });
+    await rejected;
+    expect(run.current()).toBe(original);
+    expect(run.wx.setStorageSync).not.toHaveBeenCalled();
+  });
+
   it("绑定带当前Bearer与显式确认，不替换当前会话", async () => {
     const original = active("current");
     const run = apiRuntime(original);
@@ -185,6 +198,24 @@ describe("小程序微信鉴权传输", () => {
 });
 
 describe("小程序微信登录与明确绑定", () => {
+  it.each(["onboarding_required", "authenticated"])("取消等待中的登录后，%s 迟到响应不会打开页面或恢复登录", async state => {
+    let finish!: () => void;
+    const loginWithWechat = vi.fn(() => new Promise(resolve => { finish = () => resolve({ state, ticket: "late-proof" }); }));
+    const run = pageRuntime({ loginWithWechat });
+    run.page.showAccount(); await run.page.loadWechat();
+    const pending = run.page.signInWithWechat();
+    expect(run.page.data.busy).toBe(true);
+    run.page.browse();
+    expect(run.wx.switchTab).toHaveBeenCalledExactlyOnceWith({ url: "/pages/discover/index" });
+    expect(run.api.cancelPendingAuthentication).toHaveBeenCalledOnce();
+    finish(); await pending;
+    expect(run.page.data).toMatchObject({ authenticated: false, busy: false, sheet: "", error: "" });
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+    expect(run.api.get).not.toHaveBeenCalled();
+    run.page.onShow();
+    expect(run.page.data.sheet).toBe("");
+  });
+
   it("游客进入我的仅展示入口，主动点击后才显示微信登录", () => {
     const loginWithWechat = vi.fn(), run = pageRuntime({ loginWithWechat }, "zh_CN", null);
     run.page.onShow();

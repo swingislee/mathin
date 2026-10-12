@@ -1,4 +1,4 @@
-import { ApiError, beginGuardianBinding, confirmGuardianBinding, get, guardianBindingPhone, guardianBindingPreview } from "../../lib/api";
+import { ApiError, beginGuardianBinding, cancelPendingAuthentication, confirmGuardianBinding, get, guardianBindingPhone, guardianBindingPreview } from "../../lib/api";
 import type { Account, GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "../../lib/api-types";
 import { currentLocale, date, errorText, pageData } from "../../lib/page";
 import { guardianCopy, guardianInvitation } from "../../lib/guardian-binding";
@@ -17,12 +17,15 @@ Page({
     // A scan reads only the redacted invitation. WeChat and phone authorization require taps below.
     if (this.data.code) void this.preview();
   },
-  onUnload() { this.active = false; this.setData({ ticket: "", policy: null }); },
+  onUnload() { this.active = false; cancelPendingAuthentication(); this.setData({ busy: false, ticket: "", policy: null }); },
   input(event: WechatMiniprogram.Input) { this.setData({ code: event.detail.value.trim(), invitation: null, stage: "entry", ticket: "", policy: null, consent: false }); },
   name(event: WechatMiniprogram.Input) { this.setData({ parentName: event.detail.value }); },
   relation(event: WechatMiniprogram.PickerChange) { this.setData({ relation: Number(event.detail.value) }); },
   consent(event: WechatMiniprogram.CheckboxGroupChange) { this.setData({ consent: event.detail.value.includes("consent") }); },
-  browse() { clearNavigation(); wx.switchTab({ url: "/pages/discover/index" }); },
+  browse() {
+    if (this.data.busy && this.data.stage === "confirm") return;
+    this.onUnload(); clearNavigation(); wx.switchTab({ url: "/pages/discover/index" });
+  },
   account() { clearNavigation(); wx.switchTab({ url: "/pages/account/index" }); },
   scan() {
     if (this.data.busy) return;
@@ -35,7 +38,7 @@ Page({
     } });
   },
   async preview() {
-    if (this.data.busy) return;
+    if (!this.active || this.data.busy) return;
     const code = guardianInvitation(this.data.code);
     if (!code) { this.setData({ error: this.data.words.invalid }); return; }
     this.setData({ busy: true, error: "", ticket: "", policy: null, consent: false });
@@ -51,15 +54,15 @@ Page({
       policy: value.state === "confirmation_required" ? value : null, consent: false });
   },
   async start() {
-    if (this.data.busy || !this.data.invitation) return;
+    if (!this.active || this.data.busy || !this.data.invitation) return;
     this.setData({ busy: true, error: "", ticket: "", policy: null, consent: false });
     try { this.step(await beginGuardianBinding(this.data.code)); }
     catch (error) { if (this.active) this.setData({ error: this.explain(error), stage: "preview" }); }
     finally { if (this.active) this.setData({ busy: false }); }
   },
   async phone(event: WechatMiniprogram.CustomEvent<{ code?: string }>) {
-    if (this.data.busy || !this.data.ticket) return;
-    if (!event.detail.code) { this.setData({ error: this.data.words.denied }); return; }
+    if (!this.active || this.data.busy || !this.data.ticket) return;
+    if (!event.detail.code) { this.browse(); return; }
     this.setData({ busy: true, error: "" });
     try { this.step(await guardianBindingPhone(this.data.ticket, event.detail.code)); }
     catch (error) { if (this.active) this.setData({ error: this.explain(error), stage: "preview", ticket: "" }); }

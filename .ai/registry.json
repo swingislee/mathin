@@ -3,6 +3,39 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-LOGIN-CHOICE-20261012",
+      "title": "按授权案例补齐自主登录与取消返回",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-LOGIN-CHOICE-20261012.md",
+      "writePaths": [
+        ".ai/tasks/MINI-LOGIN-CHOICE-20261012.md",
+        "apps/parent-wechat/miniprogram/pages/account/index.ts",
+        "apps/parent-wechat/miniprogram/pages/account/index.wxml",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.ts",
+        "apps/parent-wechat/miniprogram/pages/onboarding/index.wxml",
+        "apps/parent-wechat/miniprogram/pages/guardian-binding/index.ts",
+        "apps/parent-wechat/miniprogram/pages/guardian-binding/index.wxml",
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "apps/parent-wechat/miniprogram/lib/copy.ts",
+        "contracts/participant-api/onboarding-presentation.ts",
+        "apps/parent-wechat/miniprogram/lib/onboarding-presentation.ts",
+        "tests/parent-wechat-auth-client.test.ts",
+        "tests/wechat-registration-location.test.ts",
+        "tests/miniapp-guardian-client.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/docs/portal.md"
+      ],
+      "checkpoint": null,
+      "next": "开发端已补齐明确取消、手机号拒绝返回和迟到鉴权响应隔离，公开浏览及详情保持；小程序类型、文案同步和定向检查通过。手机待验收，本轮未上传 0.1.8、未提审、未部署生产。"
+    },
+    {
       "id": "XIAODITUI-IMPORT-ENTRY-20261011",
       "title": "恢复线索页小地推导入入口",
       "agent": "codex",

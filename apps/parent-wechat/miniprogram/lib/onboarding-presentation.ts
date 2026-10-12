@@ -4,7 +4,8 @@ import type { FamilyField, FamilyFormConfig, FamilyText } from "./onboarding-for
 export const onboardingCopy = {
   zh: {
     navigationTitle: "参与登记", title: "欢迎来到格致", intro: "填写参与信息，发现适合你的公益活动。",
-    phone: "授权手机号，继续", phoneNote: "使用微信验证的手机号识别账号、接收活动联系。",
+    phone: "授权手机号，继续", phoneNote: "手机号用于识别账号和活动联系。您可以暂不授权，继续浏览活动。",
+    declinePhone: "暂不授权，继续浏览", cancel: "取消并继续浏览",
     bind: "确认绑定当前微信", bindNote: "将当前微信绑定到已登录账号，以后可直接用微信进入。",
     participant: "本次登记的参与人", newParticipant: "添加新的参与人", existingParticipantNote: "已关联参与人将沿用原档案，本次填写内容保存为登记资料。",
     formTitle: "参与信息", verifiedPhone: "已验证手机号", parentName: "联系人姓名", relation: "与参与人的关系",
@@ -23,7 +24,8 @@ export const onboardingCopy = {
   },
   en: {
     navigationTitle: "Participation", title: "Welcome to Gezhi", intro: "Add your details and discover community activities.",
-    phone: "Authorize phone and continue", phoneNote: "Your verified WeChat phone identifies your account and supports activity contact.",
+    phone: "Authorize phone and continue", phoneNote: "Your phone identifies your account and supports activity contact. You can skip authorization and keep browsing activities.",
+    declinePhone: "Keep browsing without phone authorization", cancel: "Cancel and keep browsing",
     bind: "Confirm linking this WeChat", bindNote: "Link this WeChat to your signed-in account for future WeChat sign-in.",
     participant: "Participant for this registration", newParticipant: "Add a new participant", existingParticipantNote: "Your linked participant’s record is kept. These answers are saved with this registration.",
     formTitle: "Participation details", verifiedPhone: "Verified phone", parentName: "Contact name", relation: "Relationship to the participant",

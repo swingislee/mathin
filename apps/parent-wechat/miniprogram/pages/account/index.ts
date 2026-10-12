@@ -1,4 +1,4 @@
-import { ApiError, bindWechat, get, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
+import { ApiError, bindWechat, cancelPendingAuthentication, get, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
 import type { Account, WechatAuthStatus } from "../../lib/api-types";
 import { cancelLogin, clearNavigation, takeLoginRequest, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
@@ -12,6 +12,7 @@ Page({
     wechat: null as WechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
   loadVersion: 0,
   statusVersion: 0,
+  loginVersion: 0,
   sessionToken: "",
   onShow() {
     syncPage(this, "account");
@@ -27,23 +28,32 @@ Page({
     if (authenticated) void this.load();
   },
   onHide() {
-    if (this.data.sheet === "login" && !this.data.busy) cancelLogin();
+    if (this.data.sheet === "login") this.dismissLogin();
     this.loadVersion++; this.statusVersion++; this.setData({ sheet: "" });
   },
   showAccount() { this.setData({ sheet: this.data.authenticated ? "account" : "login", error: "", info: "" }); },
   showParticipants() { this.setData({ sheet: this.data.authenticated ? "participants" : "login" }); },
   closeSheet() {
+    if (this.data.sheet === "login") { this.dismissLogin(); return; }
     if (this.data.busy) return;
     if (this.data.sheet === "bind") this.skipWechatBinding();
     else { cancelLogin(); this.setData({ sheet: "", error: "", info: "", wantsWechatBinding: false }); }
   },
+  dismissLogin() {
+    this.loginVersion++;
+    cancelPendingAuthentication(); cancelLogin(); clearOnboardingEntry();
+    this.setData({ busy: false, sheet: "", error: "", info: "", wantsWechatBinding: false });
+  },
+  browse() { this.dismissLogin(); wx.switchTab({ url: "/pages/discover/index" }); },
   noop() {},
   async signInWithWechat() {
     if (this.data.busy || !this.data.wechat?.available) return;
+    const version = ++this.loginVersion;
     this.setData({ busy: true, error: "", info: "", wantsWechatBinding: false });
     const scene = pendingPromotionScene();
     try {
       const result = await loginWithWechat(scene || undefined);
+      if (version !== this.loginVersion) return;
       if (result.state === "onboarding_required") {
         setOnboardingProof(result.ticket, scene, Boolean(result.phoneVerified));
         this.setData({ sheet: "" }); openOnboarding();
@@ -53,10 +63,11 @@ Page({
         clearPromotionScene(scene);
         this.setData({ authenticated: true, sheet: "" });
         await this.load();
+        if (version !== this.loginVersion) return;
         await this.loadWechat();
       } else throw new ApiError("UNAVAILABLE");
-    } catch (error) { this.setData({ error: this.wechatError(error) }); }
-    finally { this.setData({ busy: false }); }
+    } catch (error) { if (version === this.loginVersion) this.setData({ error: this.wechatError(error) }); }
+    finally { if (version === this.loginVersion) this.setData({ busy: false }); }
   },
   showWechatBinding() {
     if (this.data.busy || !this.data.wechat?.canBind || !this.data.wechat.canBindDirect) return;

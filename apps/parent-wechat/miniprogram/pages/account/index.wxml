@@ -37,13 +37,15 @@
   </view>
   <tab-overlay wx:if="{{sheet}}" />
   <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop">
-    <view class="sheet-heading"><text>{{sheet === 'login' ? copy.login : (sheet === 'bind' ? copy.wechatBindTitle : (sheet === 'participants' ? copy.linkedParticipants : copy.accountLabel))}}</text><button class="sheet-close" bindtap="closeSheet" disabled="{{busy}}" aria-label="{{copy.close}}">×</button></view>
+    <view class="sheet-heading"><text>{{sheet === 'login' ? copy.login : (sheet === 'bind' ? copy.wechatBindTitle : (sheet === 'participants' ? copy.linkedParticipants : copy.accountLabel))}}</text><button class="sheet-close" bindtap="closeSheet" disabled="{{busy && sheet !== 'login'}}" aria-label="{{copy.close}}">×</button></view>
     <view wx:if="{{info}}" class="auth-info" role="status">{{info}}</view>
     <block wx:if="{{sheet === 'login'}}">
+      <text class="auth-hint">{{copy.wechatLoginHint}}</text>
       <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
       <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
       <button wx:elif="{{wechat.available}}" class="primary" bindtap="signInWithWechat" loading="{{busy}}" disabled="{{busy}}">{{copy.wechatLogin}}</button>
       <text wx:else class="auth-hint">{{copy.wechatUnavailable}}</text>
+      <button class="secondary" bindtap="browse">{{copy.cancelLogin}}</button>
     </block>
     <block wx:elif="{{sheet === 'bind'}}">
       <text class="account-display-name">{{accountName || copy.accountLabel}}</text>

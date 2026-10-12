@@ -9,6 +9,8 @@ let refreshing:Promise<Session>|null=null;
 let sessionVersion=0;
 export class ApiError extends Error { constructor(public code:string,public reason?:string){super(code);} }
 export function session():Session|null {return wx.getStorageSync(sessionKey)||null;}
+// Discard unfinished authentication without signing out an existing account.
+export function cancelPendingAuthentication(){sessionVersion++;}
 export function clearSession(){sessionVersion++;wx.removeStorageSync(sessionKey);}
 export function saveSession(value:Session){sessionVersion++;wx.setStorageSync(sessionKey,value);}
 export function configured(){return Boolean(config.apiOrigin);}

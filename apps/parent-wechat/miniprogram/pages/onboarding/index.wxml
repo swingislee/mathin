@@ -32,6 +32,6 @@
       <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{registration ? copy.submit : words.complete}}</button>
     </block>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
-    <button class="text-button" bindtap="discover" disabled="{{busy}}">{{copy.seeActivities}}</button>
+    <button class="secondary" bindtap="discover" disabled="{{busy && (stage === 'family' || stage === 'bind')}}">{{stage === 'phone' ? words.declinePhone : words.cancel}}</button>
   </view>
 </view>
