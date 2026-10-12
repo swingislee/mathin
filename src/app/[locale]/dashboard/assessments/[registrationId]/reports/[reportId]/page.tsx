@@ -12,7 +12,7 @@ export default async function AssessmentReportPage({ params }: {
   setRequestLocale(locale);
   await requireAnyPerm(locale, ["review.write", "followup.view"]);
   const supabase = await createClient();
-  const { data, error } = await supabase.from("assessment_reports").select("id,version,payload,created_at")
+  const { data, error } = await supabase.from("assessment_reports").select("id,version,payload,created_at,miniapp_report_template")
     .eq("id", reportId).eq("registration_id", registrationId).maybeSingle();
   if (error || !data) notFound();
   return <AssessmentReportView report={assessmentReportSchema.parse(data)} locale={locale} />;

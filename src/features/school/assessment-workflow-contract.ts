@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { reportTemplateSnapshotSchema } from "./miniapp-settings/report-contract";
 import { databaseUuid } from "@/lib/database-uuid";
 import { STORED_ASSESSMENT_BANDS } from "./activity-workflow-contract";
 
@@ -15,7 +16,7 @@ export const assessmentReportPayloadSchema = z.object({
 });
 export const assessmentReportSchema = z.object({
   id: z.string().uuid(), version: z.number().int().positive(), payload: assessmentReportPayloadSchema,
-  created_at: z.string(),
+  created_at: z.string(), miniapp_report_template: reportTemplateSnapshotSchema.nullable().optional(),
 });
 export type AssessmentReport = z.infer<typeof assessmentReportSchema>;
 

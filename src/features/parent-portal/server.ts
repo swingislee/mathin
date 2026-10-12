@@ -6,6 +6,8 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loginIdentifierSchema } from "@/lib/auth-identifier";
 import type { Activity, ApiErrorCode, Report, PracticeSubmission, Media } from "../../../contracts/parent-api/portal";
+import { reportSections, type ReportTemplateSnapshot } from "../../../contracts/participant-api/report-template";
+import { reportTemplateSnapshotSchema } from "@/features/school/miniapp-settings/report-contract";
 import { intakeFormSchema, intakeSchema, validateAnswers, mediaType, PHOTO_BYTES, VIDEO_BYTES } from "./validation";
 
 export class PortalError extends Error {
@@ -140,18 +142,13 @@ export async function portalGet(request:Request) {
 export async function readReports(db: SupabaseClient, now = Date.now()): Promise<Report[]> {
   const [assessments,reviews]=await Promise.all([
     db.rpc("miniapp_assessment_reports"),
-    db.rpc("get_my_session_reviews",{p_from:new Date(now-366*86400000).toISOString(),p_to:new Date(now+86400000).toISOString()}),
+    db.rpc("miniapp_feedback_reports",{p_from:new Date(now-366*86400000).toISOString(),p_to:new Date(now+86400000).toISOString()}),
   ]);
-  const reports:Report[]=[
-    ...(requireResult(assessments)??[]).map((row:Omit<Report,"participantId"> & {participantId?:string|null})=>({
-      ...row,participantId:uuid.safeParse(row.participantId).success?row.participantId!:null,
-    })),
-    ...(requireResult(reviews)??[]).map((row:{session_id:string;student_id:string;lecture_name:string;student_name:string;scheduled_at:string;comment:string;exit_score:number|null})=>({
-      id:row.session_id+":"+row.student_id,kind:"feedback" as const,title:row.lecture_name,
-      participantId:row.student_id,participantName:row.student_name,date:row.scheduled_at,
-      summary:row.comment,strengths:"",focusAreas:"",recommendation:"",score:row.exit_score,totalScore:null,
-    })),
-  ];
+  const reports:Report[]=[...(requireResult(assessments)??[]),...(requireResult(reviews)??[])].map((row:Omit<Report,"participantId"> & {participantId?:string|null;template?:ReportTemplateSnapshot|null})=>{
+    const {template,...fields}=row;
+    return {...fields,participantId:uuid.safeParse(row.participantId).success?row.participantId!:null,
+      sections:reportSections(row,template?reportTemplateSnapshotSchema.parse(template):undefined)};
+  });
   return reports.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,200);
 }
 const commandSchema=z.discriminatedUnion("action",[

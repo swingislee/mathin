@@ -29,6 +29,7 @@ export interface MiniappSettings {
   stages: MiniappStageGroup[];
   booking?: import("./booking-policy").BookingPolicy;
   contacts?: MiniappContact[];
+  reports?: import("./report-template").ReportTemplates;
 }
 export interface MiniappSettingsPublication { revision: number; publishedAt: string | null; config: MiniappSettings | null }
 export interface ConsentDocuments {

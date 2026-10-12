@@ -2,7 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { assessmentWorkflowFromDb, type AssessmentWorkflow } from "./assessment-workflow-contract";
 
-export const ASSESSMENT_WORKFLOW_COLUMNS = "*,recorder:profiles!assessment_workflow_states_updated_by_fkey(display_name),sender:profiles!assessment_workflow_states_sent_by_fkey(display_name),report:assessment_reports!assessment_workflow_states_report_id_fkey(id,version,payload,created_at)";
+export const ASSESSMENT_WORKFLOW_COLUMNS = "*,recorder:profiles!assessment_workflow_states_updated_by_fkey(display_name),sender:profiles!assessment_workflow_states_sent_by_fkey(display_name),report:assessment_reports!assessment_workflow_states_report_id_fkey(id,version,payload,created_at,miniapp_report_template)";
 
 export async function readAssessmentWorkflow(registrationId: string, client?: Awaited<ReturnType<typeof createClient>>): Promise<AssessmentWorkflow | null> {
   const supabase = client ?? await createClient();

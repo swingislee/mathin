@@ -33,6 +33,7 @@ export type Report = {
   participantId: string | null;
   participantName: string; date: string; summary: string; strengths: string;
   focusAreas: string; recommendation: string; score: number | null; totalScore: number | null;
+  sections?: import("../participant-api/report-template").ReportSection[];
 };
 export type Practice = {
   id: string; participantId: string; participantName: string; title: string;

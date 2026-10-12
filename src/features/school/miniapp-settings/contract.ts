@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { reportTemplatesSchema } from "./report-contract";
 import { miniappActions, miniappIcons, type MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
 
 export const miniappAssetPath = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/;
@@ -23,6 +24,7 @@ export const miniappSettingsSchema: z.ZodType<MiniappSettings> = z.object({
   version: z.literal(1),
   booking: bookingPolicySchema.optional(),
   contacts: z.array(miniappContactSchema).max(40).refine(unique).optional(),
+  reports: reportTemplatesSchema.optional(),
   brand: z.object({ name: miniappLocalized(60), introduction: miniappLocalized(500), image, theme: z.enum(["paper", "leaf", "rose"]) }).strict(),
   home: z.array(z.object({ id, type: z.enum(["feature", "activities", "text", "image"]), visible: z.boolean(),
     title: miniappLocalized(120), body: miniappLocalized(2000), image, action: z.enum(miniappActions), target,

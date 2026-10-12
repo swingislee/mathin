@@ -49,6 +49,7 @@ export type Report = {
   participantId: string | null;
   participantName: string; date: string; summary: string; strengths: string;
   focusAreas: string; recommendation: string; score: number | null; totalScore: number | null;
+  sections?: import("./report-template").ReportSection[];
 };
 export type ActivityTask = {
   id: string; participantId: string; participantName: string; title: string;

@@ -42,11 +42,11 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   vi.setSystemTime(new Date(now));
-  state.profile = { role: "parent", account_status: "active", password_change_required: false, display_name: "开发家长" };
+  state.profile = { role: "parent", is_active: true, account_status: "active", password_change_required: false, display_name: "开发家长" };
   state.results = {
     has_current_required_consents: ok(true), get_my_students: ok([{ id: child, name: "同名孩子" }, { id: sibling, name: "同名孩子" }]),
     get_my_schedule: ok([]), get_my_attendance: ok([]), get_my_learning_summary: ok([]),
-    list_my_session_leave_requests: ok([]), miniapp_assessment_reports: ok([]), get_my_session_reviews: ok([]),
+    list_my_session_leave_requests: ok([]), miniapp_assessment_reports: ok([]), miniapp_feedback_reports: ok([]),
     mark_notification_read: ok(true), submit_session_leave_request: ok(requestId),
   };
   state.notifications = [];
@@ -132,11 +132,23 @@ describe("iOS 家长学习 HTTP 合同", () => {
 
   it("原 reports 端点保留旧报告并把缺少归属显式返回 null，反馈使用 student_id", async () => {
     state.results.miniapp_assessment_reports = ok([report("legacy-report")]);
-    state.results.get_my_session_reviews = ok([{ session_id: session, student_id: child, student_name: "同名孩子", lecture_name: "课后反馈", scheduled_at: now, comment: "课堂反馈", exit_score: null }]);
+    state.results.miniapp_feedback_reports = ok([{ ...report(session + ":" + child, child), kind: "feedback", title: "课后反馈", summary: "课堂反馈", score: null, totalScore: null }]);
     const response = await portalGet(new Request("https://app.example.invalid/api/v1/parent/portal?resource=reports", { headers: { authorization: "Bearer test-only-token" } }));
     const rows = await response.json();
     expect(rows.find((row: { id: string }) => row.id === "legacy-report").participantId).toBeNull();
     expect(rows.find((row: { kind: string }) => row.kind === "feedback").participantId).toBe(child);
+  });
+
+  it("uses the frozen report headings and visibility without losing zero scores", async () => {
+    state.results.miniapp_assessment_reports = ok([{ ...report("snapshot", child), score: 0,
+      template: { version: "frozen-version", sections: [
+        { source: "score", label: { zh: "原版分数", en: "Original score" }, visible: true },
+        { source: "summary", label: { zh: "隐藏正文", en: "Hidden summary" }, visible: false },
+      ] } }]);
+    const response = await portalGet(new Request("https://app.example.invalid/api/v1/parent/portal?resource=reports", { headers: { authorization: "Bearer test-only-token" } }));
+    const [row] = await response.json();
+    expect(row.sections).toEqual([{ source: "score", label: { zh: "原版分数", en: "Original score" }, type: "score", text: "0 / 5" }]);
+    expect(row).not.toHaveProperty("template");
   });
 
   it("报告 scope 无可见行时保留空结果，查询错误返回失败而非空数据", async () => {

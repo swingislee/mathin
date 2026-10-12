@@ -1,6 +1,7 @@
 import fs from "node:fs";
 for (const [sourcePath, target] of [
   ["contracts/participant-api/form-questions.ts", "apps/parent-wechat/miniprogram/lib/form-questions.ts"],
+  ["contracts/participant-api/report-template.ts", "apps/parent-wechat/miniprogram/lib/report-template.ts"],
   ["contracts/participant-api/portal.ts", "apps/parent-wechat/miniprogram/lib/api-types.ts"],
   ["contracts/participant-api/onboarding.ts", "apps/parent-wechat/miniprogram/lib/onboarding-form.ts"],
   ["contracts/participant-api/onboarding-presentation.ts", "apps/parent-wechat/miniprogram/lib/onboarding-presentation.ts"],
