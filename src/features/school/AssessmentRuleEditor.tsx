@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { Textarea } from "@/components/ui/textarea";
 import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +23,7 @@ export function AssessmentRuleEditor({ initial, workspace, onSaved, onClose, onP
   initial: SaveAssessmentRuleInput; workspace: AssessmentRulesWorkspace;
   onSaved: (data: AssessmentRulesWorkspace) => void; onClose: () => void; onPendingChange: (value: boolean) => void;
 }) {
+  const en = useLocale() === "en";
   const t = useTranslations("school.assessmentRules");
   const a = useTranslations("school.assessmentAvailability");
   const [draft, setDraft] = useState(initial);
@@ -60,6 +62,7 @@ export function AssessmentRuleEditor({ initial, workspace, onSaved, onClose, onP
         <Label className="grid gap-1">{t("from")}<Input type="date" required value={d.from} onChange={event => patch({ from: event.target.value })} /></Label>
         <Label className="grid gap-1">{t("until")}<Input type="date" required min={d.from} value={d.until} onChange={event => patch({ until: event.target.value })} /></Label>
       </div>
+      {open && <div className="grid gap-3 sm:grid-cols-2"><Label className="grid gap-1">{en ? "Mode" : "预约方式"}<Select value={d.mode || "campus"} onValueChange={mode => patch({ mode: mode as "campus" | "online" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="campus">{en ? "At campus" : "到校"}</SelectItem><SelectItem value="online">{en ? "Online" : "线上"}</SelectItem></SelectContent></Select></Label><Label className="grid gap-1">{en ? "Joining instructions (shown after booking)" : "参加说明（预约成功后可见）"}<Textarea maxLength={2000} required={d.mode === "online"} value={d.joiningInstructions || ""} onChange={e => patch({ joiningInstructions: e.target.value })} /></Label></div>}
       <div className="flex flex-wrap items-end gap-3">
         <Label className="grid gap-1">{t("start")}<Input className="w-28" value={start} required placeholder="09:00" onChange={event => setStart(event.target.value)} /></Label>
         <Label className="grid gap-1">{t("end")}<Input className="w-28" value={end} required placeholder="24:00" onChange={event => setEnd(event.target.value)} /></Label>

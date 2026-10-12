@@ -5,6 +5,7 @@ for (const [sourcePath, target] of [
   ["contracts/participant-api/onboarding.ts", "apps/parent-wechat/miniprogram/lib/onboarding-form.ts"],
   ["contracts/participant-api/onboarding-presentation.ts", "apps/parent-wechat/miniprogram/lib/onboarding-presentation.ts"],
   ["contracts/participant-api/activity-detail.ts", "apps/parent-wechat/miniprogram/lib/activity-detail.ts"],
+  ["contracts/participant-api/booking-policy.ts", "apps/parent-wechat/miniprogram/lib/booking-policy.ts"],
   ["contracts/participant-api/miniapp-settings.ts", "apps/parent-wechat/miniprogram/lib/miniapp-settings.ts"],
 ]) {
   const source = fs.readFileSync(sourcePath, "utf8").replace('from "./onboarding"', 'from "./onboarding-form"');

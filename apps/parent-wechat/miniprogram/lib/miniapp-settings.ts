@@ -23,6 +23,7 @@ export interface MiniappSettings {
   floating: MiniappEntry[];
   accountGroups: { id: string; title: MiniappText; entries: MiniappEntry[] }[];
   stages: MiniappStageGroup[];
+  booking?: import("./booking-policy").BookingPolicy;
 }
 export interface MiniappSettingsPublication { revision: number; publishedAt: string | null; config: MiniappSettings | null }
 export interface MiniappDocument { id: string; version: string; title: MiniappText; body: MiniappText }

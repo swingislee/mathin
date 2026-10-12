@@ -21,7 +21,7 @@ const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
 const subjects = z.array(z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/)).min(1).max(12).refine(value => new Set(value).size === value.length);
 const grades = z.array(z.number().int().min(-1).max(12)).max(14).refine(value => new Set(value).size === value.length);
 const slotSchema = z.object({
-  ruleId: uuid.nullable().optional(), id: uuid, teacherId: uuid, campusId: uuid, subjects, grades,
+  ruleId: uuid.nullable().optional(), id: uuid, teacherId: uuid, campusId: uuid, mode: z.enum(["campus", "online"]).optional(), joiningInstructions: z.string().max(2000).optional(), subjects, grades,
   startsAt: instant, endsAt: instant, enabled: z.boolean(), booked: z.boolean(), activeBooked: z.boolean().optional(), blocked: z.boolean().optional(), updatedAt: instant,
 });
 const managementSchema = z.object({
@@ -32,7 +32,7 @@ const managementSchema = z.object({
   slots: z.array(slotSchema),
 });
 const saveSchema = z.object({
-  slotId: uuid, teacherId: uuid, campusId: uuid, subjects, grades,
+  slotId: uuid, teacherId: uuid, campusId: uuid, mode: z.enum(["campus", "online"]).default("campus"), joiningInstructions: z.string().max(2000).default(""), subjects, grades,
   startsAt: instant, endsAt: instant, enabled: z.boolean(), expectedUpdatedAt: instant.nullable(),
   recurrence: calendarRecurrenceSchema.nullable().optional(),
 }).refine(value => {
@@ -74,11 +74,11 @@ export async function saveAssessmentSlotAction(input: SaveAssessmentSlotInput): 
     const args = {
       p_slot_id: value.slotId, p_teacher_id: value.teacherId, p_campus_id: value.campusId,
       p_subjects: value.subjects, p_grades: value.grades, p_starts_at: value.startsAt, p_ends_at: value.endsAt,
-      p_enabled: value.enabled, p_expected_updated_at: value.expectedUpdatedAt ?? undefined,
+      p_enabled: value.enabled, p_mode: value.mode, p_joining_instructions: value.joiningInstructions, p_expected_updated_at: value.expectedUpdatedAt ?? undefined,
     };
     const result = value.recurrence
-      ? await client.rpc("save_assessment_slot_series", { ...args, p_recurrence: value.recurrence })
-      : await client.rpc("save_assessment_slot", args);
+      ? await client.rpc("save_assessment_slot_series_v2", { ...args, p_recurrence: value.recurrence })
+      : await client.rpc("save_assessment_slot_v2", args);
     if (result.error) throw new Error(result.error.message);
     return { ok: true, data: slotSchema.parse(result.data) };
   } catch (error) {

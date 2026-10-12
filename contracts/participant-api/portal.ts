@@ -41,7 +41,7 @@ export type Activity = {
 export type Booking = {
   id: string; activityId: string; participantId: string; participantName: string;
   title: LocalizedText; startsAt: string; location: string;
-  status: "booked" | "attended" | "no_show" | "cancelled";
+  status: "booked" | "attended" | "no_show" | "cancelled"; canCancel?: boolean;
 };
 export type Report = {
   id: string; kind: "assessment" | "feedback"; title: string;
@@ -123,15 +123,16 @@ export type AssessmentFacilitator = { id: string; displayName: string };
 export type AssessmentTopic = string;
 export type AssessmentTopicOption = { id: string; label: { zh: string; en: string }; available: boolean };
 export type AssessmentSlot = {
-  id: string; facilitatorId: string; campusId: string; startsAt: string; endsAt: string; available: boolean;
+  id: string; facilitatorId: string; campusId: string; startsAt: string; endsAt: string; available: boolean; mode?: "campus" | "online";
 };
 export type AssessmentAvailability = {
+  policy?: import("./booking-policy").BookingPolicy;
   participantId: string; timeZone: "Asia/Shanghai"; from: string; to: string;
   facilitators: AssessmentFacilitator[]; campuses: { id: string; name: string }[]; slots: AssessmentSlot[];
 };
 export type AssessmentBookingDetails = {
-  slotId: string; topics: AssessmentTopic[]; stageNumber: number; mode: "campus";
-  campus: { id: string; name: string }; endsAt: string;
+  slotId: string; topics: AssessmentTopic[]; stageNumber: number; mode: "campus" | "online";
+  campus: { id: string; name: string }; endsAt: string; joiningInstructions?: string;
 };
 /** 时间选项为 Asia/Shanghai 的 YYYY-MM-DD@时段；协调意向与已发布可约时段分别保存。 */
 export type AssessmentRequest = {
@@ -143,11 +144,12 @@ export type AssessmentRequest = {
   proposedStartsAt: string | null;
   /** confirmed/completed 的实际预约时刻；不是确认操作发生时间。 */
   confirmedStartsAt: string | null;
-  updatedAt: string; canConfirm: boolean;
+  updatedAt: string; canConfirm: boolean; canCancel?: boolean; cancelUntil?: string | null;
   /** 已发布时段的预约信息；早期双边意向邀约没有此字段。 */
   booking?: AssessmentBookingDetails | null;
 };
 export type AssessmentOverview = {
+  policy?: import("./booking-policy").BookingPolicy;
   topics?: AssessmentTopicOption[];
   participantId: string; timeZone: "Asia/Shanghai";
   eligibility: { canRequest: boolean; reason: AssessmentEligibilityReason | null };
@@ -165,9 +167,10 @@ export type AssessmentConfirmCommand = {
 };
 export type AssessmentBookCommand = {
   action: "book"; id: string; participantId: string; slotId: string;
-  topics: AssessmentTopic[]; stageNumber: number; mode: "campus";
+  topics: AssessmentTopic[]; stageNumber: number; mode: "campus" | "online";
 };
-export type AssessmentCommand = AssessmentRequestCommand | AssessmentConfirmCommand | AssessmentBookCommand;
+export type AssessmentCommand = AssessmentRequestCommand | AssessmentConfirmCommand | AssessmentBookCommand
+  | { action: "cancel"; id: string; participantId: string };
 export type ApiErrorCode = "VALIDATION" | "UNAUTHENTICATED" | "FORBIDDEN" | "ACCOUNT_SECURITY"
   | "NOT_FOUND" | "FORM_CHANGED" | "ACTIVITY_FULL" | "BOOKING_CLOSED" | "CONFLICT"
   | "TOO_LARGE" | "FILE_TYPE" | "RATE_LIMIT" | "UNAVAILABLE";

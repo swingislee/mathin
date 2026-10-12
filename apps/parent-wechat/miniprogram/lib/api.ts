@@ -100,9 +100,9 @@ export async function getAssessments(participant:string):Promise<AssessmentOverv
 export async function postAssessment(data:AssessmentCommand):Promise<AssessmentRequest>{
   return send<AssessmentRequest>("assessments","POST",data,await accessToken());
 }
-export async function getAssessmentSlots(participant: string, topics: AssessmentTopic[], stageNumber: number): Promise<AssessmentAvailability> {
+export async function getAssessmentSlots(participant: string, topics: AssessmentTopic[], stageNumber: number, mode: "campus" | "online" = "campus"): Promise<AssessmentAvailability> {
   const query = `participant=${encodeURIComponent(participant)}&topics=${encodeURIComponent(topics.join(","))}&stageNumber=${stageNumber}`;
-  return send<AssessmentAvailability>("assessment-slots?" + query, "GET", undefined, await accessToken());
+  return send<AssessmentAvailability>("assessment-slots?" + query + "&mode=" + mode, "GET", undefined, await accessToken());
 }
 export async function wechatAuthStatus():Promise<WechatAuthStatus>{
   return send<WechatAuthStatus>("auth/wechat","GET",undefined,session()?await accessToken():undefined);

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Save } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,7 @@ export function AssessmentSlotDialog(props: AssessmentSlotDialogProps) {
 
 function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
   const { onOpenChange, data, timeZone, slot, onSaved } = props;
+  const en = useLocale() === "en";
   const t = useTranslations("school.assessmentAvailability");
   const common = useTranslations("school.classes");
   const calendar = useTranslations("school.calendar");
@@ -145,7 +147,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
     const input: SaveAssessmentSlotInput | null = booked && currentSlot ? {
       slotId: currentSlot.id,
       teacherId: currentSlot.teacherId,
-      campusId: currentSlot.campusId,
+      campusId: currentSlot.campusId, mode: currentSlot.mode || "campus", joiningInstructions: currentSlot.joiningInstructions || "",
       subjects: [...currentSlot.subjects],
       grades: [...currentSlot.grades],
       startsAt: currentSlot.startsAt,
@@ -258,6 +260,7 @@ function AssessmentSlotDialogSession(props: AssessmentSlotDialogProps) {
               onChange={value => { if (!busyRef.current) { setRepeat(value); setError(null); } }} />}
 
           {ruleManaged && <p className="text-sm text-muted">{t("ruleManaged")}</p>}
+          <div className="grid gap-3 sm:grid-cols-2"><Label className="grid gap-1">{en ? "Mode" : "预约方式"}<Select disabled={locked} value={draft.mode || "campus"} onValueChange={mode => patch({ mode: mode as "campus" | "online" })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="campus">{en ? "At campus" : "到校"}</SelectItem><SelectItem value="online">{en ? "Online" : "线上"}</SelectItem></SelectContent></Select></Label><Label className="grid gap-1">{en ? "Joining instructions (shown after booking)" : "参加说明（预约成功后可见）"}<Textarea disabled={locked} maxLength={2000} required={draft.mode === "online"} value={draft.joiningInstructions || ""} onChange={e => patch({ joiningInstructions: e.target.value })} /></Label></div>
           <fieldset disabled={locked}>
             <legend className="mb-3 text-sm font-medium text-ink">{t("subjects")}</legend>
             <div className="grid grid-cols-2 gap-3">{[...new Set([...(options.topics ?? []).filter(topic => topic.enabled).map(topic => topic.id), ...draft.subjects])].map(subject => <Label key={subject} className="flex min-h-6 cursor-pointer items-center gap-2">

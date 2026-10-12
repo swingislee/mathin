@@ -21,19 +21,23 @@ export function bookedTimeLabel(start: string, end: string, weekdays: string[]) 
 }
 export function publishedAssessmentGrid(options: {
   availability: AssessmentAvailability | null; campusId: string; facilitatorId: string; weekIndex: number;
-  selectedSlotId: string; weekdays: string[]; periods: string[]; now?: number;
+  mode?: "campus" | "online"; selectedSlotId: string; weekdays: string[]; periods: string[]; now?: number;
 }) {
   const now = options.now ?? Date.now();
   const firstDay = options.availability?.from || assessmentDay(now);
-  const weeks = [0, 1].map(index => ({ index,
-    label: shortDay(shiftDay(firstDay, index * 7)) + "~" + shortDay(shiftDay(firstDay, index * 7 + 6)),
-    selected: options.weekIndex === index }));
-  const week = shiftDay(firstDay, options.weekIndex * 7);
+  const lastDay = options.availability?.to || shiftDay(firstDay, 13);
+  const dayCount = Math.max(1, Math.min(56, Math.round((Date.parse(lastDay) - Date.parse(firstDay)) / 86400000) + 1));
+  const weekCount = Math.ceil(dayCount / 7);
+  const weekIndex = Math.max(0, Math.min(weekCount - 1, options.weekIndex));
+  const weeks = Array.from({ length: weekCount }, (_, i) => i).map(index => ({ index,
+    label: shortDay(shiftDay(firstDay, index * 7)) + "~" + shortDay(shiftDay(firstDay, Math.min(dayCount - 1, index * 7 + 6))),
+    selected: weekIndex === index }));
+  const week = shiftDay(firstDay, weekIndex * 7);
   const days = Array.from({ length: 7 }, (_, index) => {
     const date = shiftDay(week, index);
     return { date, label: shortDay(date), weekday: options.weekdays[(new Date(date + "T12:00:00Z").getUTCDay() + 6) % 7] };
   });
-  const slots = (options.availability?.slots || []).filter(slot => slot.campusId === options.campusId && slot.facilitatorId === options.facilitatorId)
+  const slots = (options.availability?.slots || []).filter(slot => (options.mode === "online" || slot.campusId === options.campusId) && (slot.mode || "campus") === (options.mode || "campus") && slot.facilitatorId === options.facilitatorId)
     .map(slot => ({ ...slot, date: localTime(slot.startsAt).slice(0, 10), start: localTime(slot.startsAt).slice(11, 16), end: localTime(slot.endsAt).slice(11, 16) }));
   const ranges = slots.map(slot => `${slot.start}|${slot.end}`).filter((range, index, all) => all.indexOf(range) === index).sort();
   const timeRows = ranges.map(range => {
@@ -42,8 +46,8 @@ export function publishedAssessmentGrid(options: {
       cells: days.map(day => {
         const slot = slots.find(value => value.date === day.date && value.start === start && value.end === end);
         return { key: day.date + range, id: slot?.id || "", selected: Boolean(slot && options.selectedSlotId === slot.id),
-          available: Boolean(slot?.available && Date.parse(slot.startsAt) > now) };
+          available: Boolean(day.date <= lastDay && slot?.available && Date.parse(slot.startsAt) > now) };
       }) };
   });
-  return { weeks, days, timeRows, weekLabel: weeks[options.weekIndex].label };
+  return { weeks, days, timeRows, weekLabel: weeks[weekIndex].label };
 }

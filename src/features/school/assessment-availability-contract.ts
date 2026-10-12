@@ -8,6 +8,8 @@ export interface AssessmentAvailabilitySlot {
   id: string;
   teacherId: string;
   campusId: string;
+  mode?: "campus" | "online";
+  joiningInstructions?: string;
   subjects: AssessmentSlotSubject[];
   grades: number[];
   startsAt: string;
@@ -33,6 +35,8 @@ export interface AssessmentSlotDraft {
   slotId: string;
   teacherId: string;
   campusId: string;
+  mode?: "campus" | "online";
+  joiningInstructions?: string;
   subjects: AssessmentSlotSubject[];
   grades: number[];
   date: string;
@@ -47,6 +51,8 @@ export interface SaveAssessmentSlotInput {
   slotId: string;
   teacherId: string;
   campusId: string;
+  mode?: "campus" | "online";
+  joiningInstructions?: string;
   subjects: AssessmentSlotSubject[];
   grades: number[];
   startsAt: string;
@@ -59,7 +65,7 @@ export interface SaveAssessmentSlotInput {
 export function assessmentSlotDraft(slot: AssessmentAvailabilitySlot, timeZone: string): AssessmentSlotDraft {
   const start = zonedDateTimeInputValue(new Date(slot.startsAt), timeZone);
   return {
-    slotId: slot.id, teacherId: slot.teacherId, campusId: slot.campusId,
+    slotId: slot.id, teacherId: slot.teacherId, campusId: slot.campusId, mode: slot.mode || "campus", joiningInstructions: slot.joiningInstructions || "",
     subjects: [...slot.subjects], grades: [...slot.grades], date: start.slice(0, 10), startTime: start.slice(11),
     endDate: calendarDayKey(new Date(slot.endsAt), timeZone),
     endTime: zonedDateTimeInputValue(new Date(slot.endsAt), timeZone).slice(11),
@@ -72,9 +78,9 @@ export function assessmentSlotInput(draft: AssessmentSlotDraft, timeZone: string
   const endsAt = dateTimeInputToInstant(`${draft.endDate ?? draft.date}T${draft.endTime}`, timeZone);
   if (!startsAt || !endsAt || endsAt <= startsAt || !draft.teacherId || !draft.campusId || draft.subjects.length === 0) return null;
   const duration = (endsAt.getTime() - startsAt.getTime()) / 60_000;
-  if (duration < 5 || duration > 240) return null;
+  if (duration < 5 || duration > 240 || (draft.mode === "online" && !draft.joiningInstructions?.trim())) return null;
   return {
-    slotId: draft.slotId, teacherId: draft.teacherId, campusId: draft.campusId,
+    slotId: draft.slotId, teacherId: draft.teacherId, campusId: draft.campusId, mode: draft.mode || "campus", joiningInstructions: draft.joiningInstructions || "",
     subjects: [...draft.subjects], grades: [...draft.grades],
     startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString(),
     enabled: draft.enabled, expectedUpdatedAt: draft.expectedUpdatedAt,

@@ -6,8 +6,8 @@ export type ActivityFilter = { search: string; location: string; period: DateFil
 export function canReserve(activity: Pick<Activity, "bookable" | "remaining">) {
   return activity.bookable && activity.remaining !== 0;
 }
-export function canCancel(booking: Pick<Booking, "status" | "startsAt">, now = Date.now()) {
-  return booking.status === "booked" && Date.parse(booking.startsAt) > now;
+export function canCancel(booking: Pick<Booking, "status" | "startsAt" | "canCancel">, now = Date.now()) {
+  return booking.canCancel !== false && booking.status === "booked" && Date.parse(booking.startsAt) > now;
 }
 export function filterActivities(rows: Activity[], filter: ActivityFilter, locale: Locale, now = Date.now()) {
   const search = filter.search.trim().toLocaleLowerCase();

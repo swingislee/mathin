@@ -12,6 +12,7 @@ const instant = z.string().datetime({ offset: true });
 const topicId = z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/);
 const unique = <T,>(values: T[]) => values.length === new Set(values).size;
 const definitionSchema = z.object({
+  mode: z.enum(["campus", "online"]).optional(), joiningInstructions: z.string().max(2000).optional(),
   kind: z.enum(["open", "exclude"]), label: z.string().max(120), campusId: uuid.nullable(),
   topics: z.array(topicId).max(12).refine(unique), grades: z.array(z.number().int().min(-1).max(12)).max(14).refine(unique),
   weekdays: z.array(z.number().int().min(1).max(7)).max(7).refine(unique),

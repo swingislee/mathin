@@ -1,7 +1,7 @@
 import type { AssessmentTopic } from "./api-types";
 import { restoreAssessmentFields } from "./cache-compat";
 export type PendingAssessmentRequest = { id: string; facilitatorId: string; participantTimeOptions: string[] }
-  | { id: string; slotId: string; topics: AssessmentTopic[]; stageNumber: number; mode: "campus" };
+  | { id: string; slotId: string; topics: AssessmentTopic[]; stageNumber: number; mode: "campus" | "online" };
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const key = (account: string, participant: string) => "gezhi.assessment.pending.v1." + account + "." + participant;
 
@@ -10,7 +10,7 @@ export function pendingAssessment(account: string, participant: string): Pending
   const value = restoreAssessmentFields(wx.getStorageSync(key(account, participant))) as PendingAssessmentRequest | null;
   if (!value || !uuid.test(value.id)) return null;
   if ("slotId" in value) {
-    if (!uuid.test(value.slotId) || value.mode !== "campus" || !Number.isInteger(value.stageNumber) || value.stageNumber < -1 || value.stageNumber > 12
+    if (!uuid.test(value.slotId) || !["campus", "online"].includes(value.mode) || !Number.isInteger(value.stageNumber) || value.stageNumber < -1 || value.stageNumber > 12
       || !Array.isArray(value.topics) || !value.topics.length || value.topics.length > 12
       || value.topics.some(topic => typeof topic !== "string" || !(/^[a-z0-9][a-z0-9_-]{0,63}$/).test(topic)) || new Set(value.topics).size !== value.topics.length) return null;
     return { id: value.id, slotId: value.slotId, topics: [...value.topics], stageNumber: value.stageNumber, mode: value.mode };

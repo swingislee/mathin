@@ -36,9 +36,9 @@ export function assessmentRequest(value: Existing.ParentAssessmentRequest): Part
     state: value.state === "awaiting_parent" ? "awaiting_participant" : value.state === "awaiting_teacher" ? "awaiting_facilitator" : value.state,
     participantTimeOptions: value.parentTimeOptions, facilitatorTimeOptions: value.teacherTimeOptions,
     sharedTimeOptions: value.sharedTimeOptions, proposedStartsAt: value.proposedStartsAt,
-    confirmedStartsAt: value.scheduledAt, updatedAt: value.updatedAt, canConfirm: value.canConfirm,
+    confirmedStartsAt: value.scheduledAt, updatedAt: value.updatedAt, canConfirm: value.canConfirm, canCancel: value.canCancel, cancelUntil: value.cancelUntil,
     booking: value.booking && { slotId: value.booking.slotId, topics: value.booking.subjects, stageNumber: value.booking.grade,
-      mode: value.booking.mode, campus: value.booking.campus, endsAt: value.booking.endsAt },
+      mode: value.booking.mode, campus: value.booking.campus, endsAt: value.booking.endsAt, joiningInstructions: value.booking.joiningInstructions },
   };
 }
 
@@ -46,14 +46,14 @@ export function assessmentOverview(value: Existing.ParentAssessmentOverview): Pa
   return { participantId: value.participantId, timeZone: value.timeZone,
     eligibility: { canRequest: value.eligibility.canRequest,
       reason: value.eligibility.reason === "NO_ELIGIBLE_TEACHER" ? "NO_ELIGIBLE_FACILITATOR" : value.eligibility.reason },
-    topics: value.topics ?? [], facilitators: value.teachers, requests: value.requests.map(assessmentRequest) };
+    policy: value.policy, topics: value.topics ?? [], facilitators: value.teachers, requests: value.requests.map(assessmentRequest) };
 }
 
 export function assessmentAvailability(value: Existing.AssessmentAvailability): Participant.AssessmentAvailability {
-  return { participantId: value.participantId, timeZone: value.timeZone, from: value.from, to: value.to,
+  return { participantId: value.participantId, timeZone: value.timeZone, from: value.from, to: value.to, policy: value.policy,
     facilitators: value.teachers, campuses: value.campuses,
     slots: value.slots.map(row => ({ id: row.id, facilitatorId: row.teacherId, campusId: row.campusId,
-      startsAt: row.startsAt, endsAt: row.endsAt, available: row.available })) };
+      startsAt: row.startsAt, endsAt: row.endsAt, available: row.available, mode: row.mode })) };
 }
 
 export function activityOffers(values: Existing.CourseOffer[]): Participant.ActivityOffer[] {

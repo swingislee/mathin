@@ -17,6 +17,8 @@ export interface AssessmentRuleScope {
 
 export interface AssessmentRuleDefinition {
   kind: AssessmentRuleKind;
+  mode?: "campus" | "online";
+  joiningInstructions?: string;
   label: string;
   campusId: string | null;
   topics: AssessmentRuleTopic[];

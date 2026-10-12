@@ -37,10 +37,12 @@ export async function assessmentGet(request: Request) {
 export async function assessmentPost(request: Request) {
   const input = assessmentCommandSchema.parse(await readJson(request));
   const { db } = await authorize(request);
-  const result = input.action === "book"
-    ? await db.rpc("book_parent_assessment_slot", {
+  const result = input.action === "cancel"
+    ? await db.rpc("cancel_parent_assessment_slot", { p_id: input.id, p_student_id: input.participantId })
+    : input.action === "book"
+    ? await db.rpc("book_parent_assessment_slot_v2", {
       p_request_id: input.id, p_student_id: input.participantId, p_slot_id: input.slotId,
-      p_subjects: input.subjects, p_grade: input.grade,
+      p_subjects: input.subjects, p_grade: input.grade, p_mode: input.mode || "campus",
     })
     : input.action === "request"
     ? await db.rpc("request_parent_assessment", {
@@ -61,16 +63,18 @@ export async function assessmentPost(request: Request) {
     || [...value.booking.subjects].sort().join(",") !== [...input.subjects].sort().join(",")
     || !["confirmed", "completed", "cancelled"].includes(value.state)
     || (value.state !== "cancelled" && !value.scheduledAt))) throw new PortalError("UNAVAILABLE");
-  return response(value, input.action === "confirm" ? 200 : 201);
+  if (input.action === "cancel" && value.state !== "cancelled") throw new PortalError("UNAVAILABLE");
+  return response(value, input.action === "confirm" || input.action === "cancel" ? 200 : 201);
 }
 
 export async function assessmentSlotsGet(request: Request) {
   const query = new URL(request.url).searchParams;
+  if (query.getAll("mode").length > 1) throw new PortalError("VALIDATION");
   if (["participant", "subjects", "grade"].some(key => query.getAll(key).length !== 1)) throw new PortalError("VALIDATION");
   const input = assessmentSlotsQuerySchema.parse(Object.fromEntries(query));
   const { db } = await authorize(request);
-  const result = projection(assessmentAvailabilitySchema, assessmentResult(await db.rpc("parent_assessment_availability", {
-    p_student_id: input.participant, p_subjects: input.subjects, p_grade: input.grade,
+  const result = projection(assessmentAvailabilitySchema, assessmentResult(await db.rpc("parent_assessment_availability_v2", {
+    p_student_id: input.participant, p_subjects: input.subjects, p_grade: input.grade, p_mode: input.mode || "campus",
   })));
   if (result.participantId !== input.participant) throw new PortalError("UNAVAILABLE");
   return response(result);

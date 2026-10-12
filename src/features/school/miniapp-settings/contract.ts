@@ -3,6 +3,11 @@ import { miniappActions, miniappIcons, type MiniappSettings } from "../../../../
 
 export const miniappAssetPath = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/;
 export const miniappLocalized = (limit: number) => z.object({ zh: z.string().max(limit), en: z.string().max(limit) }).strict();
+export const bookingPolicySchema = z.object({ windowDays: z.number().int().min(1).max(56),
+  modes: z.array(z.enum(["campus", "online"])).min(1).max(2).refine(v => new Set(v).size === v.length),
+  bookingCutoffMinutes: z.number().int().min(0).max(10080), selfCancellation: z.boolean(),
+  cancellationCutoffMinutes: z.number().int().min(0).max(10080), instructions: miniappLocalized(2000),
+}).strict();
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/), target = z.string().regex(/^[a-zA-Z0-9_-]{0,64}$/);
 const image = z.string().refine(v => !v || miniappAssetPath.test(v));
 const unique = <T extends { id: string }>(rows: T[]) => new Set(rows.map(r => r.id)).size === rows.length;
@@ -10,6 +15,7 @@ const entry = z.object({ id, title: miniappLocalized(60), action: z.enum(miniapp
   icon: z.enum(miniappIcons), visible: z.boolean(), audience: z.enum(["all", "signedIn", "participants"]) }).strict();
 export const miniappSettingsSchema: z.ZodType<MiniappSettings> = z.object({
   version: z.literal(1),
+  booking: bookingPolicySchema.optional(),
   brand: z.object({ name: miniappLocalized(60), introduction: miniappLocalized(500), image, theme: z.enum(["paper", "leaf", "rose"]) }).strict(),
   home: z.array(z.object({ id, type: z.enum(["feature", "activities", "text", "image"]), visible: z.boolean(),
     title: miniappLocalized(120), body: miniappLocalized(2000), image, action: z.enum(miniappActions), target,

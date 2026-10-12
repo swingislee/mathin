@@ -7,6 +7,7 @@ import { newId } from "@/lib/uuid";
 import { defaultMiniappSettings, miniappText, type MiniappSettings, type MiniappHomeBlock } from "../../../../contracts/participant-api/miniapp-settings";
 import type { SettingsState } from "./contract";
 import { loadMiniappSettings, restoreMiniappSettings, saveMiniappSettings, uploadMiniappImage } from "./actions";
+import { BookingPolicyEditor } from "./BookingPolicyEditor";
 import { ActionField, LocalizedField, MenuEditor, MoveControls, moveItem, settingsField } from "./fields";
 
 const imageUrl = (path: string) => path ? `/api/v1/participant/settings/image?preview=1&path=${encodeURIComponent(path)}` : "";
@@ -42,7 +43,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [] }: { in
     <label className="grid gap-1 text-sm">{en ? "Image (JPG / PNG / WebP, up to 5 MB)" : "图片（JPG / PNG / WebP，5 MB 内）"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const file = e.target.files?.[0]; e.target.value = ""; if (file) upload(file, update); }} /></label>
     {path && <Button type="button" variant="ghost" size="sm" onClick={() => update("")}>{en ? "Remove image" : "移除图片"}</Button>}</div>;
   const patchHome = (index: number, change: Partial<MiniappHomeBlock>) => setConfig(v => ({ ...v, home: v.home.map((b, i) => i === index ? { ...b, ...change } : b) }));
-  const tabs = { home: en ? "Home" : "发现首页", menus: en ? "Menus" : "服务入口", brand: en ? "Brand" : "品牌", stages: en ? "Stages" : "阶段字典", history: en ? "History" : "发布历史" };
+  const tabs = { booking: en ? "Booking rules" : "预约规则", home: en ? "Home" : "发现首页", menus: en ? "Menus" : "服务入口", brand: en ? "Brand" : "品牌", stages: en ? "Stages" : "阶段字典", history: en ? "History" : "发布历史" };
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center gap-3"><Button disabled={busy || conflict} onClick={() => save(false)} variant="secondary">{en ? "Save draft" : "保存草稿"}</Button>
       <Button disabled={busy || conflict} onClick={() => save(true)}>{en ? "Publish" : "发布"}</Button>
@@ -84,6 +85,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [] }: { in
           <LocalizedField label={stage.stageNumber < 1 ? `K${stage.stageNumber + 3}` : `${en ? "Grade" : "年级"} ${stage.stageNumber}`} value={stage.label} max={60} onChange={label => setConfig(v => ({ ...v, stages: v.stages.map((g, i) => i === gi ? { ...g, stages: g.stages.map((s, j) => j === si ? { ...s, label } : s) } : g) }))} />
           <select className={settingsField + " max-w-xs"} aria-label={en ? "Stage group" : "所属阶段分组"} value={group.id} onChange={e => setConfig(v => ({ ...v, stages: v.stages.map(g => g.id === group.id ? { ...g, stages: g.stages.filter(s => s.id !== stage.id) } : g.id === e.target.value ? { ...g, stages: [...g.stages, stage] } : g) }))}>{config.stages.map(g => <option key={g.id} value={g.id}>{miniappText(g.label, locale)}</option>)}</select>
         </div>)}</section>)}</div>}
+      {tab === "booking" && <BookingPolicyEditor value={config.booking} en={en} onChange={booking => setConfig(v => ({ ...v, booking }))} />}
       {tab === "history" && <div className="divide-y divide-line">{!state.history.length && <p className="text-sm text-muted">{en ? "No published versions yet." : "暂无发布记录。"}</p>}{state.history.map(row => <div key={row.revision} className="flex items-center justify-between gap-3 py-3"><span className="text-sm">{new Date(row.publishedAt).toLocaleString(locale)} · {en ? "Version" : "版本"} {row.revision}</span><Button variant="secondary" size="sm" disabled={dirty || conflict} onClick={() => restore(row.revision)}>{en ? "Restore as draft" : "恢复为草稿"}</Button></div>)}</div>}
     </fieldset>
   </div>;

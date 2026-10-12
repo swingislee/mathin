@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bookingPolicySchema } from "@/features/school/miniapp-settings/contract";
 import type {
   AssessmentAvailability, AssessmentCommand, ParentAssessmentOverview, ParentAssessmentRequest,
 } from "../../../contracts/parent-api/portal";
@@ -17,14 +18,16 @@ const uniqueOptions = (exact = false) => z.array(exact ? exactTimeOption : timeO
 export const assessmentQuerySchema = z.object({ participant: uuid }).strict();
 const subjects = z.array(z.string().regex(/^[a-z0-9][a-z0-9_-]{0,63}$/)).min(1).max(12)
   .refine(values => new Set(values).size === values.length);
+const mode = z.enum(["campus", "online"]);
 const grade = z.number().int().min(-1).max(12);
-export const assessmentSlotsQuerySchema = z.object({ participant: uuid,
+export const assessmentSlotsQuerySchema = z.object({ participant: uuid, mode: mode.optional(),
   subjects: z.string().transform(value => value.split(",")).pipe(subjects), grade: z.string().regex(/^(-1|[0-9]|1[0-2])$/).transform(Number).pipe(grade),
 }).strict();
 
 export const assessmentCommandSchema: z.ZodType<AssessmentCommand> = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("cancel"), id: uuid, participantId: uuid }).strict(),
   z.object({ action: z.literal("book"), id: uuid, participantId: uuid, slotId: uuid,
-    subjects, grade, mode: z.literal("campus"),
+    subjects, grade, mode,
   }).strict(),
   z.object({
     action: z.literal("request"), id: uuid, participantId: uuid, teacherId: uuid,
@@ -40,13 +43,13 @@ export const assessmentCommandSchema: z.ZodType<AssessmentCommand> = z.discrimin
 const teacherSchema = z.object({ id: uuid, displayName: z.string() });
 const campusSchema = z.object({ id: uuid, name: z.string() });
 export const assessmentAvailabilitySchema: z.ZodType<AssessmentAvailability> = z.object({
-  participantId: uuid, timeZone: z.literal("Asia/Shanghai"), from: calendarDate, to: calendarDate,
+  policy: bookingPolicySchema.optional(), participantId: uuid, timeZone: z.literal("Asia/Shanghai"), from: calendarDate, to: calendarDate,
   teachers: z.array(teacherSchema).max(100), campuses: z.array(campusSchema).max(100),
-  slots: z.array(z.object({ id: uuid, teacherId: uuid, campusId: uuid,
+  slots: z.array(z.object({ id: uuid, teacherId: uuid, campusId: uuid, mode: mode.optional(),
     startsAt: dateTime, endsAt: dateTime, available: z.boolean(),
   })).max(2000),
 }).superRefine((value, context) => {
-  if (Date.parse(value.to) - Date.parse(value.from) !== 13 * 86400000
+  if ((Date.parse(value.to) - Date.parse(value.from) < 0 || Date.parse(value.to) - Date.parse(value.from) > 55 * 86400000)
     || value.slots.some(slot => Date.parse(slot.endsAt) <= Date.parse(slot.startsAt)
     || !value.teachers.some(teacher => teacher.id === slot.teacherId)
     || !value.campuses.some(campus => campus.id === slot.campusId))
@@ -59,8 +62,8 @@ export const assessmentRequestSchema: z.ZodType<ParentAssessmentRequest> = z.obj
   state: z.enum(["coordinating_time", "awaiting_teacher", "awaiting_parent", "confirmed", "completed", "cancelled"]),
   parentTimeOptions: uniqueOptions(), teacherTimeOptions: uniqueOptions(), sharedTimeOptions: uniqueOptions(true),
   proposedStartsAt: dateTime.nullable(), scheduledAt: dateTime.nullable(), updatedAt: dateTime,
-  canConfirm: z.boolean(),
-  booking: z.object({ slotId: uuid, subjects, grade, mode: z.literal("campus"), campus: campusSchema, endsAt: dateTime }).nullable().optional(),
+  canConfirm: z.boolean(), canCancel: z.boolean().optional(), cancelUntil: dateTime.nullable().optional(),
+  booking: z.object({ slotId: uuid, subjects, grade, mode, campus: campusSchema, endsAt: dateTime, joiningInstructions: z.string().max(2000).optional() }).nullable().optional(),
 }).superRefine((value, context) => {
   if (value.state !== "awaiting_parent" && value.proposedStartsAt !== null) {
     context.addIssue({ code: "custom", path: ["proposedStartsAt"], message: "INVALID_ASSESSMENT_PROJECTION" });
@@ -79,6 +82,7 @@ export const assessmentRequestSchema: z.ZodType<ParentAssessmentRequest> = z.obj
 });
 
 export const assessmentOverviewSchema: z.ZodType<ParentAssessmentOverview> = z.object({
+  policy: bookingPolicySchema.optional(),
   topics: z.array(z.object({ id: z.string(), label: z.object({ zh: z.string(), en: z.string() }), available: z.boolean() })).default([]),
   participantId: uuid, timeZone: z.literal("Asia/Shanghai"),
   eligibility: z.object({

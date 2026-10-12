@@ -11,15 +11,18 @@ type BookingView = { key: string; id: string; kind: "activity" | "assessment"; p
   phase: "upcoming" | "attended" | "cancelled" | "other"; cancellable: boolean };
 Page({
   data: { ...pageData("reservations"), authenticated: false, busy: false, loaded: false,
-    source: [] as Booking[], assessments: [] as AssessmentSource[], bookings: [] as BookingView[], participants: [] as Participant[],
+    bookings: [] as BookingView[], participants: [] as Participant[],
     participantNames: [] as string[], participantIndex: 0, participantId: "", filter: "upcoming", upcomingCount: 0, historyCount: 0 },
+  bookingSource: [] as Booking[],
+  assessmentSource: [] as AssessmentSource[],
   loadVersion: 0,
   onLoad(query: Record<string, string>) {
     if (["upcoming", "attended", "cancelled", "all"].includes(query.filter)) this.setData({ filter: query.filter });
   },
   onShow() {
     syncPage(this, "reservations");
-    this.setData({ authenticated: Boolean(session()), source: [], assessments: [], bookings: [], participants: [], participantNames: [],
+    this.bookingSource = []; this.assessmentSource = [];
+    this.setData({ authenticated: Boolean(session()), bookings: [], participants: [], participantNames: [],
       participantIndex: 0, loaded: false, error: "", loading: false });
     if (session()) void this.load();
   },
@@ -42,7 +45,8 @@ Page({
       if (version !== this.loadVersion) return;
       const assessments = assessmentReads.filter((row): row is AssessmentSource => row !== null);
       const participantIndex = account.participants.findIndex(row => row.id === this.data.participantId) + 1;
-      this.setData({ source: bookings, assessments, participants: account.participants, loaded: true,
+      this.bookingSource = bookings; this.assessmentSource = assessments;
+      this.setData({ participants: account.participants, loaded: true,
         authenticated: Boolean(session()), error: partial ? this.data.copy.bookingsReadIncomplete : "",
         participantNames: [this.data.copy.allParticipants, ...account.participants.map(row => row.name)],
         participantIndex, participantId: participantIndex ? account.participants[participantIndex - 1].id : "" });
@@ -53,12 +57,12 @@ Page({
   applyFilter() {
     const c = this.data.copy;
     const labels = { booked: c.booked, attended: c.attended, no_show: c.noShow, cancelled: c.cancelled };
-    const source: BookingView[] = this.data.source.map(row => ({ ...row, key: "activity:" + row.id, kind: "activity",
+    const source: BookingView[] = this.bookingSource.map(row => ({ ...row, key: "activity:" + row.id, kind: "activity",
       label: text(row.title), when: date(row.startsAt), details: "", statusText: labels[row.status], cancellable: canCancel(row),
-      phase: canCancel(row) ? "upcoming" : row.status === "attended" ? "attended" : row.status === "cancelled" ? "cancelled" : "other" }));
+      phase: row.status === "booked" && Date.parse(row.startsAt) > Date.now() ? "upcoming" : row.status === "attended" ? "attended" : row.status === "cancelled" ? "cancelled" : "other" }));
     const assessmentLabels = { coordinating_time: c.assessmentCoordinating, awaiting_facilitator: c.awaitingFacilitator,
       awaiting_participant: c.awaitingParticipant, confirmed: c.assessmentConfirmed, completed: c.assessmentCompleted, cancelled: c.cancelled };
-    for (const { participant, overview } of this.data.assessments) {
+    for (const { participant, overview } of this.assessmentSource) {
       for (const row of overview.requests) {
         if (row.participantId !== participant.id) continue;
         const startsAt = ["confirmed", "completed"].includes(row.state) ? row.confirmedStartsAt : null;
@@ -67,7 +71,7 @@ Page({
         source.push({ key: "assessment:" + row.id, id: row.id, kind: "assessment", participantId: participant.id,
           participantName: participant.name, label: c.assessmentKind, startsAt,
           when: startsAt ? row.booking ? bookedTimeLabel(startsAt, row.booking.endsAt, c.fullWeekdays.split(",")) : date(startsAt) : c.toBeConfirmed,
-          location: row.booking?.campus.name || "", details: [fields?.topicLabel, fields?.stageLabel,
+          location: row.booking?.mode === "online" ? (this.data.locale === "en" ? "Online" : "线上") : row.booking?.campus.name || "", details: [fields?.topicLabel, fields?.stageLabel,
             row.facilitator ? c.assessmentFacilitator + " · " + row.facilitator.displayName : ""].filter(Boolean).join(" · "),
           statusText: assessmentLabels[row.state], cancellable: false,
           phase: row.state === "cancelled" ? "cancelled" : row.state === "completed" ? "attended"
@@ -106,7 +110,7 @@ Page({
   cancel(e: WechatMiniprogram.TouchEvent) {
     if (this.data.busy) return;
     const id = String(e.currentTarget.dataset.id);
-    if (!this.data.source.some(row => row.id === id && canCancel(row))) return;
+    if (!this.bookingSource.some(row => row.id === id && canCancel(row))) return;
     wx.showModal({ title: this.data.copy.cancelBooking, content: this.data.copy.cancelConfirm,
       confirmText: this.data.copy.confirmCancel, cancelText: this.data.copy.keep,
       success: result => { if (result.confirm) void this.doCancel(id); } });
