@@ -7,7 +7,7 @@
       "title": "小程序与后台配置化及性能重构",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/MINI-EXTENSIBILITY-20261012.md",
@@ -31,8 +31,8 @@
         "src/lib/database.types.ts",
         "scripts/sync-participant-contract.mjs"
       ],
-      "checkpoint": null,
-      "next": "实现统一发布配置、页面与菜单、活动图文及图片性能、扩展表单与预约规则，随后接入文档、联系服务和内容模板；生产与上传暂缓。"
+      "checkpoint": "3787040b894d6613aeb43ee408320b7ebf6670f6",
+      "next": "本次配置化与性能重构开发交付完成，本机迁移及定向检查通过；从小程序设置与各业务编辑入口验收。手机、弱网和教学体验待用户确认；生产部署、小程序上传及提审继续暂缓。后续按具体验收反馈在新任务继续。"
     },
     {
       "id": "MINI-ACTIVITY-PAGE-20261012",
