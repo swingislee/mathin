@@ -4,18 +4,20 @@ import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { newId } from "@/lib/uuid";
-import { defaultMiniappSettings, miniappText, type MiniappSettings, type MiniappHomeBlock } from "../../../../contracts/participant-api/miniapp-settings";
+import { defaultMiniappSettings, miniappText, type MiniappSettings, type MiniappHomeBlock, type MiniappContact } from "../../../../contracts/participant-api/miniapp-settings";
 import type { SettingsState } from "./contract";
 import { loadMiniappSettings, restoreMiniappSettings, saveMiniappSettings, uploadMiniappImage } from "./actions";
 import { BookingPolicyEditor } from "./BookingPolicyEditor";
+import { ContactsEditor } from "./ContactsEditor";
 import { ActionField, LocalizedField, MenuEditor, MoveControls, moveItem, settingsField } from "./fields";
 
 const imageUrl = (path: string) => path ? `/api/v1/participant/settings/image?preview=1&path=${encodeURIComponent(path)}` : "";
-export function MiniappSettingsEditor({ initial, locale, activities = [] }: { initial: SettingsState; locale: "zh" | "en"; activities?: { id: string; title: string }[] }) {
+export function MiniappSettingsEditor({ initial, locale, activities = [], contactOptions, initialTab = "home" }: { initial: SettingsState; locale: "zh" | "en"; activities?: { id: string; title: string }[]; initialTab?: string;
+  contactOptions?: { campuses: { id: string; name: string }[]; legacy: MiniappContact[] } }) {
   const en = locale === "en";
   const [state, setState] = useState(initial), [config, setConfig] = useState(initial.draft || defaultMiniappSettings);
   const [baseline, setBaseline] = useState(JSON.stringify(initial.draft || defaultMiniappSettings()));
-  const [tab, setTab] = useState("home"), [notice, setNotice] = useState(""), [conflict, setConflict] = useState(false), [busy, start] = useTransition();
+  const [tab, setTab] = useState(initialTab), [notice, setNotice] = useState(""), [conflict, setConflict] = useState(false), [busy, start] = useTransition();
   const dirty = JSON.stringify(config) !== baseline;
   useEffect(() => {
     if (!dirty) return;
@@ -35,15 +37,15 @@ export function MiniappSettingsEditor({ initial, locale, activities = [] }: { in
   }
   function reload() { run(async () => { const r = await loadMiniappSettings(); if (r.ok) { accept(r.data); setNotice(""); } else setNotice(failure(r.code)); }); }
   function restore(revision: number) { run(async () => { const r = await restoreMiniappSettings(revision, state.revision); if (r.ok) { accept(r.data); setNotice(en ? "Restored as a draft. Preview and publish when ready." : "已恢复为草稿，预览后可重新发布。"); } else { setNotice(failure(r.code)); setConflict(r.code === "FORM_CHANGED"); } }); }
-  function upload(file: File, update: (path: string) => void) { run(async () => {
-    const form = new FormData(); form.set("image", file); const r = await uploadMiniappImage(form);
+  function upload(file: File, update: (path: string) => void, qr = false) { run(async () => {
+    const form = new FormData(); form.set("image", file); if (qr) form.set("kind", "qr"); const r = await uploadMiniappImage(form);
     if (r.ok) { update(r.data.path); setNotice(en ? "Image optimized and uploaded. Save or publish to use it." : "图片已压缩并上传，保存或发布后使用。"); } else setNotice(failure(r.code));
   }); }
   const imagePicker = (path: string, update: (path: string) => void) => <div className="flex flex-wrap items-center gap-3">{path && <img src={imageUrl(path)} className="h-20 w-32 rounded-lg object-contain" alt={en ? "Preview" : "预览"} />}
     <label className="grid gap-1 text-sm">{en ? "Image (JPG / PNG / WebP, up to 5 MB)" : "图片（JPG / PNG / WebP，5 MB 内）"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const file = e.target.files?.[0]; e.target.value = ""; if (file) upload(file, update); }} /></label>
     {path && <Button type="button" variant="ghost" size="sm" onClick={() => update("")}>{en ? "Remove image" : "移除图片"}</Button>}</div>;
   const patchHome = (index: number, change: Partial<MiniappHomeBlock>) => setConfig(v => ({ ...v, home: v.home.map((b, i) => i === index ? { ...b, ...change } : b) }));
-  const tabs = { booking: en ? "Booking rules" : "预约规则", home: en ? "Home" : "发现首页", menus: en ? "Menus" : "服务入口", brand: en ? "Brand" : "品牌", stages: en ? "Stages" : "阶段字典", history: en ? "History" : "发布历史" };
+  const tabs = { booking: en ? "Booking rules" : "预约规则", home: en ? "Home" : "发现首页", menus: en ? "Menus" : "服务入口", contacts: en ? "Contacts" : "联系服务", brand: en ? "Brand" : "品牌", stages: en ? "Stages" : "阶段字典", history: en ? "History" : "发布历史" };
   return <div className="space-y-5">
     <div className="flex flex-wrap items-center gap-3"><Button disabled={busy || conflict} onClick={() => save(false)} variant="secondary">{en ? "Save draft" : "保存草稿"}</Button>
       <Button disabled={busy || conflict} onClick={() => save(true)}>{en ? "Publish" : "发布"}</Button>
@@ -86,6 +88,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [] }: { in
           <select className={settingsField + " max-w-xs"} aria-label={en ? "Stage group" : "所属阶段分组"} value={group.id} onChange={e => setConfig(v => ({ ...v, stages: v.stages.map(g => g.id === group.id ? { ...g, stages: g.stages.filter(s => s.id !== stage.id) } : g.id === e.target.value ? { ...g, stages: [...g.stages, stage] } : g) }))}>{config.stages.map(g => <option key={g.id} value={g.id}>{miniappText(g.label, locale)}</option>)}</select>
         </div>)}</section>)}</div>}
       {tab === "booking" && <BookingPolicyEditor value={config.booking} en={en} onChange={booking => setConfig(v => ({ ...v, booking }))} />}
+      {tab === "contacts" && (contactOptions ? <ContactsEditor value={config.contacts} legacy={contactOptions.legacy} campuses={contactOptions.campuses} stages={config.stages} locale={locale} onChange={contacts => setConfig(v => ({ ...v, contacts }))} upload={(file, update) => upload(file, update, true)} /> : <p className="text-sm text-muted">{en ? "Contact options could not be loaded. Reload to edit." : "联系服务选项暂未载入，请刷新后编辑。"}</p>)}
       {tab === "history" && <div className="divide-y divide-line">{!state.history.length && <p className="text-sm text-muted">{en ? "No published versions yet." : "暂无发布记录。"}</p>}{state.history.map(row => <div key={row.revision} className="flex items-center justify-between gap-3 py-3"><span className="text-sm">{new Date(row.publishedAt).toLocaleString(locale)} · {en ? "Version" : "版本"} {row.revision}</span><Button variant="secondary" size="sm" disabled={dirty || conflict} onClick={() => restore(row.revision)}>{en ? "Restore as draft" : "恢复为草稿"}</Button></div>)}</div>}
     </fieldset>
   </div>;

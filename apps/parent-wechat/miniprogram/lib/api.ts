@@ -54,8 +54,8 @@ export async function get<T>(resource:string,query="",authenticated=true):Promis
 export async function post<T>(data:object,authenticated=true):Promise<T>{
   return send<T>("portal","POST",data,authenticated?await accessToken():undefined);
 }
-export async function serviceContacts(): Promise<import("./api-types").ServiceContact[]> {
-  return send("services", "GET");
+export async function serviceContacts(stageNumber?: number): Promise<import("./api-types").ServiceContact[]> {
+  return send("services" + (stageNumber === undefined ? "" : "?stage=" + stageNumber), "GET");
 }
 export async function miniappSettings(revision?: number): Promise<MiniappSettingsPublication> {
   return send("settings" + (revision === undefined ? "" : "?revision=" + revision), "GET");

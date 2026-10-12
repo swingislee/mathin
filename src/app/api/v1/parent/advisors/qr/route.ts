@@ -1,15 +1,18 @@
-import { getSupabaseConfig } from "@/lib/supabase/config";
+import { createClient as staffClient } from "@/lib/supabase/server";
 import { failure, PortalError } from "@/features/parent-portal/server";
+import { miniappContentImageGet, miniappPublicClient } from "@/features/participant-portal/settings-server";
+import { publishedImageResponse } from "@/features/participant-portal/published-image";
+import type { RegistrationRpc } from "@/features/parent-portal/course-server";
+import { miniappAssetPath } from "@/features/school/miniapp-settings/contract";
 export async function GET(request: Request) {
   try {
-    const path = new URL(request.url).searchParams.get("path") || "";
+    const query = new URL(request.url).searchParams, path = query.get("path") || "", preview = query.get("preview") === "1";
+    if (miniappAssetPath.test(path)) return await miniappContentImageGet(request);
     if (!/^-?\d{1,2}\/[0-9a-f-]{36}\.(png|jpg|webp)$/.test(path)) throw new PortalError("NOT_FOUND");
-    const { url } = getSupabaseConfig();
-    const result = await fetch(`${url}/storage/v1/object/public/parent-advisor-qrcodes/${path}`, { cache: "no-store" });
-    if (!result.ok) throw new PortalError(result.status === 404 ? "NOT_FOUND" : "UNAVAILABLE");
-    const bytes = await result.arrayBuffer();
-    if (bytes.byteLength > 1048576) throw new PortalError("UNAVAILABLE");
-    const type = path.endsWith(".png") ? "image/png" : path.endsWith(".jpg") ? "image/jpeg" : "image/webp";
-    return new Response(bytes, { headers: { "Content-Type": type, "X-Content-Type-Options": "nosniff", "Cache-Control": "public, max-age=3600" } });
+    const db = preview ? await staffClient() : miniappPublicClient();
+    return await publishedImageResponse(request, db, "parent-advisor-qrcodes", path, async () => {
+      const r = await (db.rpc as unknown as RegistrationRpc)("can_access_miniapp_advisor_qr", { p_path: path, p_preview: preview });
+      return !r.error && r.data === true;
+    }, preview);
   } catch (error) { return failure(error); }
 }

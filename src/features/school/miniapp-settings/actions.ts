@@ -3,10 +3,10 @@ import { z } from "zod";
 import { newId } from "@/lib/uuid";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
-import type { MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
+import type { MiniappSettings, MiniappContact } from "../../../../contracts/participant-api/miniapp-settings";
 import { authorizedClient } from "../actions/guards";
 import { miniappSettingsSchema, settingsStateSchema, type SettingsState } from "./contract";
-import { prepareMiniappImage } from "./images";
+import { prepareMiniappImage, prepareMiniappQrImage } from "./images";
 
 const errors = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION", "FORM_CHANGED"];
 async function rpcClient() {
@@ -25,6 +25,17 @@ export async function loadMiniappActivityChoices(): Promise<ActionResult<{ id: s
     const { rpc } = await rpcClient(), r = await rpc("miniapp_participant_activity_catalog", {});
     if (r.error) throw new Error(r.error.message);
     return { ok: true, data: z.array(z.object({ id: z.string().uuid(), title: z.string() })).parse(r.data) };
+  } catch (error) { return actionError(error, errors); }
+}
+export async function loadMiniappContactOptions(): Promise<ActionResult<{ campuses: { id: string; name: string }[]; legacy: MiniappContact[] }>> {
+  try {
+    const { rpc } = await rpcClient();
+    const [campuses, legacy] = await Promise.all([rpc("miniapp_contact_campuses", {}), rpc("parent_advisor_settings", {})]);
+    if (campuses.error || legacy.error) throw new Error(campuses.error?.message || legacy.error!.message);
+    const rows = z.array(z.object({ grade: z.number().int(), teacherName: z.string(), phone: z.string(), qrPath: z.string(), enabled: z.boolean() })).parse(legacy.data);
+    return { ok: true, data: { campuses: z.array(z.object({ id: z.string().uuid(), name: z.string() })).parse(campuses.data),
+      legacy: rows.map(r => ({ id: `legacy-${r.grade}`, name: { zh: r.teacherName, en: "" }, service: { zh: "", en: "" }, phone: r.phone,
+        qrImage: r.qrPath, stageNumbers: [r.grade], campusId: "", hours: { zh: "", en: "" }, address: { zh: "", en: "" }, visible: r.enabled })) } };
   } catch (error) { return actionError(error, errors); }
 }
 export async function saveMiniappSettings(config: MiniappSettings, revision: number, publish: boolean): Promise<ActionResult<SettingsState>> {
@@ -48,7 +59,7 @@ export async function uploadMiniappImage(form: FormData): Promise<ActionResult<{
   try {
     const { supabase } = await rpcClient(), file = form.get("image");
     if (!(file instanceof File)) throw new Error("VALIDATION");
-    const images = await prepareMiniappImage(file), id = newId(), path = `${id}.webp`;
+    const images = await (form.get("kind") === "qr" ? prepareMiniappQrImage(file) : prepareMiniappImage(file)), id = newId(), path = `${id}.webp`;
     for (const [name, bytes] of [[path, images.display], [`${id}.thumb.webp`, images.thumbnail]] as const) {
       const r = await supabase.storage.from("miniapp-content-images").upload(name, bytes, { contentType: "image/webp", upsert: false });
       if (r.error) throw new Error(r.error.message);

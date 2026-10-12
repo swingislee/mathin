@@ -11,11 +11,18 @@ export const bookingPolicySchema = z.object({ windowDays: z.number().int().min(1
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/), target = z.string().regex(/^[a-zA-Z0-9_-]{0,64}$/);
 const image = z.string().refine(v => !v || miniappAssetPath.test(v));
 const unique = <T extends { id: string }>(rows: T[]) => new Set(rows.map(r => r.id)).size === rows.length;
+export const contactImagePath = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp|-?\d{1,2}\/[0-9a-f-]{36}\.(?:png|jpg|webp))$/;
+export const miniappContactSchema = z.object({ id, name: miniappLocalized(60), service: miniappLocalized(120),
+  phone: z.string().regex(/^(?:|\+?\d[\d -]{5,23})$/), qrImage: z.string().refine(v => !v || contactImagePath.test(v)),
+  stageNumbers: z.array(z.number().int().min(-1).max(12)).max(14).refine(v => new Set(v).size === v.length),
+  campusId: z.union([z.literal(""), z.string().uuid()]), hours: miniappLocalized(500), address: miniappLocalized(500), visible: z.boolean(),
+}).strict().refine(v => !v.visible || !!(v.phone || v.qrImage));
 const entry = z.object({ id, title: miniappLocalized(60), action: z.enum(miniappActions), target,
   icon: z.enum(miniappIcons), visible: z.boolean(), audience: z.enum(["all", "signedIn", "participants"]) }).strict();
 export const miniappSettingsSchema: z.ZodType<MiniappSettings> = z.object({
   version: z.literal(1),
   booking: bookingPolicySchema.optional(),
+  contacts: z.array(miniappContactSchema).max(40).refine(unique).optional(),
   brand: z.object({ name: miniappLocalized(60), introduction: miniappLocalized(500), image, theme: z.enum(["paper", "leaf", "rose"]) }).strict(),
   home: z.array(z.object({ id, type: z.enum(["feature", "activities", "text", "image"]), visible: z.boolean(),
     title: miniappLocalized(120), body: miniappLocalized(2000), image, action: z.enum(miniappActions), target,
@@ -35,4 +42,4 @@ export const settingsStateSchema = z.object({ draft: miniappSettingsSchema.nulla
   history: z.array(z.object({ revision: z.number().int().positive(), publishedAt: z.string() })).max(50),
 });
 export type SettingsState = z.infer<typeof settingsStateSchema>;
-export function settingsImagePaths(config: MiniappSettings): string[] { return [config.brand.image, ...config.home.map(b => b.image)].filter(Boolean); }
+export function settingsImagePaths(config: MiniappSettings): string[] { return [config.brand.image, ...config.home.map(b => b.image), ...(config.contacts || []).map(c => c.qrImage).filter(p => !p.includes("/"))].filter(Boolean); }

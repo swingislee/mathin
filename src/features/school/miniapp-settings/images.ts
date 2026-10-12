@@ -18,3 +18,16 @@ export async function prepareMiniappImage(file: File) {
     return { display, thumbnail };
   } catch { throw new Error("VALIDATION"); }
 }
+
+/** Keep QR edges intact while removing metadata and bounding decoded pixels. */
+export async function prepareMiniappQrImage(file: File) {
+  if (!file.size || file.size > MINIAPP_UPLOAD_BYTES || !["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("VALIDATION");
+  try {
+    const source = sharp(Buffer.from(await file.arrayBuffer()), { limitInputPixels: 32_000_000, animated: false, failOn: "warning" }).rotate();
+    const meta = await source.metadata();
+    if (!["jpeg", "png", "webp"].includes(meta.format || "") || (meta.pages || 1) > 1) throw new Error("VALIDATION");
+    const display = await source.resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true, kernel: "nearest" }).webp({ lossless: true, effort: 4 }).toBuffer();
+    if (display.length > 2 * 1024 * 1024) throw new Error("VALIDATION");
+    return { display, thumbnail: display };
+  } catch { throw new Error("VALIDATION"); }
+}

@@ -6,7 +6,7 @@ import { miniappSettingsSchema } from "../src/features/school/miniapp-settings/c
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/features/parent-portal/server", () => ({ PortalError: class extends Error { constructor(public code: string) { super(code); } } }));
-import { prepareMiniappImage } from "../src/features/school/miniapp-settings/images";
+import { prepareMiniappImage, prepareMiniappQrImage } from "../src/features/school/miniapp-settings/images";
 import { publishedImageResponse } from "../src/features/participant-portal/published-image";
 
 describe("Mini Program publication boundaries", () => {
@@ -27,6 +27,15 @@ describe("Mini Program publication boundaries", () => {
     expect(display.format).toBe("webp"); expect(display.width).toBe(1600); expect(display.exif).toBeUndefined();
     expect(thumb.width).toBe(480); expect(result.display.byteLength).toBeLessThan(2 * 1024 * 1024);
     await expect(prepareMiniappImage(new File(["not a photo"], "photo.png", { type: "image/png" }))).rejects.toThrow("VALIDATION");
+  });
+  it("preserves QR pixels in lossless output and rejects undecodable QR uploads", async () => {
+    const pixels = new Uint8Array(128 * 128 * 3).map((_, i) => ((Math.floor(i / 3) % 128 < 64) === (Math.floor(i / 384) < 64)) ? 0 : 255);
+    const source = await sharp(pixels, { raw: { width: 128, height: 128, channels: 3 } }).withMetadata().png().toBuffer();
+    const result = await prepareMiniappQrImage(new File([new Uint8Array(source)], "qr.png", { type: "image/png" }));
+    const decoded = await sharp(result.display).raw().toBuffer();
+    expect(new Uint8Array(decoded)).toEqual(pixels);
+    expect((await sharp(result.display).metadata()).exif).toBeUndefined();
+    await expect(prepareMiniappQrImage(new File(["invalid"], "qr.png", { type: "image/png" }))).rejects.toThrow("VALIDATION");
   });
   it("rechecks visibility before returning a cached image or a 304 response", async () => {
     const download = vi.fn(async () => ({ data: new Blob(["image bytes"]), error: null }));

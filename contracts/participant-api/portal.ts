@@ -196,4 +196,5 @@ export type ActivityRequest = {
 };
 export type ActivityRequestCommand = { action: "apply"; id: string; publicationId: string;
   kind: "activity"; revision: number; participantId: string; pageRevision?: number; answers?: QuestionAnswers } | { action: "cancel"; id: string };
-export type ServiceContact = { stageNumber: number; facilitatorName: string; phone: string; qrCodeUrl: string };
+export type ServiceContact = { stageNumber: number; facilitatorName: string; phone: string; qrCodeUrl: string;
+  id?: string; name?: LocalizedText; service?: LocalizedText; campusId?: string; campusName?: string; hours?: LocalizedText; address?: LocalizedText };

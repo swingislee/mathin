@@ -71,7 +71,7 @@ export function activityRequests(values: (Existing.CourseApplication & { hasAnsw
     priceCents: row.priceCents, status: row.status, createdAt: row.createdAt, resolvedAt: row.resolvedAt, reply: row.reply, canCancel: row.canCancel, hasAnswers: row.hasAnswers }));
 }
 
-export function serviceContacts(values: Existing.AdvisorContact[]): Participant.ServiceContact[] {
-  return values.map(row => ({ stageNumber: row.grade, facilitatorName: row.teacherName, phone: row.phone,
+export function serviceContacts(values: (Existing.AdvisorContact & Partial<Pick<Participant.ServiceContact, "id" | "name" | "service" | "campusId" | "campusName" | "hours" | "address">>)[]): Participant.ServiceContact[] {
+  return values.map(({ grade, teacherName, ...row }) => ({ ...row, stageNumber: grade, facilitatorName: teacherName,
     qrCodeUrl: row.qrCodeUrl.replace("/api/v1/parent/advisors/qr?", "/api/v1/participant/services/qr?") }));
 }

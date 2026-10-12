@@ -16,6 +16,10 @@ export interface MiniappHomeBlock {
 }
 export interface MiniappStage { id: string; stageNumber: number; label: MiniappText; visible: boolean }
 export interface MiniappStageGroup { id: string; label: MiniappText; stages: MiniappStage[] }
+export interface MiniappContact {
+  id: string; name: MiniappText; service: MiniappText; phone: string; qrImage: string;
+  stageNumbers: number[]; campusId: string; hours: MiniappText; address: MiniappText; visible: boolean;
+}
 export interface MiniappSettings {
   version: 1;
   brand: { name: MiniappText; introduction: MiniappText; image: string; theme: "paper" | "leaf" | "rose" };
@@ -24,6 +28,7 @@ export interface MiniappSettings {
   accountGroups: { id: string; title: MiniappText; entries: MiniappEntry[] }[];
   stages: MiniappStageGroup[];
   booking?: import("./booking-policy").BookingPolicy;
+  contacts?: MiniappContact[];
 }
 export interface MiniappSettingsPublication { revision: number; publishedAt: string | null; config: MiniappSettings | null }
 export interface ConsentDocuments {
