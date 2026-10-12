@@ -1,9 +1,8 @@
 import {get,post,requestId,getRegistrationHistory,session} from "../../lib/api";
 import type {IntakeForm,RegistrationRecord} from "../../lib/api-types";
 import {pageData,syncPage,text,errorText,date,loginPage} from "../../lib/page";
-import {participantWording} from "../../lib/participant-wording";
 import {openOnboarding} from "../../lib/onboarding";
-const formText=(value:Parameters<typeof text>[0])=>participantWording(text(value));
+const formText=(value:Parameters<typeof text>[0])=>text(value);
 type FieldView={id:string;type:string;label:string;required:boolean;value:string;index:number;options:{id:string;label:string;checked:boolean}[]};
 function recordView(record:RegistrationRecord){return {id:record.id,title:formText(record.title),submittedAt:date(record.submittedAt),expanded:false,
   sections:record.sections.map(section=>({title:formText(section.title),fields:section.fields.map(field=>({label:formText(field.label),value:formText(field.value)}))}))};}

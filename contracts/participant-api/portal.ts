@@ -1,4 +1,5 @@
 import type { FamilyForm, FamilyChild } from "./onboarding";
+import type { FormQuestion } from "./form-questions";
 /** 小程序专用 API 合同。服务端映射既有业务数据；共享表和其他客户端沿用原合同。 */
 export type Locale = "zh" | "en";
 export type GuardianBindingPreview = { maskedName: string; expiresAt: string };
@@ -10,13 +11,7 @@ export type GuardianBindingStep = { state: "phone_required"; ticket: string } | 
   policyText: { zh: { privacy: string; children: string }; en: { privacy: string; children: string } };
 };
 export type LocalizedText = { zh: string; en: string };
-export type FormField = {
-  id: string;
-  type: "text" | "phone" | "textarea" | "select" | "multiselect";
-  label: LocalizedText;
-  required: boolean;
-  options?: { id: string; label: LocalizedText }[];
-};
+export type FormField = FormQuestion;
 export type IntakeForm = {
   slug: string; version: number; title: LocalizedText; description: LocalizedText;
   privacyNotice: LocalizedText; fields: FormField[];

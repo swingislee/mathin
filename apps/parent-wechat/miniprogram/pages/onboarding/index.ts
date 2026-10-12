@@ -1,11 +1,14 @@
 import { ApiError, authorizeWechatPhone, bindWechat, cancelPendingAuthentication, completeWechatFamily, getRegistrationForm, getRegistrationReceipt, submitRegistration, requestId, loginWithWechat, session, verifiedWechatForm, wechatAuthStatus } from "../../lib/api";
-import { pageData, currentLocale, errorText, loginPage, localized } from "../../lib/page";
+import { pageData, currentLocale, errorText, loginPage, localized, syncPage } from "../../lib/page";
 import { cancelLogin, clearNavigation, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
 import { clearOnboardingEntry, clearPromotionScene, onboardingCopy, pendingPromotionScene, rememberPromotionScene, saveOnboardingPreferences, takeOnboardingProof, takeOnboardingRequest, type FamilyRegistration, type PhoneResult, type RegistrationLocation } from "../../lib/onboarding";
 import { familyAnswerErrors, type FamilyForm } from "../../lib/onboarding-form";
 import { displayFamilyForm, onboardingChoices, type DisplayFamilyField } from "../../lib/onboarding-presentation";
 import { registrationLocation } from "../../lib/registration-location";
 import { participantWording } from "../../lib/participant-wording";
+import type { QuestionAnswers } from "../../lib/form-questions";
+import { catalogStages } from "../../lib/catalog";
+import { miniappText } from "../../lib/miniapp-settings";
 
 Page({
   data: { ...pageData("account"), words: onboardingCopy.zh, stage: "wechat", busy: false, ticket: "", scene: "", maskedPhone: "",
@@ -14,7 +17,7 @@ Page({
     values: { parentName: "", childName: "", school: "" }, selection: { relation: 0, gender: 0, grade: 0 },
     choices: {} as Record<string, string[]>, fields: [] as DisplayFamilyField[], formTitle: "", formDescription: "",
     interests: [] as string[], selectedInterests: {} as Record<string, boolean>, consent: false,
-    policy: null as PhoneResult | null },
+    policy: null as PhoneResult | null, extraAnswers: {} as QuestionAnswers, gradeValues: [null] as (number | null)[] },
   active: true,
   submissionLocation: null as Promise<RegistrationLocation> | null,
   onLoad(query: Record<string,string | undefined>) {
@@ -37,6 +40,15 @@ Page({
     this.active = false; this.submissionLocation = null;
     cancelPendingAuthentication(); clearOnboardingEntry();
     this.setData({ busy: false, ticket: "", policy: null });
+  },
+  onShow() { syncPage(this, "account"); this.refreshGradeChoices(); },
+  configurationChanged() { this.refreshGradeChoices(); },
+  refreshGradeChoices(selected?: number | null) {
+    const value = selected === undefined ? this.data.gradeValues[this.data.selection.grade] ?? null : selected;
+    const all = this.data.policy?.form.stages || catalogStages(true);
+    const visible = all.filter(row => row.visible || row.stageNumber === value), rows = visible.length ? visible : all;
+    const gradeValues = [null, ...rows.map(row => row.stageNumber)];
+    this.setData({ gradeValues, "choices.grade": [this.data.words.chooseGrade, ...rows.map(row => miniappText(row.label, currentLocale()))], "selection.grade": Math.max(0, gradeValues.indexOf(value)) });
   },
   discover() {
     if (this.data.busy && (this.data.stage === "family" || this.data.stage === "bind")) return;
@@ -102,6 +114,7 @@ Page({
     const participants = policy.existingParticipants || [];
     this.setData({ stage: "family", ticket: policy.ticket, maskedPhone: policy.maskedPhone, policy,
       participantChoices: [...participants.map(row => row.childName), this.data.words.newParticipant], participantIndex: 0 });
+    this.refreshGradeChoices();
     if (policy.contact) this.setData({ "values.parentName": policy.contact.name,
       "selection.relation": ["", "mother", "father", "guardian"].indexOf(policy.contact.relation) });
     if (participants.length) this.selectExistingParticipant(0);
@@ -109,8 +122,8 @@ Page({
   selectExistingParticipant(index: number) {
     const participant = this.data.policy?.existingParticipants?.[index];
     this.setData({ participantIndex: index, "values.childName": participant?.childName || "", "values.school": participant?.school || "",
-      "selection.grade": participant?.grade != null ? participant.grade + 2 : 0,
       "selection.gender": participant?.gender === "female" ? 1 : participant?.gender === "male" ? 2 : 0 });
+    this.refreshGradeChoices(participant?.grade ?? null);
   },
   chooseParticipant(event: WechatMiniprogram.PickerChange) { this.selectExistingParticipant(Number(event.detail.value)); },
   configureForm(form: FamilyForm) {
@@ -144,6 +157,9 @@ Page({
     event.detail.value.forEach(id => { selectedInterests[id] = true; });
     this.setData({ interests: event.detail.value, selectedInterests });
   },
+  questionChange(event: WechatMiniprogram.CustomEvent<{ id: string; value: string | string[] }>) {
+    if (!this.data.busy && this.data.policy?.form.questions?.some(q => q.id === event.detail.id)) this.setData({ [`extraAnswers.${event.detail.id}`]: event.detail.value });
+  },
   consent(event: WechatMiniprogram.CheckboxGroupChange) { this.setData({ consent: event.detail.value.includes("yes") }); },
   policy(event: WechatMiniprogram.TouchEvent) {
     const key = event.currentTarget.dataset.kind === "children" ? "children" : "privacy";
@@ -166,10 +182,12 @@ Page({
     const participant = data.policy.existingParticipants?.[data.participantIndex];
     const child = { key: "child-1", ...(participant ? { participantId: participant.id } : {}), childName: shown("childName") ? data.values.childName.trim() : "", school: shown("school") ? data.values.school.trim() : "",
       gender: shown("gender") ? (["", "female", "male"] as const)[data.selection.gender] : "" as const,
-      grade: shown("grade") && data.selection.grade > 0 ? data.selection.grade - 2 : null, interests: shown("interests") ? data.interests : [] };
+      grade: shown("grade") ? data.gradeValues[data.selection.grade] ?? null : null, interests: shown("interests") ? data.interests : [] };
     const family: FamilyRegistration = { parentName: shown("parentName") ? data.values.parentName.trim() : "",
       relation: shown("relation") ? (["", "mother", "father", "guardian"] as const)[data.selection.relation] : "", ...child, children: [child],
-      formVersion: data.policy.form.version, location: { status: "unavailable" }, consent: true,
+      formVersion: data.policy.form.version, extraAnswers: (data.policy.form.questions || []).reduce<QuestionAnswers>((all, q) => {
+        if (data.extraAnswers[q.id] !== undefined) all[q.id] = data.extraAnswers[q.id]; return all;
+      }, {}), location: { status: "unavailable" }, consent: true,
       privacyVersion: data.policy.privacyVersion, childrenPrivacyVersion: data.policy.childrenPrivacyVersion };
     delete (family as FamilyRegistration & { key?: string }).key;
     delete (family as FamilyRegistration & { participantId?: string }).participantId;

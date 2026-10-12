@@ -1,0 +1,24 @@
+/** The same data-only question types are used by public, registration and activity forms. */
+export type FormQuestion = {
+  id: string; type: "text" | "phone" | "textarea" | "select" | "multiselect";
+  label: { zh: string; en: string }; required: boolean;
+  options?: { id: string; label: { zh: string; en: string } }[];
+};
+export type QuestionAnswers = Record<string, string | string[]>;
+export function questionAnswerErrors(fields: FormQuestion[], answers: QuestionAnswers): string[] {
+  const errors = Object.keys(answers).filter(id => !fields.some(field => field.id === id));
+  for (const field of fields) {
+    const answer = answers[field.id], empty = answer === undefined || (typeof answer === "string" ? !answer.trim() : Array.isArray(answer) && !answer.length);
+    if (empty) { if (field.required) errors.push(field.id); continue; }
+    if (field.type === "multiselect") {
+      if (!Array.isArray(answer) || answer.length > 20 || new Set(answer).size !== answer.length || answer.some(id => !field.options?.some(o => o.id === id))) errors.push(field.id);
+    } else if (typeof answer !== "string" || answer.length > (field.type === "textarea" ? 2000 : 200)
+      || (field.type === "select" && !field.options?.some(o => o.id === answer))
+      || (field.type === "phone" && !/^\+?[0-9 ()-]{6,30}$/.test(answer))) errors.push(field.id);
+  }
+  return errors;
+}
+export function questionAnswerText(field: FormQuestion, answer: string | string[] | undefined, locale: "zh" | "en") {
+  const values = Array.isArray(answer) ? answer : answer ? [answer] : [];
+  return values.map(value => { const option = field.options?.find(o => o.id === value); return option ? option.label[locale] || option.label.zh : value; }).join(locale === "zh" ? "、" : ", ");
+}

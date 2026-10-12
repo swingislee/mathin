@@ -1,6 +1,6 @@
 <view class="portal-page theme-{{theme}} onboarding-page">
   <view class="portal-content onboarding-content">
-    <text class="onboarding-eyebrow">格致未来思维</text>
+    <text class="onboarding-eyebrow">{{brandName}}</text>
     <text class="onboarding-title">{{stage === 'family' ? formTitle : (registration ? copy.registrationTitle : words.title)}}</text>
     <text class="onboarding-intro">{{stage === 'family' ? formDescription : words.intro}}</text>
     <block wx:if="{{stage === 'wechat'}}"><text wx:if="{{busy}}" class="auth-hint">{{words.busy}}</text><button wx:else class="primary" bindtap="start">{{words.retry}}</button></block>
@@ -26,6 +26,7 @@
         <picker wx:elif="{{item.kind === 'picker'}}" range="{{choices[item.id]}}" value="{{selection[item.id]}}" bindchange="picker" data-field="{{item.id}}" disabled="{{busy}}"><view class="input picker-input">{{choices[item.id][selection[item.id]]}}</view></picker>
         <checkbox-group wx:else bindchange="chooseInterests" class="interest-options"><label wx:for="{{item.choices}}" wx:for-item="option" wx:key="id"><checkbox value="{{option.id}}" checked="{{selectedInterests[option.id]}}" disabled="{{busy}}" />{{option.text}}</label></checkbox-group>
       </block>
+      <form-questions fields="{{policy.form.questions}}" answers="{{extraAnswers}}" locale="{{locale}}" disabled="{{busy}}" bindchange="questionChange" />
       <checkbox-group bindchange="consent"><label class="onboarding-consent"><checkbox value="yes" checked="{{consent}}" disabled="{{busy}}" /><text>{{words.consent}}</text></label></checkbox-group>
       <view class="policy-links"><button class="text-button" bindtap="policy" data-kind="privacy">{{words.privacy}}</button><button class="text-button" bindtap="policy" data-kind="children">{{words.childrenPrivacy}}</button></view>
       <text class="auth-hint">{{words.locationNote}}</text>

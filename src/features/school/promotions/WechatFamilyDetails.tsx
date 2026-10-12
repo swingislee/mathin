@@ -7,6 +7,7 @@ import { STUDENT_360_REFRESH_EVENT } from "../student-360-contract";
 import { FamilyVerificationEditor } from "./FamilyVerificationEditor";
 import { readWechatFamily } from "./actions";
 import type { PromotionRecord } from "./contract";
+import { QuestionAnswersView } from "../miniapp-settings/QuestionsEditor";
 
 /** On-demand source detail within the existing lead/student workspace. */
 export function WechatFamilyDetails({ studentId, leadId, locale }: { studentId: string | null; leadId: string | null; locale: string }) {
@@ -42,6 +43,7 @@ export function WechatFamilyDetails({ studentId, leadId, locale }: { studentId: 
         {child.interests.length > 0 && <p className="mt-1 text-xs text-muted">{child.interests.map(id => { const option = record.interestOptions.find(value => value.id === id); return option ? option.label[en ? "en" : "zh"] || option.label.zh : id; }).join(" · ")}</p>}
       </div>;
     })}{record.participants.filter(value => !record.children.some(child => child.key === value.key)).map(child => <div key={child.key}>{child.name}<span className="ml-2 text-xs text-muted">{t("后续补充", "Added later")}</span></div>)}</div>}
+    <QuestionAnswersView fields={record.questions} answers={record.extraAnswers} en={en} />
     {record.state === "existing_record" && <p className="mt-2 text-xs text-muted">{t("已有历史记录，档案关联仍需核对。", "Earlier records exist; the profile match still needs review.")}</p>}
     {editing && <FamilyVerificationEditor row={record} en={en} close={() => setEditing(false)} saved={refresh} />}
   </section>;

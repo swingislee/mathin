@@ -12,6 +12,7 @@ import { randomToken } from "@/features/wechat/provider";
 import { assertAccountActive, findWechatUser, issueTicket, readTicket, saveWechatSnapshot } from "@/features/wechat/store";
 import { familyRegistrationSchema, onboardingCommandSchema, promotionSceneSchema, type FamilyRegistration } from "./onboarding-contract";
 import { familyFormSchema } from "./family-form";
+import { familyFormDisplay } from "./family-form-display";
 import { familyAnswerErrors, familyChildren } from "../../../contracts/participant-api/onboarding";
 import { authorize, PortalError, readJson, requireResult, response } from "./server";
 import zh from "../../../messages/zh.json";
@@ -53,10 +54,10 @@ export async function policies() {
 }
 
 export async function readFamilyForm(scene: string | null) {
-  const row = requireResult(await createAdminClient().from("miniapp_forms").select("slug,version,title,description,fields")
+  const row = requireResult(await createAdminClient().from("miniapp_forms").select("slug,version,title,description,fields,questions")
     .eq("slug", scene || "family-onboarding").in("purpose", ["family", "promotion"]).eq("enabled", true).maybeSingle());
   if (!row) throw new PortalError("NOT_FOUND");
-  return familyFormSchema.parse(row);
+  return { ...familyFormSchema.parse(row), ...await familyFormDisplay() };
 }
 
 export function verifiedAccountPhone(user: Pick<User, "id" | "phone" | "phone_confirmed_at">) {

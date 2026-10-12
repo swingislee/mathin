@@ -1,0 +1,7 @@
+<view wx:for="{{rows}}" wx:key="id" class="question-field">
+  <label class="field-label">{{item.label}}<text class="muted">{{item.required ? requiredText : ''}}</text></label>
+  <textarea wx:if="{{item.type === 'textarea'}}" class="input question-textarea" value="{{item.value}}" data-id="{{item.id}}" bindinput="input" maxlength="2000" disabled="{{disabled}}" auto-height />
+  <picker wx:elif="{{item.type === 'select'}}" range="{{item.options}}" range-key="label" value="{{item.index}}" data-id="{{item.id}}" bindchange="select" disabled="{{disabled}}"><view class="input">{{item.options[item.index].label}}</view></picker>
+  <checkbox-group wx:elif="{{item.type === 'multiselect'}}" data-id="{{item.id}}" bindchange="check"><label wx:for="{{item.options}}" wx:for-item="option" wx:key="id" class="question-option"><checkbox value="{{option.id}}" checked="{{option.checked}}" disabled="{{disabled}}" />{{option.label}}</label></checkbox-group>
+  <input wx:else class="input" value="{{item.value}}" data-id="{{item.id}}" bindinput="input" maxlength="200" disabled="{{disabled}}" />
+</view>

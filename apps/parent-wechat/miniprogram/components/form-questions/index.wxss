@@ -1,0 +1,3 @@
+.question-field { margin: 24rpx 0; }
+.question-textarea { box-sizing: border-box; min-height: 160rpx; }
+.question-option { display: inline-flex; align-items: center; margin: 12rpx 24rpx 12rpx 0; }

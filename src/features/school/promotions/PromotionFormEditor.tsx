@@ -8,16 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { newId } from "@/lib/uuid";
-import { FAMILY_FIELD_IDS, type FamilyField, type FamilyFieldId, type FamilyForm } from "../../../../contracts/participant-api/onboarding";
-import { readPromotionForm, savePromotionForm } from "./actions";
+import { FAMILY_FIELD_IDS, type FamilyField, type FamilyFieldId } from "../../../../contracts/participant-api/onboarding";
+import type { FamilyFormWorkbench } from "@/features/parent-portal/family-form";
+import { QuestionsEditor } from "../miniapp-settings/QuestionsEditor";
+import { readPromotionForm, restorePromotionForm, savePromotionForm } from "./actions";
 import { FORM_FIELD_BINDINGS } from "./form-fields";
 import { PromotionFormPreview, type FormSelection } from "./PromotionFormPreview";
 
 export function PromotionFormEditor({ scene, name, en, initial, onDirtyChange, onBusyChange }: {
-  scene: string | null; name: string; en: boolean; initial?: FamilyForm;
+  scene: string | null; name: string; en: boolean; initial?: FamilyFormWorkbench;
   onDirtyChange: (dirty: boolean) => void; onBusyChange: (busy: boolean) => void;
 }) {
-  const [form, setForm] = useState<FamilyForm | null>(initial ?? null), [busy, setBusy] = useState(!initial), [error, setError] = useState("");
+  const [form, setForm] = useState<FamilyFormWorkbench | null>(initial ?? null), [busy, setBusy] = useState(!initial), [error, setError] = useState("");
+  const [dirty, setDirty] = useState(false), [conflict, setConflict] = useState(false), [published, setPublished] = useState(false);
   const [saved, setSaved] = useState(false), [selected, setSelected] = useState<FormSelection>("introduction"), [previewEnglish, setPreviewEnglish] = useState(en);
   const t = (zh: string, english: string) => en ? english : zh;
   useEffect(() => {
@@ -29,7 +32,7 @@ export function PromotionFormEditor({ scene, name, en, initial, onDirtyChange, o
     return () => { active = false; };
   }, [scene, en, initial]);
   useEffect(() => { onBusyChange(busy); }, [busy, onBusyChange]);
-  function change(update: (current: FamilyForm) => FamilyForm) { setForm(current => current && update(current)); setSaved(false); onDirtyChange(true); }
+  function change(update: (current: FamilyFormWorkbench) => FamilyFormWorkbench) { setForm(current => current && update(current)); setSaved(false); setDirty(true); onDirtyChange(true); }
   function field(id: FamilyFieldId, update: (current: FamilyField) => FamilyField) {
     change(current => ({ ...current, fields: current.fields.map(value => value.id === id ? update(value) : value) }));
   }
@@ -47,17 +50,30 @@ export function PromotionFormEditor({ scene, name, en, initial, onDirtyChange, o
       [fields[from], fields[to]] = [fields[to], fields[from]]; return { ...current, fields };
     });
   }
-  async function save() {
-    if (!form || busy) return;
+  async function save(publish: boolean) {
+    if (!form || busy || conflict) return;
     setBusy(true); setError("");
     try {
-      setForm(await savePromotionForm({ scene, version: form.version, config: { title: form.title, description: form.description, fields: form.fields } }));
-      setSaved(true); onDirtyChange(false);
+      setForm(await savePromotionForm({ scene, version: form.version, revision: form.editorRevision, publish, config: { title: form.title, description: form.description, fields: form.fields, questions: form.questions || [] } }));
+      setSaved(true); setPublished(publish); setDirty(false); onDirtyChange(false);
     } catch (failure) {
+      setConflict(failure instanceof Error && failure.message === "FORM_CHANGED");
       setError(failure instanceof Error && failure.message === "FORM_CHANGED"
         ? t("表单刚被其他人修改。你的草稿仍保留，请核对最新版本后再保存。", "Someone changed this form. Your draft is preserved; compare the latest version before saving.")
         : t("未保存，请检查标题、字段名称和兴趣选项。", "Not saved. Check the title, field labels and interest options."));
     } finally { setBusy(false); }
+  }
+  async function reload() {
+    if (busy) return;
+    setBusy(true); setError("");
+    try { setForm(await readPromotionForm(scene)); setConflict(false); setDirty(false); onDirtyChange(false); }
+    catch { setError(t("读取失败，当前编辑仍保留。", "Could not reload; current edits are kept.")); } finally { setBusy(false); }
+  }
+  async function restore(sourceVersion: number) {
+    if (!form || busy || dirty || conflict) return;
+    setBusy(true); setError("");
+    try { setForm(await restorePromotionForm({ scene, sourceVersion, version: form.version, revision: form.editorRevision })); setSaved(true); setPublished(false); }
+    catch (error) { setConflict(error instanceof Error && error.message === "FORM_CHANGED"); setError(t("恢复未完成，请核对最新版本。", "Could not restore; review the latest version.")); } finally { setBusy(false); }
   }
   const current = form?.fields.find(item => item.id === selected), visible = form?.fields.filter(item => item.mode !== "hidden") ?? [];
   const position = visible.findIndex(item => item.id === selected);
@@ -65,10 +81,11 @@ export function PromotionFormEditor({ scene, name, en, initial, onDirtyChange, o
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-3">
       <div><h2 className="font-medium">{name}</h2><p className="mt-1 text-xs text-muted">{t("点选手机预览中的内容，在右侧调整。", "Select an item in the phone preview to edit it.")}</p></div>
       <div className="flex items-center gap-3"><Label className="flex items-center gap-2 text-xs"><Checkbox checked={previewEnglish} onCheckedChange={value => setPreviewEnglish(value === true)} />English</Label>
-        {saved && <span role="status" className="text-sm text-leaf-deep">{t("已保存", "Saved")}</span>}
-        <Button disabled={busy || !form} onClick={() => void save()}>{t("保存表单", "Save form")}</Button></div>
+        {saved && <span role="status" className="text-sm text-leaf-deep">{published ? t("已发布", "Published") : t("草稿已保存", "Draft saved")}</span>}
+        <Button variant="secondary" disabled={busy || !form || conflict} onClick={() => void save(false)}>{t("保存草稿", "Save draft")}</Button><Button disabled={busy || !form || conflict} onClick={() => void save(true)}>{t("发布表单", "Publish form")}</Button></div>
     </div>
     {error && <p className="py-3 text-sm text-rose" role="alert">{error}</p>}
+    {conflict && <Button variant="secondary" disabled={busy} onClick={() => void reload()}>{t("读取最新草稿（替换当前编辑）", "Load latest draft (replace current edits)")}</Button>}
     {!form && busy && <p className="py-10 text-sm text-muted">{t("正在读取手机表单…", "Loading the mobile form…")}</p>}
     {form && <div className="grid min-w-0 gap-6 py-5 xl:grid-cols-[190px_minmax(300px,1fr)_300px]">
       <aside className="min-w-0 xl:border-r xl:border-line xl:pr-5" aria-label={t("可添加字段", "Field library")}>
@@ -82,7 +99,7 @@ export function PromotionFormEditor({ scene, name, en, initial, onDirtyChange, o
         <div className="mt-5 space-y-2 border-t border-line pt-3 text-xs text-muted"><p className="flex items-center gap-2"><LockKeyhole className="size-3.5" />{t("微信手机号授权", "WeChat phone authorization")}</p><p className="flex items-center gap-2"><LockKeyhole className="size-3.5" />{t("隐私同意", "Privacy consent")}</p></div>
       </aside>
       <div className="min-w-0"><PromotionFormPreview form={form} en={previewEnglish} selected={selected} select={setSelected} disabled={busy} />
-        <p className="mx-auto mt-3 max-w-[375px] text-center text-xs text-muted">{t("手机表单预览 · 保存后生效", "Mobile form preview · Save to apply")}</p></div>
+        <p className="mx-auto mt-3 max-w-[375px] text-center text-xs text-muted">{t("手机表单预览 · 发布后生效", "Mobile form preview · Publish to apply")}{form.pending ? t(" · 有草稿待发布", " · Unpublished draft") : ""}</p></div>
       <fieldset disabled={busy} className="min-w-0 space-y-4 border-t border-line pt-4 xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5">
         {current ? <>
           <div><p className="text-xs text-muted">{t("固定资料字段", "Linked record field")}</p><h3 className="mt-1 flex items-center gap-2 font-medium"><Link2 className="size-4 text-leaf-deep" />{en ? FORM_FIELD_BINDINGS[current.id].en : FORM_FIELD_BINDINGS[current.id].zh}</h3>
@@ -113,6 +130,9 @@ export function PromotionFormEditor({ scene, name, en, initial, onDirtyChange, o
           <p className="border-t border-line pt-3 text-xs leading-5 text-muted">{scene ? t("这张推广码使用自己的表单。", "This promotion code has its own form.") : t("直接进入小程序使用此表单，新建推广码也从这里复制。", "Direct entry uses this form. New promotion codes start with a copy.")}</p>
         </>}
       </fieldset>
+    </div>}
+    {form && <div className="space-y-5 border-t border-line pt-5"><QuestionsEditor fields={form.questions || []} en={en} disabled={busy} onChange={questions => change(value => ({ ...value, questions }))} />
+      <details className="text-sm"><summary>{t("发布历史", "Publication history")}</summary><p className="my-3 text-xs text-muted">{t("先保存当前修改，再恢复历史版本为草稿。", "Save your edits before restoring a version as a draft.")}</p>{form.history.map(item => <div key={item.version} className="flex items-center justify-between gap-3 py-1"><span>v{item.version} · {new Date(item.publishedAt).toLocaleString(en ? "en" : "zh")}</span><Button size="sm" variant="secondary" disabled={busy || dirty || conflict} onClick={() => void restore(item.version)}>{t("恢复为草稿", "Restore as draft")}</Button></div>)}</details>
     </div>}
   </section>;
 }

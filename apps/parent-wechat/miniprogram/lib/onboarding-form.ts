@@ -4,8 +4,9 @@ export type FamilyFieldMode = "required" | "optional" | "hidden";
 export type FamilyText = { zh: string; en: string };
 export type FamilyOption = { id: string; label: FamilyText };
 export type FamilyField = { id: FamilyFieldId; mode: FamilyFieldMode; label: FamilyText; options?: FamilyOption[] };
-export type FamilyFormConfig = { title: FamilyText; description: FamilyText; fields: FamilyField[] };
-export type FamilyForm = FamilyFormConfig & { slug: string; version: number };
+export type FamilyFormConfig = { title: FamilyText; description: FamilyText; fields: FamilyField[]; questions?: FormQuestion[] };
+export type FamilyForm = FamilyFormConfig & { slug: string; version: number;
+  stages?: { stageNumber: number; label: FamilyText; visible: boolean }[]; brandName?: FamilyText };
 export type RegistrationLocation = ({ status: "granted"; latitude: number; longitude: number; accuracy: number | null }
   | { status: "declined" | "unavailable" }) & { enteredAt?: string; capturedAt?: string };
 export type FamilyChild = {
@@ -16,6 +17,7 @@ export type FamilyAnswers = Omit<FamilyChild, "key" | "participantId"> & {
   parentName: string; relation: "" | "mother" | "father" | "guardian";
   /** Older clients send the first child's fields at the top level. New clients also send every child here. */
   children?: FamilyChild[];
+  extraAnswers?: QuestionAnswers;
 };
 export function familyChildren(answers: FamilyAnswers): FamilyChild[] {
   return answers.children ?? [{ key: "child-1", childName: answers.childName, gender: answers.gender,
@@ -42,8 +44,8 @@ export const DEFAULT_FAMILY_FORM: FamilyFormConfig = {
 };
 
 /** Both clients and the server enforce the selected form; hidden fields carry no answers. */
-export function familyAnswerErrors(form: FamilyFormConfig, answers: FamilyAnswers): FamilyFieldId[] {
-  return form.fields.filter(field => {
+export function familyAnswerErrors(form: FamilyFormConfig, answers: FamilyAnswers): string[] {
+  const core = form.fields.filter(field => {
     const records = field.id === "parentName" || field.id === "relation" ? [answers] : familyChildren(answers);
     return records.some(record => {
       const value = record[field.id as keyof typeof record];
@@ -54,4 +56,6 @@ export function familyAnswerErrors(form: FamilyFormConfig, answers: FamilyAnswer
       return false;
     });
   }).map(field => field.id);
+  return [...core, ...questionAnswerErrors(form.questions || [], answers.extraAnswers || {})];
 }
+import { questionAnswerErrors, type FormQuestion, type QuestionAnswers } from "./form-questions";

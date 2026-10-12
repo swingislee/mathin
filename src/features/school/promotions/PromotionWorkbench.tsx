@@ -9,12 +9,12 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandPanel, DashboardPage } from "../dashboard-page";
-import type { FamilyForm } from "../../../../contracts/participant-api/onboarding";
+import type { FamilyFormWorkbench } from "@/features/parent-portal/family-form";
 import { readPromotionSettings, savePromotion } from "./actions";
 import type { PromotionSettings } from "./contract";
 import { PromotionFormEditor } from "./PromotionFormEditor";
 
-export function PromotionWorkbench({ initial, initialForm, configured }: { initial: PromotionSettings; initialForm: FamilyForm; configured: boolean }) {
+export function PromotionWorkbench({ initial, initialForm, configured }: { initial: PromotionSettings; initialForm: FamilyFormWorkbench; configured: boolean }) {
   const en = useLocale() === "en", t = (zh: string, english: string) => en ? english : zh;
   const [promotions, setPromotions] = useState(initial), [scene, setScene] = useState("");
   const [name, setName] = useState(""), [adding, setAdding] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");

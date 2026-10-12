@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { questionAnswersSchema } from "./form-questions";
 
 const text = (max: number) => z.string().trim().min(1).max(max).refine(value => !/[\u0000-\u001f\u007f]/.test(value));
 export const promotionSceneSchema = z.string().regex(/^[a-f0-9]{24}$/);
@@ -19,6 +20,7 @@ export const familyRegistrationSchema = z.object({
   parentName: optionalText(100), relation: z.enum(["", "mother", "father", "guardian"]), ...childFields,
   children: z.array(familyChildSchema).min(1).max(10).refine(children => new Set(children.map(child => child.key)).size === children.length).optional(),
   formVersion: z.number().int().positive().optional(),
+  extraAnswers: questionAnswersSchema.optional(),
   location: registrationLocationSchema,
   privacyVersion: text(40), childrenPrivacyVersion: text(40), consent: z.literal(true),
 }).strict();

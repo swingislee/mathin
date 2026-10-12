@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FAMILY_FIELD_IDS } from "../../../contracts/participant-api/onboarding";
+import { formQuestionsSchema } from "./form-questions";
 
 const clean = (max: number) => z.string().trim().min(1).max(max).refine(value => !/[\u0000-\u001f\u007f]/.test(value));
 const label = z.object({ zh: clean(100), en: z.string().trim().max(160) }).strict();
@@ -15,5 +16,10 @@ export const familyFormConfigSchema = z.object({
   description: z.object({ zh: z.string().trim().max(400), en: z.string().trim().max(600) }).strict(),
   fields: z.array(familyFieldSchema).length(FAMILY_FIELD_IDS.length)
     .refine(fields => new Set(fields.map(field => field.id)).size === FAMILY_FIELD_IDS.length),
+  questions: formQuestionsSchema.optional(),
 }).strict();
-export const familyFormSchema = familyFormConfigSchema.extend({ slug: z.string(), version: z.number().int().positive() });
+export const familyFormSchema = familyFormConfigSchema.extend({ slug: z.string(), version: z.number().int().positive(),
+  stages: z.array(z.object({ stageNumber: z.number().int().min(-1).max(12), label, visible: z.boolean() })).optional(), brandName: label.optional() });
+export const familyFormWorkbenchSchema = familyFormSchema.extend({ editorRevision: z.number().int().nonnegative(), pending: z.boolean(),
+  history: z.array(z.object({ version: z.number().int().positive(), publishedAt: z.string() })) });
+export type FamilyFormWorkbench = z.infer<typeof familyFormWorkbenchSchema>;

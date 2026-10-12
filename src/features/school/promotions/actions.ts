@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { authorizedClient } from "../actions/guards";
 import { promotionDashboardSchema, promotionRecordSchema, promotionSettingsSchema, verifiedFamilySchema, type VerifiedFamily } from "./contract";
-import { familyFormConfigSchema, familyFormSchema } from "@/features/parent-portal/family-form";
+import { familyFormConfigSchema, familyFormWorkbenchSchema } from "@/features/parent-portal/family-form";
+import { familyFormDisplay } from "@/features/parent-portal/family-form-display";
 import type { FamilyFormConfig } from "../../../../contracts/participant-api/onboarding";
 
 type Rpc = (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
@@ -39,17 +40,24 @@ export async function savePromotion(input: { scene: string | null; name: string;
 export async function readPromotionForm(input: string | null) {
   const value = scene.nullable().parse(input);
   const { supabase } = await authorizedClient("registration.invite.manage");
-  const result = await (supabase.rpc as unknown as Rpc)("miniapp_read_family_form", { p_scene: value });
+  const result = await (supabase.rpc as unknown as Rpc)("miniapp_family_form_workbench", { p_scene: value });
   if (result.error) throw new Error("UNAVAILABLE");
-  return familyFormSchema.parse(result.data);
+  return { ...familyFormWorkbenchSchema.parse(result.data), ...await familyFormDisplay() };
 }
 
-export async function savePromotionForm(input: { scene: string | null; version: number; config: FamilyFormConfig }) {
-  const value = z.object({ scene: scene.nullable(), version: z.number().int().positive(), config: familyFormConfigSchema }).strict().parse(input);
+export async function savePromotionForm(input: { scene: string | null; version: number; revision: number; config: FamilyFormConfig; publish: boolean }) {
+  const value = z.object({ scene: scene.nullable(), version: z.number().int().positive(), revision: z.number().int().nonnegative(), config: familyFormConfigSchema, publish: z.boolean() }).strict().parse(input);
   const { supabase } = await authorizedClient("registration.invite.manage");
-  const result = await (supabase.rpc as unknown as Rpc)("miniapp_save_family_form", { p_scene: value.scene, p_version: value.version, p_config: value.config });
+  const result = await (supabase.rpc as unknown as Rpc)("save_miniapp_family_form_draft", { p_scene: value.scene, p_version: value.version, p_revision: value.revision, p_config: value.config, p_publish: value.publish });
   if (result.error) throw new Error(result.error.message === "FORM_CHANGED" ? "FORM_CHANGED" : "UNAVAILABLE");
-  return familyFormSchema.parse(result.data);
+  return { ...familyFormWorkbenchSchema.parse(result.data), ...await familyFormDisplay() };
+}
+export async function restorePromotionForm(input: { scene: string | null; version: number; revision: number; sourceVersion: number }) {
+  const v = z.object({ scene: scene.nullable(), version: z.number().int().positive(), revision: z.number().int().nonnegative(), sourceVersion: z.number().int().positive() }).parse(input);
+  const { supabase } = await authorizedClient("registration.invite.manage");
+  const result = await (supabase.rpc as unknown as Rpc)("restore_miniapp_family_form", { p_scene: v.scene, p_version: v.version, p_revision: v.revision, p_source_version: v.sourceVersion });
+  if (result.error) throw new Error(result.error.message === "FORM_CHANGED" ? "FORM_CHANGED" : "UNAVAILABLE");
+  return { ...familyFormWorkbenchSchema.parse(result.data), ...await familyFormDisplay() };
 }
 
 export async function verifyPromotionFamily(input: { id: string; expectedAt: string | null; details: VerifiedFamily }) {

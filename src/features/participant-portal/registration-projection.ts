@@ -1,6 +1,8 @@
 import type { LocalizedText, RegistrationRecord } from "../../../contracts/participant-api/portal";
 import { DEFAULT_FAMILY_FORM, FAMILY_FIELD_IDS } from "../../../contracts/participant-api/onboarding";
 import { onboardingChoices } from "../../../contracts/participant-api/onboarding-presentation";
+import { questionAnswerText } from "../../../contracts/participant-api/form-questions";
+import { formQuestionsSchema, questionAnswersSchema } from "@/features/parent-portal/form-questions";
 
 type ObjectValue = Record<string, unknown>;
 const object = (value: unknown): ObjectValue => value && typeof value === "object" && !Array.isArray(value) ? value as ObjectValue : {};
@@ -42,6 +44,11 @@ export function projectRegistration(row: {
   }).filter(field => field.mode !== "hidden");
   function value(id: string, source: ObjectValue): LocalizedText {
     const item = source[id];
+    if (id === "grade" && Array.isArray(form.stages)) {
+      const stages = form.stages.flatMap(group => Array.isArray(object(group).stages) ? (object(group).stages as unknown[]).map(object) : []);
+      const stage = stages.find(row => row.stageNumber === item);
+      if (stage) return localized(stage.label, empty);
+    }
     if (id === "grade") return typeof item === "number" && Number.isInteger(item) && item >= -1 && item <= 12
       ? { zh: choices.zh.grade[item + 2], en: choices.en.grade[item + 2] } : empty;
     if (id === "gender" || id === "relation") {
@@ -67,5 +74,9 @@ export function projectRegistration(row: {
     fields: configured.filter(field => !["parentName", "relation"].includes(field.id))
       .map(field => ({ label: field.label, value: value(field.id, child) })),
   }));
+  const questions = formQuestionsSchema.safeParse(form.questions || []), extra = questionAnswersSchema.safeParse(answers.extraAnswers || {});
+  if (questions.success && extra.success && questions.data.length) record.sections.push({ title: { zh: "附加问题", en: "Additional questions" },
+    fields: questions.data.map(field => ({ label: localized(field.label, both(field.id)), value: {
+      zh: questionAnswerText(field, extra.data[field.id], "zh") || empty.zh, en: questionAnswerText(field, extra.data[field.id], "en") || empty.en } })) });
   return record;
 }
