@@ -11,6 +11,8 @@ type Request = {
 };
 type Login = { success: (result: { code?: string }) => void; fail: () => void };
 type Api = {
+  accountHasParticipants: () => Promise<boolean>;
+  get: (resource: string) => Promise<unknown>;
   wechatAuthStatus: () => Promise<WechatAuthStatus>;
   loginWithWechat: (scene?: string, useCurrentSession?: boolean) => Promise<WechatAuthResult>;
   bindWechat: () => Promise<void>;
@@ -33,10 +35,11 @@ function apiRuntime(initial: Session | null = null) {
     removeStorageSync: () => { current = null; },
     request: (request: Request) => requests.push(request),
     login: (login: Login) => logins.push(login),
+    navigateTo: vi.fn(),
   };
   const exports = {};
   vm.runInNewContext(compile(path.join(miniRoot, "lib/api.ts")), {
-    exports, wx, console,
+    exports, wx, console, getCurrentPages: () => [{ route: "pages/discover/index" }],
     require: () => ({ config: { apiOrigin: "http://development.invalid" } }),
   });
   return { api: exports as Api, requests, logins, wx, current: () => current };
@@ -88,6 +91,50 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
 }
 
 describe("小程序微信鉴权传输", () => {
+  it("首页入口查询无会话时不发请求、不触发登录", async () => {
+    const run = apiRuntime();
+    await expect(run.api.accountHasParticipants()).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    expect(run.requests).toHaveLength(0);
+    expect(run.logins).toHaveLength(0);
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 1])("首页入口只取得当前会话的参与人状态 %i", async count => {
+    const participants = count ? [{ id: "participant", name: "Participant" }] : [];
+    const run = apiRuntime(active("current"));
+    const pending = run.api.accountHasParticipants();
+    await vi.waitFor(() => expect(run.requests).toHaveLength(1));
+    expect(run.requests[0].header.Authorization).toBe("Bearer current");
+    run.requests[0].success({ statusCode: 200, data: { id: "account", displayName: "Account", participants } });
+    await expect(pending).resolves.toBe(participants.length > 0);
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+  });
+
+  it("首页静默查询不弹出条款确认，主动访问账号继续要求确认", async () => {
+    const run = apiRuntime(active("current"));
+    const consentError = { statusCode: 403, data: { code: "ACCOUNT_SECURITY", reason: "CONSENT_REQUIRED" } };
+    const passive = expect(run.api.accountHasParticipants()).rejects.toMatchObject({ reason: "CONSENT_REQUIRED" });
+    await vi.waitFor(() => expect(run.requests).toHaveLength(1));
+    run.requests[0].success(consentError);
+    await passive;
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+    const explicit = expect(run.api.get("account")).rejects.toMatchObject({ reason: "CONSENT_REQUIRED" });
+    await vi.waitFor(() => expect(run.requests).toHaveLength(2));
+    run.requests[1].success(consentError);
+    await explicit;
+    expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/document/index?consent=1", complete: expect.any(Function) });
+  });
+
+  it("切换账号后不使用旧账号的首页入口状态", async () => {
+    const run = apiRuntime(active("old"));
+    const pending = expect(run.api.accountHasParticipants()).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    await vi.waitFor(() => expect(run.requests).toHaveLength(1));
+    run.api.saveSession(active("new"));
+    run.requests[0].success({ statusCode: 200, data: { id: "old", displayName: "Old", participants: [{ id: "old-participant", name: "Participant" }] } });
+    await pending;
+    expect(run.wx.navigateTo).not.toHaveBeenCalled();
+  });
+
   it("匿名能力查询不发Bearer，配置关闭时不产生会话", async () => {
     const run = apiRuntime();
     const status = run.api.wechatAuthStatus();

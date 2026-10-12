@@ -1,6 +1,6 @@
 import { ApiError, beginGuardianBinding, cancelPendingAuthentication, confirmGuardianBinding, get, guardianBindingPhone, guardianBindingPreview } from "../../lib/api";
 import type { Account, GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "../../lib/api-types";
-import { currentLocale, date, errorText, pageData } from "../../lib/page";
+import { currentLocale, date, errorText, pageData, syncPage } from "../../lib/page";
 import { guardianCopy, guardianInvitation } from "../../lib/guardian-binding";
 import { clearNavigation, selectParticipant } from "../../lib/navigation";
 
@@ -9,6 +9,10 @@ Page({
     stage: "entry", expires: "", busy: false, ticket: "", policy: null as Extract<GuardianBindingStep, { state: "confirmation_required" }> | null,
     parentName: "", relation: 0, consent: false, childName: "" },
   active: true,
+  onShow() {
+    syncPage(this, "account");
+    wx.setNavigationBarTitle({ title: this.data.words.title });
+  },
   onLoad(query: Record<string, string | undefined>) {
     this.active = true;
     const locale = currentLocale(), words = guardianCopy[locale];

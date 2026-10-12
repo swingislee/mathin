@@ -1,4 +1,4 @@
-<view class="portal-page">
+<view class="portal-page theme-{{theme}}">
   <app-nav title="{{formTitle || copy.registrationTitle}}" back />
   <view wx:if="{{hub}}" class="portal-content registration-history">
     <view wx:if="{{saved}}" class="notice">{{copy.registrationReceipt}}</view>

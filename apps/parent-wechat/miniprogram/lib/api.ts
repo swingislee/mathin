@@ -1,7 +1,7 @@
 import { config } from "../config.local";
 import { activityPageImageUrl, type ActivityPage } from "./activity-detail";
 import type { MiniappDocument, MiniappSettingsPublication } from "./miniapp-settings";
-import type { GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "./api-types";
+import type { Account, GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "./api-types";
 import type { FamilyRegistration, PhoneResult, RegistrationResult } from "./onboarding";
 import type { ActivityOffer, ActivityRequest, ActivityRequestCommand, RegistrationHistory, RegistrationForm, RegistrationSubmission } from "./api-types";
 import type { Session, Media, ParticipantCalendar, AssessmentOverview, AssessmentRequest, AssessmentAvailability, AssessmentTopic, AssessmentCommand, WechatAuthStatus, WechatAuthResult } from "./api-types";
@@ -18,7 +18,7 @@ export function saveSession(value:Session){sessionVersion++;wx.setStorageSync(se
 export function configured(){return Boolean(config.apiOrigin);}
 function origin(){const value=String(config.apiOrigin);if(!value)throw new ApiError("CONFIG_REQUIRED");return value.replace(/\/$/,"");}
 let consentNavigationPending = false;
-function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Promise<T> {
+function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string,promptConsent=true):Promise<T> {
   return new Promise((resolve,reject)=>{
     // WeChat entry can wait for development compilation before the server exchanges its one-time code.
     const wechatEntry = path === "auth/wechat" || path === "auth/wechat/onboarding" || path === "guardian-binding";
@@ -29,7 +29,7 @@ function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Pro
         if(result.statusCode>=200&&result.statusCode<300)resolve(result.data as T);
         else {
           const error=result.data as {code?:string;reason?:string};
-          if (token && error.code === "ACCOUNT_SECURITY" && error.reason === "CONSENT_REQUIRED" && !consentNavigationPending
+          if (promptConsent && token && error.code === "ACCOUNT_SECURITY" && error.reason === "CONSENT_REQUIRED" && !consentNavigationPending
             && getCurrentPages().slice(-1)[0]?.route !== "pages/document/index") {
             consentNavigationPending = true;
             wx.navigateTo({ url: "/pages/document/index?consent=1", complete: () => { consentNavigationPending = false; } });
@@ -50,6 +50,12 @@ async function accessToken(){
 }
 export async function get<T>(resource:string,query="",authenticated=true):Promise<T>{
   return send<T>("portal?resource="+resource+query,"GET",undefined,authenticated?await accessToken():undefined);
+}
+/** Public browsing checks menu visibility without interrupting with account prompts. */
+export async function accountHasParticipants(): Promise<boolean> {
+  const token = await accessToken();
+  const account = await send<Account>("portal?resource=account", "GET", undefined, token, false);
+  return session()?.accessToken === token && account.participants.length > 0;
 }
 export async function post<T>(data:object,authenticated=true):Promise<T>{
   return send<T>("portal","POST",data,authenticated?await accessToken():undefined);

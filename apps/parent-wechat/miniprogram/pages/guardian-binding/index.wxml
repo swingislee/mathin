@@ -1,4 +1,4 @@
-<view class="portal-page">
+<view class="portal-page theme-{{theme}}">
   <app-nav />
   <view class="portal-content binding-content">
     <text class="binding-title">{{stage === 'done' ? words.done : words.title}}</text>
