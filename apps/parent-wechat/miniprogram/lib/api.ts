@@ -1,5 +1,6 @@
 import { config } from "../config.local";
 import { activityPageImageUrl, type ActivityPage } from "./activity-detail";
+import type { MiniappDocument, MiniappSettingsPublication } from "./miniapp-settings";
 import type { GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "./api-types";
 import type { FamilyRegistration, PhoneResult, RegistrationResult } from "./onboarding";
 import type { ActivityOffer, ActivityRequest, ActivityRequestCommand, RegistrationHistory, RegistrationForm, RegistrationSubmission } from "./api-types";
@@ -49,6 +50,15 @@ export async function post<T>(data:object,authenticated=true):Promise<T>{
 }
 export async function serviceContacts(): Promise<import("./api-types").ServiceContact[]> {
   return send("services", "GET");
+}
+export async function miniappSettings(revision?: number): Promise<MiniappSettingsPublication> {
+  return send("settings" + (revision === undefined ? "" : "?revision=" + revision), "GET");
+}
+export async function miniappDocument(id: string): Promise<MiniappDocument> {
+  return send("documents?id=" + encodeURIComponent(id), "GET");
+}
+export function miniappContentImage(path: string, thumbnail = false): string {
+  return path ? origin() + "/api/v1/participant/settings/image?path=" + encodeURIComponent(path) + (thumbnail ? "&size=thumb" : "") : "";
 }
 export async function activityCatalog(): Promise<ActivityOffer[]> {
   return send<ActivityOffer[]>("activities", "GET");

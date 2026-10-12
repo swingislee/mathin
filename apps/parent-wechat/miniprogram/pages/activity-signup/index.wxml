@@ -1,4 +1,4 @@
-<view class="portal-page activity-signup-page"><app-nav title="{{t.selection}}" back />
+<view class="portal-page theme-{{theme}} activity-signup-page"><app-nav title="{{t.selection}}" back />
   <view class="portal-content activity-content">
     <view wx:if="{{error}}" class="notice">{{error}}<button wx:if="{{!pending}}" class="text-button" disabled="{{busy}}" bindtap="load">{{copy.retry}}</button></view>
     <button wx:if="{{!authenticated}}" class="primary" bindtap="login">{{t.login}}</button><text wx:elif="{{loading}}" class="loading-line">{{copy.loading}}</text>

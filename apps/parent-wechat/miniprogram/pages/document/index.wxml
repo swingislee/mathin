@@ -1,0 +1,4 @@
+<view class="portal-page theme-{{theme}}"><app-nav title="{{documentTitle}}" back /><view class="portal-content">
+  <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view><text wx:if="{{loading && !body}}" class="loading-line">{{copy.loading}}</text>
+  <view wx:if="{{body}}" class="surface configured-copy"><text class="section-title">{{documentTitle}}</text><text class="small muted block">{{locale === 'en' ? 'Version' : '版本'}} {{version}}</text><text class="configured-body">{{body}}</text></view>
+</view></view>

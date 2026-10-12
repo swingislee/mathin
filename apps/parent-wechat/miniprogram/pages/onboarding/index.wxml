@@ -1,4 +1,4 @@
-<view class="portal-page onboarding-page">
+<view class="portal-page theme-{{theme}} onboarding-page">
   <view class="portal-content onboarding-content">
     <text class="onboarding-eyebrow">格致未来思维</text>
     <text class="onboarding-title">{{stage === 'family' ? formTitle : (registration ? copy.registrationTitle : words.title)}}</text>

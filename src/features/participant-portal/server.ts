@@ -11,6 +11,8 @@ import { GET as contactQrGet } from "@/app/api/v1/parent/advisors/qr/route";
 import * as project from "./projection";
 import { registrationsGet, registrationsPost } from "./registration-server";
 import { activityDetailGet, activityImageGet } from "./activity-detail-server";
+import { miniappSettingsGet, miniappContentImageGet } from "./settings-server";
+import { miniappDocumentGet } from "./document-server";
 
 const object = z.record(z.string(), z.unknown());
 const requestId = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
@@ -58,6 +60,9 @@ async function projected<T>(result: Response, map: (value: T) => unknown) {
 
 async function get(request: Request, endpoint: string) {
   switch (endpoint) {
+    case "settings": return miniappSettingsGet(request);
+    case "settings/image": return miniappContentImageGet(request);
+    case "documents": return miniappDocumentGet(request);
     case "auth/wechat": return parentWechatAuthGet(request);
     case "portal": {
       const resource = new URL(request.url).searchParams.get("resource");

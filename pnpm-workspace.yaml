@@ -15,3 +15,4 @@ overrides:
 
 patchedDependencies:
   '@react-three/fiber@9.6.1': patches/@react-three__fiber@9.6.1.patch
+  sharp@0.35.0: patches/sharp@0.35.0.patch

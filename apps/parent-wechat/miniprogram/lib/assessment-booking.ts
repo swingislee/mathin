@@ -1,11 +1,11 @@
 import type { AssessmentAvailability, AssessmentTopic } from "./api-types";
 import { assessmentDay, shiftDay } from "./assessment-calendar";
-import { stageGroups } from "./catalog";
+import { catalogStageGroups } from "./catalog";
 import type { Locale } from "./locale";
 
 export function assessmentFields(locale: Locale, selected: AssessmentTopic[], stageNumber: number | null,
   topics: import("./api-types").AssessmentTopicOption[] = []) {
-  const groups = stageGroups.map(group => ({ id: group.id, label: group.label[locale],
+  const groups = catalogStageGroups().map(group => ({ id: group.id, label: group.label[locale] || group.label.zh,
     stages: group.stages.map(stage => ({ id: stage.id, stageNumber: stage.stageNumber, label: stage.label[locale] })) }));
   const stages = groups.reduce((all, group) => all.concat(group.stages), [] as typeof groups[0]["stages"]);
   const legacy: Record<string, { zh: string; en: string }> = { math: { zh: "数学", en: "Mathematics" }, english: { zh: "英语", en: "English" } };

@@ -168,6 +168,18 @@ button.secondary[disabled] { background: var(--primary-soft); color: var(--prima
 .catalog-recommendation { display: flex; align-items: center; gap: 16rpx; margin: 0 4rpx 22rpx; font-size: 27rpx; font-weight: 500; line-height: 1.4; }
 .recommendation-star { display: flex; flex: 0 0 27rpx; align-items: center; justify-content: center; width: 27rpx; height: 27rpx; border-radius: 50%; background: var(--primary); color: #fff; font-size: 22rpx; line-height: 1; }
 .feature-entry { display: flex; align-items: center; width: 100%; padding: 16rpx 34rpx 16rpx 16rpx; min-height: 164rpx; text-align: left; }
+.configured-block { margin-top: 24rpx; }
+.configured-copy { padding: 28rpx; }
+.configured-body { display: block; white-space: pre-wrap; font-size: 28rpx; line-height: 1.8; margin-top: 16rpx; }
+.configured-image { width: 100%; display: block; margin-bottom: 20rpx; border-radius: 12rpx; }
+.configured-brand { display: flex; align-items: center; gap: 20rpx; margin: 20rpx 0; }
+.configured-brand image { width: 88rpx; height: 88rpx; flex-shrink: 0; }
+.theme-rose { --primary: #a34854; --primary-soft: #f8e5e6; --primary-pale: #f1d5d9; }
+.theme-leaf { --primary: #486b38; --primary-soft: #e5eddd; --primary-pale: #d7e6c7; }
+@media (prefers-color-scheme: dark) {
+  .theme-rose { --primary: #f0a2ae; --primary-soft: #3c2b36; --primary-pale: #4b333c; }
+  .theme-leaf { --primary: #a9c284; --primary-soft: #2c3829; --primary-pale: #3d4c34; }
+}
 .feature-art { flex-shrink: 0; width: 134rpx; height: 134rpx; margin-right: 34rpx; }
 .feature-copy { flex: 1; min-width: 0; }
 .feature-title { display: block; font-size: 32rpx; font-weight: 600; line-height: 1.5; margin-bottom: 10rpx; }

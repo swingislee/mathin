@@ -3,6 +3,38 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-EXTENSIBILITY-20261012",
+      "title": "小程序与后台配置化及性能重构",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-EXTENSIBILITY-20261012.md",
+      "writePaths": [
+        ".ai/tasks/MINI-EXTENSIBILITY-20261012.md",
+        "contracts/participant-api/",
+        "apps/parent-wechat/miniprogram/",
+        "src/features/school/miniapp-settings/",
+        "src/features/school/miniapp-activity-page/",
+        "src/features/participant-portal/",
+        ".tmp/mini-extensibility-20261012/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/docs/portal.md",
+        "src/features/parent-portal/",
+        "src/features/school/",
+        "src/app/[locale]/dashboard/",
+        "src/app/api/v1/participant/",
+        "src/lib/database.types.ts",
+        "scripts/sync-participant-contract.mjs"
+      ],
+      "checkpoint": null,
+      "next": "实现统一发布配置、页面与菜单、活动图文及图片性能、扩展表单与预约规则，随后接入文档、联系服务和内容模板；生产与上传暂缓。"
+    },
+    {
       "id": "MINI-ACTIVITY-PAGE-20261012",
       "title": "后台编辑小程序活动详情图文与版式",
       "agent": "codex",

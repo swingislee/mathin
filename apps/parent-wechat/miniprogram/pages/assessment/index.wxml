@@ -1,4 +1,4 @@
-<view class="portal-page booking-page assessment-page">
+<view class="portal-page theme-{{theme}} booking-page assessment-page">
   <app-nav title="{{showHistory ? copy.myAssessments : copy.assessmentBooking}}" back />
   <view class="portal-content has-fixed-actions">
     <text wx:if="{{!showHistory}}" class="small muted block">{{copy.assessmentPurpose}}</text>

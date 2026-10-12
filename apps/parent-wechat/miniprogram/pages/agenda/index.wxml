@@ -1,4 +1,4 @@
-<view class="portal-page agenda-page">
+<view class="portal-page theme-{{theme}} agenda-page">
   <app-nav title="{{participants[selected].name ? participants[selected].name + copy.participantAgenda : title}}" back />
   <view class="portal-content">
     <picker wx:if="{{participants.length > 1}}" class="agenda-member" range="{{participants}}" range-key="name" value="{{selected}}" bindchange="participant"><view class="text-link">{{copy.switchParticipant}} ▾</view></picker>

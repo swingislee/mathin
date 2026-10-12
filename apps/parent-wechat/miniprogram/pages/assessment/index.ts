@@ -37,6 +37,7 @@ Page({
     if (session()) void this.load();
   },
   onHide() { this.loadVersion++; this.availabilityVersion++; this.setData({ sheet: "" }); },
+  configurationChanged() { this.renderFields(); },
   async load() {
     if (this.data.busy || !session()) return;
     const version = ++this.loadVersion;

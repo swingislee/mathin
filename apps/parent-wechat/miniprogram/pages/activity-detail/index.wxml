@@ -1,4 +1,4 @@
-<view class="portal-page activity-detail-page"><app-nav title="{{t.detail}}" back />
+<view class="portal-page theme-{{theme}} activity-detail-page"><app-nav title="{{t.detail}}" back />
   <view class="portal-content activity-content">
     <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>

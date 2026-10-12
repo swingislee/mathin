@@ -1,15 +1,22 @@
-import { brandName,messages,resolveLocale,sections,type Section,type Locale } from "./locale";
+import { messages,resolveLocale,sections,type Section,type Locale } from "./locale";
 import { copy,type Copy } from "./copy";
 import { ApiError } from "./api";
 import type { LocalizedText } from "./api-types";
 import { requestLogin } from "./navigation";
 import { simulatorTabIcons } from "../assets/tabs/simulator-icons";
+import { configurationBrand, configurationRevision, refreshConfiguration } from "./miniapp-configuration";
 let tabsLocale="";
 export function currentLocale(){return resolveLocale(wx.getAppBaseInfo().language);}
-export function pageData(section:Section){return {brandName,...messages.zh.sections[section],copy:copy.zh,locale:"" as string,error:"",loading:false};}
-export function syncPage(page:{data:{locale:string};setData:(data:Record<string,unknown>)=>void},section:Section,titleKey?:keyof Copy){
+export function pageData(section:Section){return {...configurationBrand("zh"),...messages.zh.sections[section],copy:copy.zh,locale:"" as string,error:"",loading:false};}
+export function syncPage(page:{data:{locale:string;configurationRevision?:number};setData:(data:Record<string,unknown>)=>void;configurationChanged?:()=>void},section:Section,titleKey?:keyof Copy){
   const locale=currentLocale();
   if(page.data.locale!==locale){page.setData({...messages[locale].sections[section],copy:copy[locale],locale});wx.setNavigationBarTitle({title:titleKey?copy[locale][titleKey]:messages[locale].sections[section].title});}
+  page.setData(configurationBrand(locale));
+  void refreshConfiguration().then(() => {
+    if (page.data.configurationRevision !== configurationRevision()) {
+      page.setData(configurationBrand(locale)); page.configurationChanged?.();
+    }
+  });
   if(tabsLocale!==locale){
     // 开发工具的底栏文件桥存在读图异常，真机继续使用 app.json 的包内资源。
     const simulator=typeof wx.getDeviceInfo==="function" && wx.getDeviceInfo().platform==="devtools";

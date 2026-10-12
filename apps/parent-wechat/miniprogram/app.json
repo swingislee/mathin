@@ -17,7 +17,8 @@
     "pages/activity-requests/index",
     "pages/service/index",
     "pages/assessment/index",
-    "pages/task/index"
+    "pages/task/index",
+    "pages/document/index"
   ],
   "window": {
     "navigationBarTitleText": "格致未来思维",

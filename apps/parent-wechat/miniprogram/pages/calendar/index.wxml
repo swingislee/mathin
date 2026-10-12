@@ -1,4 +1,4 @@
-<view class="portal-page calendar-page">
+<view class="portal-page theme-{{theme}} calendar-page">
   <app-nav title="{{title}}" />
   <view class="portal-content">
     <view class="participant-header"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><view class="participant-info"><view class="participant-name-row"><text wx:if="{{participants.length || !authenticated || loaded}}" class="participant-name">{{participants[selected].name || copy.chooseLinkedParticipant}}</text><view wx:else class="identity-placeholder" aria-label="{{copy.loading}}" /><button class="switch-participant" bindtap="showParticipants">{{copy.switchParticipant}}<text>▾</text></button></view><text wx:if="{{stageLabel}}" class="participant-stage">{{stageLabel}}</text></view></view>

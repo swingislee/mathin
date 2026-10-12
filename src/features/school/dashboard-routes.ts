@@ -454,6 +454,10 @@ export const DASHBOARD_ROUTES = {
     href: "/dashboard/organization/advisors", kind: "singleton", environments: STAFF_ONLY,
     permission: "organization.profile.manage", createSurface: "none", parent: "organization",
   },
+  miniappSettings: {
+    href: "/dashboard/miniapp-settings", kind: "singleton", environments: STAFF_ONLY,
+    permission: "organization.profile.manage", createSurface: "none", parent: "organization",
+  },
   courseMaterialRules: {
     href: "/dashboard/courses/material-rules",
     kind: "singleton",

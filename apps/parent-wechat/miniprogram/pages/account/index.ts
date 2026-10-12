@@ -5,9 +5,11 @@ import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
 import { activityCopy } from "../../lib/activity-catalog";
 import { clearOnboardingEntry, clearPromotionScene, onboardingCopy, openOnboarding, pendingPromotionScene, setOnboardingProof } from "../../lib/onboarding";
 import { participantAccountName } from "../../lib/participant-wording";
+import { configuredAccountGroups, openConfiguredAction } from "../../lib/miniapp-configuration";
+import type { MiniappAction } from "../../lib/miniapp-settings";
 
 Page({
-  data: { ...pageData("account"), activityCopy: activityCopy.zh, authenticated: false, busy: false,
+  data: { ...pageData("account"), accountGroups: configuredAccountGroups("zh", false), hasPrivacyEntry: true, activityCopy: activityCopy.zh, authenticated: false, busy: false,
     account: null as Account | null, accountName: "", sheet: "", info: "", wantsWechatBinding: false,
     wechat: null as WechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },
   loadVersion: 0,
@@ -26,6 +28,11 @@ Page({
       sheet: authenticated && this.data.wantsWechatBinding ? "bind" : !authenticated && loginRequested ? "login" : "" });
     void this.loadWechat();
     if (authenticated) void this.load();
+    this.configurationChanged();
+  },
+  configurationChanged() {
+    const accountGroups = configuredAccountGroups(currentLocale(), Boolean(this.data.account?.participants.length));
+    this.setData({ accountGroups, hasPrivacyEntry: accountGroups.some(g => g.entries.some(e => e.action === "privacy")) });
   },
   onHide() {
     if (this.data.sheet === "login") this.dismissLogin();
@@ -120,6 +127,7 @@ Page({
       this.sessionToken = "";
       this.setData({ busy: false, authenticated: false, account: null, accountName: "", error: "", loading: false, sheet: "",
         info: "", wantsWechatBinding: false, wechat: null });
+      this.configurationChanged();
       void this.loadWechat();
     }
   },
@@ -131,6 +139,7 @@ Page({
       if (version === this.loadVersion) {
         this.sessionToken = session()?.accessToken || "";
         this.setData({ account, accountName: participantAccountName(account.displayName) });
+        this.configurationChanged();
         if (!this.data.wantsWechatBinding) resumeAfterLogin();
       }
     } catch (error) {
@@ -142,10 +151,17 @@ Page({
     } finally { if (version === this.loadVersion) this.setData({ loading: false }); }
   },
   open(e: WechatMiniprogram.TouchEvent) { openPage(String(e.currentTarget.dataset.url)); },
+  openConfigured(e: WechatMiniprogram.TouchEvent) {
+    const action = e.currentTarget.dataset.action as MiniappAction;
+    if (action === "account") this.showAccount();
+    else if (action === "participants") this.showParticipants();
+    else if (action === "privacy") this.privacy();
+    else openConfiguredAction(action, String(e.currentTarget.dataset.target || ""));
+  },
   participant(e: WechatMiniprogram.TouchEvent) {
     const id = String(e.currentTarget.dataset.id);
     if (!this.data.account?.participants.some(row => row.id === id)) return;
     selectParticipant(id); this.setData({ sheet: "" }); wx.switchTab({ url: "/pages/calendar/index" });
   },
-  privacy() { wx.showModal({ title: this.data.copy.privacyEntry, content: this.data.copy.privacySummary, showCancel: false }); },
+  privacy() { openConfiguredAction("privacy"); },
 });

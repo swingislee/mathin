@@ -1,23 +1,24 @@
-<view class="portal-page discover-page">
+<template name="activityRows"><block wx:for="{{rows}}" wx:key="id"><button class="activity-row" data-id="{{item.id}}" bindtap="openActivity" hover-class="pressed">
+  <view class="activity-tile"><image src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
+  <view class="activity-row-content"><text class="activity-row-title">{{item.label}}</text><text class="activity-row-meta">{{item.startLabel}} · {{item.meta}}</text><view class="activity-row-bottom"><text class="activity-price">{{item.priceLabel}}</text><text class="small-pill">{{activityCopy.choose}}</text></view></view>
+</button></block></template>
+<view class="portal-page discover-page theme-{{theme}}">
   <app-nav title="{{full ? activityCopy.catalog : brandName}}" brand="{{!full}}" back="{{full}}" />
   <view class="portal-content">
     <view class="discovery-filters"><button class="filter-pill" data-filter="stage" bindtap="showFilter"><text>{{stageLabel || copy.participantStage}}</text><view class="chevron down"></view></button><button class="filter-pill" data-filter="topic" bindtap="showFilter"><text>{{topicLabel || copy.activityTopic}}</text><view class="chevron down"></view></button><button wx:if="{{stage || topic}}" class="text-button" bindtap="reset">{{copy.clearFilters}}</button></view>
-    <button wx:if="{{!full}}" class="feature-entry surface" bindtap="book" hover-class="pressed">
-      <image class="feature-art" src="/assets/appointment.png" mode="aspectFit" aria-hidden="true" />
-      <view class="feature-copy"><text class="feature-title">{{copy.discoverAssessment}}</text><text class="small-pill">{{copy.bookNow}}</text></view><view class="chevron"></view>
-    </button>
+    <view wx:if="{{!full && (brandImage || brandIntroduction)}}" class="configured-brand"><image wx:if="{{brandImage}}" src="{{brandImage}}" mode="aspectFit" /><text class="small muted">{{brandIntroduction}}</text></view>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:elif="{{loading && !loaded}}" class="loading-line">{{copy.loading}}</text>
-    <empty-state wx:elif="{{loaded && !offers.length}}" label="{{activityCopy.catalogEmpty}}" spacious />
-    <view wx:else class="surface activity-list" hidden="{{!offers.length}}">
-      <view class="card-heading"><text class="section-title">{{activityCopy.catalog}}</text><button wx:if="{{!full}}" class="text-link" bindtap="showAll">{{activityCopy.all}}<view class="chevron"></view></button></view>
-      <block wx:for="{{offers}}" wx:key="id"><button wx:if="{{full || index < 3}}" class="activity-row" data-id="{{item.id}}" bindtap="openActivity" hover-class="pressed">
-        <view class="activity-tile"><image src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
-        <view class="activity-row-content"><text class="activity-row-title">{{item.label}}</text><text class="activity-row-meta">{{item.startLabel}} · {{item.meta}}</text><view class="activity-row-bottom"><text class="activity-price">{{item.priceLabel}}</text><text class="small-pill">{{activityCopy.choose}}</text></view></view>
-      </button></block>
-    </view>
+    <block wx:if="{{full}}"><empty-state wx:if="{{loaded && !offers.length && !error}}" label="{{activityCopy.catalogEmpty}}" spacious /><view wx:if="{{offers.length}}" class="surface activity-list"><view class="card-heading"><text class="section-title">{{activityCopy.catalog}}</text></view><template is="activityRows" data="{{rows: offers, activityCopy}}" /></view></block>
+    <block wx:else><block wx:for="{{homeBlocks}}" wx:key="id" wx:for-item="block">
+      <button wx:if="{{block.type === 'feature'}}" class="feature-entry surface configured-block" data-action="{{block.action}}" data-target="{{block.target}}" bindtap="openConfigured" hover-class="pressed">
+        <image class="feature-art" src="{{block.imageUrl || '/assets/appointment.png'}}" mode="aspectFit" aria-hidden="true" /><view class="feature-copy"><text class="feature-title">{{block.label}}</text><text wx:if="{{block.description}}" class="small-pill">{{block.description}}</text></view><view wx:if="{{block.action !== 'none'}}" class="chevron"></view>
+      </button>
+      <view wx:elif="{{block.type === 'activities'}}" class="surface activity-list configured-block"><view class="card-heading"><text class="section-title">{{block.label}}</text><button class="text-link" bindtap="showAll">{{activityCopy.all}}<view class="chevron"></view></button></view><text wx:if="{{block.description}}" class="small muted block">{{block.description}}</text><template is="activityRows" data="{{rows: block.offers, activityCopy}}" /><empty-state wx:if="{{loaded && !block.offers.length && !error}}" label="{{activityCopy.catalogEmpty}}" /></view>
+      <view wx:elif="{{block.type === 'text' || block.type === 'image'}}" class="surface configured-copy configured-block" data-action="{{block.action}}" data-target="{{block.target}}" bindtap="openConfigured"><image wx:if="{{block.imageUrl}}" class="configured-image" src="{{block.imageUrl}}" mode="widthFix" lazy-load /><text wx:if="{{block.label}}" class="section-title block">{{block.label}}</text><text wx:if="{{block.description}}" class="configured-body">{{block.description}}</text></view>
+    </block></block>
   </view>
-  <view wx:if="{{!full}}" class="floating-services surface"><button bindtap="service"><image class="line-icon" src="/assets/icons/participants.png" aria-hidden="true" /><text>{{activityCopy.service}}</text></button><button bindtap="book"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button><button bindtap="applications"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{activityCopy.applications}}</text></button></view>
+  <view wx:if="{{!full && floatingEntries.length}}" class="floating-services surface"><button wx:for="{{floatingEntries}}" wx:key="id" data-action="{{item.action}}" data-target="{{item.target}}" bindtap="openConfigured"><image class="line-icon" src="{{item.iconUrl}}" aria-hidden="true" /><text>{{item.label}}</text></button></view>
   <tab-overlay wx:if="{{sheet && !full}}" />
   <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet catalog-sheet" catchtap="noop">
     <view class="sheet-heading"><view><text class="block">{{sheet === 'stage' ? copy.participantStage : copy.activityTopic}}</text><text class="sheet-subtitle">{{sheet === 'stage' ? activityCopy.filterHint : copy.chooseTopicHint}}</text></view><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view>

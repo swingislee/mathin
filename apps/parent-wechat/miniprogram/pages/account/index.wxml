@@ -1,4 +1,4 @@
-<view class="portal-page account-page">
+<view class="portal-page account-page theme-{{theme}}">
   <app-nav />
   <view class="portal-content">
     <view class="account-header"><button class="account-identity" bindtap="showAccount"><image class="account-avatar" src="/assets/account.png" aria-hidden="true" /><text wx:if="{{!authenticated || account}}" class="account-name">{{authenticated ? (accountName || copy.accountLabel) : copy.signInNow}}</text><view wx:else class="identity-placeholder" aria-label="{{copy.loading}}" /><view class="chevron"></view></button><button class="account-header-action" data-url="/pages/reservations/index" bindtap="open">{{copy.myBookings}}</button></view>
@@ -12,27 +12,8 @@
       <button data-url="/pages/reservations/index?filter=cancelled" bindtap="open"><image class="line-icon" src="/assets/icons/cancel.png" aria-hidden="true" /><text>{{copy.cancelled}}</text></button>
       <button data-url="/pages/reservations/index?filter=all" bindtap="open"><image class="line-icon" src="/assets/icons/ticket.png" aria-hidden="true" /><text>{{copy.allBookings}}</text></button>
     </view>
-    <view class="surface services-card">
-      <text class="section-title">{{copy.activityServices}}</text>
-      <view class="service-grid">
-        <button class="service-entry" data-url="/pages/agenda/index" bindtap="open"><image class="line-icon" src="/assets/icons/calendar.png" aria-hidden="true" /><text>{{copy.allArrangements}}</text></button>
-        <button class="service-entry" data-url="/pages/calendar/index" bindtap="open"><image class="line-icon" src="/assets/icons/book.png" aria-hidden="true" /><text>{{copy.weekCalendar}}</text></button>
-        <button class="service-entry" data-url="/pages/reflections/index" bindtap="open"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.reportsEntry}}</text></button>
-        <button class="service-entry" data-url="/pages/records/index" bindtap="open"><image class="line-icon" src="/assets/icons/task.png" aria-hidden="true" /><text>{{copy.taskEntry}}</text></button>
-        <button class="service-entry" data-url="/pages/assessment/index" bindtap="open"><image class="line-icon" src="/assets/icons/report.png" aria-hidden="true" /><text>{{copy.assessmentBooking}}</text></button>
-        <button class="service-entry" data-url="/pages/activity-catalog/index" bindtap="open"><image class="line-icon" src="/assets/icons/activity.png" aria-hidden="true" /><text>{{activityCopy.catalog}}</text></button>
-        <button class="service-entry" data-url="/pages/service/index" bindtap="open"><image class="line-icon" src="/assets/icons/participants.png" aria-hidden="true" /><text>{{activityCopy.service}}</text></button>
-        <button class="service-entry" data-url="/pages/activity-requests/index" bindtap="open"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{activityCopy.applications}}</text></button>
-        <button class="service-entry" bindtap="showParticipants"><image class="line-icon" src="/assets/icons/participants.png" aria-hidden="true" /><text>{{copy.participantProfiles}}</text></button>
-      </view>
-      <text class="section-title tools-heading">{{copy.commonTools}}</text>
-      <view class="service-grid">
-        <button class="service-entry" data-url="/pages/guardian-binding/index" bindtap="open"><image class="line-icon" src="/assets/icons/participants.png" aria-hidden="true" /><text>{{locale === 'zh' ? '关联已有孩子' : 'Link an existing child'}}</text></button>
-        <button class="service-entry" data-url="/pages/register/index?source=account" bindtap="open"><image class="line-icon" src="/assets/icons/form.png" aria-hidden="true" /><text>{{copy.registrationTitle}}</text></button>
-        <button class="service-entry" bindtap="showAccount"><image class="line-icon" src="/assets/icons/account.png" aria-hidden="true" /><text>{{copy.accountLabel}}</text></button>
-        <button class="service-entry" bindtap="privacy"><image class="line-icon" src="/assets/icons/privacy.png" aria-hidden="true" /><text>{{copy.privacyEntry}}</text></button>
-      </view>
-    </view>
+    <view wx:if="{{accountGroups.length}}" class="surface services-card"><block wx:for="{{accountGroups}}" wx:key="id" wx:for-item="group"><text class="section-title {{index ? 'tools-heading' : ''}}">{{group.label}}</text><view class="service-grid"><button wx:for="{{group.entries}}" wx:key="id" class="service-entry" data-action="{{item.action}}" data-target="{{item.target}}" bindtap="openConfigured"><image class="line-icon" src="{{item.iconUrl}}" aria-hidden="true" /><text>{{item.label}}</text></button></view></block></view>
+    <button wx:if="{{!hasPrivacyEntry}}" class="text-button" bindtap="privacy">{{copy.privacyEntry}}</button>
     <view wx:if="{{error && !sheet}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
   </view>
   <tab-overlay wx:if="{{sheet}}" />
