@@ -14,6 +14,8 @@ import { useRouter } from "@/i18n/navigation";
 import { publishSessionAssignmentAction } from "./actions/classes";
 import type { SessionPublishedAssignment } from "./classes";
 import { HomeworkDocumentEditor } from "./HomeworkDocumentEditor";
+import { TaskSubmissionRulesEditor } from "./TaskSubmissionRulesEditor";
+import { defaultTaskSubmissionRules } from "../../../contracts/participant-api/task-submission";
 
 export function SessionAssignmentPublisher({
   sessionId,
@@ -27,6 +29,7 @@ export function SessionAssignmentPublisher({
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [dueAt, setDueAt] = useState("");
+  const [submissionRules, setSubmissionRules] = useState(defaultTaskSubmissionRules);
   const publish = useAction(publishSessionAssignmentAction, {
     successMessage: t("assignmentPublishedToast"),
     errorMessage: { default: t("actionFailed") },
@@ -34,6 +37,7 @@ export function SessionAssignmentPublisher({
       setTitle("");
       setContent("");
       setDueAt("");
+      setSubmissionRules(defaultTaskSubmissionRules());
       router.refresh();
     },
   });
@@ -63,6 +67,7 @@ export function SessionAssignmentPublisher({
           {t("assignmentDueLabel")}
           <DateTimePicker mode="datetime" value={dueAt} onValueChange={setDueAt} />
         </Label>
+        <TaskSubmissionRulesEditor value={submissionRules} onChange={setSubmissionRules} disabled={publish.pending} />
         <div className="flex justify-end">
           <Button
             size="sm"
@@ -72,6 +77,7 @@ export function SessionAssignmentPublisher({
               title,
               content,
               dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+              submissionRules,
             })}
           >
             {t("publishAssignment")}

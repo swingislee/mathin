@@ -8,6 +8,8 @@ import { loginIdentifierSchema } from "@/lib/auth-identifier";
 import type { Activity, ApiErrorCode, Report, PracticeSubmission, Media } from "../../../contracts/parent-api/portal";
 import { reportSections, type ReportTemplateSnapshot } from "../../../contracts/participant-api/report-template";
 import { reportTemplateSnapshotSchema } from "@/features/school/miniapp-settings/report-contract";
+import { taskSubmissionRulesSchema } from "./task-submission";
+import { defaultTaskSubmissionRules } from "../../../contracts/participant-api/task-submission";
 import { intakeFormSchema, intakeSchema, validateAnswers, mediaType, PHOTO_BYTES, VIDEO_BYTES } from "./validation";
 
 export class PortalError extends Error {
@@ -131,10 +133,10 @@ export async function portalGet(request:Request) {
   if(resource==="submission") {
     const assignment=uuid.parse(query.get("id")),student=uuid.parse(query.get("participant"));
     if(!requireResult(await db.rpc("miniapp_can_practice",{p_assignment:assignment,p_student:student})))throw new PortalError("FORBIDDEN");
-    const row=requireResult(await db.from("miniapp_practice_submissions").select("id,note,upload_ids,submitted_at").eq("assignment_id",assignment).eq("student_id",student).order("submitted_at",{ascending:false}).limit(1).maybeSingle());
+    const row=requireResult(await db.from("miniapp_practice_submissions").select("id,note,upload_ids,submitted_at,submission_rules").eq("assignment_id",assignment).eq("student_id",student).order("submitted_at",{ascending:false}).limit(1).maybeSingle());
     if(!row)return response(null);
-    const files=requireResult(await db.from("miniapp_practice_uploads").select("id,kind,name,bytes").in("id",row.upload_ids));
-    const result:PracticeSubmission={id:row.id,note:row.note,submittedAt:row.submitted_at,media:files as Media[]};
+    const files=row.upload_ids.length?requireResult(await db.from("miniapp_practice_uploads").select("id,kind,name,bytes").in("id",row.upload_ids)):[];
+    const result:PracticeSubmission={id:row.id,note:row.note,submittedAt:row.submitted_at,media:files as Media[],submissionRules:taskSubmissionRulesSchema.parse(row.submission_rules||defaultTaskSubmissionRules())};
     return response(result);
   }
   throw new PortalError("NOT_FOUND");
@@ -154,7 +156,7 @@ export async function readReports(db: SupabaseClient, now = Date.now()): Promise
 const commandSchema=z.discriminatedUnion("action",[
   z.object({action:z.literal("book"),activityId:uuid,participantId:uuid}).strict(),
   z.object({action:z.literal("cancel"),id:uuid}).strict(),
-  z.object({action:z.literal("submit"),id:uuid,assignmentId:uuid,participantId:uuid,note:z.string().trim().max(2000),uploadIds:z.array(uuid).min(1).max(9)}).strict(),
+  z.object({action:z.literal("submit"),id:uuid,assignmentId:uuid,participantId:uuid,note:z.string().trim().max(2000),uploadIds:z.array(uuid).max(9)}).strict(),
 ]);
 export async function portalPost(request:Request) {
   const raw=await readJson(request);
@@ -177,14 +179,15 @@ export async function portalPost(request:Request) {
 }
 
 async function canUpload(db:SupabaseClient,assignment:string,student:string) {
-  if(!requireResult(await db.rpc("miniapp_can_practice",{p_assignment:assignment,p_student:student})))throw new PortalError("FORBIDDEN");
+  return taskSubmissionRulesSchema.parse(requireResult(await db.rpc("miniapp_task_submission_rules",{p_assignment:assignment,p_student:student})));
 }
 export async function mediaPost(request:Request) {
   const {db,user}=await authorize(request);
   const assignment=uuid.parse(request.headers.get("x-assignment-id")),student=uuid.parse(request.headers.get("x-participant-id"));
-  await canUpload(db,assignment,student);
+  const rules=await canUpload(db,assignment,student);
+  if(!rules.mediaTypes.length||!rules.maxFiles)throw new PortalError("FILE_TYPE");
   await rateLimit(request,"media:"+user.id,40);
-  const body=await readBytes(request,VIDEO_BYTES+256*1024);
+  const body=await readBytes(request,Math.max(...rules.mediaTypes.map(kind=>kind==="image"?rules.imageMaxBytes:rules.videoMaxBytes))+256*1024);
   let data:FormData;
   try {data=await new Request(request.url,{method:"POST",headers:{"content-type":request.headers.get("content-type")||""},body}).formData();}
   catch {throw new PortalError("VALIDATION");}
@@ -192,7 +195,9 @@ export async function mediaPost(request:Request) {
   if(!(file instanceof File)||file.size===0)throw new PortalError("VALIDATION");
   const bytes=new Uint8Array(await file.arrayBuffer()),format=mediaType(bytes);
   if(!format)throw new PortalError("FILE_TYPE");
+  if(!rules.mediaTypes.includes(format.kind))throw new PortalError("FILE_TYPE");
   if(file.size>(format.kind==="image"?PHOTO_BYTES:VIDEO_BYTES))throw new PortalError("TOO_LARGE");
+  if(file.size>(format.kind==="image"?rules.imageMaxBytes:rules.videoMaxBytes))throw new PortalError("TOO_LARGE");
   if(format.kind==="video"&&!requireResult(await db.rpc("miniapp_can_participate",{p_student:student,p_scope:"video"})))throw new PortalError("FORBIDDEN");
   const admin=createAdminClient();
   const id=randomUUID(),objectPath=`${user.id}/${assignment}/${student}/${id}.${format.extension}`;

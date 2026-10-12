@@ -38,9 +38,10 @@ export type Report = {
 export type Practice = {
   id: string; participantId: string; participantName: string; title: string;
   instructions: string; dueAt: string | null; submittedAt: string | null;
+  submissionRules?: import("../participant-api/task-submission").TaskSubmissionRules;
 };
 export type Media = { id: string; kind: "image" | "video"; name: string; bytes: number; url?: string };
-export type PracticeSubmission = { id: string; submittedAt: string; note: string; media: Media[] };
+export type PracticeSubmission = { id: string; submittedAt: string; note: string; media: Media[]; submissionRules?: import("../participant-api/task-submission").TaskSubmissionRules };
 export type Session = { accessToken: string; refreshToken: string; expiresAt: number };
 /** available 表示服务端配置就绪；真实微信往返仍由登录操作核验。 */
 export type ParentWechatAuthStatus = { available: boolean; linked: boolean | null; canBind: boolean; canBindDirect?: boolean; registrationRequired?: boolean };

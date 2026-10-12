@@ -1,6 +1,8 @@
 "use server";
 
 import { z } from "zod";
+import { defaultTaskSubmissionRules, type TaskSubmissionRules } from "../../../contracts/participant-api/task-submission";
+import { taskSubmissionRulesSchema } from "@/features/parent-portal/task-submission";
 import { materializeSessionResolved, type CoursewareTrack } from "@/features/courseware-studio/data";
 import { resolveCourseware, type OverlaySlot } from "@/features/school/courseware-overlay";
 import { getSessionCoursewareTemplate } from "@/features/school/courses";
@@ -622,7 +624,7 @@ export async function listAssignments(classroomId: string): Promise<AssignmentMe
   }));
 }
 
-export async function createAssignment(classroomId: string, title: string, text: string, dueAt: string | null): Promise<string> {
+export async function createAssignment(classroomId: string, title: string, text: string, dueAt: string | null, submissionRules?: TaskSubmissionRules): Promise<string> {
   const { supabase, user } = await authenticatedClient();
   const { data, error } = await supabase
     .from("assignments")
@@ -632,6 +634,7 @@ export async function createAssignment(classroomId: string, title: string, text:
       content: { text: text.trim().slice(0, 20000) },
       due_at: dueAt,
       created_by: user.id,
+      miniapp_submission_rules: taskSubmissionRulesSchema.parse(submissionRules || defaultTaskSubmissionRules()),
     })
     .select("id")
     .single<{ id: string }>();

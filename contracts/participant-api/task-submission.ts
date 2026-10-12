@@ -1,0 +1,18 @@
+export type TaskSubmissionRules = {
+  version: 1; mediaTypes: ("image" | "video")[]; minFiles: number; maxFiles: number;
+  noteRequired: boolean; maxNoteLength: number; imageMaxBytes: number; videoMaxBytes: number;
+};
+export const TASK_IMAGE_BYTES = 12 * 1024 * 1024;
+export const TASK_VIDEO_BYTES = 64 * 1024 * 1024;
+export function defaultTaskSubmissionRules(): TaskSubmissionRules {
+  return { version: 1, mediaTypes: ["image", "video"], minFiles: 1, maxFiles: 9, noteRequired: false,
+    maxNoteLength: 2000, imageMaxBytes: TASK_IMAGE_BYTES, videoMaxBytes: TASK_VIDEO_BYTES };
+}
+export function taskSubmissionError(rules: TaskSubmissionRules, note: string, files: { kind: "image" | "video"; bytes: number }[]): "content" | "note" | "files" | "type" | "size" | null {
+  if (note.trim().length > rules.maxNoteLength || rules.noteRequired && !note.trim()) return "note";
+  if (files.length < rules.minFiles || files.length > rules.maxFiles) return "files";
+  if (!files.length && !note.trim()) return "content";
+  if (files.some(f => !rules.mediaTypes.includes(f.kind))) return "type";
+  if (files.some(f => f.bytes > (f.kind === "image" ? rules.imageMaxBytes : rules.videoMaxBytes))) return "size";
+  return null;
+}

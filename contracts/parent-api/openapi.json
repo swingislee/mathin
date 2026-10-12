@@ -2144,12 +2144,36 @@
             "items": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["source", "label", "type", "text"],
+              "required": [
+                "source",
+                "label",
+                "type",
+                "text"
+              ],
               "properties": {
-                "source": { "type": "string", "enum": ["summary", "score", "strengths", "focusAreas", "recommendation"] },
-                "label": { "$ref": "#/components/schemas/LocalizedText" },
-                "type": { "type": "string", "enum": ["text", "score"] },
-                "text": { "type": "string" }
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "summary",
+                    "score",
+                    "strengths",
+                    "focusAreas",
+                    "recommendation"
+                  ]
+                },
+                "label": {
+                  "$ref": "#/components/schemas/LocalizedText"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "score"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
               }
             }
           }
@@ -2206,6 +2230,9 @@
                 "type": "null"
               }
             ]
+          },
+          "submissionRules": {
+            "$ref": "#/components/schemas/TaskSubmissionRules"
           }
         }
       },
@@ -2269,6 +2296,9 @@
               "$ref": "#/components/schemas/Media"
             },
             "maxItems": 9
+          },
+          "submissionRules": {
+            "$ref": "#/components/schemas/TaskSubmissionRules"
           }
         }
       },
@@ -2504,7 +2534,7 @@
               "type": "string",
               "format": "uuid"
             },
-            "minItems": 1,
+            "minItems": 0,
             "maxItems": 9,
             "uniqueItems": true
           }
@@ -4226,6 +4256,66 @@
           "qrCodeUrl": {
             "type": "string",
             "format": "uri"
+          }
+        }
+      },
+      "TaskSubmissionRules": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "mediaTypes",
+          "minFiles",
+          "maxFiles",
+          "noteRequired",
+          "maxNoteLength",
+          "imageMaxBytes",
+          "videoMaxBytes"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1
+          },
+          "mediaTypes": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 2,
+            "items": {
+              "type": "string",
+              "enum": [
+                "image",
+                "video"
+              ]
+            }
+          },
+          "minFiles": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9
+          },
+          "maxFiles": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9
+          },
+          "noteRequired": {
+            "type": "boolean"
+          },
+          "maxNoteLength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000
+          },
+          "imageMaxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 12582912
+          },
+          "videoMaxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 67108864
           }
         }
       }

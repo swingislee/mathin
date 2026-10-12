@@ -17,6 +17,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { TaskSubmissionRulesEditor } from "@/features/school/TaskSubmissionRulesEditor";
+import { defaultTaskSubmissionRules } from "../../../../contracts/participant-api/task-submission";
 
 export function CreateAssignmentButton({ classroomId }: { classroomId: string }) {
   const t = useTranslations("classroom.assignments");
@@ -25,6 +27,7 @@ export function CreateAssignmentButton({ classroomId }: { classroomId: string })
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [due, setDue] = useState("");
+  const [submissionRules, setSubmissionRules] = useState(defaultTaskSubmissionRules);
   const [pending, startTransition] = useTransition();
 
   return (
@@ -38,7 +41,7 @@ export function CreateAssignmentButton({ classroomId }: { classroomId: string })
         {t("create")}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("createTitle")}</DialogTitle>
           </DialogHeader>
@@ -63,6 +66,7 @@ export function CreateAssignmentButton({ classroomId }: { classroomId: string })
               className="rounded-lg border border-line bg-transparent px-2 py-1 text-sm outline-none focus:border-ink/40"
             />
           </label>
+          <TaskSubmissionRulesEditor value={submissionRules} onChange={setSubmissionRules} disabled={pending} />
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>{t("cancel")}</Button>
             <Button
@@ -71,11 +75,12 @@ export function CreateAssignmentButton({ classroomId }: { classroomId: string })
               onClick={() => startTransition(async () => {
                 const { createAssignment } = await import("../actions");
                 const dueAt = due ? new Date(`${due}T23:59:00`).toISOString() : null;
-                await createAssignment(classroomId, title, content, dueAt);
+                await createAssignment(classroomId, title, content, dueAt, submissionRules);
                 setOpen(false);
                 setTitle("");
                 setContent("");
                 setDue("");
+                setSubmissionRules(defaultTaskSubmissionRules());
                 router.refresh();
               })}
             >

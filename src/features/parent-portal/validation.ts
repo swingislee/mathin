@@ -40,8 +40,7 @@ export function validateAnswers(fields: FormField[], answers: Record<string, str
   });
 }
 
-export const PHOTO_BYTES = 12 * 1024 * 1024;
-export const VIDEO_BYTES = 64 * 1024 * 1024;
+export { TASK_IMAGE_BYTES as PHOTO_BYTES, TASK_VIDEO_BYTES as VIDEO_BYTES } from "../../../contracts/participant-api/task-submission";
 /** 依据文件签名选择 Storage MIME；客户端扩展名和 Content-Type 只作提示。 */
 export function mediaType(bytes: Uint8Array): { mime: string; extension: string; kind: "image" | "video" } | null {
   if (bytes.length < 12) return null;
