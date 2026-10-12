@@ -1,6 +1,6 @@
 import "server-only";
 import { z } from "zod";
-import { authPost, failure, mediaGet, mediaPost, portalGet, portalPost, PortalError, readJson } from "@/features/parent-portal/server";
+import { authPost, authorize, failure, mediaGet, mediaPost, portalGet, portalPost, PortalError, readJson, requireResult, response } from "@/features/parent-portal/server";
 import { learningGet, learningPost } from "@/features/parent-portal/learning-server";
 import { assessmentGet, assessmentPost, assessmentSlotsGet } from "@/features/parent-portal/assessment-server";
 import { courseGet, coursePost } from "@/features/parent-portal/course-server";
@@ -13,12 +13,15 @@ import { registrationsGet, registrationsPost } from "./registration-server";
 import { activityCatalogGet, activityDetailGet, activityImageGet } from "./activity-detail-server";
 import { miniappSettingsGet, miniappContentImageGet } from "./settings-server";
 import { miniappDocumentGet } from "./document-server";
+import { questionAnswersSchema, formAnswerSnapshotSchema } from "@/features/parent-portal/form-questions";
+import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 
 const object = z.record(z.string(), z.unknown());
 const requestId = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 const activityCommand = z.discriminatedUnion("action", [
   z.object({ action: z.literal("apply"), id: requestId, publicationId: requestId,
-    kind: z.literal("activity"), revision: z.number().int().positive(), participantId: requestId }).strict(),
+    kind: z.literal("activity"), revision: z.number().int().positive(), participantId: requestId,
+    pageRevision: z.number().int().nonnegative().optional(), answers: questionAnswersSchema.optional() }).strict(),
   z.object({ action: z.literal("cancel"), id: requestId }).strict(),
 ]);
 
@@ -78,6 +81,10 @@ async function get(request: Request, endpoint: string) {
     case "activities": {
       const resource = new URL(request.url).searchParams.get("resource") || "catalog";
       if (resource === "catalog") return activityCatalogGet();
+      if (resource === "answers") {
+        const id = requestId.parse(new URL(request.url).searchParams.get("id")), { db } = await authorize(request);
+        return response(formAnswerSnapshotSchema.parse(requireResult(await (db.rpc as unknown as RegistrationRpc)("miniapp_registration_answers", { p_id: id }))));
+      }
       const result = await courseGet(request, "participant");
       if (!result.ok) return result;
       if (resource === "applications") return projected(result, project.activityRequests);
@@ -108,7 +115,14 @@ async function post(request: Request, endpoint: string) {
       renameCommand(await readJson(request), { topics: "subjects", stageNumber: "grade", facilitatorId: "teacherId", participantTimeOptions: "parentTimeOptions" }))), project.assessmentRequest);
     case "activities": {
       const input = activityCommand.parse(await readJson(request));
-      return coursePost(jsonRequest(request, input.action === "apply" ? { ...input, classroomId: null } : input), "participant");
+      if (input.action === "apply") {
+        const { db } = await authorize(request);
+        const id = requireResult(await (db.rpc as unknown as RegistrationRpc)("miniapp_participant_apply_registration_form", {
+          p_id: input.id, p_target_id: input.publicationId, p_revision: input.revision, p_student_id: input.participantId,
+          p_page_revision: input.pageRevision ?? null, p_answers: input.answers ?? {} }));
+        return response({ id }, 201);
+      }
+      return coursePost(jsonRequest(request, input), "participant");
     }
     case "media": {
       const headers = new Headers(request.headers);

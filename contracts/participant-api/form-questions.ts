@@ -5,6 +5,7 @@ export type FormQuestion = {
   options?: { id: string; label: { zh: string; en: string } }[];
 };
 export type QuestionAnswers = Record<string, string | string[]>;
+export type FormAnswerSnapshot = { revision: number; fields: FormQuestion[]; answers: QuestionAnswers };
 export function questionAnswerErrors(fields: FormQuestion[], answers: QuestionAnswers): string[] {
   const errors = Object.keys(answers).filter(id => !fields.some(field => field.id === id));
   for (const field of fields) {

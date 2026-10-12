@@ -7,3 +7,4 @@ export const formQuestionSchema = z.object({ id, type: z.enum(["text", "phone", 
 export const formQuestionsSchema = z.array(formQuestionSchema).max(20).refine(v => new Set(v.map(f => f.id)).size === v.length);
 export const questionAnswersSchema = z.record(id, z.union([z.string().max(2000), z.array(id).max(20)]))
   .refine(v => Object.keys(v).length <= 20 && new TextEncoder().encode(JSON.stringify(v)).length <= 20000);
+export const formAnswerSnapshotSchema = z.object({ revision: z.number().int().nonnegative(), fields: formQuestionsSchema, answers: questionAnswersSchema });

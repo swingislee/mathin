@@ -63,7 +63,7 @@ export function miniappContentImage(path: string, thumbnail = false): string {
 export async function activityCatalog(): Promise<ActivityOffer[]> {
   return send<ActivityOffer[]>("activities", "GET");
 }
-export async function activityDetail(id: string): Promise<{ offer: ActivityOffer; page: ActivityPage | null }> {
+export async function activityDetail(id: string): Promise<{ offer: ActivityOffer; page: ActivityPage | null; pageRevision?: number }> {
   return send("activities/detail?id=" + encodeURIComponent(id), "GET");
 }
 export function activityImageUrl(path: string, thumbnail = false): string {
@@ -71,6 +71,9 @@ export function activityImageUrl(path: string, thumbnail = false): string {
 }
 export async function activityRequests(): Promise<ActivityRequest[]> {
   return send<ActivityRequest[]>("activities?resource=applications", "GET", undefined, await accessToken());
+}
+export async function activityRegistrationAnswers(id: string): Promise<import("./form-questions").FormAnswerSnapshot> {
+  return send("activities?resource=answers&id=" + encodeURIComponent(id), "GET", undefined, await accessToken());
 }
 export async function activityCommand(data: ActivityRequestCommand): Promise<{ id?: string; ok?: boolean }> {
   return send("activities", "POST", data, await accessToken());

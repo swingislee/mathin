@@ -31,11 +31,11 @@ export async function activityDetailGet(request: Request) {
   const db = anonymousClient();
   const value = requireResult(await (db.rpc as unknown as RegistrationRpc)("miniapp_activity_detail", { p_target_id: id }));
   if (!value) throw new PortalError("NOT_FOUND");
-  const parsed = z.object({ offer: courseOfferSchema, page: activityPageSchema.nullable() }).safeParse(value);
+  const parsed = z.object({ offer: courseOfferSchema, page: activityPageSchema.nullable(), pageRevision: z.number().int().nonnegative().default(0) }).safeParse(value);
   if (!parsed.success) throw new PortalError("UNAVAILABLE");
   const offer = activityOffers([parsed.data.offer])[0];
   if (!offer) throw new PortalError("NOT_FOUND");
-  return response({ offer: { ...offer, registration: registrationFacts(offer) }, page: parsed.data.page });
+  return response({ offer: { ...offer, registration: registrationFacts(offer) }, page: parsed.data.page, pageRevision: parsed.data.pageRevision });
 }
 export async function activityImageGet(request: Request) {
   const params = new URL(request.url).searchParams, path = params.get("path") || "";

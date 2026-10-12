@@ -26,6 +26,7 @@ export function ActivityPagePreview({ page, title, locale }: { page: ActivityPag
                 </div><div className="min-w-0 flex-1"><h5 className="mb-2 text-base font-semibold empty:hidden">{block.title}</h5><p className="whitespace-pre-wrap break-words text-sm leading-7">{block.body}</p></div>
               </div>}
         </section>)}
+        {!!page.questions?.length && <div className="rounded-xl bg-card p-5 text-sm"><p className="mb-2 font-medium">{locale === "zh" ? "报名时填写" : "Registration questions"}</p>{page.questions.map(q => <div key={q.id} className="mb-3"><p>{q.label[locale] || q.label.zh}{q.required ? " *" : ""}</p><p className="mt-1 text-xs text-muted">{q.options?.map(o => o.label[locale] || o.label.zh).join(" · ")}</p><div className="mt-2 h-8 rounded border border-line" /></div>)}</div>}
       </div>
       <div className="border-t border-line bg-card p-3">{page.signup?.instructions && <p className="mb-3 whitespace-pre-wrap text-xs text-muted">{page.signup.instructions}</p>}<span className="block rounded-full bg-rose py-3 text-center text-sm text-white">{t.reserve}</span></div>
     </div>

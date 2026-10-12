@@ -4,13 +4,15 @@ import { activityCopy, activityRegistrationNote } from "../../lib/activity-catal
 import { pageData, syncPage, currentLocale, errorText, loginPage, date } from "../../lib/page";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 import { restoreActivityRequest } from "../../lib/cache-compat";
+import { questionAnswerErrors, type FormQuestion, type QuestionAnswers } from "../../lib/form-questions";
 
 type ApplyCommand = Extract<ActivityRequestCommand, { action: "apply" }>;
 const pendingKey = (account: string, offer: string) => `gezhi.activity-application.v1.${account}.${offer}`;
 Page({
   data: { ...pageData("discover"), t: activityCopy.zh, id: "", authenticated: false, accountId: "", offer: null as ActivityOffer | null,
     participants: [] as Participant[], selected: 0, busy: false, pending: null as ApplyCommand | null, sent: false, activityWhen: "",
-    signup: { instructions: "", confirmation: "", success: "" }, registrationNote: "" },
+    signup: { instructions: "", confirmation: "", success: "" }, registrationNote: "",
+    questions: [] as FormQuestion[], answers: {} as QuestionAnswers, pageRevision: null as number | null },
   version: 0, visible: false,
   onLoad(query: Record<string, string>) { this.setData({ id: query.id || "" }); },
   onShow() { this.visible = true; syncPage(this, "discover"); this.setData({ t: activityCopy[currentLocale()], authenticated: Boolean(session()) }); if (!this.data.busy) void this.load(); },
@@ -30,6 +32,7 @@ Page({
       const sent = Boolean(pending && applications.some(a => a.id === pending.id));
       if (sent) wx.removeStorageSync(pendingKey(account.id, this.data.id));
       this.setData({ accountId: account.id, offer, participants: account.participants,
+        questions: detail?.page?.questions || [], answers: pending?.answers || {}, pageRevision: detail?.pageRevision ?? null,
         signup: detail?.page?.signup || { instructions: "", confirmation: "", success: "" }, registrationNote: offer ? activityRegistrationNote(offer, currentLocale()) : this.data.t.submitNote,
         selected: Math.max(0, account.participants.findIndex(p => p.id === (pending && !sent ? pending.participantId : selectedParticipant()))),
         activityWhen: offer?.activity ? date(offer.activity.startsAt) : "", pending: sent ? null : pending, sent,
@@ -41,6 +44,9 @@ Page({
     if (this.data.busy || this.data.pending) return;
     const selected = Number(e.detail.value), row = this.data.participants[selected];
     if (row) { selectParticipant(row.id); this.setData({ selected }); }
+  },
+  questionChange(event: WechatMiniprogram.CustomEvent<{ id: string; value: string | string[] }>) {
+    if (!this.data.busy && !this.data.pending && this.data.questions.some(q => q.id === event.detail.id)) this.setData({ [`answers.${event.detail.id}`]: event.detail.value });
   },
   login() { loginPage("/pages/activity-signup/index?id=" + encodeURIComponent(this.data.id)); },
   applications() { wx.navigateTo({ url: "/pages/activity-requests/index" }); },
@@ -55,9 +61,11 @@ Page({
       if (!command) {
         if (!offer || offer.kind !== "activity" || !participant) { this.setData({ error: this.data.t.chooseHint }); return; }
         if (offer.registration?.canApply === false) { this.setData({ error: this.data.t.closed }); return; }
+        if (questionAnswerErrors(this.data.questions, this.data.answers).length) { this.setData({ error: this.data.copy.missing }); return; }
         const approval = await wx.showModal({ title: this.data.t.applicationPrompt, content: [this.data.signup.confirmation, this.data.registrationNote].filter(Boolean).join("\n\n") });
         if (!approval.confirm || version !== this.version || accountId !== this.data.accountId || !session()) return;
-        command = { action: "apply", kind: "activity", id: requestId(), publicationId: offerId, revision: offer.revision, participantId: participant.id };
+        command = { action: "apply", kind: "activity", id: requestId(), publicationId: offerId, revision: offer.revision, participantId: participant.id,
+          ...(this.data.pageRevision !== null ? { pageRevision: this.data.pageRevision, answers: this.data.answers } : {}) };
       }
       wx.setStorageSync(key, command); this.setData({ pending: command });
       const result = await activityCommand(command);

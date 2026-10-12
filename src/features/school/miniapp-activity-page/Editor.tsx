@@ -9,6 +9,7 @@ import type { ActivityPageState, ActivityPageTarget } from "./contract";
 import { loadActivityPage, restoreActivityPage, saveActivityPage, uploadActivityPageImage } from "./actions";
 import { ActivityPagePreview } from "./Preview";
 import { pageWords } from "./messages";
+import { QuestionsEditor } from "../miniapp-settings/QuestionsEditor";
 
 const field = "w-full rounded-lg border border-line bg-card px-3 py-2 text-sm";
 type Notice = "" | "forbidden" | "failed" | "conflict" | "validation" | "published" | "draftSaved";
@@ -111,6 +112,7 @@ export function ActivityPageEditor({ target, title, description, locale }: {
             <p className="text-xs text-muted">{t.imageHint}</p>
             {page.cover ? <Button size="sm" variant="ghost" onClick={() => setPage({ ...page, cover: "" })}>{t.removeCover}</Button> : <p className="text-xs text-muted">{t.noCover}</p>}
           </div>
+          <QuestionsEditor fields={page.questions || []} en={locale === "en"} disabled={!!busy} onChange={questions => setPage({ ...page, questions })} />
           {!page.blocks.length && <p className="text-sm text-muted">{t.empty}</p>}
           <div className="space-y-3 rounded-xl border border-line p-4"><h3 className="text-sm font-medium">{t.listing}</h3>
             <p className="text-xs text-muted">{t.listingHint}</p>{picker(listing.cover, "listing")}

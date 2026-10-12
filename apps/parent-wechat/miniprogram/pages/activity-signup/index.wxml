@@ -7,6 +7,7 @@
       <view class="surface activity-summary"><text class="activity-heading">{{offer.title}}</text><picker mode="selector" range="{{participants}}" range-key="name" value="{{selected}}" bindchange="participant" disabled="{{busy || pending}}"><view class="activity-participant"><text>{{participants[selected].name || t.selectParticipant}}</text><text class="text-link">{{t.switchParticipant}} ›</text></view></picker><text wx:if="{{!participants.length}}" class="notice">{{t.participantNeeded}}</text></view>
       <view wx:if="{{offer.activity}}" class="surface activity-summary"><text class="section-title">{{t.activity}}</text><text class="block">{{activityWhen}}</text><text class="muted block">{{offer.activity.location}}</text></view>
       <view wx:if="{{signup.instructions}}" class="surface activity-summary"><text class="activity-notice-copy">{{signup.instructions}}</text></view>
+      <view wx:if="{{questions.length && !pending}}" class="surface activity-summary"><form-questions fields="{{questions}}" answers="{{answers}}" locale="{{locale}}" disabled="{{busy}}" bindchange="questionChange" /></view>
       <text class="small muted block">{{registrationNote}}</text>
     </block>
   </view>

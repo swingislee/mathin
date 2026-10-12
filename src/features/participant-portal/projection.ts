@@ -65,10 +65,10 @@ export function activityOffers(values: Existing.CourseOffer[]): Participant.Acti
   }]);
 }
 
-export function activityRequests(values: Existing.CourseApplication[]): Participant.ActivityRequest[] {
+export function activityRequests(values: (Existing.CourseApplication & { hasAnswers?: boolean; canCancel?: boolean })[]): Participant.ActivityRequest[] {
   return values.filter(row => row.kind === "activity").map(row => ({ id: row.id, kind: "activity", participantId: row.participantId,
     participantName: row.participantName, publicationId: row.publicationId, activityId: row.activityId, title: row.title,
-    priceCents: row.priceCents, status: row.status, createdAt: row.createdAt, resolvedAt: row.resolvedAt, reply: row.reply }));
+    priceCents: row.priceCents, status: row.status, createdAt: row.createdAt, resolvedAt: row.resolvedAt, reply: row.reply, canCancel: row.canCancel, hasAnswers: row.hasAnswers }));
 }
 
 export function serviceContacts(values: Existing.AdvisorContact[]): Participant.ServiceContact[] {

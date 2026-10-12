@@ -1,4 +1,5 @@
 /** Data-only page format shared by the staff editor and Mini Program renderer. */
+import type { FormQuestion } from "./form-questions";
 export type ActivityPageBlock =
   | { id: string; type: "text"; title: string; body: string }
   | { id: string; type: "image"; imagePath: string; caption: string }
@@ -11,6 +12,7 @@ export interface ActivityPage {
   blocks: ActivityPageBlock[];
   listing?: { cover: string; summary: string; labels: string[]; sortOrder: number };
   signup?: { instructions: string; confirmation: string; success: string };
+  questions?: FormQuestion[];
 }
 
 export function activityPageImageUrl(path: string, preview = false, thumbnail = false): string {

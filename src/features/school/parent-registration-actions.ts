@@ -6,6 +6,8 @@ import { newId } from "@/lib/uuid";
 import { authorizedClient, staffRpcClient } from "./actions/guards";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 import { registrationIdSchema } from "@/features/parent-portal/course-contract";
+import { formAnswerSnapshotSchema } from "@/features/parent-portal/form-questions";
+import type { FormAnswerSnapshot } from "../../../contracts/participant-api/form-questions";
 
 const publicationSchema = z.object({ kind: z.enum(["class", "activity"]), targetId: registrationIdSchema,
   title: z.string().trim().min(1).max(120), description: z.string().trim().max(4000),
@@ -15,6 +17,14 @@ const errors = ["FORBIDDEN", "UNAUTHENTICATED", "VALIDATION", "NOT_FOUND", "CONF
 function refresh() {
   revalidatePath("/[locale]/dashboard/classes", "layout");
   revalidatePath("/[locale]/dashboard/activities", "layout");
+}
+export async function loadRegistrationAnswers(id: string): Promise<ActionResult<FormAnswerSnapshot>> {
+  try {
+    const { supabase } = await staffRpcClient();
+    const result = await (supabase.rpc as unknown as RegistrationRpc)("miniapp_registration_answers", { p_id: registrationIdSchema.parse(id) });
+    if (result.error) throw new Error(result.error.message);
+    return { ok: true, data: formAnswerSnapshotSchema.parse(result.data) };
+  } catch (error) { return actionError(error, errors); }
 }
 export async function saveRegistrationPublication(input: RegistrationPublicationInput): Promise<ActionResult> {
   try {

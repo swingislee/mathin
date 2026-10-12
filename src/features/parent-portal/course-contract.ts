@@ -19,6 +19,7 @@ export const courseOfferSchema = z.object({
     startsAt: z.string().datetime({ offset: true }), durationMinutes: z.number().nullable(), remaining: z.number().int().nonnegative().nullable() }).nullable(),
 });
 export const courseApplicationSchema = z.object({
+  canCancel: z.boolean().optional(), hasAnswers: z.boolean().optional(),
   id: uuid, kind: z.enum(["class", "activity"]).default("class"), participantId: uuid, participantName: z.string(), publicationId: uuid,
   classroomId: uuid.nullable(), activityId: uuid.nullable().default(null), title: z.string(), className: z.string(), priceCents: z.number().int().nonnegative().nullable(),
   status: z.enum(["pending", "contacted", "confirmed", "declined", "cancelled"]),
