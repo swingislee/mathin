@@ -12,6 +12,6 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return <DashboardPage title={locale === "en" ? "Mini Program settings" : "小程序设置"} backHref="/dashboard/organization" backLabel={locale === "en" ? "Organization" : "机构设置"}>
     <Link href="/dashboard/miniapp-settings/documents" className="text-sm underline">{locale === "en" ? "Edit help and privacy documents" : "编辑帮助与隐私文档"}</Link>
     {!choices.ok && <p className="text-sm text-muted">{locale === "en" ? "Activity choices could not be loaded. Reload to edit recommendations." : "活动选项暂未载入，编辑推荐活动前请刷新重试。"}</p>}
-    <MiniappSettingsEditor initial={result.data} activities={choices.ok ? choices.data : []} contactOptions={contacts.ok ? contacts.data : undefined} initialTab={query.tab === "contacts" ? "contacts" : "home"} locale={locale === "en" ? "en" : "zh"} />
+    <MiniappSettingsEditor initial={result.data} activities={choices.ok ? choices.data : []} contactOptions={contacts.ok ? contacts.data : undefined} initialTab={query.tab || "pages"} locale={locale === "en" ? "en" : "zh"} />
   </DashboardPage>;
 }

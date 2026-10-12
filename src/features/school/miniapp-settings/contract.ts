@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { reportTemplatesSchema } from "./report-contract";
+import { miniappExperienceSchema } from "./experience-schema";
 import { miniappActions, miniappIcons, type MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
 
 export const miniappAssetPath = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.webp$/;
@@ -25,6 +26,7 @@ export const miniappSettingsSchema: z.ZodType<MiniappSettings> = z.object({
   booking: bookingPolicySchema.optional(),
   contacts: z.array(miniappContactSchema).max(40).refine(unique).optional(),
   reports: reportTemplatesSchema.optional(),
+  experience: miniappExperienceSchema.optional(),
   brand: z.object({ name: miniappLocalized(60), introduction: miniappLocalized(500), image, theme: z.enum(["paper", "leaf", "rose"]) }).strict(),
   home: z.array(z.object({ id, type: z.enum(["feature", "activities", "text", "image"]), visible: z.boolean(),
     title: miniappLocalized(120), body: miniappLocalized(2000), image, action: z.enum(miniappActions), target,
@@ -37,11 +39,17 @@ export const miniappSettingsSchema: z.ZodType<MiniappSettings> = z.object({
       return unique(groups) && stages.length === 14 && new Set(stages.map(s => s.stageNumber)).size === 14
         && stages.every(s => s.id === (s.stageNumber < 1 ? `k${s.stageNumber + 3}` : `g${s.stageNumber}`));
     }),
-}).strict().refine(v => new TextEncoder().encode(JSON.stringify(v)).length <= 64 * 1024);
+}).strict().refine(v => new TextEncoder().encode(JSON.stringify(v)).length <= 1100 * 1024);
 
 export const settingsStateSchema = z.object({ draft: miniappSettingsSchema.nullable(), revision: z.number().int().nonnegative(),
   publishedRevision: z.number().int().positive().nullable(), publishedAt: z.string().nullable(),
   history: z.array(z.object({ revision: z.number().int().positive(), publishedAt: z.string() })).max(50),
 });
 export type SettingsState = z.infer<typeof settingsStateSchema>;
-export function settingsImagePaths(config: MiniappSettings): string[] { return [config.brand.image, ...config.home.map(b => b.image), ...(config.contacts || []).map(c => c.qrImage).filter(p => !p.includes("/"))].filter(Boolean); }
+export function settingsImagePaths(config: MiniappSettings): string[] {
+  const experience = config.experience;
+  return [...new Set([config.brand.image, ...config.home.map(b => b.image), ...(config.contacts || []).map(c => c.qrImage).filter(p => !p.includes("/")),
+    ...(experience?.services || []).map(s => s.image), ...(experience?.resources || []).map(r => r.image),
+    ...(experience?.pages || []).flatMap(p => p.blocks.flatMap(b => ["image" in b ? b.image : "", ...("items" in b ? b.items.map(i => i.image || "") : [])])),
+  ].filter(Boolean))];
+}

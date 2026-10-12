@@ -39,6 +39,42 @@
       "next": "默认6个月参考有效期已可配置，名单、详情与报告展示已接通；本机迁移、定向日期/权限SQL、类型静态检查及两条HTTP入口通过。已与小程序会话确认referenceValidity接口，由其接入客户端。开发可验收，生产未部署。"
     },
     {
+      "id": "MINI-BOOKING-PLATFORM-20261012",
+      "title": "预约小程序完整配置与可替换连接",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-BOOKING-PLATFORM-20261012.md",
+      "writePaths": [
+        ".ai/tasks/MINI-BOOKING-PLATFORM-20261012.md",
+        "contracts/participant-api/",
+        "apps/parent-wechat/miniprogram/",
+        "src/features/school/miniapp-settings/",
+        "src/features/participant-portal/",
+        ".tmp/mini-booking-platform-20261012/",
+        "apps/parent-wechat/docs/booking-platform.md",
+        "contracts/participant-api/provider-protocol.ts",
+        "src/app/api/internal/miniapp-notifications/",
+        "scripts/miniapp-notification-worker.mjs",
+        "supabase/migrations/2026101301*",
+        "supabase/tests/miniapp_experience.sql",
+        "tests/miniapp-provider-boundaries.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/docs/portal.md",
+        "src/app/[locale]/dashboard/miniapp-settings/",
+        "src/app/api/v1/participant/",
+        "scripts/sync-participant-contract.mjs",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": "206cc474",
+      "next": "完整模板、服务/表单/申请、网页与预约连接已在开发端接通；六个本机迁移、定向风险检查和后台入口通过。待实际验收及具体提供方绑定，生产及上传暂停。"
+    },
+    {
       "id": "MINI-EXTENSIBILITY-20261012",
       "title": "小程序与后台配置化及性能重构",
       "agent": "codex",

@@ -5,7 +5,7 @@ import type { Locale } from "./locale";
 import { openPage } from "./navigation";
 
 type Saved = { revision: number; config: MiniappSettings; checkedAt: number };
-const key = "gezhi.miniapp-settings.v1:" + config.apiOrigin;
+const key = "gezhi.miniapp-settings.v2:" + config.apiOrigin;
 let saved: Saved | null = null, pending: Promise<MiniappSettings> | null = null;
 let lastAttempt = 0;
 export function configuration(): MiniappSettings {
@@ -53,6 +53,9 @@ export function configurationRoute(action: MiniappAction, target = "") {
     service: "/pages/service/index", agenda: "/pages/agenda/index", calendar: "/pages/calendar/index", reflections: "/pages/reflections/index",
     records: "/pages/records/index", register: "/pages/register/index?source=account", guardian: "/pages/guardian-binding/index",
     account: "/pages/account/index", privacy: "/pages/document/index?id=privacy", document: "/pages/document/index?id=" + encodeURIComponent(target),
+    page: "/pages/experience/index?id=" + encodeURIComponent(target), catalog: "/pages/service-catalog/index?category=" + encodeURIComponent(target),
+    offering: "/pages/service-detail/index?id=" + encodeURIComponent(target), form: "/pages/experience-form/index?id=" + encodeURIComponent(target),
+    web: "/pages/web/index?id=" + encodeURIComponent(target),
   };
   return routes[action] || "";
 }

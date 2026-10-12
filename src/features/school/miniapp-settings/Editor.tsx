@@ -11,14 +11,19 @@ import { BookingPolicyEditor } from "./BookingPolicyEditor";
 import { ContactsEditor } from "./ContactsEditor";
 import { ReportTemplatesEditor } from "./ReportTemplatesEditor";
 import { ActionField, LocalizedField, MenuEditor, MoveControls, moveItem, settingsField } from "./fields";
+import { defaultMiniappExperience } from "../../../../contracts/participant-api/miniapp-experience-templates";
+import { settingsExperienceIssues } from "../../../../contracts/participant-api/miniapp-experience-validation";
+import { ExperienceContext } from "./ExperienceContext";
+import { ExperienceWorkbench, experienceTabs } from "./ExperienceWorkbench";
+const withExperience = (value: MiniappSettings): MiniappSettings => ({ ...value, experience: value.experience || defaultMiniappExperience(value) });
 
 const imageUrl = (path: string) => path ? `/api/v1/participant/settings/image?preview=1&path=${encodeURIComponent(path)}` : "";
 export function MiniappSettingsEditor({ initial, locale, activities = [], contactOptions, initialTab = "home" }: { initial: SettingsState; locale: "zh" | "en"; activities?: { id: string; title: string }[]; initialTab?: string;
   contactOptions?: { campuses: { id: string; name: string }[]; legacy: MiniappContact[] } }) {
   const en = locale === "en";
-  const [state, setState] = useState(initial), [config, setConfig] = useState(initial.draft || defaultMiniappSettings);
+  const [state, setState] = useState(initial), [config, setConfig] = useState(() => withExperience(initial.draft || defaultMiniappSettings()));
   const [baseline, setBaseline] = useState(JSON.stringify(initial.draft || defaultMiniappSettings()));
-  const [tab, setTab] = useState(initialTab), [notice, setNotice] = useState(""), [conflict, setConflict] = useState(false), [busy, start] = useTransition();
+  const [tab, setTab] = useState(initialTab in experienceTabs || ["reports", "home", "menus", "contacts", "booking", "brand", "stages", "history"].includes(initialTab) ? initialTab : "pages"), [notice, setNotice] = useState(""), [conflict, setConflict] = useState(false), [busy, start] = useTransition();
   const dirty = JSON.stringify(config) !== baseline;
   useEffect(() => {
     if (!dirty) return;
@@ -28,8 +33,9 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
   const failure = (code: string) => code === "FORM_CHANGED" ? (en ? "Another edit was saved. Your changes are kept; reload to review the current draft." : "已有其他修改保存。当前输入已保留，请重新载入后核对。")
     : code === "VALIDATION" ? (en ? "Check field lengths, images and required values." : "请检查字段长度、图片和必填内容。") : (en ? "Could not save. Please retry." : "未能完成，请重试。");
   const run = (operation: () => Promise<void>) => start(async () => { try { await operation(); } catch { setNotice(failure("UNAVAILABLE")); } });
-  const accept = (next: SettingsState) => { const value = next.draft || defaultMiniappSettings(); setState(next); setConfig(value); setBaseline(JSON.stringify(value)); setConflict(false); };
+  const accept = (next: SettingsState) => { const value = next.draft || defaultMiniappSettings(); setState(next); setConfig(withExperience(value)); setBaseline(JSON.stringify(value)); setConflict(false); };
   function save(publish: boolean) {
+    if (publish && settingsExperienceIssues(config).length) { setNotice(en ? "Resolve the listed configuration items before publishing. You can still save a draft." : "请先处理下方配置问题再发布，当前内容可以保存为草稿。"); return; }
     run(async () => {
       const r = await saveMiniappSettings(config, state.revision, publish);
       if (!r.ok) { setNotice(failure(r.code)); setConflict(r.code === "FORM_CHANGED"); return; }
@@ -46,15 +52,18 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
     <label className="grid gap-1 text-sm">{en ? "Image (JPG / PNG / WebP, up to 5 MB)" : "图片（JPG / PNG / WebP，5 MB 内）"}<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const file = e.target.files?.[0]; e.target.value = ""; if (file) upload(file, update); }} /></label>
     {path && <Button type="button" variant="ghost" size="sm" onClick={() => update("")}>{en ? "Remove image" : "移除图片"}</Button>}</div>;
   const patchHome = (index: number, change: Partial<MiniappHomeBlock>) => setConfig(v => ({ ...v, home: v.home.map((b, i) => i === index ? { ...b, ...change } : b) }));
-  const tabs = { booking: en ? "Booking rules" : "预约规则", home: en ? "Home" : "发现首页", menus: en ? "Menus" : "服务入口", contacts: en ? "Contacts" : "联系服务", reports: en ? "Report sections" : "报告栏目", brand: en ? "Brand" : "品牌", stages: en ? "Stages" : "阶段字典", history: en ? "History" : "发布历史" };
-  return <div className="space-y-5">
+  const tabs = { ...Object.fromEntries(Object.entries(experienceTabs).map(([key, name]) => [key, name[locale]])), reports: en ? "Report templates" : "报告模板", home: en ? "Original home arrangement" : "原首页编排", menus: en ? "Menus" : "服务入口", contacts: en ? "Contacts" : "联系服务", booking: en ? "Current assessment rules" : "现有诊断规则", brand: en ? "Brand" : "品牌", stages: en ? "Stages" : "阶段字典", history: en ? "History" : "发布历史" };
+  const issues = settingsExperienceIssues(config);
+  return <ExperienceContext.Provider value={config.experience}><div className="space-y-5">
     <div className="flex flex-wrap items-center gap-3"><Button disabled={busy || conflict} onClick={() => save(false)} variant="secondary">{en ? "Save draft" : "保存草稿"}</Button>
       <Button disabled={busy || conflict} onClick={() => save(true)}>{en ? "Publish" : "发布"}</Button>
       <span className="text-sm text-muted">{dirty ? (en ? "Unsaved changes" : "有未保存修改") : state.publishedAt ? `${en ? "Published" : "最近发布"} ${new Date(state.publishedAt).toLocaleString(locale)}` : (en ? "Not published" : "尚未发布")}</span>
       {conflict && <Button variant="secondary" disabled={busy} onClick={reload}>{en ? "Reload draft" : "重新载入草稿"}</Button>}</div>
     {notice && <p role="status" className="text-sm">{notice}</p>}
+    {issues.length > 0 && <details className="border-l-2 border-crater pl-3"><summary className="cursor-pointer text-sm">{en ? `${issues.length} configuration items need attention before publishing` : `${issues.length} 项配置需要在发布前补齐`}</summary><ul className="mt-2 space-y-1 text-sm text-muted">{issues.slice(0, 30).map((issue, index) => <li key={index}>{issue[locale]} <span className="text-xs">({issue.path})</span></li>)}</ul></details>}
     <Tabs value={tab} onValueChange={setTab}><TabsList className="h-auto flex-wrap">{Object.entries(tabs).map(([id, title]) => <TabsTrigger key={id} value={id}>{title}</TabsTrigger>)}</TabsList></Tabs>
     <fieldset disabled={busy} className="min-w-0 space-y-5">
+      {config.experience && (tab in experienceTabs || tab === "reports") && <ExperienceWorkbench key={tab} tab={tab} value={config.experience} locale={locale} activities={activities} onChange={experience => setConfig(v => ({ ...v, experience }))} upload={upload} />}
       {tab === "brand" && <div className="max-w-3xl space-y-5"><LocalizedField label={en ? "Display name" : "展示名称"} value={config.brand.name} max={60} onChange={name => setConfig(v => ({ ...v, brand: { ...v.brand, name } }))} />
         <LocalizedField label={en ? "Introduction" : "品牌介绍"} value={config.brand.introduction} max={500} multiline onChange={introduction => setConfig(v => ({ ...v, brand: { ...v.brand, introduction } }))} />
         {imagePicker(config.brand.image, image => setConfig(v => ({ ...v, brand: { ...v.brand, image } })))}
@@ -89,9 +98,9 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
           <select className={settingsField + " max-w-xs"} aria-label={en ? "Stage group" : "所属阶段分组"} value={group.id} onChange={e => setConfig(v => ({ ...v, stages: v.stages.map(g => g.id === group.id ? { ...g, stages: g.stages.filter(s => s.id !== stage.id) } : g.id === e.target.value ? { ...g, stages: [...g.stages, stage] } : g) }))}>{config.stages.map(g => <option key={g.id} value={g.id}>{miniappText(g.label, locale)}</option>)}</select>
         </div>)}</section>)}</div>}
       {tab === "booking" && <BookingPolicyEditor value={config.booking} en={en} onChange={booking => setConfig(v => ({ ...v, booking }))} />}
-      {tab === "reports" && <ReportTemplatesEditor value={config.reports} en={en} onChange={reports => setConfig(v => ({ ...v, reports }))} />}
+      {tab === "reports" && <details className="border-t border-line pt-5"><summary className="cursor-pointer text-sm">{en ? "Compatible sections for original reports and clients" : "原报告与旧客户端兼容栏目"}</summary><div className="mt-4"><ReportTemplatesEditor value={config.reports} en={en} onChange={reports => setConfig(v => ({ ...v, reports }))} /></div></details>}
       {tab === "contacts" && (contactOptions ? <ContactsEditor value={config.contacts} legacy={contactOptions.legacy} campuses={contactOptions.campuses} stages={config.stages} locale={locale} onChange={contacts => setConfig(v => ({ ...v, contacts }))} upload={(file, update) => upload(file, update, true)} /> : <p className="text-sm text-muted">{en ? "Contact options could not be loaded. Reload to edit." : "联系服务选项暂未载入，请刷新后编辑。"}</p>)}
       {tab === "history" && <div className="divide-y divide-line">{!state.history.length && <p className="text-sm text-muted">{en ? "No published versions yet." : "暂无发布记录。"}</p>}{state.history.map(row => <div key={row.revision} className="flex items-center justify-between gap-3 py-3"><span className="text-sm">{new Date(row.publishedAt).toLocaleString(locale)} · {en ? "Version" : "版本"} {row.revision}</span><Button variant="secondary" size="sm" disabled={dirty || conflict} onClick={() => restore(row.revision)}>{en ? "Restore as draft" : "恢复为草稿"}</Button></div>)}</div>}
     </fieldset>
-  </div>;
+  </div></ExperienceContext.Provider>;
 }

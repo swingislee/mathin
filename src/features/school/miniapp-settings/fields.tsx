@@ -1,8 +1,9 @@
 "use client";
-import type { ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { newId } from "@/lib/uuid";
 import { miniappActions, miniappIcons, type MiniappAction, type MiniappEntry, type MiniappText } from "../../../../contracts/participant-api/miniapp-settings";
+import { ExperienceContext } from "./ExperienceContext";
 
 export const settingsField = "w-full rounded-lg border border-line bg-card px-3 py-2 text-sm";
 export const actionNames: Record<MiniappAction, MiniappText> = {
@@ -11,6 +12,8 @@ export const actionNames: Record<MiniappAction, MiniappText> = {
   calendar: { zh: "日历", en: "Calendar" }, reflections: { zh: "思考回顾", en: "Reflections" }, records: { zh: "活动记录", en: "Activity records" },
   participants: { zh: "参与人档案", en: "Participants" }, register: { zh: "参与登记", en: "Registration" }, guardian: { zh: "关联已有孩子", en: "Link child" },
   account: { zh: "账号设置", en: "Account" }, privacy: { zh: "隐私说明", en: "Privacy" }, document: { zh: "帮助文档", en: "Help document" },
+  page: { zh: "内容页面", en: "Content page" }, offering: { zh: "服务详情", en: "Service details" }, catalog: { zh: "服务目录", en: "Service catalog" },
+  form: { zh: "填写表单", en: "Fill a form" }, web: { zh: "外部网页", en: "Website" },
 };
 export function LocalizedField({ label, value, onChange, max = 120, multiline = false }: {
   label: string; value: MiniappText; onChange: (v: MiniappText) => void; max?: number; multiline?: boolean;
@@ -37,9 +40,15 @@ export function moveItem<T>(items: T[], index: number, offset: number): T[] {
 export function ActionField({ value, target, onChange, locale }: {
   value: MiniappAction; target: string; onChange: (action: MiniappAction, target: string) => void; locale: "zh" | "en";
 }) {
+  const experience = useContext(ExperienceContext);
+  const choices = value === "page" ? experience?.pages.map(p => ({ id: p.id, title: p.title }))
+    : value === "offering" ? experience?.services.map(s => ({ id: s.id, title: s.name }))
+    : value === "form" ? experience?.forms.map(f => ({ id: f.id, title: f.title }))
+    : value === "web" ? experience?.destinations.map(d => ({ id: d.id, title: d.name })) : undefined;
   return <div className="flex flex-wrap gap-2"><label className="grid min-w-44 flex-1 gap-1 text-sm">{locale === "zh" ? "点击后打开" : "Open on tap"}
     <select className={settingsField} value={value} onChange={e => onChange(e.target.value as MiniappAction, "")}>{miniappActions.map(action => <option key={action} value={action}>{actionNames[action][locale]}</option>)}</select></label>
     {value === "document" && <label className="grid flex-1 gap-1 text-sm">{locale === "zh" ? "文档标识" : "Document key"}<input className={settingsField} value={target} placeholder="privacy / children_privacy" maxLength={64} pattern="[a-zA-Z0-9_-]*" onChange={e => onChange(value, e.target.value)} /></label>}
+    {choices && <label className="grid flex-1 gap-1 text-sm">{locale === "zh" ? "绑定目标" : "Destination"}<select className={settingsField} value={target} onChange={e => onChange(value, e.target.value)}><option value="">{locale === "zh" ? "请选择" : "Choose"}</option>{choices.map(c => <option key={c.id} value={c.id}>{c.title[locale] || c.title.zh || c.id}</option>)}</select></label>}
   </div>;
 }
 export function MenuEditor({ value, onChange, locale, max = 20 }: { value: MiniappEntry[]; onChange: (v: MiniappEntry[]) => void; locale: "zh" | "en"; max?: number }) {

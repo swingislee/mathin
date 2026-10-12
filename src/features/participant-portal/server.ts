@@ -12,6 +12,11 @@ import * as project from "./projection";
 import { registrationsGet, registrationsPost } from "./registration-server";
 import { activityCatalogGet, activityDetailGet, activityImageGet } from "./activity-detail-server";
 import { miniappSettingsGet, miniappContentImageGet } from "./settings-server";
+import { experienceGet } from "./experience-server";
+import { experienceRequestsGet, experienceRequestsPost } from "./experience-requests-server";
+import { reportContentResponse } from "./report-content-server";
+import { experienceProviderPost, experienceBookingsGet, experienceBookingDetailGet } from "./experience-provider-server";
+import { notificationsGet } from "./notification-server";
 import { miniappDocumentGet, miniappConsentsGet, miniappConsentsPost } from "./document-server";
 import { questionAnswersSchema, formAnswerSnapshotSchema } from "@/features/parent-portal/form-questions";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
@@ -64,6 +69,11 @@ async function projected<T>(result: Response, map: (value: T) => unknown) {
 async function get(request: Request, endpoint: string) {
   switch (endpoint) {
     case "settings": return miniappSettingsGet(request);
+    case "experience": return experienceGet(request);
+    case "experience/requests": return experienceRequestsGet(request);
+    case "experience/bookings": return experienceBookingsGet(request);
+    case "experience/booking-detail": return experienceBookingDetailGet(request);
+    case "experience/notifications": return notificationsGet(request);
     case "settings/image": return miniappContentImageGet(request);
     case "documents": return miniappDocumentGet(request);
     case "consents": return miniappConsentsGet();
@@ -71,7 +81,8 @@ async function get(request: Request, endpoint: string) {
     case "portal": {
       const resource = new URL(request.url).searchParams.get("resource");
       if (!["form", "account", "bookings", "reports", "tasks", "submission"].includes(resource || "")) throw new PortalError("NOT_FOUND");
-      return portalGet(resource === "tasks" ? queryRequest(request, { resource: "practices" }) : request);
+      const result = await portalGet(resource === "tasks" ? queryRequest(request, { resource: "practices" }) : request);
+      return resource === "reports" ? reportContentResponse(request, result) : result;
     }
     case "calendar": return projected(await learningGet(request), project.participantCalendar);
     case "assessments": return projected(await assessmentGet(request), project.assessmentOverview);
@@ -102,6 +113,8 @@ async function get(request: Request, endpoint: string) {
 
 async function post(request: Request, endpoint: string) {
   switch (endpoint) {
+    case "experience/requests": return experienceRequestsPost(request);
+    case "experience/provider": return experienceProviderPost(request);
     case "auth": return authPost(request);
     case "consents": return miniappConsentsPost(request);
     case "auth/wechat": return parentWechatAuthPost(request);

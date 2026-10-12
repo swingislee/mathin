@@ -1,0 +1,170 @@
+/** Versioned, data-only experience contracts shared by staff, web and native clients. */
+export type ExperienceText = { zh: string; en: string };
+export type ExperienceLocale = "zh" | "en";
+export const experienceText = (zh = "", en = ""): ExperienceText => ({ zh, en });
+export const localText = (value: ExperienceText | undefined, locale: ExperienceLocale): string => value?.[locale] || value?.zh || value?.en || "";
+
+export const experienceNativeTargets = ["assessment", "activities", "applications", "service", "agenda", "calendar", "reflections", "records", "participants", "register", "guardian", "account", "privacy", "document"] as const;
+export type ExperienceAction = {
+  kind: "none" | "native" | "page" | "offering" | "catalog" | "form" | "web" | "phone";
+  target: string;
+  label: ExperienceText;
+};
+export type ExperienceAudience = "all" | "signedIn" | "participants";
+export type ContentCondition = { field: string; operator: "present" | "equals" | "notEquals"; value: string };
+type BlockBase = { id: string; version: 1; visible: boolean; condition?: ContentCondition; fallback?: ExperienceText };
+export const contentBlockKinds = ["heading", "paragraph", "image", "callout", "quote", "bullets", "steps", "facts", "table", "faq", "action", "divider", "services", "activities", "contacts", "metric", "scale", "evidence"] as const;
+export type ContentBlockKind = typeof contentBlockKinds[number];
+export type ContentItem = { id: string; title: ExperienceText; body: ExperienceText; image?: string; binding?: string };
+export type ContentBlock = BlockBase & (
+  | { kind: "heading"; text: ExperienceText; level: 2 | 3 }
+  | { kind: "paragraph" | "callout" | "quote"; text: ExperienceText; binding: string; tone: "neutral" | "accent" | "notice" }
+  | { kind: "image"; image: string; caption: ExperienceText; fit: "contain" | "cover" }
+  | { kind: "bullets" | "steps" | "facts" | "faq"; title: ExperienceText; items: ContentItem[]; binding: string }
+  | { kind: "table"; title: ExperienceText; columns: ExperienceText[]; rows: ExperienceText[][]; binding: string }
+  | { kind: "action"; action: ExperienceAction; appearance: "primary" | "secondary" | "link" }
+  | { kind: "divider" }
+  | { kind: "services" | "activities" | "contacts"; title: ExperienceText; ids: string[]; limit: number; emptyText: ExperienceText; layout: "list" | "grid" }
+  | { kind: "metric"; title: ExperienceText; binding: string; unit: ExperienceText; description: ExperienceText }
+  | { kind: "scale"; title: ExperienceText; binding: string; labels: ExperienceText[]; description: ExperienceText }
+  | { kind: "evidence"; title: ExperienceText; binding: string; emptyText: ExperienceText }
+);
+export type ContentDocument = {
+  id: string; version: 1; title: ExperienceText; description: ExperienceText;
+  purpose: "page" | "service" | "preparation" | "confirmation" | "report" | "help";
+  audience: ExperienceAudience; enabled: boolean; layout: "reading" | "sections";
+  blocks: ContentBlock[];
+};
+
+export type FormCondition = { fieldId: string; operator: "equals" | "notEquals" | "answered" | "includes"; value: string };
+export type ExperienceField = {
+  id: string; type: "text" | "textarea" | "phone" | "email" | "number" | "date" | "select" | "multiselect" | "consent";
+  label: ExperienceText; help: ExperienceText; placeholder: ExperienceText; required: boolean;
+  options: { id: string; label: ExperienceText }[];
+  visibleWhen?: FormCondition; min?: number; max?: number;
+};
+export type ExperienceFormGroup = {
+  id: string; title: ExperienceText; description: ExperienceText;
+  repeat: boolean; minEntries: number; maxEntries: number; fields: ExperienceField[];
+};
+export type ExperienceForm = {
+  id: string; version: 1; title: ExperienceText; introduction: ExperienceText;
+  submitLabel: ExperienceText; successMessage: ExperienceText;
+  audience: ExperienceAudience; enabled: boolean; groups: ExperienceFormGroup[];
+  purpose: "intake" | "request" | "feedback" | "followup";
+};
+export type ExperienceFieldAnswers = Record<string, string | string[]>;
+export type ExperienceAnswers = Record<string, ExperienceFieldAnswers[]>;
+export type ExperienceFormSnapshot = { version: 1; revision: number; form: ExperienceForm; answers: ExperienceAnswers };
+
+export type WebDestination = {
+  id: string; name: ExperienceText; url: string; enabled: boolean;
+  /** This setting records the operator's completed WeChat domain setup, never a bypass. */
+  domainConfirmed: boolean;
+  openMode: "webview" | "copy";
+  allowedParameters: ("locale" | "source" | "service")[];
+  returnPageId: string; unavailableMessage: ExperienceText;
+};
+export type ExperienceDictionary = { id: string; name: ExperienceText; entries: { id: string; label: ExperienceText; enabled: boolean }[] };
+export type ExperienceResource = {
+  id: string; kind: "person" | "location" | "room" | "equipment" | "online";
+  name: ExperienceText; description: ExperienceText; image: string; address: ExperienceText;
+  capacity: number; enabled: boolean; connectionId: string; externalId: string;
+};
+export type SchedulingPolicy = {
+  id: string; name: ExperienceText; timeZone: string;
+  windowDays: number; minimumNoticeMinutes: number; bufferBeforeMinutes: number; bufferAfterMinutes: number;
+  slotMinutes: number; capacity: number; maxActiveBookings: number;
+  cancellation: "self" | "contact" | "disabled"; cancellationCutoffMinutes: number;
+  reschedule: "self" | "contact" | "disabled"; rescheduleCutoffMinutes: number;
+  waitlist: boolean; confirmation: "automatic" | "manual";
+  weekdays: { day: number; start: string; end: string }[];
+  exceptions: { date: string; closed: boolean; start: string; end: string; note: ExperienceText }[];
+};
+export type BookingFlow = {
+  id: string; name: ExperienceText;
+  mode: "appointment" | "request" | "activity" | "external";
+  formId: string; preparationPageId: string; confirmationPageId: string;
+  requireParticipant: boolean; allowMultipleParticipants: boolean;
+  policyId: string; consentDocumentIds: string[];
+  completionAction: ExperienceAction;
+};
+export type ExperienceService = {
+  id: string; name: ExperienceText; summary: ExperienceText; image: string; enabled: boolean;
+  categoryId: string; audienceTags: string[]; durationMinutes: number;
+  detailPageId: string; flowId: string; resourceIds: string[];
+  binding: { adapter: "mathin-assessment" | "mathin-activity" | "request" | "remote" | "web"; target: string; connectionId: string };
+  price: { mode: "free" | "offline" | "online"; amountMinor: number; currency: string; note: ExperienceText };
+};
+export const bookingEvents = ["request.created", "booking.created", "booking.confirmed", "booking.rescheduled", "booking.cancelled", "booking.reminder", "booking.completed", "booking.noShow", "waitlist.available", "form.submitted", "report.published", "payment.succeeded", "payment.refunded"] as const;
+export type BookingEvent = typeof bookingEvents[number];
+export type NotificationRule = {
+  id: string; name: ExperienceText; event: BookingEvent; channel: "inApp" | "wechat" | "email" | "sms" | "webhook";
+  enabled: boolean; connectionId: string; templateKey: string; serviceIds: string[];
+  offsetMinutes: number; title: ExperienceText; body: ExperienceText;
+};
+export const providerCapabilities = ["services.read", "resources.read", "availability.read", "booking.read", "booking.create", "booking.cancel", "booking.reschedule", "waitlist.join", "waitlist.leave", "forms.submit", "reports.read", "records.read", "participants.read", "notifications.send", "payment.create", "payment.read", "payment.refund", "entitlements.read", "analytics.read", "identity.exchange"] as const;
+export type ProviderCapability = typeof providerCapabilities[number];
+/** Public connection descriptor; URLs, credentials and authentication configuration stay on the server. */
+export type ExperienceConnection = { id: string; name: ExperienceText; adapter: "mathin" | "http-v1"; capabilities: ProviderCapability[]; enabled: boolean };
+export type ReportDocumentBinding = { kind: "assessment" | "feedback"; pageId: string; serviceId: string; enabled: boolean };
+export type MiniappExperience = {
+  version: 1; homePageId: string;
+  pages: ContentDocument[]; services: ExperienceService[]; forms: ExperienceForm[];
+  destinations: WebDestination[]; dictionaries: ExperienceDictionary[]; resources: ExperienceResource[];
+  policies: SchedulingPolicy[]; flows: BookingFlow[]; connections: ExperienceConnection[];
+  notifications: NotificationRule[]; reportBindings: ReportDocumentBinding[];
+};
+export type ExperienceIssue = { path: string; code: string; zh: string; en: string };
+
+export function fieldIsVisible(field: ExperienceField, answers: ExperienceFieldAnswers): boolean {
+  const condition = field.visibleWhen;
+  if (!condition) return true;
+  const answer = answers[condition.fieldId];
+  if (condition.operator === "answered") return Array.isArray(answer) ? answer.length > 0 : !!answer?.trim();
+  if (condition.operator === "includes") return Array.isArray(answer) && answer.includes(condition.value);
+  return condition.operator === "equals" ? answer === condition.value : answer !== condition.value;
+}
+
+/** Server and clients use identical visibility/required rules; hidden answers are rejected, not trusted. */
+export function experienceAnswerErrors(form: ExperienceForm, answers: ExperienceAnswers): string[] {
+  const errors: string[] = [];
+  for (const key of Object.keys(answers)) if (!form.groups.some(g => g.id === key)) errors.push(key);
+  for (const group of form.groups) {
+    const rows = answers[group.id] || [];
+    if (!Array.isArray(rows) || rows.length < group.minEntries || rows.length > (group.repeat ? group.maxEntries : 1)) { errors.push(group.id); continue; }
+    for (let index = 0; index < rows.length; index++) {
+      const row = rows[index], prefix = `${group.id}.${index}`;
+      if (!row || typeof row !== "object" || Array.isArray(row)) { errors.push(prefix); continue; }
+      for (const key of Object.keys(row)) if (!group.fields.some(f => f.id === key)) errors.push(`${prefix}.${key}`);
+      for (const field of group.fields) {
+        const answer = row[field.id], path = `${prefix}.${field.id}`;
+        const empty = answer === undefined || (Array.isArray(answer) ? answer.length === 0 : typeof answer === "string" && !answer.trim());
+        if (!fieldIsVisible(field, row)) { if (!empty) errors.push(path); continue; }
+        if (empty) { if (field.required) errors.push(path); continue; }
+        if (field.type === "multiselect") {
+          if (!Array.isArray(answer) || answer.length > 30 || new Set(answer).size !== answer.length || answer.some(a => !field.options.some(o => o.id === a))) errors.push(path);
+          continue;
+        }
+        if (typeof answer !== "string" || answer.length > (field.type === "textarea" ? 4000 : 500)) { errors.push(path); continue; }
+        if (field.type === "select" && !field.options.some(o => o.id === answer)
+          || field.type === "consent" && answer !== "yes"
+          || field.type === "phone" && !/^\+?[0-9 ()-]{6,30}$/.test(answer)
+          || field.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(answer)
+          || field.type === "date" && (!/^\d{4}-\d{2}-\d{2}$/.test(answer) || !Number.isFinite(Date.parse(answer)) || new Date(answer).toISOString().slice(0, 10) !== answer)
+          || field.type === "number" && (!Number.isFinite(Number(answer)) || field.min !== undefined && Number(answer) < field.min || field.max !== undefined && Number(answer) > field.max)) errors.push(path);
+      }
+    }
+  }
+  return errors;
+}
+
+export function cleanExperienceAnswers(form: ExperienceForm, answers: ExperienceAnswers): ExperienceAnswers {
+  const result: ExperienceAnswers = {};
+  for (const group of form.groups) result[group.id] = (answers[group.id] || []).map(row => {
+    const clean: ExperienceFieldAnswers = {};
+    for (const field of group.fields) if (fieldIsVisible(field, clean) && row[field.id] !== undefined) clean[field.id] = row[field.id];
+    return clean;
+  });
+  return result;
+}

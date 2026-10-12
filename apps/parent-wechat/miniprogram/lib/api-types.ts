@@ -44,7 +44,7 @@ export type Booking = {
   title: LocalizedText; startsAt: string; location: string;
   status: "booked" | "attended" | "no_show" | "cancelled"; canCancel?: boolean;
 };
-export type Report = {
+export type Report = import("./report-content").ReportContent & {
   id: string; kind: "assessment" | "feedback"; title: string;
   /** 旧版 assessment RPC 尚未升级时为 null；客户端仅使用 ID 关联参与人。 */
   participantId: string | null;

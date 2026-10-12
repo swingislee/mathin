@@ -1,5 +1,12 @@
 import fs from "node:fs";
 for (const [sourcePath, target] of [
+  ["contracts/parent-api/assessment-result-validity.ts", "contracts/participant-api/assessment-result-validity.ts"],
+  ["contracts/parent-api/assessment-result-validity.ts", "apps/parent-wechat/miniprogram/lib/assessment-result-validity.ts"],
+  ["contracts/participant-api/report-content.ts", "apps/parent-wechat/miniprogram/lib/report-content.ts"],
+  ["contracts/participant-api/experience-runtime.ts", "apps/parent-wechat/miniprogram/lib/experience-runtime.ts"],
+  ["contracts/participant-api/miniapp-experience.ts", "apps/parent-wechat/miniprogram/lib/miniapp-experience.ts"],
+  ["contracts/participant-api/miniapp-experience-templates.ts", "apps/parent-wechat/miniprogram/lib/miniapp-experience-templates.ts"],
+  ["contracts/participant-api/miniapp-content-render.ts", "apps/parent-wechat/miniprogram/lib/miniapp-content-render.ts"],
   ["contracts/participant-api/form-questions.ts", "apps/parent-wechat/miniprogram/lib/form-questions.ts"],
   ["contracts/participant-api/report-template.ts", "apps/parent-wechat/miniprogram/lib/report-template.ts"],
   ["contracts/participant-api/task-submission.ts", "apps/parent-wechat/miniprogram/lib/task-submission.ts"],

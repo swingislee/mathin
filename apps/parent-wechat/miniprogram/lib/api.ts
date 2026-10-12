@@ -64,7 +64,13 @@ export async function serviceContacts(stageNumber?: number): Promise<import("./a
   return send("services" + (stageNumber === undefined ? "" : "?stage=" + stageNumber), "GET");
 }
 export async function miniappSettings(revision?: number): Promise<MiniappSettingsPublication> {
-  return send("settings" + (revision === undefined ? "" : "?revision=" + revision), "GET");
+  return send("settings?protocol=2" + (revision === undefined ? "" : "&revision=" + revision), "GET");
+}
+export async function experienceRead<T>(kind: "page" | "form" | "service" | "web", id: string, query = ""): Promise<T> {
+  return send("experience?kind=" + kind + "&id=" + encodeURIComponent(id) + query, "GET", undefined, session() ? await accessToken() : undefined);
+}
+export async function experienceRequest<T>(path: string, data?: object): Promise<T> {
+  return send("experience/" + path, data ? "POST" : "GET", data, await accessToken());
 }
 export async function miniappDocument(id: string): Promise<MiniappDocument> {
   return send("documents?id=" + encodeURIComponent(id), "GET");

@@ -18,7 +18,16 @@
     "pages/service/index",
     "pages/assessment/index",
     "pages/task/index",
-    "pages/document/index"
+    "pages/document/index",
+    "pages/experience/index",
+    "pages/web/index",
+    "pages/service-catalog/index",
+    "pages/service-detail/index",
+    "pages/experience-form/index",
+    "pages/experience-requests/index",
+    "pages/provider-booking/index",
+    "pages/provider-bookings/index",
+    "pages/experience-notifications/index"
   ],
   "window": {
     "navigationBarTitleText": "格致未来思维",
@@ -53,12 +62,19 @@
     ]
   },
   "usingComponents": {
+    "content-document": "/components/content-document/index",
     "app-nav": "/components/app-nav/index",
     "empty-state": "/components/empty-state/index",
     "tab-overlay": "/components/tab-overlay/index"
   },
-  "permission": { "scope.userLocation": { "desc": "提交表单时经您授权获取一次位置，用于核对推广来源" } },
-  "requiredPrivateInfos": ["getLocation"],
+  "permission": {
+    "scope.userLocation": {
+      "desc": "提交表单时经您授权获取一次位置，用于核对推广来源"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation"
+  ],
   "darkmode": true,
   "themeLocation": "theme.json",
   "sitemapLocation": "sitemap.json"

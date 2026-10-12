@@ -18,7 +18,14 @@ export async function readPublishedSettings(): Promise<MiniappSettingsPublicatio
   return { revision: data.revision, publishedAt: data.publishedAt, config: data.config ? miniappSettingsSchema.parse(data.config) : defaultMiniappSettings() };
 }
 export async function miniappSettingsGet(request: Request) {
-  const result = await readPublishedSettings(), url = new URL(request.url), tag = `"miniapp-${result.revision}"`;
+  const result = await readPublishedSettings(), url = new URL(request.url), modern = url.searchParams.get("protocol") === "2", tag = `"miniapp-${modern ? 2 : 1}-${result.revision}"`;
+  if (!modern && result.config) {
+    const legacy = { ...result.config }; delete legacy.experience;
+    const unsupported = new Set(["page", "offering", "catalog", "form", "web"]);
+    result.config = { ...legacy, home: legacy.home.filter(b => !unsupported.has(b.action)),
+      floating: legacy.floating.filter(e => !unsupported.has(e.action)),
+      accountGroups: legacy.accountGroups.map(g => ({ ...g, entries: g.entries.filter(e => !unsupported.has(e.action)) })) };
+  }
   const headers = { "Cache-Control": "public, no-cache", ETag: tag, "X-Content-Type-Options": "nosniff" };
   if (request.headers.get("if-none-match") === tag) return new Response(null, { status: 304, headers });
   return Response.json({ ...result, config: url.searchParams.get("revision") === String(result.revision) ? null : result.config }, { headers });

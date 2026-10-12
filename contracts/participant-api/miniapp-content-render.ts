@@ -1,0 +1,98 @@
+import { localText, type ContentDocument, type ContentItem, type ExperienceAction, type ExperienceLocale, type ExperienceText } from "./miniapp-experience";
+
+export type ContentData = Record<string, unknown>;
+export type RichTextNode = { type?: "text"; text?: string; name?: string; children?: RichTextNode[] };
+export type RenderedContentBlock = {
+  id: string; kind: string; title: string; text: string; nodes: RichTextNode[]; image: string; caption: string;
+  items: { id: string; title: string; text: string; nodes: RichTextNode[]; image: string }[];
+  columns: string[]; rows: string[][]; action?: ExperienceAction; appearance: string; tone: string; layout: string;
+  limit: number; ids: string[]; value: string; labels: string[];
+};
+
+/** Deliberately bounded formatting: strong, emphasis and line breaks, never HTML or executable content. */
+export function contentRichText(value: string): RichTextNode[] {
+  return value.split(/\r?\n/).map(line => {
+    const children: RichTextNode[] = [];
+    const pattern = /\*\*([^*\n]+)\*\*|__([^_\n]+)__|\*([^*\n]+)\*/g;
+    let start = 0, match: RegExpExecArray | null;
+    while ((match = pattern.exec(line))) {
+      if (match.index > start) children.push({ type: "text", text: line.slice(start, match.index) });
+      children.push({ name: match[3] ? "em" : "strong", children: [{ type: "text", text: match[1] || match[2] || match[3] }] });
+      start = match.index + match[0].length;
+    }
+    if (start < line.length) children.push({ type: "text", text: line.slice(start) });
+    if (!children.length) children.push({ name: "br" });
+    return { name: "p", children };
+  });
+}
+export function contentValue(data: ContentData, path: string): unknown {
+  if (!path) return undefined;
+  let current: unknown = data;
+  for (const key of path.split(".")) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype" || !current || typeof current !== "object" || !Object.prototype.hasOwnProperty.call(current, key)) return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  return current;
+}
+function present(value: unknown) { return value !== undefined && value !== null && value !== "" && (!Array.isArray(value) || value.length > 0); }
+function asText(value: unknown, locale: ExperienceLocale): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value && typeof value === "object" && "zh" in value && "en" in value) return localText(value as ExperienceText, locale);
+  return "";
+}
+
+export function renderContent(document: ContentDocument, data: ContentData, locale: ExperienceLocale): RenderedContentBlock[] {
+  const result: RenderedContentBlock[] = [];
+  for (const block of document.blocks) {
+    if (!block.visible) continue;
+    if (block.condition) {
+      const actual = contentValue(data, block.condition.field);
+      const show = block.condition.operator === "present" ? present(actual) : block.condition.operator === "equals" ? String(actual) === block.condition.value : String(actual) !== block.condition.value;
+      if (!show) continue;
+    }
+    const row: RenderedContentBlock = { id: block.id, kind: block.kind, title: "", text: "", nodes: [], image: "", caption: "", items: [], columns: [], rows: [], appearance: "", tone: "neutral", layout: "list", limit: 0, ids: [], value: "", labels: [] };
+    if ("title" in block) row.title = localText(block.title, locale);
+    const bound = "binding" in block && block.binding ? contentValue(data, block.binding) : undefined;
+    if ("binding" in block && block.binding && !present(bound)) {
+      if (block.fallback) { row.kind = "paragraph"; row.text = localText(block.fallback, locale); row.nodes = contentRichText(row.text); result.push(row); }
+      continue;
+    }
+    switch (block.kind) {
+      case "heading": row.title = localText(block.text, locale); row.appearance = String(block.level); break;
+      case "paragraph": case "callout": case "quote": row.text = block.binding ? asText(bound, locale) : localText(block.text, locale); row.tone = block.tone; break;
+      case "image": row.image = block.image; row.caption = localText(block.caption, locale); row.appearance = block.fit; break;
+      case "bullets": case "steps": case "facts": case "faq": {
+        const items = Array.isArray(bound) ? bound : block.items;
+        row.items = items.slice(0, 100).map((raw, index) => {
+          const item = (raw && typeof raw === "object" ? raw : {}) as Partial<ContentItem> & { text?: string };
+          const body = item.binding ? contentValue(data, item.binding) : item.body || item.text || (typeof raw === "string" ? raw : "");
+          const text = asText(body, locale);
+          return { id: item.id || String(index), title: asText(item.title, locale), text, nodes: contentRichText(text), image: item.image || "" };
+        });
+        if (!row.items.length) continue;
+        break;
+      }
+      case "table": {
+        const table = bound && typeof bound === "object" ? bound as { columns?: unknown[]; rows?: unknown[][] } : null;
+        row.columns = (Array.isArray(table?.columns) ? table.columns : block.columns).slice(0, 8).map(c => asText(c, locale));
+        row.rows = (Array.isArray(table?.rows) ? table.rows : block.rows).slice(0, 100).map(r => Array.isArray(r) ? r.slice(0, 8).map(c => asText(c, locale)) : []);
+        if (!row.rows.length) continue;
+        break;
+      }
+      case "action": row.action = block.action; row.text = localText(block.action.label, locale); row.appearance = block.appearance; break;
+      case "services": case "activities": case "contacts": row.ids = block.ids; row.limit = block.limit; row.layout = block.layout; row.text = localText(block.emptyText, locale); break;
+      case "metric": row.value = asText(bound, locale); row.caption = localText(block.unit, locale); row.text = localText(block.description, locale); break;
+      case "scale": row.value = asText(bound, locale); row.labels = block.labels.map(l => localText(l, locale)); row.text = localText(block.description, locale); break;
+      case "evidence": row.items = (Array.isArray(bound) ? bound : []).slice(0, 100).map((raw, index) => {
+        const item = (raw && typeof raw === "object" ? raw : {}) as { id?: string; title?: unknown; body?: unknown; text?: unknown; image?: string };
+        const text = asText(item.body || item.text, locale);
+        return { id: item.id || String(index), title: asText(item.title, locale), text, nodes: contentRichText(text), image: item.image || "" };
+      }); if (!row.items.length) continue; break;
+      case "divider": break;
+      default: { const fallback = (block as { fallback?: ExperienceText }).fallback; if (fallback) { row.kind = "paragraph"; row.text = localText(fallback, locale); } else continue; }
+    }
+    row.nodes = contentRichText(row.text);
+    result.push(row);
+  }
+  return result;
+}

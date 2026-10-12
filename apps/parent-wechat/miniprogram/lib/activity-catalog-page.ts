@@ -1,4 +1,6 @@
-import { accountHasParticipants, activityCatalog, miniappContentImage, session } from "./api";
+import { accountHasParticipants, activityCatalog, experienceRead, miniappContentImage, session } from "./api";
+import type { ContentDocument } from "./miniapp-experience";
+import type { ExperiencePublication } from "./experience-runtime";
 import type { ActivityOffer } from "./api-types";
 import { activityCard, activityCatalogLabels, activityFilters, activityTopics, filterActivityOffers, saveActivityFilters } from "./activity-catalog";
 import { pageData, syncPage, errorText, currentLocale } from "./page";
@@ -22,12 +24,18 @@ function homeProjection(offers: ReturnType<typeof activityCard>[], hasParticipan
 
 export function registerActivityCatalogPage(full: boolean) {
   Page({
-    data: { ...pageData("discover"), ...activityCatalogLabels("zh"), ...homeProjection([]), full, offers: [] as ReturnType<typeof activityCard>[], stage: "", topic: "", loaded: false, sheet: "" },
+    data: { ...pageData("discover"), ...activityCatalogLabels("zh"), ...homeProjection([]), full, offers: [] as ReturnType<typeof activityCard>[], stage: "", topic: "", loaded: false, sheet: "", homeDocument: null as ContentDocument | null, homeImages: {} as Record<string, string> },
     source: [] as ActivityOffer[], loadedAt: 0, active: false, hasParticipants: false, audienceVersion: 0,
-    onShow() { this.active = true; this.hasParticipants = false; syncPage(this, "discover"); this.setData(activityFilters()); this.applyFilters(); void this.loadAudience(); if (Date.now() - this.loadedAt > 15_000) void this.load(); },
-    configurationChanged() { this.setData(activityFilters()); this.applyFilters(); void this.loadAudience(); },
+    homeGeneration: 0,
+    onShow() { this.active = true; this.hasParticipants = false; syncPage(this, "discover"); this.setData(activityFilters()); this.applyFilters(); void this.loadAudience(); void this.loadHome(); if (Date.now() - this.loadedAt > 15_000) void this.load(); },
+    configurationChanged() { this.setData(activityFilters()); this.applyFilters(); void this.loadAudience(); void this.loadHome(); },
     onHide() { this.active = false; this.hasParticipants = false; this.audienceVersion++; this.setData({ sheet: "" }); },
-    onUnload() { this.active = false; this.hasParticipants = false; this.audienceVersion++; },
+    onUnload() { this.active = false; this.hasParticipants = false; this.audienceVersion++; this.homeGeneration++; },
+    async loadHome() { const id = !this.data.full && configuration().experience?.homePageId, generation = ++this.homeGeneration;
+      if (!id) { this.setData({ homeDocument: null, homeImages: {} }); return; }
+      try { const result = await experienceRead<ExperiencePublication<ContentDocument>>("page", id); if (!this.active || generation !== this.homeGeneration) return; this.setData({ homeDocument: result.document, homeImages: result.images }); }
+      catch { if (generation === this.homeGeneration) this.setData({ homeDocument: null, homeImages: {} }); }
+    },
     async loadAudience() {
       const version = ++this.audienceVersion;
       this.hasParticipants = false;

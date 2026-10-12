@@ -7,6 +7,7 @@ import type { MiniappSettings, MiniappContact } from "../../../../contracts/part
 import { authorizedClient } from "../actions/guards";
 import { miniappSettingsSchema, settingsStateSchema, type SettingsState } from "./contract";
 import { prepareMiniappImage, prepareMiniappQrImage } from "./images";
+import { settingsExperienceIssues } from "../../../../contracts/participant-api/miniapp-experience-validation";
 
 const errors = ["UNAUTHENTICATED", "FORBIDDEN", "NOT_FOUND", "VALIDATION", "FORM_CHANGED"];
 async function rpcClient() {
@@ -42,6 +43,7 @@ export async function saveMiniappSettings(config: MiniappSettings, revision: num
   try {
     const input = z.object({ config: miniappSettingsSchema, revision: z.number().int().nonnegative(), publish: z.boolean() }).safeParse({ config, revision, publish });
     if (!input.success) throw new Error("VALIDATION");
+    if (publish && settingsExperienceIssues(input.data.config).length) throw new Error("VALIDATION");
     const { rpc } = await rpcClient(), r = await rpc("save_miniapp_settings", { p_config: input.data.config, p_revision: revision, p_publish: publish });
     if (r.error) throw new Error(r.error.message);
     return { ok: true, data: settingsStateSchema.parse(r.data) };
