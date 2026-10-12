@@ -3,6 +3,39 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-ACTIVITY-PAGE-20261012",
+      "title": "后台编辑小程序活动详情图文与版式",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-ACTIVITY-PAGE-20261012.md",
+      "writePaths": [
+        ".ai/tasks/MINI-ACTIVITY-PAGE-20261012.md",
+        "src/features/school/miniapp-activity-page/",
+        "src/features/participant-portal/activity-detail-server.ts",
+        "contracts/participant-api/activity-detail.ts",
+        "apps/parent-wechat/miniprogram/lib/activity-detail.ts",
+        "apps/parent-wechat/miniprogram/pages/activity-detail/",
+        "supabase/migrations/20261012140000_miniapp_activity_pages.sql",
+        "supabase/tests/miniapp_activity_pages.sql",
+        ".tmp/mini-activity-page-20261012/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/docs/portal.md",
+        "src/features/school/ParentRegistrationSettings.tsx",
+        "src/features/participant-portal/server.ts",
+        "apps/parent-wechat/miniprogram/lib/api.ts",
+        "scripts/sync-participant-contract.mjs",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": null,
+      "next": "开发端已实现活动及短期课详情图文编辑、图片上传、草稿与发布；迁移、定向权限检查和类型静态检查完成，真实内容与手机待验收。首次需一版客户端更新，本轮未上传0.1.8、未提审、未部署生产。"
+    },
+    {
       "id": "MINI-LOGIN-CHOICE-20261012",
       "title": "按授权案例补齐自主登录与取消返回",
       "agent": "codex",

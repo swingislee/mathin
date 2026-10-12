@@ -1,0 +1,16 @@
+.detail-cover { display: block; width: 100%; height: auto; border-radius: 24rpx; margin-bottom: 24rpx; }
+.detail-block { padding: 32rpx; margin-bottom: 24rpx; overflow: hidden; }
+.detail-heading { display: block; font-size: 32rpx; font-weight: 650; margin-bottom: 16rpx; white-space: pre-wrap; overflow-wrap: break-word; }
+.detail-body { display: block; font-size: 28rpx; line-height: 1.9; white-space: pre-wrap; overflow-wrap: break-word; }
+.detail-image { display: block; width: 100%; height: auto; }
+.detail-block.detail-image { padding: 0; }
+.detail-caption { display: block; padding: 24rpx 32rpx; color: var(--muted); font-size: 24rpx; line-height: 1.7; white-space: pre-wrap; }
+.detail-pair { display: flex; align-items: flex-start; gap: 28rpx; }
+.detail-pair-image { display: block; width: 40%; height: auto; border-radius: 16rpx; flex-shrink: 0; }
+.detail-pair-copy { min-width: 0; flex: 1; }
+.detail-position-right { flex-direction: row-reverse; }
+.detail-position-above { flex-direction: column; }
+.detail-position-above .detail-pair-image, .detail-position-above .detail-pair-copy { width: 100%; }
+.detail-continuous { background: var(--card); border-radius: 24rpx; overflow: hidden; margin-bottom: 24rpx; }
+.detail-continuous .detail-cover { border-radius: 0; margin-bottom: 0; }
+.detail-continuous .surface { border: 0; border-radius: 0; box-shadow: none; margin-bottom: 0; }

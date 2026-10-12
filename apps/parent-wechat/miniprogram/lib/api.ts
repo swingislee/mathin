@@ -1,4 +1,5 @@
 import { config } from "../config.local";
+import { activityPageImageUrl, type ActivityPage } from "./activity-detail";
 import type { GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "./api-types";
 import type { FamilyRegistration, PhoneResult, RegistrationResult } from "./onboarding";
 import type { ActivityOffer, ActivityRequest, ActivityRequestCommand, RegistrationHistory, RegistrationForm, RegistrationSubmission } from "./api-types";
@@ -51,6 +52,12 @@ export async function serviceContacts(): Promise<import("./api-types").ServiceCo
 }
 export async function activityCatalog(): Promise<ActivityOffer[]> {
   return send<ActivityOffer[]>("activities", "GET");
+}
+export async function activityDetail(id: string): Promise<{ offer: ActivityOffer; page: ActivityPage | null }> {
+  return send("activities/detail?id=" + encodeURIComponent(id), "GET");
+}
+export function activityImageUrl(path: string): string {
+  return path ? origin() + activityPageImageUrl(path) : "";
 }
 export async function activityRequests(): Promise<ActivityRequest[]> {
   return send<ActivityRequest[]>("activities?resource=applications", "GET", undefined, await accessToken());

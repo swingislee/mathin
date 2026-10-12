@@ -1,0 +1,16 @@
+/** Data-only page format shared by the staff editor and Mini Program renderer. */
+export type ActivityPageBlock =
+  | { id: string; type: "text"; title: string; body: string }
+  | { id: string; type: "image"; imagePath: string; caption: string }
+  | { id: string; type: "imageText"; imagePath: string; title: string; body: string; position: "above" | "left" | "right" };
+
+export interface ActivityPage {
+  version: 1;
+  layout: "cards" | "continuous";
+  cover: string;
+  blocks: ActivityPageBlock[];
+}
+
+export function activityPageImageUrl(path: string, preview = false): string {
+  return path ? "/api/v1/participant/activities/image?path=" + encodeURIComponent(path) + (preview ? "&preview=1" : "") : "";
+}

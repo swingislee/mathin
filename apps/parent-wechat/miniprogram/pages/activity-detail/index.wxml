@@ -2,9 +2,21 @@
   <view class="portal-content activity-content">
     <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
-    <block wx:if="{{offer}}"><view class="activity-hero"><image src="/assets/appointment.png" mode="aspectFit" /><text>{{offer.meta}}</text></view>
-      <view class="surface activity-summary"><text class="activity-heading">{{offer.title}}</text><text class="muted block">{{offer.startLabel}}</text><text class="small muted block">{{offer.priceLabel}}</text></view>
-      <view wx:if="{{offer.description}}" class="surface activity-summary"><text class="activity-description">{{offer.description}}</text></view>
+    <block wx:if="{{offer}}">
+      <view class="detail-layout {{detail && detail.layout === 'continuous' ? 'detail-continuous' : 'detail-cards'}}">
+        <image wx:if="{{detail && detail.coverUrl}}" class="detail-cover" src="{{detail.coverUrl}}" mode="widthFix" data-src="{{detail.coverUrl}}" bindtap="previewImage" />
+        <view wx:if="{{!detail}}" class="activity-hero"><image src="/assets/appointment.png" mode="aspectFit" /><text>{{offer.meta}}</text></view>
+        <view class="surface activity-summary"><text class="activity-heading">{{offer.title}}</text><text class="muted block">{{offer.startLabel}}</text><text wx:if="{{detail && offer.meta}}" class="small muted block">{{offer.meta}}</text><text class="small muted block">{{offer.priceLabel}}</text></view>
+        <view wx:if="{{!detail && offer.description}}" class="surface activity-summary"><text class="activity-description">{{offer.description}}</text></view>
+        <block wx:if="{{detail}}"><view wx:for="{{detail.blocks}}" wx:key="id" class="detail-block surface detail-{{item.type}}">
+          <block wx:if="{{item.type === 'text'}}"><text wx:if="{{item.title}}" class="detail-heading">{{item.title}}</text><text class="detail-body">{{item.body}}</text></block>
+          <block wx:elif="{{item.type === 'image'}}"><image src="{{item.imageUrl}}" class="detail-image" mode="widthFix" lazy-load data-src="{{item.imageUrl}}" bindtap="previewImage" /><text wx:if="{{item.caption}}" class="detail-caption">{{item.caption}}</text></block>
+          <view wx:elif="{{item.type === 'imageText'}}" class="detail-pair detail-position-{{item.position}}">
+            <image src="{{item.imageUrl}}" class="detail-pair-image" mode="widthFix" lazy-load data-src="{{item.imageUrl}}" bindtap="previewImage" />
+            <view class="detail-pair-copy"><text wx:if="{{item.title}}" class="detail-heading">{{item.title}}</text><text class="detail-body">{{item.body}}</text></view>
+          </view>
+        </view></block>
+      </view>
       <text class="small muted block">{{t.submitNote}}</text>
       <button class="text-link" bindtap="service">{{t.service}}</button>
     </block>

@@ -10,6 +10,7 @@ import { GET as contactsGet } from "@/app/api/v1/parent/advisors/route";
 import { GET as contactQrGet } from "@/app/api/v1/parent/advisors/qr/route";
 import * as project from "./projection";
 import { registrationsGet, registrationsPost } from "./registration-server";
+import { activityDetailGet, activityImageGet } from "./activity-detail-server";
 
 const object = z.record(z.string(), z.unknown());
 const requestId = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
@@ -66,6 +67,8 @@ async function get(request: Request, endpoint: string) {
     case "calendar": return projected(await learningGet(request), project.participantCalendar);
     case "assessments": return projected(await assessmentGet(request), project.assessmentOverview);
     case "registrations": return registrationsGet(request);
+    case "activities/detail": return activityDetailGet(request);
+    case "activities/image": return activityImageGet(request);
     case "assessment-slots": return projected(await assessmentSlotsGet(queryRequest(request, {}, { topics: "subjects", stageNumber: "grade" })), project.assessmentAvailability);
     case "activities": {
       const result = await courseGet(request, "participant");

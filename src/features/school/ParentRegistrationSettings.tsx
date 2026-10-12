@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DashboardPage, DashboardSection } from "./dashboard-page";
 import type { RegistrationWorkbench } from "./parent-registration";
 import { saveRegistrationPublication, reviewRegistration } from "./parent-registration-actions";
+import { ActivityPageEditor } from "./miniapp-activity-page/Editor";
 
 const words = {
   zh: { title: "对外展示与预报名", hint: "家长提交报名意向后，由学服线下联系。", back: "返回", public: "对外展示", name: "对外名称", description: "介绍", closes: "预报名截止时间", enabled: "在小程序展示并接受预报名", save: "保存", saved: "已保存", applications: "预报名", empty: "暂无预报名", reply: "联系结果（家长可见）", contact: "标记已联系", decline: "暂不接受", pending: "待联系", contacted: "已联系", confirmed: "历史正式报名", declined: "暂不接受", cancelled: "已撤回", note: "预报名不占用名额。家长线下缴费，正式入班由班级业务办理。", failed: "保存未完成，请重试。", conflict: "内容已变化，请刷新后核对。", hidden: "未展示", visible: "已展示" },
@@ -56,6 +57,9 @@ export function ParentRegistrationSettings({ value, shortCourse = false }: { val
         <p className="text-sm text-muted">{t.note}</p><Button className="justify-self-start" disabled={busy}>{t.save}</Button>
       </form>
     </DashboardSection>}
+    {value.canPublish && (value.kind === "activity" || shortCourse) && <ActivityPageEditor
+      key={`${value.kind}/${value.targetId}`} target={{ kind: value.kind, targetId: value.targetId }}
+      title={draft.title || value.name} description={value.publication.description} locale={locale} />}
     {value.canReview && <DashboardSection title={t.applications}>
       {!value.applications.length && <p className="text-sm text-muted">{t.empty}</p>}
       <div className="divide-y divide-line">{value.applications.map(a => <article key={a.id} className="grid gap-3 py-4">
