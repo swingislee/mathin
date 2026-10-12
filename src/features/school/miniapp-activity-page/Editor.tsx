@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DashboardSection } from "../dashboard-page";
 import type { ActivityPage, ActivityPageBlock } from "../../../../contracts/participant-api/activity-detail";
 import type { ActivityPageState, ActivityPageTarget } from "./contract";
-import { loadActivityPage, saveActivityPage, uploadActivityPageImage } from "./actions";
+import { loadActivityPage, restoreActivityPage, saveActivityPage, uploadActivityPageImage } from "./actions";
 import { ActivityPagePreview } from "./Preview";
 import { pageWords } from "./messages";
 
@@ -21,6 +21,8 @@ export function ActivityPageEditor({ target, title, description, locale }: {
   const [busy, setBusy] = useState<"load" | "save" | "publish" | "upload" | null>("load"), [loadVersion, setLoadVersion] = useState(0);
   const [initial] = useState({ description, intro: t.intro });
   const dirty = !!page && baseline !== JSON.stringify(page);
+  const listing = page?.listing || { cover: "", summary: "", labels: [], sortOrder: 0 };
+  const signup = page?.signup || { instructions: "", confirmation: "", success: "" };
   useEffect(() => {
     let active = true;
     void loadActivityPage({ kind: target.kind, targetId: target.targetId }).then(result => {
@@ -62,7 +64,8 @@ export function ActivityPageEditor({ target, title, description, locale }: {
     try {
       const result = await uploadActivityPageImage(form);
       if (!result.ok) { setNotice(errorMessage(result.code)); return; }
-      if (blockId) patchBlock(blockId, { imagePath: result.data.path });
+      if (blockId === "listing") setPage(previous => previous && ({ ...previous, listing: { ...listing, cover: result.data.path } }));
+      else if (blockId) patchBlock(blockId, { imagePath: result.data.path });
       else setPage(previous => previous && ({ ...previous, cover: result.data.path }));
     } catch { setNotice("failed"); } finally { setBusy(null); }
   }
@@ -73,6 +76,15 @@ export function ActivityPageEditor({ target, title, description, locale }: {
       const result = await saveActivityPage({ ...target, page, revision: state.revision, publish });
       if (!result.ok) { setNotice(errorMessage(result.code)); setConflict(result.code === "FORM_CHANGED"); return; }
       setState(result.data); setBaseline(JSON.stringify(page)); setNotice(publish ? "published" : "draftSaved");
+    } catch { setNotice("failed"); } finally { setBusy(null); }
+  }
+  async function restore(sourceRevision: number) {
+    if (!state || busy || dirty || conflict) return;
+    setBusy("save"); setNotice("");
+    try {
+      const result = await restoreActivityPage({ ...target, sourceRevision, revision: state.revision });
+      if (!result.ok) { setNotice(errorMessage(result.code)); setConflict(result.code === "FORM_CHANGED"); return; }
+      setState(result.data); setPage(result.data.draft); setBaseline(JSON.stringify(result.data.draft)); setNotice("draftSaved");
     } catch { setNotice("failed"); } finally { setBusy(null); }
   }
   const picker = (path: string, blockId?: string) => <label className="grid gap-2 text-sm">{path ? t.replace : t.upload}
@@ -100,6 +112,17 @@ export function ActivityPageEditor({ target, title, description, locale }: {
             {page.cover ? <Button size="sm" variant="ghost" onClick={() => setPage({ ...page, cover: "" })}>{t.removeCover}</Button> : <p className="text-xs text-muted">{t.noCover}</p>}
           </div>
           {!page.blocks.length && <p className="text-sm text-muted">{t.empty}</p>}
+          <div className="space-y-3 rounded-xl border border-line p-4"><h3 className="text-sm font-medium">{t.listing}</h3>
+            <p className="text-xs text-muted">{t.listingHint}</p>{picker(listing.cover, "listing")}
+            {listing.cover && <Button size="sm" variant="ghost" onClick={() => setPage({ ...page, listing: { ...listing, cover: "" } })}>{t.reuseCover}</Button>}
+            <label className="grid gap-1 text-sm">{t.summary}<textarea className={field} rows={2} maxLength={200} value={listing.summary} onChange={e => setPage({ ...page, listing: { ...listing, summary: e.target.value } })} /></label>
+            <label className="grid gap-1 text-sm">{t.sortOrder}<input className={field} type="number" min={-9999} max={9999} value={listing.sortOrder} onChange={e => setPage({ ...page, listing: { ...listing, sortOrder: Number(e.target.value) } })} /></label>
+            <div className="space-y-2"><span className="text-sm">{t.labels}</span>{listing.labels.map((value, index) => <div key={index} className="flex gap-2"><input aria-label={`${t.labels} ${index + 1}`} className={field} maxLength={24} value={value} onChange={e => setPage({ ...page, listing: { ...listing, labels: listing.labels.map((label, i) => i === index ? e.target.value : label) } })} /><Button size="sm" variant="ghost" onClick={() => setPage({ ...page, listing: { ...listing, labels: listing.labels.filter((_, i) => i !== index) } })}>{t.remove}</Button></div>)}
+              <Button size="sm" variant="secondary" disabled={listing.labels.length >= 5} onClick={() => setPage({ ...page, listing: { ...listing, labels: [...listing.labels, ""] } })}>{t.addLabel}</Button></div>
+          </div>
+          <div className="space-y-3 rounded-xl border border-line p-4"><h3 className="text-sm font-medium">{t.signup}</h3><p className="text-xs text-muted">{t.signupHint}</p>
+            {(["instructions", "confirmation", "success"] as const).map(key => <label key={key} className="grid gap-1 text-sm">{t[key]}<textarea className={field} rows={3} maxLength={key === "confirmation" ? 500 : 2000} value={signup[key]} onChange={e => setPage({ ...page, signup: { ...signup, [key]: e.target.value } })} /></label>)}
+          </div>
           {page.blocks.map((block, index) => <div key={block.id} className="space-y-4 rounded-xl border border-line p-4">
             <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-medium">{index + 1} · {t[block.type]}</h3><div className="flex flex-wrap gap-1">
               <Button size="sm" variant="ghost" disabled={index === 0} onClick={() => move(index, -1)}>{t.up}</Button>
@@ -120,6 +143,9 @@ export function ActivityPageEditor({ target, title, description, locale }: {
         </fieldset>
         <ActivityPagePreview page={page} title={title} locale={locale} />
       </div>
+      {!!state.history.length && <div className="mt-6 space-y-3 border-t border-line pt-5"><h3 className="text-sm font-medium">{t.history}</h3><p className="text-xs text-muted">{t.historyHint}</p>
+        {state.history.map(item => <div key={item.revision} className="flex items-center justify-between gap-3 text-sm"><span>v{item.revision} · {new Date(item.publishedAt).toLocaleString(locale)}</span><Button size="sm" variant="secondary" disabled={!!busy || dirty || conflict} onClick={() => void restore(item.revision)}>{t.restore}</Button></div>)}
+      </div>}
     </>}
   </DashboardSection>;
 }

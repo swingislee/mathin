@@ -182,6 +182,8 @@ export type ActivityOffer = {
   bookingClosesAt: string; revision: number;
   /** 后台创建或编辑活动时维护的分类标签。旧接口缺省时按未设置处理。 */
   tags?: string[];
+  listing?: { cover: string; summary: string; labels: string[]; sortOrder: number };
+  registration?: { fee: "free"; confirmation: "staff"; reservesPlace: false; canApply: boolean };
   /** 兼容旧客户端；活动分类使用 tags。 */
   topic: AssessmentTopic | null;
   activity: { id: string; targetStages: number[] | null; location: string; startsAt: string;

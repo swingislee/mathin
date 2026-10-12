@@ -7,6 +7,10 @@ export function ActivityPagePreview({ page, title, locale }: { page: ActivityPag
   return <aside className="min-w-0">
     <h3 className="mb-2 text-sm font-medium">{t.preview}</h3>
     <p className="mb-4 text-xs text-muted">{t.previewHint}</p>
+    <div className="mx-auto mb-4 flex max-w-[375px] items-start gap-3 rounded-xl border border-line bg-card p-3">
+      {(page.listing?.cover || page.cover) && <img alt="" className="h-20 w-20 rounded-lg object-cover" src={activityPageImageUrl(page.listing?.cover || page.cover, true, true)} />}
+      <div className="min-w-0"><h4 className="text-sm font-semibold">{title}</h4><p className="mt-1 text-xs text-muted">{page.listing?.summary}</p><div className="mt-1 flex flex-wrap gap-1">{page.listing?.labels.map((label, index) => <span key={index} className="rounded bg-moon/40 px-2 py-1 text-xs">{label}</span>)}</div></div>
+    </div>
     <div className="mx-auto max-w-[375px] overflow-hidden rounded-3xl border border-line bg-paper text-ink shadow-sm">
       <div className="border-b border-line bg-card p-3 text-center text-sm">{t.title}</div>
       <div className={`max-h-[650px] overflow-y-auto ${card ? "space-y-3 p-3" : "bg-card"}`}>
@@ -23,7 +27,7 @@ export function ActivityPagePreview({ page, title, locale }: { page: ActivityPag
               </div>}
         </section>)}
       </div>
-      <div className="border-t border-line bg-card p-3"><span className="block rounded-full bg-rose py-3 text-center text-sm text-white">{t.reserve}</span></div>
+      <div className="border-t border-line bg-card p-3">{page.signup?.instructions && <p className="mb-3 whitespace-pre-wrap text-xs text-muted">{page.signup.instructions}</p>}<span className="block rounded-full bg-rose py-3 text-center text-sm text-white">{t.reserve}</span></div>
     </div>
   </aside>;
 }

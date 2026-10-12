@@ -17,9 +17,10 @@
           </view>
         </view></block>
       </view>
-      <text class="small muted block">{{t.submitNote}}</text>
+      <view wx:if="{{detail.signup.instructions}}" class="surface activity-summary"><text class="activity-notice-copy">{{detail.signup.instructions}}</text></view>
+      <text class="small muted block">{{registrationNote}}</text>
       <button class="text-link" bindtap="service">{{t.service}}</button>
     </block>
   </view>
-  <view class="activity-footer"><button class="text-button" bindtap="applications">{{t.applications}}</button><button class="primary" disabled="{{!offer || !offer.open}}" bindtap="choose">{{offer && !offer.open ? t.full : t.choose}}</button></view>
+  <view class="activity-footer"><button class="text-button" bindtap="applications">{{t.applications}}</button><button class="primary" disabled="{{loading || !offer || !offer.open}}" bindtap="choose">{{offer && !offer.open ? t.closed : t.choose}}</button></view>
 </view>

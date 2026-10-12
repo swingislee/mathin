@@ -4,6 +4,7 @@ import { z } from "zod";
 import { newId } from "@/lib/uuid";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "../actions/guards";
+import { prepareMiniappImage } from "../miniapp-settings/images";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 import type { ActivityPage } from "../../../../contracts/participant-api/activity-detail";
 import { activityPageSchema, activityPageStateSchema, activityPageTargetSchema, pageImagePaths,
@@ -43,16 +44,22 @@ export async function uploadActivityPageImage(form: FormData): Promise<ActionRes
     const access = await rpc("miniapp_activity_page_workbench", { p_kind: target.kind, p_target_id: target.targetId });
     if (access.error) throw new Error(access.error.message);
     const file = form.get("image");
-    if (!(file instanceof File) || !file.size || file.size > 5 * 1024 * 1024) throw new Error("VALIDATION");
-    const ext = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }[file.type];
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const valid = ext === "png" ? [137,80,78,71,13,10,26,10].every((v,i) => bytes[i] === v)
-      : ext === "jpg" ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
-      : ext === "webp" && String.fromCharCode(...bytes.slice(0,4)) === "RIFF" && String.fromCharCode(...bytes.slice(8,12)) === "WEBP";
-    if (!valid) throw new Error("VALIDATION");
-    const path = `${target.kind}/${target.targetId}/${newId()}.${ext}`;
-    const result = await supabase.storage.from("miniapp-activity-images").upload(path, file, { contentType: file.type, upsert: false });
-    if (result.error) throw new Error(result.error.message);
+    if (!(file instanceof File)) throw new Error("VALIDATION");
+    const { display, thumbnail } = await prepareMiniappImage(file), path = `${target.kind}/${target.targetId}/${newId()}.webp`;
+    for (const [name, bytes] of [[path, display], [path.replace(/\.webp$/, ".thumb.webp"), thumbnail]] as const) {
+      const result = await supabase.storage.from("miniapp-activity-images").upload(name, bytes, { contentType: "image/webp", upsert: false });
+      if (result.error) throw new Error(result.error.message);
+    }
     return { ok: true, data: { path } };
+  } catch (error) { return actionError(error, errors); }
+}
+export async function restoreActivityPage(input: ActivityPageTarget & { sourceRevision: number; revision: number }): Promise<ActionResult<ActivityPageState>> {
+  try {
+    const v = activityPageTargetSchema.extend({ sourceRevision: z.number().int().positive(), revision: z.number().int().nonnegative() }).parse(input);
+    const { target, rpc } = await client(v);
+    const result = await rpc("restore_miniapp_activity_page", { p_kind: target.kind, p_target_id: target.targetId,
+      p_source_revision: v.sourceRevision, p_revision: v.revision });
+    if (result.error) throw new Error(result.error.message);
+    return { ok: true, data: activityPageStateSchema.parse(result.data) };
   } catch (error) { return actionError(error, errors); }
 }

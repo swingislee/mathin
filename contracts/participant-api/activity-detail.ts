@@ -9,8 +9,10 @@ export interface ActivityPage {
   layout: "cards" | "continuous";
   cover: string;
   blocks: ActivityPageBlock[];
+  listing?: { cover: string; summary: string; labels: string[]; sortOrder: number };
+  signup?: { instructions: string; confirmation: string; success: string };
 }
 
-export function activityPageImageUrl(path: string, preview = false): string {
-  return path ? "/api/v1/participant/activities/image?path=" + encodeURIComponent(path) + (preview ? "&preview=1" : "") : "";
+export function activityPageImageUrl(path: string, preview = false, thumbnail = false): string {
+  return path ? "/api/v1/participant/activities/image?path=" + encodeURIComponent(path) + (preview ? "&preview=1" : "") + (thumbnail ? "&size=thumb" : "") : "";
 }

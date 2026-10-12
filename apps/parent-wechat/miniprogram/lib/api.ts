@@ -66,8 +66,8 @@ export async function activityCatalog(): Promise<ActivityOffer[]> {
 export async function activityDetail(id: string): Promise<{ offer: ActivityOffer; page: ActivityPage | null }> {
   return send("activities/detail?id=" + encodeURIComponent(id), "GET");
 }
-export function activityImageUrl(path: string): string {
-  return path ? origin() + activityPageImageUrl(path) : "";
+export function activityImageUrl(path: string, thumbnail = false): string {
+  return path ? origin() + activityPageImageUrl(path, false, thumbnail) : "";
 }
 export async function activityRequests(): Promise<ActivityRequest[]> {
   return send<ActivityRequest[]>("activities?resource=applications", "GET", undefined, await accessToken());
