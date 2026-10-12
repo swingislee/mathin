@@ -34,6 +34,7 @@ export type Report = {
   participantName: string; date: string; summary: string; strengths: string;
   focusAreas: string; recommendation: string; score: number | null; totalScore: number | null;
   sections?: import("../participant-api/report-template").ReportSection[];
+  referenceValidity?: import("./assessment-result-validity").AssessmentReferenceValidity;
 };
 export type Practice = {
   id: string; participantId: string; participantName: string; title: string;

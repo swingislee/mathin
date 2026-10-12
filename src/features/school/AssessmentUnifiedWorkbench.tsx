@@ -1,4 +1,5 @@
 "use client";
+import { ReferenceValidity } from "./assessment-result-validity/ReferenceValidity";
 
 import dynamic from "next/dynamic";
 
@@ -332,6 +333,7 @@ export function AssessmentUnifiedWorkbench({
                 total: row.questionSummary.questionCount,
               })}</p>
             ) : <p className="truncate font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "stageInProgress")}</p>}
+            {completed && <ReferenceValidity value={row.referenceValidity} locale={locale} />}
             {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
             {current && row.quickEntry && !row.quickEntry.finalizedAt && !row.assessmentCompletedAt ? <p className="mt-1 text-[11px] text-crater" data-assessment-pending-result>
               {quickT("pendingResult")}{row.quickEntry.values.score !== null ? ` · ${row.quickEntry.values.score}` : ""}</p> : null}

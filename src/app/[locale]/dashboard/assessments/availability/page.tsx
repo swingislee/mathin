@@ -10,9 +10,10 @@ export default async function AssessmentAvailabilityPage({ params, searchParams 
   const { locale } = await params;
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ["review.write", "followup.write", "schedule.manage"]);
-  if ((await searchParams).view !== "calendar") {
+  const view = (await searchParams).view;
+  if (view !== "calendar") {
     const [result, now, timeZone] = await Promise.all([loadAssessmentRulesAction(), getNow(), getOrganizationTimezoneV2()]);
-    return <AssessmentRulesWorkbench initial={result.ok ? result.data : null} initialError={result.ok ? undefined : result.code} now={now.getTime()} timeZone={timeZone} />;
+    return <AssessmentRulesWorkbench initial={result.ok ? result.data : null} initialError={result.ok ? undefined : result.code} now={now.getTime()} timeZone={timeZone} initialView={view === "validity" ? "validity" : view === "topics" ? "topics" : "rules"} />;
   }
   const [now, permissions, profile, timeZone, roomOptions] = await Promise.all([
     getNow(), getMyPerms(user.id), getProfile(user.id), getOrganizationTimezoneV2(), listActiveRoomOptionsV2(),

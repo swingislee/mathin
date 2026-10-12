@@ -4,6 +4,7 @@ import { AssessmentReportView } from "@/features/school/AssessmentReportView";
 import { assessmentReportSchema } from "@/features/school/assessment-workflow-contract";
 import { requireAnyPerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { readAssessmentReferenceValidities } from "@/features/school/assessment-result-validity/data";
 
 export default async function AssessmentReportPage({ params }: {
   params: Promise<{ locale: string; registrationId: string; reportId: string }>;
@@ -15,5 +16,6 @@ export default async function AssessmentReportPage({ params }: {
   const { data, error } = await supabase.from("assessment_reports").select("id,version,payload,created_at,miniapp_report_template")
     .eq("id", reportId).eq("registration_id", registrationId).maybeSingle();
   if (error || !data) notFound();
-  return <AssessmentReportView report={assessmentReportSchema.parse(data)} locale={locale} />;
+  const references = await readAssessmentReferenceValidities([registrationId], supabase);
+  return <AssessmentReportView report={assessmentReportSchema.parse(data)} locale={locale} referenceValidity={references[registrationId]} />;
 }

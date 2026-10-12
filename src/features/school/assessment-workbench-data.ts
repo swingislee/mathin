@@ -1,4 +1,5 @@
 import "server-only";
+import { withAssessmentReferenceValidity } from "./assessment-result-validity/data";
 
 import { createClient } from "@/lib/supabase/server";
 import { assessmentReadFrom as from, readAllAssessmentRows as readAllRows, readRelatedAssessmentRows as readRelatedRows } from "./assessment-workbench-read";
@@ -599,7 +600,7 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
     });
   });
   const segmentedRegistrationIds = new Set(publicClassRows.map((row) => row.registrationId));
-  const rows=[...pendingRows,...materializedRows.filter(row=>!segmentedRegistrationIds.has(row.registrationId)),...publicClassRows];
+  const rows=await withAssessmentReferenceValidity([...pendingRows,...materializedRows.filter(row=>!segmentedRegistrationIds.has(row.registrationId)),...publicClassRows],supabase);
   const studentIds=[...new Set(rows.map(row=>row.studentId).filter((id):id is string=>Boolean(id)))];
   const [sourceEnrollments,subjectLeads]=await Promise.all([
     readRelatedRows<{id:string;student_id:string;status:string;source_enrollment_facts:unknown}>(supabase,'course_enrollments','id,student_id,status,source_enrollment_facts','student_id',studentIds),

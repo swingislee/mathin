@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import type { AssessmentReport } from "./assessment-workflow-contract";
 import { reportSections } from "../../../contracts/participant-api/report-template";
 import { miniappText } from "../../../contracts/participant-api/miniapp-settings";
+import { ReferenceValidity } from "./assessment-result-validity/ReferenceValidity";
+import type { AssessmentReferenceValidity } from "./assessment-result-validity/contract";
 
 /** 冻结版本的家长版报告；打印只处理当前快照，不登记发送。 */
-export function AssessmentReportView({ report, locale }: { report: AssessmentReport; locale: string }) {
+export function AssessmentReportView({ report, locale, referenceValidity }: { report: AssessmentReport; locale: string; referenceValidity?: AssessmentReferenceValidity }) {
   const t = useTranslations("school.assessmentWorkflow");
   const bands = useTranslations("school.teacherAssessment");
   const p = report.payload;
@@ -25,6 +27,7 @@ export function AssessmentReportView({ report, locale }: { report: AssessmentRep
           <span>{p.gradeText || (p.grade ? t("grade", { grade: p.grade }) : "")}</span>
           <span>{new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "Asia/Shanghai" }).format(new Date(p.assessedAt))}</span></div>
       </header>
+      <ReferenceValidity value={referenceValidity} locale={locale} details />
       {(!sections && p.score !== null) || p.assessmentBand ? <section className="my-6 flex flex-wrap gap-10 rounded bg-slate-50 p-5">
         {!sections && p.score !== null ? <div><p className="text-xs text-slate-500">{t("score")}</p><p className="mt-1 text-2xl font-semibold">{p.score}{p.totalScore ? <span className="text-sm font-normal text-slate-500"> / {p.totalScore}</span> : null}</p></div> : null}
         {p.assessmentBand ? <div><p className="text-xs text-slate-500">{t("band")}</p><p className="mt-1 text-2xl font-semibold">{bands("band_" + p.assessmentBand)}</p></div> : null}

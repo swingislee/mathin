@@ -3,6 +3,42 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ASSESSMENT-RESULT-VALIDITY-20261012",
+      "title": "历史测评结果参考有效期",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca4-7763-aa7f-c011ab9c333d",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ASSESSMENT-RESULT-VALIDITY-20261012.md",
+      "writePaths": [
+        ".ai/tasks/ASSESSMENT-RESULT-VALIDITY-20261012.md",
+        "contracts/parent-api/assessment-result-validity.ts",
+        "contracts/parent-api/portal.ts",
+        "src/features/school/assessment-result-validity/",
+        "src/features/school/AssessmentRulesWorkbench.tsx",
+        "src/features/school/AssessmentUnifiedWorkbench.tsx",
+        "src/features/school/AssessmentRecordDetails.tsx",
+        "src/features/school/AssessmentReportView.tsx",
+        "src/features/school/assessment-workbench-contract.ts",
+        "src/features/school/assessment-workbench-data.ts",
+        "src/features/school/assessment-list-data.ts",
+        "src/app/[locale]/dashboard/assessments/[registrationId]/reports/[reportId]/page.tsx",
+        "supabase/migrations/20261013003000_assessment_result_validity.sql",
+        "supabase/tests/assessment_result_validity.sql",
+        ".tmp/assessment-result-validity-20261012/",
+        "src/app/[locale]/dashboard/assessments/availability/page.tsx"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "docs/workflows/school-operations.md",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": "206cc474",
+      "next": "默认6个月参考有效期已可配置，名单、详情与报告展示已接通；本机迁移、定向日期/权限SQL、类型静态检查及两条HTTP入口通过。已与小程序会话确认referenceValidity接口，由其接入客户端。开发可验收，生产未部署。"
+    },
+    {
       "id": "MINI-EXTENSIBILITY-20261012",
       "title": "小程序与后台配置化及性能重构",
       "agent": "codex",

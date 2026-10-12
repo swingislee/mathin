@@ -1,4 +1,5 @@
 "use client";
+import { ReferenceValidity } from "./assessment-result-validity/ReferenceValidity";
 
 import { useRef, useState } from "react";
 import { Check, Clock3, PencilLine } from "lucide-react";
@@ -94,6 +95,7 @@ export function AssessmentRecordDetails({
   const panelId = (value: AssessmentStage) => "assessment-stage-" + row.id + "-" + value;
 
   const evidence = <section className="min-w-0" data-assessment-evidence>
+    {completed && <ReferenceValidity value={row.referenceValidity} locale={locale} details />}
     <h3 className="text-xs font-medium">{current ? row.assessment?.resultSource === "quick_entry" ? quickT("quickEvidence") : t("teacherEvidence") : recordM.historicalFeedback}</h3>
     <p className="mt-2 whitespace-pre-wrap text-xs leading-6">{(current ? conclusion : uniqueBusinessFeedback(conclusion, row.assessment?.parentConcerns)) || t("conclusionPending")}</p>
     {row.questionSummary ? <>

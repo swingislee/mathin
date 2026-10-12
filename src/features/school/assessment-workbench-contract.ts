@@ -7,6 +7,7 @@ import { hasSourceAssessmentConclusion } from './business-source-contract';
 import type {SourceEnrollmentFacts} from './business-source-contract';
 import type {SourceCompletionSummary} from './source-completion-contract';
 import type { SourcePlacement } from './source-worklist/contract';
+import type { AssessmentReferenceValidity } from '../../../contracts/parent-api/assessment-result-validity';
 
 export const ASSESSMENT_WORKBENCH_QUEUES = [
   "pending",
@@ -118,6 +119,7 @@ export interface AssessmentWorkbenchRow {
   assessmentStartedAt: string | null;
   assessmentCompletedAt: string | null;
   assessment: AssessmentWorkbenchAssessment | null;
+  referenceValidity?: AssessmentReferenceValidity | null;
   questionSummary: AssessmentWorkbenchQuestionSummary | null;
   route: AssessmentWorkbenchRoute | null;
   latestFollowUp?: AssessmentWorkbenchFollowUp | null;

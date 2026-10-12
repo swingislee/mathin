@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { ReferencePolicyEditor } from "./assessment-result-validity/ReferencePolicyEditor";
+import { referenceValidityMessages } from "./assessment-result-validity/contract";
 import { CalendarDays, Plus, RefreshCw, UsersRound } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -90,12 +92,15 @@ function TopicRow({ topic, workspace, onSaved }: WorkspaceProps & { topic: Asses
   </FollowupRecordRow>;
 }
 
-export function AssessmentRulesWorkbench({ initial, initialError, timeZone, now }: {
+export function AssessmentRulesWorkbench({ initial, initialError, timeZone, now, initialView = "rules" }: {
   initial: AssessmentRulesWorkspace | null; initialError?: string; timeZone: string; now: number;
+  initialView?: "rules" | "topics" | "validity";
 }) {
   const t = useTranslations("school.assessmentRules");
+  const referenceM = referenceValidityMessages(useLocale());
   const [workspace, setWorkspace] = useState(initial);
-  const [view, setView] = useState("rules");
+  const [view, setView] = useState<string>(initialView);
+  const [referenceVisited, setReferenceVisited] = useState(initialView === "validity");
   const [search, setSearch] = useState("");
   const [group, setGroup] = useState("all"), [teacherFilter, setTeacherFilter] = useState("all");
   const [sharedDraft, setSharedDraft] = useState<SaveAssessmentRuleInput | null>(null);
@@ -128,8 +133,8 @@ export function AssessmentRulesWorkbench({ initial, initialError, timeZone, now 
     catch { setError("failed"); } finally { lock.current = false; setPending(false); }
   }
   return <DashboardPage title={t("title")} backHref="/dashboard/assessments" backLabel={t("back")} description={t("description")}
-    commandPanel={<DashboardCommandPanel><DashboardCommandState><Tabs value={view} onValueChange={setView}><TabsList>
-      <TabsTrigger value="rules">{t("teacherRules")}</TabsTrigger><TabsTrigger value="topics">{t("topics")}</TabsTrigger>
+    commandPanel={<DashboardCommandPanel><DashboardCommandState><Tabs value={view} onValueChange={value => { setView(value); if (value === "validity") setReferenceVisited(true); }}><TabsList>
+      <TabsTrigger value="rules">{t("teacherRules")}</TabsTrigger><TabsTrigger value="topics">{t("topics")}</TabsTrigger><TabsTrigger value="validity">{referenceM.title}</TabsTrigger>
     </TabsList></Tabs></DashboardCommandState><DashboardCommandFilters>{view === "rules" && <>
       <Input value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} aria-label={t("searchTeacher")} placeholder={t("searchTeacher")} className="h-8 w-36" />
       <Select value={group} onValueChange={value => { setGroup(value); setPage(1); }}><SelectTrigger className="h-8 w-36" aria-label={t("byGroup")}><SelectValue /></SelectTrigger><SelectContent>
@@ -145,6 +150,7 @@ export function AssessmentRulesWorkbench({ initial, initialError, timeZone, now 
         <Button size="sm" className="size-8 p-0" variant="ghost" title={t("refresh")} aria-label={t("refresh")} disabled={pending} onClick={() => void reload()}><RefreshCw className="size-4" /></Button>
       </DashboardCommandActions></DashboardCommandPanel>}>
     {error && <p role="alert" className="py-2 text-sm text-rose">{t(error)}</p>}
+    {referenceVisited && <div hidden={view !== "validity"}><ReferencePolicyEditor /></div>}
     {workspace && <>
       <div hidden={view !== "rules"} className="space-y-4">
         {workspace.canManageAll && <section className="space-y-1">

@@ -1,4 +1,5 @@
 import "server-only";
+import { withAssessmentReferenceValidity } from "./assessment-result-validity/data";
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
@@ -44,6 +45,7 @@ export async function loadAssessmentWorkbenchPage(fields: DashboardFieldDefiniti
   });
   if (response.error) throw new Error(response.error.message);
   const { facets, rows, ...page } = pageSchema.parse(response.data);
-  return { ...page, rows: rows as unknown as AssessmentWorkbenchRow[], q: filters.q, state: filters.state,
+  const referencedRows = await withAssessmentReferenceValidity(rows as unknown as AssessmentWorkbenchRow[], client);
+  return { ...page, rows: referencedRows, q: filters.q, state: filters.state,
     fieldView: { query, facets: studentListFacets(facets, fields, context.locale) } };
 }
