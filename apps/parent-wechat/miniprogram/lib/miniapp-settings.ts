@@ -26,6 +26,10 @@ export interface MiniappSettings {
   booking?: import("./booking-policy").BookingPolicy;
 }
 export interface MiniappSettingsPublication { revision: number; publishedAt: string | null; config: MiniappSettings | null }
+export interface ConsentDocuments {
+  privacyVersion: string; childrenPrivacyVersion: string; privacyPath: string; childrenPrivacyPath: string;
+  policyText: { zh: { privacy: string; children: string }; en: { privacy: string; children: string } };
+}
 export interface MiniappDocument { id: string; version: string; title: MiniappText; body: MiniappText }
 
 export function miniappText(value: MiniappText, locale: "zh" | "en"): string { return value[locale] || value.zh || value.en; }

@@ -36,7 +36,17 @@ describe("participant access for work accounts", () => {
   });
   it("requires current consents for every role", async () => {
     h.rpc.mockResolvedValue({ data: false, error: null });
-    await expect(authorize(request())).rejects.toMatchObject({ code: "ACCOUNT_SECURITY" });
+    await expect(authorize(request())).rejects.toMatchObject({ code: "ACCOUNT_SECURITY", reason: "CONSENT_REQUIRED" });
+  });
+  it("allows the renewal endpoint to authenticate without exposing protected participant data", async () => {
+    h.rpc.mockResolvedValue({ data: false, error: null });
+    expect((await authorize(request(), { allowMissingConsents: true })).user.id).toBe(userId);
+    await expect(mediaGet(request())).rejects.toMatchObject({ code: "ACCOUNT_SECURITY", reason: "CONSENT_REQUIRED" });
+    expect(h.sign).not.toHaveBeenCalled();
+  });
+  it.each([{ is_active: false }, { account_status: "suspended" }, { password_change_required: true }])("renewal keeps account-state restrictions %j", async fields => {
+    h.profile.mockResolvedValue({ data: { ...profile, ...fields }, error: null });
+    await expect(authorize(request(), { allowMissingConsents: true })).rejects.toMatchObject({ code: "ACCOUNT_SECURITY" });
   });
   it("does not sign unrelated student media even when staff RLS can read the row", async () => {
     h.rpc.mockImplementation(async name => ({ data: name !== "miniapp_can_participate", error: null }));

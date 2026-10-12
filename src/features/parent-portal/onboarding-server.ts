@@ -15,8 +15,7 @@ import { familyFormSchema } from "./family-form";
 import { familyFormDisplay } from "./family-form-display";
 import { familyAnswerErrors, familyChildren } from "../../../contracts/participant-api/onboarding";
 import { authorize, PortalError, readJson, requireResult, response } from "./server";
-import zh from "../../../messages/zh.json";
-import en from "../../../messages/en.json";
+import { readConsentDocuments } from "./policy-documents";
 
 const verifiedPhoneSchema = z.object({ userId: z.string().uuid(), phone: z.string().regex(/^\+[0-9]{7,20}$/), localPhone: z.string().regex(/^[0-9]{6,18}$/) });
 const identityProofSchema = z.object({ purpose: z.literal("family-phone"), identity: wechatIdentitySchema,
@@ -40,18 +39,7 @@ async function newProof(payload: object) {
   // Keep a margin below the database's 15-minute ceiling for application/database clock skew.
   return issueTicket("guest", payload, token, 14 * 60, token);
 }
-export async function policies() {
-  const rows = requireResult(await createAdminClient().from("consent_policies").select("policy_kind,version,document_path").eq("required", true)) ?? [];
-  const privacy = rows.find(row => row.policy_kind === "privacy"), children = rows.find(row => row.policy_kind === "children_privacy");
-  if (!privacy || !children) throw new PortalError("UNAVAILABLE");
-  const policyText = (copy: typeof zh.compliance | typeof en.compliance) => ({
-    privacy: [copy.privacyTitle, copy.privacyIntro, copy.rightsTitle, copy.rightsBody].join("\n\n"),
-    children: [copy.childrenTitle, copy.childrenIntro, copy.consentTitle, copy.consentBody, copy.videoTitle, copy.videoBody].join("\n\n"),
-  });
-  return { privacyVersion: String(privacy.version), childrenPrivacyVersion: String(children.version),
-    privacyPath: String(privacy.document_path), childrenPrivacyPath: String(children.document_path),
-    policyText: { zh: policyText(zh.compliance), en: policyText(en.compliance) } };
-}
+export async function policies() { return readConsentDocuments(); }
 
 export async function readFamilyForm(scene: string | null) {
   const row = requireResult(await createAdminClient().from("miniapp_forms").select("slug,version,title,description,fields,questions")

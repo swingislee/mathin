@@ -75,7 +75,7 @@ export async function parentWechatAuthPost(request: Request) {
     }
     const session = await exchangeMiniappIdentitySession(config, identity, userId);
     try {
-      await authorize(new Request(request.url, { headers: { authorization: `Bearer ${session.access_token}` } }));
+      await authorize(new Request(request.url, { headers: { authorization: `Bearer ${session.access_token}` } }), { allowMissingConsents: true });
       const context = await miniappSessionContext(config, session.access_token, userId);
       // Native Auth has verified the existing WeChat identity; keep its actual assurance level.
       if (!session.expires_at) throw new MiniappWechatError("UNAVAILABLE");

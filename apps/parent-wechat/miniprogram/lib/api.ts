@@ -17,6 +17,7 @@ export function clearSession(){sessionVersion++;wx.removeStorageSync(sessionKey)
 export function saveSession(value:Session){sessionVersion++;wx.setStorageSync(sessionKey,value);}
 export function configured(){return Boolean(config.apiOrigin);}
 function origin(){const value=String(config.apiOrigin);if(!value)throw new ApiError("CONFIG_REQUIRED");return value.replace(/\/$/,"");}
+let consentNavigationPending = false;
 function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Promise<T> {
   return new Promise((resolve,reject)=>{
     // WeChat entry can wait for development compilation before the server exchanges its one-time code.
@@ -28,6 +29,11 @@ function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string):Pro
         if(result.statusCode>=200&&result.statusCode<300)resolve(result.data as T);
         else {
           const error=result.data as {code?:string;reason?:string};
+          if (token && error.code === "ACCOUNT_SECURITY" && error.reason === "CONSENT_REQUIRED" && !consentNavigationPending
+            && getCurrentPages().slice(-1)[0]?.route !== "pages/document/index") {
+            consentNavigationPending = true;
+            wx.navigateTo({ url: "/pages/document/index?consent=1", complete: () => { consentNavigationPending = false; } });
+          }
           reject(new ApiError(error?.code||"UNAVAILABLE",typeof error?.reason==="string"?error.reason:undefined));
         }
       },fail:error=>{console.warn("Portal request failed:",error.errMsg);reject(new ApiError("NETWORK"));},
@@ -175,3 +181,6 @@ export function upload(filePath:string,taskId:string,participantId:string,onProg
 export async function mediaUrl(id:string){const result=await send<{url:string}>("media?id="+encodeURIComponent(id),"GET",undefined,await accessToken());return origin()+result.url;}
 /** 请求号只用于重试去重，不作为登录凭据或访问授权。 */
 export function requestId(){return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,key=>{const value=Math.floor(Math.random()*16);return (key==="x"?value:(value&3)|8).toString(16);});}
+
+export async function consentDocuments() { return send<import("./miniapp-settings").ConsentDocuments>("consents", "GET"); }
+export async function acceptConsentDocuments(privacyVersion: string, childrenPrivacyVersion: string) { return send<{ ok: true }>("consents", "POST", { privacyVersion, childrenPrivacyVersion, consent: true }, await accessToken()); }

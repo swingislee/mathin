@@ -12,7 +12,7 @@ import * as project from "./projection";
 import { registrationsGet, registrationsPost } from "./registration-server";
 import { activityCatalogGet, activityDetailGet, activityImageGet } from "./activity-detail-server";
 import { miniappSettingsGet, miniappContentImageGet } from "./settings-server";
-import { miniappDocumentGet } from "./document-server";
+import { miniappDocumentGet, miniappConsentsGet, miniappConsentsPost } from "./document-server";
 import { questionAnswersSchema, formAnswerSnapshotSchema } from "@/features/parent-portal/form-questions";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 
@@ -66,6 +66,7 @@ async function get(request: Request, endpoint: string) {
     case "settings": return miniappSettingsGet(request);
     case "settings/image": return miniappContentImageGet(request);
     case "documents": return miniappDocumentGet(request);
+    case "consents": return miniappConsentsGet();
     case "auth/wechat": return parentWechatAuthGet(request);
     case "portal": {
       const resource = new URL(request.url).searchParams.get("resource");
@@ -102,6 +103,7 @@ async function get(request: Request, endpoint: string) {
 async function post(request: Request, endpoint: string) {
   switch (endpoint) {
     case "auth": return authPost(request);
+    case "consents": return miniappConsentsPost(request);
     case "auth/wechat": return parentWechatAuthPost(request);
     case "auth/wechat/onboarding": return onboardingPost(request);
     case "portal": {

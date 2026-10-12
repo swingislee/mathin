@@ -9,7 +9,7 @@ import type { Activity, ApiErrorCode, Report, PracticeSubmission, Media } from "
 import { intakeFormSchema, intakeSchema, validateAnswers, mediaType, PHOTO_BYTES, VIDEO_BYTES } from "./validation";
 
 export class PortalError extends Error {
-  constructor(public code: ApiErrorCode) { super(code); }
+  constructor(public code: ApiErrorCode, public reason?: "CONSENT_REQUIRED") { super(code); }
 }
 const status: Record<ApiErrorCode, number> = { VALIDATION:400, UNAUTHENTICATED:401, FORBIDDEN:403, ACCOUNT_SECURITY:403,
   NOT_FOUND:404, FORM_CHANGED:409, ACTIVITY_FULL:409, BOOKING_CLOSED:409, CONFLICT:409, TOO_LARGE:413, FILE_TYPE:415, RATE_LIMIT:429, UNAVAILABLE:503 };
@@ -18,7 +18,7 @@ export function response(data: unknown, httpStatus = 200) {
 }
 export function failure(error: unknown) {
   const code = error instanceof PortalError ? error.code : error instanceof z.ZodError ? "VALIDATION" : "UNAVAILABLE";
-  return response({ code }, status[code]);
+  return response({ code, ...(error instanceof PortalError && error.reason ? { reason: error.reason } : {}) }, status[code]);
 }
 export function requireResult<T>(result: { data:T; error:{ message:string; code?:string } | null }): T {
   if (result.error) throw new PortalError(result.error.message in status ? result.error.message as ApiErrorCode
@@ -30,7 +30,7 @@ function client(token?: string) {
   return createClient(url,key,{ auth:{ persistSession:false,autoRefreshToken:false,detectSessionInUrl:false },
     global: token ? { headers:{ Authorization:`Bearer ${token}` } } : undefined });
 }
-export async function authorize(request: Request) {
+export async function authorize(request: Request, options: { allowMissingConsents?: boolean } = {}) {
   const token = request.headers.get("authorization")?.match(/^Bearer ([^\s]+)$/)?.[1];
   if (!token || token.length>8192) throw new PortalError("UNAUTHENTICATED");
   const db=client(token);
@@ -39,8 +39,8 @@ export async function authorize(request: Request) {
   const profile=requireResult(await db.from("profiles").select("display_name,role,is_active,account_status,password_change_required").eq("id",user.id).maybeSingle());
   if (!profile) throw new PortalError("FORBIDDEN");
   // 工作角色与本人/监护人关系可以并存；每项数据仍由参与人关系授权。
-  if (!profile.is_active || profile.account_status!=="active" || profile.password_change_required
-    || !requireResult(await db.rpc("has_current_required_consents",{p_user_id:user.id}))) throw new PortalError("ACCOUNT_SECURITY");
+  if (!profile.is_active || profile.account_status!=="active" || profile.password_change_required) throw new PortalError("ACCOUNT_SECURITY");
+  if (!options.allowMissingConsents && !requireResult(await db.rpc("has_current_required_consents",{p_user_id:user.id}))) throw new PortalError("ACCOUNT_SECURITY", "CONSENT_REQUIRED");
   return { db,user,profile,token };
 }
 export async function readBytes(request: Request, limit: number) {
@@ -85,7 +85,7 @@ const sessionSchema=z.discriminatedUnion("action",[
 export async function authPost(request:Request) {
   const input=sessionSchema.parse(await readJson(request));
   if(input.action==="logout") {
-    const {token}=await authorize(request);
+    const {token}=await authorize(request, { allowMissingConsents: true });
     const {error}=await createAdminClient().auth.admin.signOut(token,"local");
     if(error)throw new PortalError("UNAVAILABLE");
     return response({ok:true});
@@ -98,8 +98,8 @@ export async function authPost(request:Request) {
       ? {email:input.identifier.value,password:input.password}:{phone:input.identifier.value,password:input.password});
   if(result.error||!result.data.session)throw new PortalError("UNAUTHENTICATED");
   const session=result.data.session;
-  // 令牌签发后立即经过与每个业务请求相同的账户状态检查。
-  await authorize(new Request(request.url,{headers:{authorization:`Bearer ${session.access_token}`}}));
+  // Sessions can reach the consent renewal page; every business request still checks current consent.
+  await authorize(new Request(request.url,{headers:{authorization:`Bearer ${session.access_token}`}}), { allowMissingConsents: true });
   return response({accessToken:session.access_token,refreshToken:session.refresh_token,expiresAt:session.expires_at});
 }
 
