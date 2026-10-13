@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { ApiError, experienceRead, experienceRequest, get, miniappDocument, requestId, session } from "../../lib/api";
 import type { Account, Participant } from "../../lib/api-types";
 import type { ExperiencePublication, ExperienceRequest, ExperienceServiceDetail } from "../../lib/experience-runtime";
@@ -6,7 +7,7 @@ import { pageData, syncPage, currentLocale, errorText, loginPage } from "../../l
 import { openExperienceAction } from "../../lib/experience-actions";
 type Command = { action: "submit"; id: string; serviceId: string; formId: string; revision: number; answers: ExperienceAnswers; participantIds: string[]; consents: Record<string, string> };
 const pendingKey = (account: string, target: string) => "gezhi.experience.pending.v1:" + account + ":" + target;
-Page({
+configuredPage("experience-form")({
   data: { ...pageData("discover"), id: "", serviceId: "", accountId: "", authenticated: false, form: null as ExperienceForm | null, detail: null as ExperienceServiceDetail | null,
     revision: 0, title: "", introduction: "", submitLabel: "", answers: {} as ExperienceAnswers, errors: [] as string[], busy: false, pending: null as Command | null, sent: null as ExperienceRequest | null,
     participants: [] as Participant[], selectedIds: [] as string[], consents: [] as { id: string; title: string; body: string; version: string; accepted: boolean }[] },

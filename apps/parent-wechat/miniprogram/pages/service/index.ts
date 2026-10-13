@@ -1,3 +1,5 @@
+import { contactCard } from "../../lib/contact-card";
+import { configuredPage } from "../../lib/native-page";
 import { serviceContacts } from "../../lib/api";
 import type { ServiceContact } from "../../lib/api-types";
 import { catalogStages } from "../../lib/catalog";
@@ -7,8 +9,8 @@ const words = {
   zh: { title: "联系服务", stageNumber: "选择参与者阶段", service: "服务人员", scan: "长按二维码添加服务人员微信", phone: "拨打电话", missing: "该阶段的服务联系方式尚未设置。", save: "查看二维码", campus: "服务校区", allCampuses: "所有校区", hours: "服务时间", address: "服务地址" },
   en: { title: "Contact service", stageNumber: "Participant stage", service: "Service contact", scan: "Long press the QR code to add the contact on WeChat", phone: "Call service", missing: "Contact details are not configured for this stage yet.", save: "View QR code", campus: "Campus", allCampuses: "All campuses", hours: "Service hours", address: "Address" },
 };
-type ContactRow = ServiceContact & { key: string; nameText: string; serviceText: string; hoursText: string; addressText: string };
-Page({
+type ContactRow = ReturnType<typeof contactCard>;
+configuredPage("service")({
   source: [] as ServiceContact[], requestVersion: 0,
   data: { ...pageData("discover"), t: words.zh, stageNumber: 1, selected: 0, stages: [] as { stageNumber: number; label: string }[],
     contacts: [] as ContactRow[], campusId: "", campusSelected: 0, campuses: [] as { id: string; name: string }[] },
@@ -33,13 +35,9 @@ Page({
     const rows = this.source.filter(r => r.stageNumber === this.data.stageNumber), campuses = [{ id: "", name: words[locale].allCampuses }];
     rows.forEach(r => { if (r.campusId && !campuses.some(c => c.id === r.campusId)) campuses.push({ id: r.campusId, name: r.campusName || "" }); });
     const campusId = campuses.some(c => c.id === this.data.campusId) ? this.data.campusId : "";
-    const contacts = rows.filter(r => !campusId || !r.campusId || r.campusId === campusId).map((r, i) => ({ ...r, key: `${r.id || i}-${r.stageNumber}`,
-      nameText: r.name ? miniappText(r.name, locale) : r.facilitatorName, serviceText: r.service ? miniappText(r.service, locale) : "",
-      hoursText: r.hours ? miniappText(r.hours, locale) : "", addressText: r.address ? miniappText(r.address, locale) : "" }));
+    const contacts = rows.filter(r => !campusId || !r.campusId || r.campusId === campusId).map(r => contactCard(r, locale));
     this.setData({ t: words[locale], stages, selected: Math.max(0, stages.findIndex(s => s.stageNumber === this.data.stageNumber)), contacts, campusId, campuses, campusSelected: campuses.findIndex(c => c.id === campusId) });
   },
   change(e: WechatMiniprogram.PickerChange) { const row = this.data.stages[Number(e.detail.value)]; if (row) { this.setData({ stageNumber: row.stageNumber }); this.render(); void this.load(); } },
   changeCampus(e: WechatMiniprogram.PickerChange) { const row = this.data.campuses[Number(e.detail.value)]; if (row) { this.setData({ campusId: row.id }); this.render(); } },
-  phone(e: WechatMiniprogram.TouchEvent) { const contact = this.data.contacts[Number(e.currentTarget.dataset.index)]; if (contact && contact.phone) wx.makePhoneCall({ phoneNumber: contact.phone.replace(/[ -]/g, "") }); },
-  preview(e: WechatMiniprogram.TouchEvent) { const contact = this.data.contacts[Number(e.currentTarget.dataset.index)]; if (contact && contact.qrCodeUrl) wx.previewImage({ urls: [contact.qrCodeUrl] }); },
 });

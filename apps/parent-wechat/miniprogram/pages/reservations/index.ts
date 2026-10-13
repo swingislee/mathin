@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { get, getAssessments, post, session } from "../../lib/api";
 import type { Account, AssessmentOverview, Booking, Participant } from "../../lib/api-types";
 import { canCancel } from "../../lib/discovery";
@@ -9,9 +10,9 @@ type AssessmentSource = { participant: Participant; overview: AssessmentOverview
 type BookingView = { key: string; id: string; kind: "activity" | "assessment"; participantId: string; participantName: string;
   label: string; when: string; startsAt: string | null; location: string; details: string; statusText: string;
   phase: "upcoming" | "attended" | "cancelled" | "other"; cancellable: boolean };
-Page({
+configuredPage("reservations")({
   data: { ...pageData("reservations"), authenticated: false, busy: false, loaded: false,
-    bookings: [] as BookingView[], participants: [] as Participant[],
+    statusOptions: [] as { id: string; label: string }[], bookings: [] as BookingView[], participants: [] as Participant[],
     participantNames: [] as string[], participantIndex: 0, participantId: "", filter: "upcoming", upcomingCount: 0, historyCount: 0 },
   bookingSource: [] as Booking[],
   assessmentSource: [] as AssessmentSource[],
@@ -21,6 +22,7 @@ Page({
   },
   onShow() {
     syncPage(this, "reservations");
+    this.setData({ statusOptions: (["upcoming", "attended", "cancelled", "all"] as const).map(id => ({ id, label: this.data.copy[id] })) });
     this.bookingSource = []; this.assessmentSource = [];
     this.setData({ authenticated: Boolean(session()), bookings: [], participants: [], participantNames: [],
       participantIndex: 0, loaded: false, error: "", loading: false });
@@ -90,8 +92,8 @@ Page({
     });
     this.setData({ upcomingCount: upcoming.length, historyCount: history.length, bookings: visible });
   },
-  filter(e: WechatMiniprogram.TouchEvent) {
-    const filter = String(e.currentTarget.dataset.value);
+  filter(e: WechatMiniprogram.CustomEvent<{ value: string }>) {
+    const filter = String(e.detail.value);
     if (["upcoming", "attended", "cancelled", "all"].includes(filter)) { this.setData({ filter }); this.applyFilter(); }
   },
   participant(e: WechatMiniprogram.PickerChange) {

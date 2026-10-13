@@ -1,0 +1,1 @@
+<scroll-view scroll-x class="filters"><view class="filter-row"><button wx:for="{{options}}" wx:key="id" class="filter {{value === item.id ? 'selected' : ''}}" data-value="{{item.id}}" bindtap="select" disabled="{{disabled}}">{{item.label}}</button></view></scroll-view>

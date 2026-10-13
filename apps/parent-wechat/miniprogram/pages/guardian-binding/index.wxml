@@ -1,8 +1,8 @@
 <view class="portal-page theme-{{theme}}">
-  <app-nav />
-  <view class="portal-content binding-content">
+  <app-nav title="{{screen.title}}" />
+  <view class="portal-content binding-content"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
     <text class="binding-title">{{stage === 'done' ? words.done : words.title}}</text>
-    <block wx:if="{{stage === 'done'}}">
+    <screen-section presentation="{{screen.modules.identity}}"><block wx:if="{{stage === 'done'}}">
       <text wx:if="{{childName}}" class="binding-name">{{childName}}</text>
       <text class="binding-intro">{{words.doneNote}}</text>
       <button class="primary" bindtap="account">{{words.account}}</button>
@@ -35,7 +35,7 @@
         </block>
       </block>
       <button class="secondary" bindtap="browse" disabled="{{busy && stage === 'confirm'}}">{{words.cancel}}</button>
-    </block>
+    </block></screen-section>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
-  </view>
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
 </view>

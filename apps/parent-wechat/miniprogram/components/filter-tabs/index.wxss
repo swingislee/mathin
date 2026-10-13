@@ -1,0 +1,1 @@
+.filters{width:100%}.filter-row{display:flex;align-items:center;gap:12rpx;padding:8rpx 0;white-space:nowrap}.filter{flex:none;margin:0;background:transparent;color:var(--muted);font-size:25rpx;padding:10rpx 20rpx;line-height:1.6;border-radius:24rpx}.filter::after{border:0}.selected{background:var(--moon);color:var(--ink)}

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { bookingEvents, contentBlockKinds, providerCapabilities, type MiniappExperience } from "../../../../contracts/participant-api/miniapp-experience";
+import { nativeScreensSchema } from "./native-screen-schema";
+import { bookingEvents, contentBlockKinds, accountRecordSources, providerCapabilities, type MiniappExperience } from "../../../../contracts/participant-api/miniapp-experience";
 
 export const experienceId = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).refine(v => !["__proto__", "prototype", "constructor"].includes(v), "Reserved identifier");
 const reference = z.union([experienceId, z.literal("")]);
@@ -22,6 +23,7 @@ const block = z.discriminatedUnion("kind", [
   z.object({ ...base, kind: z.literal("action"), action: experienceActionSchema, appearance: z.enum(["primary", "secondary", "link"]) }).strict(),
   z.object({ ...base, kind: z.literal("divider") }).strict(),
   z.object({ ...base, kind: z.enum(["services", "activities", "contacts"]), title: text(200), ids: z.array(experienceId).max(50), limit: z.number().int().min(1).max(30), emptyText: text(500), layout: z.enum(["list", "grid"]) }).strict(),
+  z.object({ ...base, kind: z.literal("accountRecords"), title: text(200), source: z.enum(accountRecordSources), limit: z.number().int().min(1).max(30), emptyText: text(500), density: z.enum(["comfortable", "compact"]) }).strict(),
   z.object({ ...base, kind: z.literal("metric"), title: text(200), binding, unit: text(50), description: text(1000) }).strict(),
   z.object({ ...base, kind: z.literal("scale"), title: text(200), binding, labels: z.array(text(100)).min(2).max(10), description: text(1000) }).strict(),
   z.object({ ...base, kind: z.literal("evidence"), title: text(200), binding, emptyText: text(500) }).strict(),
@@ -75,6 +77,7 @@ const service = z.object({ id: experienceId, name: text(200), summary: text(2000
   price: z.object({ mode: z.enum(["free", "offline", "online"]), amountMinor: z.number().int().min(0).max(100000000), currency: z.string().regex(/^[A-Z]{3}$/), note: text(1000) }).strict(),
 }).strict();
 export const miniappExperienceSchema: z.ZodType<MiniappExperience> = z.object({ version: z.literal(1), homePageId: reference,
+  screens: nativeScreensSchema.optional(),
   pages: list(contentDocumentSchema), forms: list(experienceFormSchema), services: list(service, 100), destinations: list(webDestinationSchema),
   dictionaries: list(z.object({ id: experienceId, name: text(200), entries: list(z.object({ id: experienceId, label: text(200), enabled: z.boolean() }).strict(), 100) }).strict(), 20),
   resources: list(resource, 100), policies: list(policy), flows: list(flow),

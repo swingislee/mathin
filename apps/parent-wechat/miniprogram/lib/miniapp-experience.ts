@@ -5,7 +5,7 @@ export type ExperienceLocale = "zh" | "en";
 export const experienceText = (zh = "", en = ""): ExperienceText => ({ zh, en });
 export const localText = (value: ExperienceText | undefined, locale: ExperienceLocale): string => value?.[locale] || value?.zh || value?.en || "";
 
-export const experienceNativeTargets = ["assessment", "activities", "applications", "service", "agenda", "calendar", "reflections", "records", "participants", "register", "guardian", "account", "privacy", "document"] as const;
+export const experienceNativeTargets = ["assessment", "activities", "applications", "service", "agenda", "calendar", "reflections", "records", "participants", "register", "guardian", "account", "privacy", "document", "reservations", "serviceRequests", "serviceBookings", "notifications"] as const;
 export type ExperienceAction = {
   kind: "none" | "native" | "page" | "offering" | "catalog" | "form" | "web" | "phone";
   target: string;
@@ -14,10 +14,13 @@ export type ExperienceAction = {
 export type ExperienceAudience = "all" | "signedIn" | "participants";
 export type ContentCondition = { field: string; operator: "present" | "equals" | "notEquals"; value: string };
 type BlockBase = { id: string; version: 1; visible: boolean; condition?: ContentCondition; fallback?: ExperienceText };
-export const contentBlockKinds = ["heading", "paragraph", "image", "callout", "quote", "bullets", "steps", "facts", "table", "faq", "action", "divider", "services", "activities", "contacts", "metric", "scale", "evidence", "chart"] as const;
+export const contentBlockKinds = ["heading", "paragraph", "image", "callout", "quote", "bullets", "steps", "facts", "table", "faq", "action", "divider", "services", "activities", "contacts", "metric", "scale", "evidence", "chart", "accountRecords"] as const;
+export const accountRecordSources = ["activityBookings", "serviceBookings", "serviceRequests", "reports", "tasks", "notifications"] as const;
+export type AccountRecordSource = typeof accountRecordSources[number];
 export type ContentBlockKind = typeof contentBlockKinds[number];
 export type ContentItem = { id: string; title: ExperienceText; body: ExperienceText; image?: string; binding?: string };
 export type ContentBlock = BlockBase & (
+  | { kind: "accountRecords"; title: ExperienceText; source: AccountRecordSource; limit: number; emptyText: ExperienceText; density: "comfortable" | "compact" }
   | { kind: "heading"; text: ExperienceText; level: 2 | 3 }
   | { kind: "paragraph" | "callout" | "quote"; text: ExperienceText; binding: string; tone: "neutral" | "accent" | "notice" }
   | { kind: "image"; image: string; caption: ExperienceText; fit: "contain" | "cover" }
@@ -112,6 +115,7 @@ export type ExperienceConnection = { id: string; name: ExperienceText; adapter: 
 export type ReportDocumentBinding = { kind: "assessment" | "feedback"; pageId: string; serviceId: string; enabled: boolean };
 export type MiniappExperience = {
   version: 1; homePageId: string;
+  screens?: import("./miniapp-native").NativeScreenConfig[];
   pages: ContentDocument[]; services: ExperienceService[]; forms: ExperienceForm[];
   destinations: WebDestination[]; dictionaries: ExperienceDictionary[]; resources: ExperienceResource[];
   policies: SchedulingPolicy[]; flows: BookingFlow[]; connections: ExperienceConnection[];

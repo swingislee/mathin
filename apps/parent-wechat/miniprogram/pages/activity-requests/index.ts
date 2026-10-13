@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { activityRequests, activityCommand, activityRegistrationAnswers, session } from "../../lib/api";
 import type { ActivityRequest } from "../../lib/api-types";
 import { activityCopy, activityPrice, activityDate } from "../../lib/activity-catalog";
@@ -11,7 +12,7 @@ function rowView(row: ActivityRequest) {
     answers: [] as { label: string; value: string }[] };
 }
 
-Page({
+configuredPage("activity-requests")({
   data: { ...pageData("account"), t: activityCopy.zh, authenticated: false,
     rows: [] as ReturnType<typeof rowView>[], filter: "", busy: false, answersBusy: "",
     statuses: [] as { id: string; label: string }[] },
@@ -42,7 +43,7 @@ Page({
     } catch (error) { if (version === this.version) this.setData({ error: errorText(error) }); }
     finally { this.setData({ answersBusy: "" }); }
   },
-  filter(e: WechatMiniprogram.TouchEvent) { const id = String(e.currentTarget.dataset.id); this.setData({ filter: this.data.filter === id ? "" : id }); this.render(); },
+  filter(e: WechatMiniprogram.CustomEvent<{ value: string }>) { const id = String(e.detail.value); this.setData({ filter: this.data.filter === id ? "" : id }); this.render(); },
   login() { loginPage("/pages/activity-requests/index"); },
   async cancel(e: WechatMiniprogram.TouchEvent) {
     if (this.data.busy) return;

@@ -16,9 +16,11 @@ export const contentKindNames: Record<ContentBlockKind, { zh: string; en: string
   action: t("操作入口", "Action"), divider: t("分隔线", "Divider"), services: t("服务目录", "Services"), activities: t("活动目录", "Activities"), contacts: t("服务联系人", "Contacts"),
   metric: t("指标与分值", "Metric"), scale: t("表现等级", "Scale"), evidence: t("表现与证据", "Evidence"),
   chart: t("数据图表", "Data chart"),
+  accountRecords: t("我的业务记录", "My records"),
 };
 export function newContentBlock(kind: ContentBlockKind, id: string): ContentBlock {
   const common = base(id);
+  if (kind === "accountRecords") return { ...common, kind, title: contentKindNames[kind], source: "serviceBookings", limit: 3, emptyText: t("暂无相关记录", "No records yet"), density: "comfortable" };
   if (kind === "heading") return { ...common, kind, text: t("新章节", "New section"), level: 2 };
   if (kind === "paragraph" || kind === "callout" || kind === "quote") return { ...common, kind, text: t(), binding: "", tone: "neutral" };
   if (kind === "image") return { ...common, kind, image: "", caption: t(), fit: "contain" };

@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { ApiError, authorizeWechatPhone, bindWechat, cancelPendingAuthentication, completeWechatFamily, getRegistrationForm, getRegistrationReceipt, submitRegistration, requestId, loginWithWechat, session, verifiedWechatForm, wechatAuthStatus } from "../../lib/api";
 import { pageData, currentLocale, errorText, loginPage, localized, syncPage } from "../../lib/page";
 import { cancelLogin, clearNavigation, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
@@ -10,7 +11,7 @@ import type { QuestionAnswers } from "../../lib/form-questions";
 import { catalogStages } from "../../lib/catalog";
 import { miniappText } from "../../lib/miniapp-settings";
 
-Page({
+configuredPage("onboarding")({
   data: { ...pageData("account"), words: onboardingCopy.zh, stage: "wechat", busy: false, ticket: "", scene: "", maskedPhone: "",
     registration: false, registrationId: "", registrationKey: "",
     canBindDirect: false, participantIndex: 0, participantChoices: [] as string[],

@@ -1,10 +1,10 @@
 <view class="portal-page theme-{{theme}} booking-page assessment-page">
-  <app-nav title="{{showHistory ? copy.myAssessments : copy.assessmentBooking}}" back />
-  <view class="portal-content has-fixed-actions">
-    <text wx:if="{{!showHistory}}" class="small muted block">{{bookingInstructions || copy.assessmentPurpose}}</text>
+  <app-nav title="{{screen.title || (showHistory ? copy.myAssessments : copy.assessmentBooking)}}" back />
+  <view class="portal-content has-fixed-actions"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
+    <screen-section presentation="{{screen.modules.guidance}}"><text wx:if="{{!showHistory}}" class="small muted block">{{bookingInstructions || copy.assessmentPurpose}}</text></screen-section>
     <view wx:if="{{showHistory}}" class="assessment-toolbar"><button class="text-link" bindtap="toggleHistory">{{copy.assessmentBooking}}<view class="chevron"></view></button></view>
     <button wx:if="{{showHistory && authenticated && participants.length}}" class="assessment-participant" data-sheet="participant" bindtap="showSheet" disabled="{{busy}}"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><text>{{participants[selected].name}}</text><text class="switch-participant">{{copy.switchParticipant}}</text></button>
-    <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
+    <screen-section presentation="{{screen.modules.booking}}"><text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
     <block wx:elif="{{authenticated && loaded}}">
       <block wx:if="{{showHistory}}">
         <empty-state wx:if="{{!requests.length}}" label="{{copy.noAssessmentRequests}}" kind="box" />
@@ -50,24 +50,17 @@
             <text class="section-title">{{copy.assessmentPeriod}}</text>
             <view class="assessment-weeks"><button wx:for="{{weeks}}" wx:key="index" class="week-pill {{item.selected ? 'selected' : ''}}" data-index="{{item.index}}" bindtap="moveWeek" disabled="{{busy || uncertain}}">{{item.label}}</button></view>
           </view>
-          <view wx:if="{{facilitatorId && timeRows.length && !availabilityLoading}}" class="slot-table">
-            <view class="slot-week-label">{{weekLabel}}</view>
-            <view class="slot-table-row slot-table-header"><view class="slot-date-heading">{{copy.assessmentDate}}</view><view wx:for="{{days}}" wx:key="date" class="slot-table-cell"><text class="slot-day">{{item.label}}</text><text class="slot-weekday">{{item.weekday}}</text></view></view>
-            <view wx:for="{{timeRows}}" wx:for-item="row" wx:key="key" class="slot-table-row">
-              <view class="slot-period">{{row.period}}</view><view class="slot-time-heading"><text>{{row.start}}</text><text>~{{row.end}}</text></view>
-              <view wx:for="{{row.cells}}" wx:for-item="cell" wx:key="key" class="slot-table-cell"><button class="slot-option {{cell.selected ? 'selected' : ''}}" data-id="{{cell.id}}" bindtap="chooseTime" disabled="{{busy || uncertain || !cell.available}}" aria-label="{{cell.available ? copy.availableSlot : copy.unavailableSlot}}">{{cell.selected ? '✓' : (cell.available ? copy.availableSlot : '')}}</button></view>
-            </view>
-          </view>
+          <slot-picker wx:if="{{facilitatorId && timeRows.length && !availabilityLoading}}" mode="matrix" days="{{days}}" time-rows="{{timeRows}}" week-label="{{weekLabel}}" labels="{{copy}}" disabled="{{busy || uncertain}}" bindselect="chooseTime" />
           <text wx:elif="{{!availabilityLoading && campuses.length}}" class="muted block selection-hint">{{!campusId && mode === 'campus' ? copy.selectCampusHint : (!facilitatorId ? copy.selectFacilitatorHint : copy.facilitatorNoSlots)}}</text>
           <view wx:if="{{selectedLabel}}" class="slot-confirmation">{{selectedLabel}}</view>
         </view>
         <text wx:if="{{eligibilityHint}}" class="muted small block limit-note">{{eligibilityHint}}</text>
         <view class="assessment-history-link"><button class="text-link" bindtap="toggleHistory">{{copy.myAssessments}}<view class="chevron"></view></button></view>
       </block>
-    </block>
+    </block></screen-section>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}<block wx:if="{{uncertain}}"><button class="text-button" bindtap="viewHistory" disabled="{{busy}}">{{copy.myAssessments}}</button><button wx:if="{{pending}}" class="text-button" bindtap="retryPending" disabled="{{busy}}">{{copy.retryAssessment}}</button><button wx:if="{{pending && pendingChecked && eligible}}" class="text-button" bindtap="startOver" disabled="{{busy}}">{{copy.restartAssessment}}</button></block><button wx:else class="text-button" bindtap="retryLoad" disabled="{{busy}}">{{copy.retry}}</button></view>
     <view wx:if="{{!authenticated}}" class="surface inline-signin"><text class="row-title block">{{copy.assessmentKind}}</text><button class="primary" bindtap="login">{{copy.loginToBook}}</button><button class="text-link centered" bindtap="register">{{copy.registrationTitle}}</button></view>
-  </view>
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
   <view wx:if="{{authenticated && loaded && !loading && !showHistory && !requestSent}}" class="fixed-actions {{step === 1 ? 'transparent-actions' : ''}}">
     <button wx:if="{{step === 1}}" class="primary" bindtap="review" disabled="{{busy || uncertain || !eligible || !selectedTopics.length || stageNumber === null || !mode}}">{{copy.nextStep}}</button>
     <block wx:else><button class="reset-action" bindtap="resetTimes" disabled="{{busy || uncertain}}">↻ {{copy.resetSelection}}</button><view class="action-pair"><button class="secondary" bindtap="back" disabled="{{busy || uncertain}}">{{copy.backStep}}</button><button class="primary" bindtap="submit" loading="{{busy}}" disabled="{{busy || uncertain || availabilityLoading || !selectedSlotId}}">{{copy.confirmReservation}}</button></view></block>
@@ -75,7 +68,7 @@
   <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop">
     <view class="bottom-sheet assessment-sheet {{sheet === 'topic' ? 'topic-sheet' : (sheet === 'stageNumber' ? 'stage-sheet' : '')}}" catchtap="noop">
       <view class="sheet-heading"><view><text>{{sheet === 'participant' ? copy.chooseLinkedParticipant : (sheet === 'topic' ? copy.chooseAssessmentTopics : (sheet === 'stageNumber' ? copy.chooseAssessmentStage : copy.chooseAssessmentMode))}}</text><text wx:if="{{sheet === 'topic'}}" class="multi-select-note">{{copy.assessmentMultiSelect}}</text></view><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view>
-      <scroll-view wx:if="{{sheet === 'participant'}}" scroll-y class="sheet-scroll"><button wx:for="{{participants}}" wx:key="id" class="member-option {{selected === index ? 'selected' : ''}}" data-index="{{index}}" bindtap="chooseParticipant"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><text>{{item.name}}</text><text wx:if="{{selected === index}}" class="member-check">✓</text></button></scroll-view>
+      <scroll-view wx:if="{{sheet === 'participant'}}" scroll-y class="sheet-scroll"><participant-picker mode="list" rows="{{participants}}" selected="{{selected}}" disabled="{{busy || uncertain}}" bindchange="chooseParticipant" /></scroll-view>
       <block wx:elif="{{sheet === 'topic'}}"><text class="sheet-subtitle">{{copy.assessmentTopicsHint}}</text><text wx:if="{{!topicOptions.length}}" class="sheet-subtitle">{{copy.assessmentNoTopics}}</text><view class="option-grid"><button wx:for="{{topicOptions}}" wx:key="id" class="option-pill {{item.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="toggleTopic">{{item.label}}</button></view><button class="primary" bindtap="confirmTopics" disabled="{{!draftTopics.length}}">{{copy.confirmTopics}}</button></block>
       <scroll-view wx:elif="{{sheet === 'stageNumber'}}" scroll-y class="stage-scroll"><view wx:for="{{stageOptions}}" wx:for-item="group" wx:key="id" class="stage-group"><text class="section-title">{{group.label}}</text><view class="option-grid"><button wx:for="{{group.stages}}" wx:for-item="stage" wx:key="id" class="option-pill {{stageNumber === stage.stageNumber ? 'selected' : ''}}" data-stage-number="{{stage.stageNumber}}" bindtap="chooseStage">{{stage.label}}</button></view></view></scroll-view>
       <view wx:elif="{{sheet === 'mode'}}" class="option-grid"><button wx:for="{{modeOptions}}" wx:key="id" class="option-pill {{mode === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="chooseMode">{{item.label}}</button></view>

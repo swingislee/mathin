@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { ApiError, get, activityDetail, activityRequests, activityCommand, requestId, session } from "../../lib/api";
 import type { Account, Participant, ActivityOffer, ActivityRequestCommand } from "../../lib/api-types";
 import { activityCopy, activityRegistrationNote } from "../../lib/activity-catalog";
@@ -8,7 +9,7 @@ import { questionAnswerErrors, type FormQuestion, type QuestionAnswers } from ".
 
 type ApplyCommand = Extract<ActivityRequestCommand, { action: "apply" }>;
 const pendingKey = (account: string, offer: string) => `gezhi.activity-application.v1.${account}.${offer}`;
-Page({
+configuredPage("activity-signup")({
   data: { ...pageData("discover"), t: activityCopy.zh, id: "", authenticated: false, accountId: "", offer: null as ActivityOffer | null,
     participants: [] as Participant[], selected: 0, busy: false, pending: null as ApplyCommand | null, sent: false, activityWhen: "",
     signup: { instructions: "", confirmation: "", success: "" }, registrationNote: "",

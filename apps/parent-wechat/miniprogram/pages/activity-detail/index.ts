@@ -1,9 +1,10 @@
+import { configuredPage } from "../../lib/native-page";
 import { activityCatalog, activityDetail, activityImageUrl, ApiError } from "../../lib/api";
 import type { ActivityPage, ActivityPageBlock } from "../../lib/activity-detail";
 import { activityCopy, activityCard, activityRegistrationNote } from "../../lib/activity-catalog";
 import { pageData, syncPage, errorText, currentLocale } from "../../lib/page";
 
-Page({
+configuredPage("activity-detail")({
   data: { ...pageData("discover"), t: activityCopy.zh, id: "", registrationNote: "", offer: null as ReturnType<typeof activityCard> | null,
     detail: null as (Omit<ActivityPage, "blocks"> & { coverUrl: string; blocks: (ActivityPageBlock & { imageUrl: string })[] }) | null },
   onLoad(query: Record<string, string>) { this.setData({ id: query.id || "" }); },

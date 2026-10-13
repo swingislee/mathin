@@ -4,6 +4,7 @@ import { Fragment, useContext, type ReactNode } from "react";
 import { contentRichText, renderContent, type ContentData, type RichTextNode } from "../../../../contracts/participant-api/miniapp-content-render";
 import { localText, type ContentDocument, type ExperienceLocale, type MiniappExperience } from "../../../../contracts/participant-api/miniapp-experience";
 import { WorkbenchContext } from "./WorkbenchContext";
+import { accountRecordNames } from "../../../../contracts/participant-api/miniapp-records";
 
 function nodes(value: RichTextNode[]): ReactNode { return value.map((node, index) => {
   if (node.type === "text") return <Fragment key={index}>{node.text}</Fragment>;
@@ -49,6 +50,7 @@ export function ExperiencePreview({ document, experience, locale, selectedId, on
       {block.kind === "table" && <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr>{block.columns.map((c, i) => <th key={i} className="border-b border-line p-2">{c}</th>)}</tr></thead><tbody>{block.rows.map((row, index) => <tr key={index}>{row.map((cell, i) => <td key={i} className="border-b border-line p-2 align-top">{cell}</td>)}</tr>)}</tbody></table></div>}
       {block.kind === "action" && <button type="button" className={block.appearance === "primary" ? "w-full rounded-lg bg-ink px-4 py-3 text-sm text-paper" : block.appearance === "link" ? "text-sm underline" : "w-full rounded-lg border border-line px-4 py-3 text-sm"}>{block.text}</button>}
       {block.kind === "divider" && <hr className="border-line" />}
+      {block.kind === "accountRecords" && block.recordSource && <div><p className="mb-2 text-xs text-muted">{locale === "zh" ? "示例记录 · 真机按当前账号读取" : "Sample records · actual records follow the viewer"}</p>{Array.from({ length: Math.min(block.limit, 3) }, (_, i) => <div key={i} className={"border-t border-line " + (block.appearance === "compact" ? "py-2" : "py-4")}><strong className="text-sm">{localText(accountRecordNames[block.recordSource!], locale)} · {i + 1}</strong><p className="mt-1 text-xs text-muted">{locale === "zh" ? "示例参与人 · 日期 · 业务状态" : "Sample participant · date · status"}</p></div>)}<p className="pt-2 text-xs underline">{locale === "zh" ? "查看全部记录 ›" : "View all records ›"}</p></div>}
       {block.kind === "chart" && block.chart && <figure className="space-y-3">
         {block.chartImage && <img src={block.chartImage} alt={block.title} className="mx-auto w-full max-w-72" />}
         <div className="space-y-3">{(block.appearance === "donut" ? block.chart.points.slice(0, 1) : block.chart.points).map((point, i) => <div key={i}><div className="flex justify-between gap-3 text-xs"><span className="min-w-0 break-words">{point.label}</span><span className="shrink-0 tabular-nums">{point.valueLabel}</span></div>{block.appearance === "bars" && <div className="mt-2 h-2 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-leaf-deep" style={{ width: `${point.percent}%` }} /></div>}</div>)}</div>

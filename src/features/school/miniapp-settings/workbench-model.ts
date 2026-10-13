@@ -1,5 +1,7 @@
 import { experienceText as t, localText, type ExperienceAction, type ExperienceText, type MiniappExperience } from "../../../../contracts/participant-api/miniapp-experience";
 import type { MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
+import { nativeScreens, nativeActionScreens } from "../../../../contracts/participant-api/miniapp-native";
+import { accountRecordTargets } from "../../../../contracts/participant-api/miniapp-records";
 
 export const workbenchGroups = [
   { id: "presentation", title: t("页面与呈现", "Pages & presentation"), items: [
@@ -39,39 +41,7 @@ export const workbenchGroups = [
 ] as const;
 export const workbenchItems = workbenchGroups.flatMap(g => g.items.map(([id, title, description]) => ({ id, title, description, group: g.title })));
 
-export type ScreenDefinition = { id: string; title: ExperienceText; group: ExperienceText; modules: ExperienceText[]; settings: string[]; feature: ExperienceText };
-const screen = (id: string, zh: string, en: string, group: ExperienceText, modules: [string, string][], settings: string[], feature: [string, string]): ScreenDefinition => ({ id, title: t(zh, en), group, modules: modules.map(([a, b]) => t(a, b)), settings, feature: t(...feature) });
-const discover = t("发现与了解", "Discovery"), booking = t("报名与预约", "Booking"), records = t("安排与记录", "Records"), identity = t("账号与参与人", "Identity"), support = t("帮助与承载", "Support");
-export const nativeScreens: ScreenDefinition[] = [
-  screen("discover", "发现", "Discover", discover, [["阶段与主题筛选", "Stage and topic filters"], ["品牌介绍", "Brand introduction"], ["主推入口与内容模块", "Feature and content modules"], ["活动列表", "Activity list"], ["快捷入口", "Quick entries"]], ["home", "pages", "menus", "brand", "stages"], ["公开浏览活动与服务", "Browse public activities and services"]),
-  screen("activity-catalog", "活动目录", "Activity catalog", discover, [["阶段与主题筛选", "Stage and topic filters"], ["活动条目", "Activity rows"]], ["stages"], ["筛选已发布活动", "Filter published activities"]),
-  screen("activity-detail", "活动详情", "Activity details", discover, [["封面与摘要", "Cover and summary"], ["活动介绍与场次", "Content and sessions"], ["报名按钮", "Apply button"]], [], ["了解活动后选择场次", "Explore activities and sessions"]),
-  screen("service-catalog", "服务目录", "Service catalog", discover, [["分类筛选", "Category filter"], ["服务条目", "Service rows"], ["我的申请、预约与消息入口", "Request, booking and notification entries"]], ["offerings", "dictionaries"], ["查找可用服务", "Find available services"]),
-  screen("service-detail", "服务详情", "Service details", discover, [["服务摘要", "Service summary"], ["内容模块", "Content document"], ["资源列表", "Resources"], ["参加前说明", "Preparation"], ["预约按钮", "Booking action"]], ["offerings", "pages", "resources", "flows"], ["进入服务绑定的预约流程", "Start the linked booking flow"]),
-  screen("assessment", "测评预约与记录", "Assessment booking", booking, [["参与人与主题选择", "Participant and topic selection"], ["地点与老师选择", "Location and teacher selection"], ["时段表", "Time slots"], ["确认与取消操作", "Confirmation and cancellation"]], ["booking", "stages"], ["现有测评预约", "Book existing assessments"]),
-  screen("provider-booking", "服务预约", "Provider booking", booking, [["参与人选择", "Participant selection"], ["可约时段", "Availability"], ["资料表单", "Intake form"], ["协议确认", "Consent"], ["提交与候补", "Submit or waitlist"]], ["offerings", "flows", "forms", "policies", "connections"], ["外部提供方预约", "Book with a provider"]),
-  screen("activity-signup", "活动报名", "Activity signup", booking, [["参与人选择", "Participant selection"], ["场次选择", "Session selection"], ["报名问题", "Signup questions"], ["提交确认", "Submission"]], [], ["活动报名", "Apply to an activity"]),
-  screen("experience-form", "服务表单", "Service form", booking, [["问题组", "Question groups"], ["条件字段", "Conditional fields"], ["重复填写", "Repeated entries"], ["校验与提交", "Validation and submission"]], ["forms", "flows"], ["资料与意向提交", "Submit intake or enquiries"]),
-  screen("register", "参与登记", "Registration", booking, [["个人资料", "Profile fields"], ["登记问题", "Registration questions"], ["协议确认", "Consent"]], [], ["首次参与登记", "Register to participate"]),
-  screen("calendar", "日历", "Calendar", records, [["月份与日期", "Month and day selection"], ["安排条目", "Arrangement rows"]], [], ["查看本人安排", "View personal arrangements"]),
-  screen("agenda", "全部安排", "All arrangements", records, [["时间分组", "Date groups"], ["安排详情", "Arrangement details"]], [], ["查看待参加事项", "View upcoming arrangements"]),
-  screen("reservations", "预约记录", "Reservations", records, [["状态筛选", "Status filters"], ["预约条目", "Booking rows"], ["取消操作", "Cancellation"]], ["booking"], ["管理现有预约", "Manage existing bookings"]),
-  screen("provider-bookings", "服务预约记录", "Service bookings", records, [["预约状态", "Booking status"], ["改期与取消", "Reschedule and cancel"]], ["policies", "connections"], ["管理提供方预约", "Manage provider bookings"]),
-  screen("activity-requests", "报名记录", "Applications", records, [["报名状态", "Application status"], ["申请详情", "Application details"]], [], ["查看活动申请", "View activity applications"]),
-  screen("experience-requests", "服务申请记录", "Service requests", records, [["提交状态", "Submission status"], ["表单快照", "Form snapshot"], ["结果说明", "Confirmation content"]], ["forms", "flows", "requests"], ["跟踪服务意向", "Track service requests"]),
-  screen("reflections", "思考回顾", "Reflections", records, [["参与人选择", "Participant selection"], ["报告与图表", "Reports and charts"], ["观察证据", "Evidence"]], ["reports"], ["查看已发布报告", "View published reports"]),
-  screen("records", "活动记录", "Activity records", records, [["参与人选择", "Participant selection"], ["活动记录", "Activity records"]], [], ["回顾参与过程", "Review participation"]),
-  screen("activity", "活动与学习任务", "Activities and tasks", records, [["活动摘要", "Activity summary"], ["任务列表", "Task list"]], [], ["查看已参与活动", "View joined activities"]),
-  screen("task", "任务详情", "Task details", records, [["任务内容", "Task content"], ["作答与材料", "Answers and materials"], ["提交反馈", "Submission feedback"]], [], ["完成已分配任务", "Complete assigned tasks"]),
-  screen("experience-notifications", "服务消息", "Notifications", records, [["消息列表", "Notification list"], ["阅读状态", "Read state"]], ["notifications"], ["查看本人的通知", "Read personal notifications"]),
-  screen("account", "我的", "Account", identity, [["账号身份", "Account identity"], ["参与人档案", "Participant profiles"], ["预约快捷入口", "Booking shortcuts"], ["服务分组入口", "Service entry groups"]], ["menus", "brand"], ["管理账号与进入个人服务", "Manage the account and personal services"]),
-  screen("onboarding", "首次账号资料", "Account onboarding", identity, [["基本资料", "Basic profile"], ["手机号授权", "Phone authorization"], ["协议确认", "Consent"]], [], ["建立账号基础资料", "Complete account information"]),
-  screen("guardian-binding", "关联已有孩子", "Link a child", identity, [["关联码输入", "Link code"], ["身份核对", "Identity check"], ["主动确认", "Explicit confirmation"]], [], ["确认监护关联", "Confirm a guardian link"]),
-  screen("service", "联系服务", "Contact service", support, [["阶段筛选", "Stage filter"], ["联系人资料", "Contact details"], ["电话与二维码", "Phone and QR code"]], ["contacts", "stages"], ["联系工作人员", "Contact staff"]),
-  screen("document", "帮助与协议文档", "Help and agreements", support, [["标题与正文", "Title and document body"]], [], ["阅读已发布文档", "Read published documents"]),
-  screen("experience", "组合页面承载", "Composed page host", support, [["页面标题", "Page title"], ["内容模块", "Content modules"], ["数据与动作绑定", "Data and action bindings"]], ["pages", "modules"], ["渲染已发布组合页面", "Render published composed pages"]),
-  screen("web", "网页承载", "Website host", support, [["网页容器", "Web view"], ["复制链接与返回", "Copy link and return"]], ["websites"], ["打开已登记的网页目标", "Open a configured website destination"]),
-];
+export { nativeScreens };
 
 export type ObjectReference = { fromTab: string; fromId: string; label: ExperienceText; toTab: string; toId: string; relation: ExperienceText };
 export function experienceReferences(config: MiniappSettings): ObjectReference[] {
@@ -83,11 +53,15 @@ export function experienceReferences(config: MiniappSettings): ObjectReference[]
   const action = (fromTab: string, id: string, label: ExperienceText, a: ExperienceAction) => {
     const targetTab = { page: pageTab(a.target), offering: "offerings", form: "forms", web: "websites" }[a.kind as "page" | "offering" | "form" | "web"];
     if (targetTab) add(fromTab, id, label, targetTab, a.target, "打开", "Opens");
+    const screenId = nativeActionScreens[a.kind === "native" ? a.target : a.kind];
+    if (screenId && !targetTab) add(fromTab, id, label, "native-pages", screenId, "进入功能页面", "Opens a feature screen");
   };
+  for (const screen of x.screens || []) for (const id of [screen.beforePageId, screen.afterPageId]) add("native-pages", screen.id, nativeScreens.find(s => s.id === screen.id)!.title, "pages", id, "引用共用内容", "Shared content");
   add("home", "", t("发现首页", "Discovery home"), "pages", x.homePageId, "使用页面", "Uses page");
   for (const p of x.pages) for (const b of p.blocks) {
     if (b.kind === "action") action(pageTab(p.id), p.id, p.title, b.action);
     if (b.kind === "services") for (const id of b.ids) add(pageTab(p.id), p.id, p.title, "offerings", id, "展示服务", "Displays service");
+    if (b.kind === "accountRecords") add(pageTab(p.id), p.id, p.title, "native-pages", nativeActionScreens[accountRecordTargets[b.source]], "读取本人记录并进入详情", "Reads personal records and opens details");
   }
   for (const s of x.services) {
     add("offerings", s.id, s.name, "pages", s.detailPageId, "详情页面", "Details page"); add("offerings", s.id, s.name, "flows", s.flowId, "预约流程", "Booking flow");
@@ -112,6 +86,7 @@ export function experienceReferences(config: MiniappSettings): ObjectReference[]
   return result;
 }
 export function objectTitle(x: MiniappExperience, tab: string, id: string, locale: "zh" | "en") {
+  if (tab === "native-pages") return localText(nativeScreens.find(s => s.id === id)?.title, locale);
   const collections: Record<string, { id: string; name?: ExperienceText; title?: ExperienceText }[]> = { pages: x.pages, reports: x.pages, offerings: x.services, forms: x.forms, flows: x.flows, policies: x.policies, connections: x.connections, resources: x.resources, websites: x.destinations, notifications: x.notifications, dictionaries: x.dictionaries };
   const item = collections[tab]?.find(v => v.id === id);
   return localText(item?.name || item?.title, locale) || (id ? (locale === "zh" ? "引用的对象已移除" : "Referenced object removed") : "");

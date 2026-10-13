@@ -1,8 +1,9 @@
+import { configuredPage } from "../../lib/native-page";
 import { acceptConsentDocuments, consentDocuments, miniappDocument } from "../../lib/api";
 import { pageData, syncPage, currentLocale, errorText } from "../../lib/page";
 import { miniappText } from "../../lib/miniapp-settings";
 
-Page({
+configuredPage("document")({
   data: { ...pageData("discover"), id: "", documentTitle: "", body: "", version: "", consentRequired: false, accepted: false,
     busy: false, privacyVersion: "", childrenPrivacyVersion: "", documents: [] as { id: string; title: string; version: string; body: string }[] },
   readVersion: 0,

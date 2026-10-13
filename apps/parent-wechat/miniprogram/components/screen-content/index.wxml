@@ -1,0 +1,1 @@
+<text wx:if="{{description}}" class="screen-description">{{description}}</text><content-document wx:if="{{document}}" document="{{document}}" images="{{images}}" locale="{{locale}}" /><view wx:if="{{error}}" class="screen-error"><text>{{error}}</text><button bindtap="load">{{locale === 'en' ? 'Retry content' : '重新载入说明'}}</button></view>

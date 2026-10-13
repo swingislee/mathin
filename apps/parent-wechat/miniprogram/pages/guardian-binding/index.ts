@@ -1,10 +1,11 @@
+import { configuredPage } from "../../lib/native-page";
 import { ApiError, beginGuardianBinding, cancelPendingAuthentication, confirmGuardianBinding, get, guardianBindingPhone, guardianBindingPreview } from "../../lib/api";
 import type { Account, GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "../../lib/api-types";
 import { currentLocale, date, errorText, pageData, syncPage } from "../../lib/page";
 import { guardianCopy, guardianInvitation } from "../../lib/guardian-binding";
 import { clearNavigation, selectParticipant } from "../../lib/navigation";
 
-Page({
+configuredPage("guardian-binding")({
   data: { ...pageData("account"), words: guardianCopy.zh, code: "", invitation: null as GuardianBindingPreview | null,
     stage: "entry", expires: "", busy: false, ticket: "", policy: null as Extract<GuardianBindingStep, { state: "confirmation_required" }> | null,
     parentName: "", relation: 0, consent: false, childName: "" },

@@ -1,8 +1,8 @@
-<view class="portal-page theme-{{theme}}"><app-nav title="{{documentTitle}}" back /><view class="portal-content">
+<view class="portal-page theme-{{theme}}"><app-nav title="{{screen.title || (documentTitle)}}" back /><view class="portal-content"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
   <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view><text wx:if="{{loading && !body}}" class="loading-line">{{copy.loading}}</text>
-  <view wx:if="{{body}}" class="surface configured-copy"><text class="section-title">{{documentTitle}}</text><text class="small muted block">{{locale === 'en' ? 'Version' : '版本'}} {{version}}</text><text class="configured-body">{{body}}</text></view>
+  <screen-section presentation="{{screen.modules.content}}"><view wx:if="{{body}}" class="surface configured-copy"><text class="section-title">{{documentTitle}}</text><text class="small muted block">{{locale === 'en' ? 'Version' : '版本'}} {{version}}</text><text class="configured-body">{{body}}</text></view>
   <block wx:if="{{consentRequired}}"><view wx:for="{{documents}}" wx:key="id" class="surface configured-copy"><text class="section-title">{{item.title}}</text><text class="small muted block">{{item.version}}</text><text class="configured-body">{{item.body}}</text></view>
     <checkbox-group wx:if="{{documents.length && !loading}}" bindchange="consent"><label class="consent-line"><checkbox value="agree" checked="{{accepted}}" disabled="{{busy}}" />{{locale === 'en' ? 'I have read and agree to these privacy terms.' : '我已阅读并同意上述隐私说明。'}}</label></checkbox-group>
     <button class="primary" bindtap="accept" disabled="{{busy || loading || !accepted || !documents.length}}" loading="{{busy}}">{{locale === 'en' ? 'Confirm and continue' : '确认并继续'}}</button><button class="text-link centered" bindtap="browse" disabled="{{busy}}">{{locale === 'en' ? 'Return to public browsing' : '返回公开浏览'}}</button>
-  </block>
-</view></view>
+  </block></screen-section>
+<screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view></view>

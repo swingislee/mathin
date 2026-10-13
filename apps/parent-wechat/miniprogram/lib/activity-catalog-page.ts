@@ -1,3 +1,4 @@
+import { configuredPage } from "./native-page";
 import { accountHasParticipants, activityCatalog, experienceRead, miniappContentImage, session } from "./api";
 import type { ContentDocument } from "./miniapp-experience";
 import type { ExperiencePublication } from "./experience-runtime";
@@ -23,7 +24,7 @@ function homeProjection(offers: ReturnType<typeof activityCard>[], hasParticipan
 }
 
 export function registerActivityCatalogPage(full: boolean) {
-  Page({
+  configuredPage(full ? "activity-catalog" : "discover")({
     data: { ...pageData("discover"), ...activityCatalogLabels("zh"), ...homeProjection([]), full, offers: [] as ReturnType<typeof activityCard>[], stage: "", topic: "", loaded: false, sheet: "", homeDocument: null as ContentDocument | null, homeImages: {} as Record<string, string> },
     source: [] as ActivityOffer[], loadedAt: 0, active: false, hasParticipants: false, audienceVersion: 0,
     homeGeneration: 0,

@@ -10,6 +10,7 @@ export type RenderedContentBlock = {
   columns: string[]; rows: string[][]; action?: ExperienceAction; appearance: string; tone: string; layout: string;
   limit: number; ids: string[]; value: string; labels: string[];
   chart?: ContentChart; chartImage?: string;
+  recordSource?: import("./miniapp-experience").AccountRecordSource;
 };
 
 /** Deliberately bounded formatting: strong, emphasis and line breaks, never HTML or executable content. */
@@ -61,6 +62,7 @@ export function renderContent(document: ContentDocument, data: ContentData, loca
       continue;
     }
     switch (block.kind) {
+      case "accountRecords": row.recordSource = block.source; row.limit = block.limit; row.appearance = block.density; row.text = localText(block.emptyText, locale); break;
       case "heading": row.title = localText(block.text, locale); row.appearance = String(block.level); break;
       case "paragraph": case "callout": case "quote": row.text = block.binding ? asText(bound, locale) : localText(block.text, locale); row.tone = block.tone; break;
       case "image": row.image = block.image; row.caption = localText(block.caption, locale); row.appearance = block.fit; break;

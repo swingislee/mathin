@@ -15,6 +15,8 @@ export const actionNames: Record<MiniappAction, MiniappText> = {
   account: { zh: "账号设置", en: "Account" }, privacy: { zh: "隐私说明", en: "Privacy" }, document: { zh: "帮助文档", en: "Help document" },
   page: { zh: "内容页面", en: "Content page" }, offering: { zh: "服务详情", en: "Service details" }, catalog: { zh: "服务目录", en: "Service catalog" },
   form: { zh: "填写表单", en: "Fill a form" }, web: { zh: "外部网页", en: "Website" },
+  reservations: { zh: "预约记录", en: "Reservations" }, serviceRequests: { zh: "服务申请记录", en: "Service requests" },
+  serviceBookings: { zh: "服务预约记录", en: "Service bookings" }, notifications: { zh: "服务消息", en: "Notifications" },
 };
 export function LocalizedField({ label, value, onChange, max = 120, multiline = false }: {
   label: string; value: MiniappText; onChange: (v: MiniappText) => void; max?: number; multiline?: boolean;
@@ -46,7 +48,7 @@ export function ActionField({ value, target, onChange, locale }: {
     : value === "offering" ? experience?.services.map(s => ({ id: s.id, title: s.name }))
     : value === "form" ? experience?.forms.map(f => ({ id: f.id, title: f.title }))
     : value === "web" ? experience?.destinations.map(d => ({ id: d.id, title: d.name })) : undefined;
-  const groups = [["page", "catalog", "offering", "activities", "service", "document", "privacy"], ["assessment", "form", "register", "guardian"], ["applications", "agenda", "calendar", "reflections", "records", "participants", "account"], ["web"]];
+  const groups = [["page", "catalog", "offering", "activities", "service", "document", "privacy"], ["assessment", "form", "register", "guardian"], ["applications", "reservations", "serviceRequests", "serviceBookings", "notifications", "agenda", "calendar", "reflections", "records", "participants", "account"], ["web"]];
   return <div className={styles.fieldGrid}><label className="grid min-w-0 gap-1 text-sm">{locale === "zh" ? "点击后执行的动作" : "Action on tap"}
     <select className={settingsField} value={value} onChange={e => onChange(e.target.value as MiniappAction, "")}><option value="none">{actionNames.none[locale]}</option>{groups.map((group, i) => <optgroup key={i} label={(locale === "zh" ? ["打开页面", "进入业务功能", "查看个人记录", "外部跳转"] : ["Open a page", "Start a business operation", "View personal records", "External navigation"])[i]}>{miniappActions.filter(a => group.includes(a)).map(action => <option key={action} value={action}>{actionNames[action][locale]}</option>)}</optgroup>)}</select></label>
     {value === "document" && <label className="grid flex-1 gap-1 text-sm">{locale === "zh" ? "文档标识" : "Document key"}<input className={settingsField} value={target} placeholder="privacy / children_privacy" maxLength={64} pattern="[a-zA-Z0-9_-]*" onChange={e => onChange(value, e.target.value)} /></label>}

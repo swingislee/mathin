@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import {get,post,requestId,getRegistrationHistory,session} from "../../lib/api";
 import type {IntakeForm,RegistrationRecord} from "../../lib/api-types";
 import {pageData,syncPage,text,errorText,date,loginPage} from "../../lib/page";
@@ -6,7 +7,7 @@ const formText=(value:Parameters<typeof text>[0])=>text(value);
 type FieldView={id:string;type:string;label:string;required:boolean;value:string;index:number;options:{id:string;label:string;checked:boolean}[]};
 function recordView(record:RegistrationRecord){return {id:record.id,title:formText(record.title),submittedAt:date(record.submittedAt),expanded:false,
   sections:record.sections.map(section=>({title:formText(section.title),fields:section.fields.map(field=>({label:formText(field.label),value:formText(field.value)}))}))};}
-Page({
+configuredPage("register")({
   data:{...pageData("calendar"),hub:true,loggedIn:false,records:[] as ReturnType<typeof recordView>[],historyPage:1,hasMore:false,registrationRequired:true,saved:false,
     slug:"",source:"",requestId:"",form:null as IntakeForm|null,formTitle:"",formDescription:"",privacy:"",fields:[] as FieldView[],answers:{} as Record<string,string|string[]>,consent:false,busy:false,submitted:false,optionField:-1},
   onLoad(query:Record<string,string>){this.setData({hub:!query.form,slug:query.form||"",saved:query.saved==="1",source:(query.source||query.scene||"").slice(0,120),requestId:requestId()});syncPage(this,"calendar","source");if(query.form)void this.load();},

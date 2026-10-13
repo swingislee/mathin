@@ -1,1 +1,3 @@
 .service-summary{padding:30rpx;margin-bottom:30rpx}.service-title{font-size:38rpx;font-weight:600;display:block}.service-description{display:block;white-space:pre-wrap;line-height:1.8;margin:16rpx 0;font-size:28rpx}.resource-list{padding:28rpx;margin-bottom:28rpx}.resource-list>view{margin:12rpx 0}.resource-list text{display:block}.primary-button{margin:30rpx 0 60rpx}
+
+.resource-list.density-compact{padding:12rpx 20rpx}.resource-list.density-compact>view{padding:6rpx 0}

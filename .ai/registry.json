@@ -3,6 +3,36 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-NATIVE-MODULES-20261013",
+      "title": "小程序逐页结构与组件复用落地",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-NATIVE-MODULES-20261013.md",
+      "writePaths": [
+        ".ai/tasks/MINI-NATIVE-MODULES-20261013.md",
+        "contracts/participant-api/",
+        "apps/parent-wechat/miniprogram/",
+        "src/features/school/miniapp-settings/",
+        ".tmp/mini-native-modules-20261013/",
+        "apps/parent-wechat/docs/native-pages.md",
+        "apps/parent-wechat/docs/booking-platform.md",
+        "supabase/migrations/20261013110000_miniapp_native_screens.sql",
+        "src/features/participant-portal/settings-server.ts",
+        "tests/miniapp-native-composition.test.ts",
+        "tests/miniapp-account-records.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "scripts/sync-participant-contract.mjs"
+      ],
+      "checkpoint": "19ef2c65",
+      "next": "本批原生配置与组件复用已实现，定向检查和本机兼容迁移通过；后台可操作，按逐页清单验收客户端视觉与真实业务。生产、上传及提审继续暂停。"
+    },
+    {
       "id": "MINI-SETTINGS-WORKBENCH-20261013",
       "title": "小程序工作台逻辑层级与三栏编排",
       "agent": "codex",

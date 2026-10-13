@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { ApiError, experienceRead, experienceRequest, get, miniappDocument, requestId, session } from "../../lib/api";
 import type { Account, Participant } from "../../lib/api-types";
 import type { ExperienceRemoteBooking, ExperienceServiceDetail, ExperienceSlot } from "../../lib/experience-runtime";
@@ -8,7 +9,7 @@ type Create = { action: "create" | "waitlist"; id: string; serviceId: string; re
 type Reschedule = { action: "reschedule"; id: string; bookingId: string; slotId: string; startsAt: string };
 type Detail = { booking: ExperienceRemoteBooking; service: ExperienceService; policy: SchedulingPolicy | null; flow: BookingFlow; retryCommand: Create | null };
 const storageKey = (account: string, target: string) => "gezhi.provider.pending.v1:" + account + ":" + target;
-Page({
+configuredPage("provider-booking")({
   data: { ...pageData("discover"), serviceId: "", bookingId: "", accountId: "", authenticated: false, detail: null as ExperienceServiceDetail | null, historical: null as Detail | null,
     title: "", resumeId: "", chosenDate: "", requiresSlot: true, slots: [] as (ExperienceSlot & { label: string; selected: boolean })[], slotId: "", selectedIds: [] as string[], participants: [] as Participant[],
     answers: {} as ExperienceAnswers, errors: [] as string[], consentDocuments: [] as { id: string; title: string; body: string; version: string; checked: boolean }[],
@@ -39,7 +40,7 @@ Page({
     } catch (error) { if (generation === this.availabilityGeneration) this.setData({ error: errorText(error) }); } finally { if (generation === this.availabilityGeneration) this.setData({ slotsLoading: false }); }
   },
   day(e: WechatMiniprogram.PickerChange) { if (this.data.busy || this.data.pending) return; this.setData({ chosenDate: String(e.detail.value) }); void this.loadSlots(); },
-  slot(e: WechatMiniprogram.TouchEvent) { if (this.data.busy || this.data.pending) return; const id = String(e.currentTarget.dataset.id); this.setData({ slotId: id, slots: this.data.slots.map(s => ({ ...s, selected: s.id === id })) }); },
+  slot(e: WechatMiniprogram.CustomEvent<{ id: string }>) { if (this.data.busy || this.data.pending) return; const id = String(e.detail.id); if (!this.data.slots.some(slot => slot.id === id)) return; this.setData({ slotId: id, slots: this.data.slots.map(s => ({ ...s, selected: s.id === id })) }); },
   answers(e: WechatMiniprogram.CustomEvent<{ answers: ExperienceAnswers }>) { if (!this.data.busy && !this.data.pending) this.setData({ answers: e.detail.answers, errors: [] }); },
   participants(e: WechatMiniprogram.CheckboxGroupChange) { if (!this.data.busy && !this.data.pending) this.setData({ selectedIds: e.detail.value }); },
   consent(e: WechatMiniprogram.CheckboxGroupChange) { if (this.data.busy || this.data.pending) return; this.setData({ consentDocuments: this.data.consentDocuments.map(d => d.id === e.currentTarget.dataset.id ? { ...d, checked: e.detail.value.includes("yes") } : d) }); },

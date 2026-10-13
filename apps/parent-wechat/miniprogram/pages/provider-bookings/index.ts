@@ -1,10 +1,11 @@
+import { configuredPage } from "../../lib/native-page";
 import { experienceRequest, requestId, session } from "../../lib/api";
 import type { ExperienceRemoteBooking } from "../../lib/experience-runtime";
 import { localText } from "../../lib/miniapp-experience";
 import { pageData, syncPage, currentLocale, date, errorText, loginPage } from "../../lib/page";
 const names = { requested: ["待确认", "Requested"], confirmed: ["已确认", "Confirmed"], cancelled: ["已取消", "Cancelled"], completed: ["已完成", "Completed"], noShow: ["未到场", "No show"], waitlisted: ["候补中", "Waiting list"] };
 type Row = ExperienceRemoteBooking & { title: string; when: string; label: string };
-Page({
+configuredPage("provider-bookings")({
   data: { ...pageData("discover"), rows: [] as Row[], authenticated: false, busy: false, page: 1, more: false }, generation: 0,
   onShow() { syncPage(this, "discover"); this.setData({ authenticated: !!session() }); if (session()) void this.load(); },
   onHide() { this.generation++; this.setData({ rows: [], loading: false }); }, onUnload() { this.generation++; },

@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { ApiError, bindWechat, cancelPendingAuthentication, get, loginWithWechat, logout, session, wechatAuthStatus } from "../../lib/api";
 import type { Account, WechatAuthStatus } from "../../lib/api-types";
 import { cancelLogin, clearNavigation, takeLoginRequest, openPage, resumeAfterLogin, selectParticipant } from "../../lib/navigation";
@@ -8,7 +9,7 @@ import { participantAccountName } from "../../lib/participant-wording";
 import { configuredAccountGroups, openConfiguredAction } from "../../lib/miniapp-configuration";
 import type { MiniappAction } from "../../lib/miniapp-settings";
 
-Page({
+configuredPage("account")({
   data: { ...pageData("account"), accountGroups: configuredAccountGroups("zh", false), hasPrivacyEntry: true, activityCopy: activityCopy.zh, authenticated: false, busy: false,
     account: null as Account | null, accountName: "", sheet: "", info: "", wantsWechatBinding: false,
     wechat: null as WechatAuthStatus | null, wechatLoading: true, wechatStatusFailed: false },

@@ -1,10 +1,12 @@
 "use client";
+import { NativeScreenEditor } from "./NativeScreenEditor";
+
 /* eslint-disable @next/next/no-img-element -- Staff preview reads authenticated image responses. */
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { WorkbenchContext } from "./WorkbenchContext";
 import { workbenchGroups, workbenchItems } from "./workbench-model";
-import { CapabilitiesView, DataDefinitionsView, ModulesView, NativePagesView, StructureView } from "./WorkbenchViews";
+import { CapabilitiesView, DataDefinitionsView, ModulesView, StructureView } from "./WorkbenchViews";
 import { ContextPhonePreview } from "./WorkspacePhonePreview";
 import { ReferenceField } from "./ExperienceServiceEditor";
 import { ContentEditor } from "./ContentEditor";
@@ -78,7 +80,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
     <main className={styles.editor}><div className={styles.fields}><header className="mb-6 space-y-2"><p className="text-xs text-muted">{item.group[locale]} / {item.title[locale]}</p><h2 className="text-lg font-semibold">{item.title[locale]}</h2><p className="text-xs leading-5 text-muted">{item.description[locale]}</p></header>
     <fieldset disabled={busy} className="min-w-0 space-y-5">
       {tab === "structure" && <StructureView config={config} locale={locale} />}
-      {tab === "native-pages" && <NativePagesView config={config} locale={locale} />}
+      {tab === "native-pages" && <NativeScreenEditor config={config} locale={locale} onChange={setConfig} />}
       {tab === "modules" && <ModulesView config={config} locale={locale} onChange={setConfig} />}
       {tab === "data" && <DataDefinitionsView config={config} locale={locale} />}
       {tab === "capabilities" && <CapabilitiesView config={config} locale={locale} />}

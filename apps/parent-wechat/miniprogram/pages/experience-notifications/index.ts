@@ -1,8 +1,9 @@
+import { configuredPage } from "../../lib/native-page";
 import { experienceRequest, session } from "../../lib/api";
 import { localText, type ExperienceText } from "../../lib/miniapp-experience";
 import { pageData, syncPage, currentLocale, date, errorText, loginPage } from "../../lib/page";
 type Notice = { id: string; title: ExperienceText; body: ExperienceText; createdAt: string };
-Page({
+configuredPage("experience-notifications")({
   data: { ...pageData("discover"), authenticated: false, notices: [] as { id: string; title: string; body: string; when: string }[] },
   generation: 0,
   onShow() { syncPage(this, "discover"); this.setData({ authenticated: !!session() }); if (session()) void this.load(); },

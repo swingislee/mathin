@@ -1,10 +1,11 @@
+import { configuredPage } from "../../lib/native-page";
 import {get,post,upload,mediaUrl,requestId,ApiError} from "../../lib/api";
 import type {ActivityTask,TaskSubmission,Media} from "../../lib/api-types";
 import {pageData,syncPage,errorText,date,currentLocale} from "../../lib/page";
 import {defaultTaskSubmissionRules,taskSubmissionError} from "../../lib/task-submission";
 type LocalMedia={key:string;path:string;thumb:string;kind:"image"|"video";bytes:number;progress:number;uploaded:Media|null};
 type SubmissionCommand={action:"submit";id:string;taskId:string;participantId:string;note:string;uploadIds:string[]};
-Page({
+configuredPage("task")({
   requestVersion:0,pendingSubmission:null as SubmissionCommand|null,
   data:{...pageData("records"),id:"",participant:"",task:null as ActivityTask|null,when:"",saved:null as TaskSubmission|null,files:[] as LocalMedia[],note:"",busy:false,progress:0,submissionId:"",editing:true,rules:defaultTaskSubmissionRules(),rulesHelp:"",noteLabel:"",canSubmit:false,retrying:false,retryHint:""},
   onLoad(query:Record<string,string>){this.setData({id:query.id||"",participant:query.participant||"",submissionId:requestId()});syncPage(this,"records","taskDetail");void this.load();},

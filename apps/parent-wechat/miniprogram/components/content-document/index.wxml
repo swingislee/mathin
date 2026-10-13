@@ -4,7 +4,8 @@
       <text wx:if="{{block.title}}" class="content-title level-{{block.appearance}}">{{block.title}}</text>
       <image wx:if="{{block.image}}" class="content-image" src="{{block.image}}" mode="{{block.appearance === 'cover' ? 'aspectFill' : 'widthFix'}}" data-url="{{block.image}}" bindtap="image" lazy-load />
       <block wx:if="{{block.kind === 'action'}}"><button class="content-action appearance-{{block.appearance}}" data-id="{{block.id}}" bindtap="action">{{block.text}}</button></block>
-      <rich-text wx:elif="{{block.text && block.kind !== 'services' && block.kind !== 'activities' && block.kind !== 'contacts'}}" nodes="{{block.nodes}}" selectable />
+      <rich-text wx:elif="{{block.text && block.kind !== 'services' && block.kind !== 'activities' && block.kind !== 'contacts' && block.kind !== 'accountRecords'}}" nodes="{{block.nodes}}" selectable />
+      <account-records wx:if="{{block.kind === 'accountRecords'}}" source="{{block.recordSource}}" limit="{{block.limit}}" density="{{block.appearance}}" empty-text="{{block.text}}" locale="{{locale}}" />
       <view wx:if="{{block.kind === 'metric' || block.kind === 'scale'}}" class="metric"><text>{{block.value}}</text><text class="caption">{{block.caption}}</text></view>
       <view wx:if="{{block.kind === 'scale'}}" class="scale-labels"><text wx:for="{{block.labels}}" wx:key="*this">{{item}}</text></view>
       <view wx:if="{{block.kind === 'chart' && block.chart}}" class="report-chart">
@@ -22,7 +23,8 @@
         </view>
       </block>
       <scroll-view wx:if="{{block.kind === 'table'}}" scroll-x><view class="content-table"><view class="table-row table-header"><text wx:for="{{block.columns}}" wx:key="*this">{{item}}</text></view><view wx:for="{{block.rows}}" wx:for-item="row" wx:key="index" class="table-row"><text wx:for="{{row}}" wx:key="index">{{item}}</text></view></view></scroll-view>
-      <view wx:if="{{block.kind === 'services' || block.kind === 'contacts'}}"><content-cards rows="{{block.cards}}" layout="{{block.layout}}" data-block="{{block.id}}" bindselect="card" /><text wx:if="{{!block.cards.length}}" class="caption">{{block.text}}</text></view>
+      <view wx:if="{{block.kind === 'services'}}"><content-cards rows="{{block.cards}}" layout="{{block.layout}}" data-block="{{block.id}}" bindselect="card" /><text wx:if="{{!block.cards.length}}" class="caption">{{block.text}}</text></view>
+      <view wx:if="{{block.kind === 'contacts'}}"><contact-list rows="{{block.contacts}}" locale="{{locale}}" /><text wx:if="{{!block.contacts.length}}" class="caption">{{block.text}}</text></view>
       <view wx:if="{{block.kind === 'activities'}}"><activity-list rows="{{block.activities}}" action-label="{{locale === 'en' ? 'View activity' : '查看活动'}}" data-block="{{block.id}}" bindselect="card" /><text wx:if="{{!block.activities.length}}" class="caption">{{block.text}}</text></view>
       <button wx:if="{{block.kind === 'activities' || block.kind === 'contacts'}}" class="content-action appearance-secondary" data-kind="{{block.kind}}" bindtap="directory">{{locale === 'en' ? (block.kind === 'contacts' ? 'View contacts' : 'View activities') : (block.kind === 'contacts' ? '查看联系服务' : '查看活动')}}</button>
     </view>

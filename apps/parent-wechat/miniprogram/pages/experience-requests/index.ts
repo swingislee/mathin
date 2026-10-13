@@ -1,10 +1,11 @@
+import { configuredPage } from "../../lib/native-page";
 import { experienceRequest, session } from "../../lib/api";
 import type { ExperienceRequest } from "../../lib/experience-runtime";
 import { localText } from "../../lib/miniapp-experience";
 import { pageData, syncPage, currentLocale, date, errorText, loginPage } from "../../lib/page";
 const states = { submitted: ["待受理", "Submitted"], confirmed: ["已确认", "Confirmed"], completed: ["已完成", "Completed"], cancelled: ["已取消", "Cancelled"], declined: ["未受理", "Declined"] };
 type Row = ExperienceRequest & { title: string; when: string; statusLabel: string; fields: { key: string; label: string; value: string }[] };
-Page({
+configuredPage("experience-requests")({
   data: { ...pageData("discover"), rows: [] as Row[], authenticated: false, expanded: "", page: 1, more: false, busy: false },
   generation: 0,
   onShow() { syncPage(this, "discover"); this.setData({ authenticated: !!session() }); if (session()) void this.load(); },

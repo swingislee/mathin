@@ -1,0 +1,1 @@
+.answer{padding:14rpx 0;line-height:1.65;font-size:27rpx}.answer-label{display:block;font-size:23rpx;color:var(--muted);margin-bottom:4rpx}.answer-value{display:block;white-space:pre-wrap;overflow-wrap:anywhere}

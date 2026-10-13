@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { get, participantCalendar, session } from "../../lib/api";
 import type { Account, Booking, ParticipantCalendar, Participant } from "../../lib/api-types";
 import { calendarDays, dateKey, monthRange, shiftMonth } from "../../lib/discovery";
@@ -5,7 +6,7 @@ import { calendarItems, type CalendarItem } from "../../lib/calendar";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, loginPage } from "../../lib/page";
 
-Page({
+configuredPage("agenda")({
   data: { ...pageData("agenda"), authenticated: false, participants: [] as Participant[], selected: 0,
     month: dateKey(new Date()).slice(0, 7), selectedDate: dateKey(new Date()),
     weekdays: [] as { key: number; label: string }[], days: [] as ReturnType<typeof calendarDays>,
@@ -71,8 +72,8 @@ Page({
     this.setData({ month, selectedDate: month + "-01" }); this.renderCalendar(); void this.loadMonth();
   },
   today() { const selectedDate = dateKey(new Date()); this.setData({ month: selectedDate.slice(0, 7), selectedDate }); this.renderCalendar(); void this.loadMonth(); },
-  day(e: WechatMiniprogram.TouchEvent) {
-    const value = String(e.currentTarget.dataset.date || "");
+  day(e: WechatMiniprogram.CustomEvent<{ date: string }>) {
+    const value = String(e.detail.date || "");
     if (value && value.startsWith(this.data.month)) { this.setData({ selectedDate: value }); this.renderCalendar(); }
   },
   retry() { if (this.data.participants.length) void this.loadMonth(); else void this.loadAccount(); },

@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { defaultBookingPolicy, type AssessmentMode } from "../../lib/booking-policy";
 import { get, getAssessments, getAssessmentSlots, postAssessment, requestId, session, ApiError } from "../../lib/api";
 import type { Account, Participant, AssessmentOverview, AssessmentRequest, AssessmentState, AssessmentAvailability, AssessmentTopic } from "../../lib/api-types";
@@ -12,7 +13,7 @@ type RequestView = AssessmentRequest & { facilitatorName: string; statusLabel: s
 type Choice = { id: string; name: string; available: boolean };
 const unknownResult = (error: unknown) => !(error instanceof ApiError) || ["NETWORK", "UNAVAILABLE", "CONFLICT", "UNAUTHENTICATED"].includes(error.code);
 
-Page({
+configuredPage("assessment")({
   data: { ...pageData("discover"), ...assessmentFields("zh", [], null), authenticated: false, loaded: false,
     accountId: "", participants: [] as Participant[], selected: 0,
     selectedTopics: [] as AssessmentTopic[], draftTopics: [] as AssessmentTopic[], stageNumber: null as number | null, mode: "" as "" | AssessmentMode,
@@ -163,8 +164,8 @@ Page({
   },
   closeSheet() { this.setData({ sheet: "" }); },
   noop() {},
-  chooseParticipant(e: WechatMiniprogram.TouchEvent) {
-    const selected = Number(e.currentTarget.dataset.index);
+  chooseParticipant(e: WechatMiniprogram.PickerChange) {
+    const selected = Number(e.detail.value);
     if (this.data.busy || !this.data.participants[selected]) return;
     this.setData({ sheet: "" });
     if (selected !== this.data.selected) { this.setData({ selected }); void this.loadParticipant(); }
@@ -216,8 +217,8 @@ Page({
     if (this.data.busy || this.data.uncertain || !this.data.weeks.some(week => week.index === weekIndex)) return;
     this.setData({ weekIndex }); this.renderTimes();
   },
-  chooseTime(e: WechatMiniprogram.TouchEvent) {
-    const id = String(e.currentTarget.dataset.id);
+  chooseTime(e: WechatMiniprogram.CustomEvent<{ id: string }>) {
+    const id = String(e.detail.id);
     if (this.data.busy || this.data.uncertain || this.data.availabilityLoading || !id
       || !this.data.timeRows.some(row => row.cells.some(cell => cell.id === id && cell.available))) return;
     this.setData({ selectedSlotId: this.data.selectedSlotId === id ? "" : id }); this.renderTimes();

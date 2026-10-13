@@ -1,9 +1,9 @@
-<view class="portal-page theme-{{theme}} activity-detail-page"><app-nav title="{{t.detail}}" back />
-  <view class="portal-content activity-content">
+<view class="portal-page theme-{{theme}} activity-detail-page"><app-nav title="{{screen.title || (t.detail)}}" back />
+  <view class="portal-content activity-content"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
     <view wx:if="{{error}}" class="notice">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
     <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
     <block wx:if="{{offer}}">
-      <view class="detail-layout {{detail && detail.layout === 'continuous' ? 'detail-continuous' : 'detail-cards'}}">
+      <screen-section presentation="{{screen.modules.content}}"><view class="detail-layout {{detail && detail.layout === 'continuous' ? 'detail-continuous' : 'detail-cards'}}">
         <image wx:if="{{detail && detail.coverUrl}}" class="detail-cover" src="{{detail.coverUrl}}" mode="widthFix" data-src="{{detail.coverUrl}}" bindtap="previewImage" />
         <view wx:if="{{!detail}}" class="activity-hero"><image src="/assets/appointment.png" mode="aspectFit" /><text>{{offer.meta}}</text></view>
         <view class="surface activity-summary"><text class="activity-heading">{{offer.title}}</text><text class="muted block">{{offer.startLabel}}</text><text wx:if="{{detail && offer.meta}}" class="small muted block">{{offer.meta}}</text><text class="small muted block">{{offer.priceLabel}}</text></view>
@@ -16,11 +16,11 @@
             <view class="detail-pair-copy"><text wx:if="{{item.title}}" class="detail-heading">{{item.title}}</text><text class="detail-body">{{item.body}}</text></view>
           </view>
         </view></block>
-      </view>
+      </view></screen-section>
       <view wx:if="{{detail.signup.instructions}}" class="surface activity-summary"><text class="activity-notice-copy">{{detail.signup.instructions}}</text></view>
       <text class="small muted block">{{registrationNote}}</text>
-      <button class="text-link" bindtap="service">{{t.service}}</button>
+      <screen-section presentation="{{screen.modules.help}}"><button class="text-link" bindtap="service">{{t.service}}</button></screen-section>
     </block>
-  </view>
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
   <view class="activity-footer"><button class="text-button" bindtap="applications">{{t.applications}}</button><button class="primary" disabled="{{loading || !offer || !offer.open}}" bindtap="choose">{{offer && !offer.open ? t.closed : t.choose}}</button></view>
 </view>

@@ -27,7 +27,7 @@ export const contentSources: ContentSource[] = [
 export const moduleGroups: { id: string; name: ExperienceText; kinds: ContentBlockKind[] }[] = [
   { id: "structure", name: t("结构与阅读", "Structure & reading"), kinds: ["heading", "divider", "paragraph", "image", "callout", "quote"] },
   { id: "information", name: t("信息组织", "Information"), kinds: ["facts", "bullets", "steps", "faq", "table"] },
-  { id: "business", name: t("业务数据展示", "Business data"), kinds: ["services", "activities", "contacts"] },
+  { id: "business", name: t("业务数据展示", "Business data"), kinds: ["services", "activities", "contacts", "accountRecords"] },
   { id: "report", name: t("报告与可视化", "Reports & charts"), kinds: ["chart", "metric", "scale", "evidence"] },
   { id: "interaction", name: t("交互入口", "Interaction"), kinds: ["action"] },
 ];

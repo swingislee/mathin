@@ -1,1 +1,1 @@
-{ "component": true, "usingComponents": { "content-cards": "../content-cards/index", "activity-list": "../activity-list/index" } }
+{ "component": true, "usingComponents": { "content-cards": "../content-cards/index", "activity-list": "../activity-list/index", "contact-list": "../contact-list/index", "account-records": "../account-records/index" } }

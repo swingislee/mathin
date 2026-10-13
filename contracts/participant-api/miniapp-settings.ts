@@ -1,6 +1,6 @@
 /** Published presentation data. Actions resolve to native routes; this format contains no executable code. */
 export type MiniappText = { zh: string; en: string };
-export const miniappActions = ["none", "assessment", "activities", "applications", "service", "agenda", "calendar", "reflections", "records", "participants", "register", "guardian", "account", "privacy", "document", "page", "offering", "catalog", "form", "web"] as const;
+export const miniappActions = ["none", "assessment", "activities", "applications", "service", "agenda", "calendar", "reflections", "records", "participants", "register", "guardian", "account", "privacy", "document", "page", "offering", "catalog", "form", "web", "reservations", "serviceRequests", "serviceBookings", "notifications"] as const;
 export type MiniappAction = typeof miniappActions[number];
 export const miniappIcons = ["activity", "calendar", "book", "report", "task", "participants", "form", "account", "privacy", "reservations", "complete", "ticket"] as const;
 export type MiniappIcon = typeof miniappIcons[number];

@@ -21,6 +21,12 @@ export function experienceIssues(value: MiniappExperience, entryActions: Experie
     if (a.kind === "phone" && !/^\+?\d[\d -]{5,23}$/.test(a.target)) add(path, "PHONE_REQUIRED", "请填写有效的联系电话", "Enter a valid phone number");
   };
   entryActions.forEach((a, i) => checkAction(a, `entries.${i}`));
+  for (const screen of value.screens || []) for (const key of ["beforePageId", "afterPageId"] as const) {
+    const id = screen[key];
+    checkPage(id, `screens.${screen.id}.${key}`);
+    // Native shell additions are public editorial content. Private record content stays inside the authenticated controller.
+    if (id && value.pages.find(page => page.id === id)?.audience !== "all") add(`screens.${screen.id}.${key}`, "PUBLIC_SCREEN_CONTENT", "原生页面补充说明请选择公开内容；个人记录由原业务模块按权限读取", "Choose public editorial content; personal records remain in their authorized business module");
+  }
   if (value.connections.some(c => c.enabled && c.adapter === "mathin" && c.id !== "mathin")) add("connections", "BUILTIN_CONNECTION", "当前业务系统使用固定连接标识 mathin，新的系统请使用外部接口连接", "The current system uses the mathin connection; use an external connection for another system");
   if (value.homePageId) {
     checkPage(value.homePageId, "homePageId", true);
@@ -35,6 +41,7 @@ export function experienceIssues(value: MiniappExperience, entryActions: Experie
     if (!page.title.zh.trim() && !page.title.en.trim()) add(`pages.${page.id}`, "TITLE_REQUIRED", "内容页面需要名称", "The content page needs a title");
     if (!page.blocks.some(b => b.visible)) add(`pages.${page.id}`, "CONTENT_REQUIRED", "内容页面至少保留一个可见模块", "Keep at least one visible content block");
     for (const block of page.blocks.filter(b => b.visible)) {
+      if (block.kind === "accountRecords" && page.purpose === "report") add(`pages.${page.id}.${block.id}`, "LIVE_RECORDS_IN_REPORT", "已冻结的报告版式使用本次报告字段；实时个人记录请放在普通页面", "Frozen reports use the report's own fields; place live personal records on a regular page");
       if (block.kind === "action") checkAction(block.action, `pages.${page.id}.${block.id}`);
       if (block.kind === "table" && !block.binding && block.rows.some(row => row.length !== block.columns.length)) add(`pages.${page.id}.${block.id}`, "TABLE_COLUMNS", "表格每行的列数需要一致", "Use the same column count in every table row");
       if (bindingIssue(page, block)) add(`pages.${page.id}.${block.id}`, "DATA_BINDING", "模块需要绑定当前页面场景支持且类型匹配的数据字段", "Bind a field with a compatible type and page context");

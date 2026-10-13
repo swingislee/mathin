@@ -3,6 +3,7 @@ import { miniappSettings, miniappContentImage, session } from "./api";
 import { defaultMiniappSettings, isMiniappSettings, miniappText, type MiniappAction, type MiniappEntry, type MiniappSettings } from "./miniapp-settings";
 import type { Locale } from "./locale";
 import { openPage } from "./navigation";
+import { nativeActionScreens } from "./miniapp-native";
 
 type Saved = { revision: number; config: MiniappSettings; checkedAt: number };
 const key = "gezhi.miniapp-settings.v2:" + config.apiOrigin;
@@ -49,15 +50,13 @@ export function configuredAccountGroups(locale: Locale, hasParticipants: boolean
 }
 export function configurationRoute(action: MiniappAction, target = "") {
   const routes: Partial<Record<MiniappAction, string>> = {
-    assessment: "/pages/assessment/index", activities: "/pages/activity-catalog/index", applications: "/pages/activity-requests/index",
-    service: "/pages/service/index", agenda: "/pages/agenda/index", calendar: "/pages/calendar/index", reflections: "/pages/reflections/index",
-    records: "/pages/records/index", register: "/pages/register/index?source=account", guardian: "/pages/guardian-binding/index",
-    account: "/pages/account/index", privacy: "/pages/document/index?id=privacy", document: "/pages/document/index?id=" + encodeURIComponent(target),
+    register: "/pages/register/index?source=account",
+    privacy: "/pages/document/index?id=privacy", document: "/pages/document/index?id=" + encodeURIComponent(target),
     page: "/pages/experience/index?id=" + encodeURIComponent(target), catalog: "/pages/service-catalog/index?category=" + encodeURIComponent(target),
     offering: "/pages/service-detail/index?id=" + encodeURIComponent(target), form: "/pages/experience-form/index?id=" + encodeURIComponent(target),
     web: "/pages/web/index?id=" + encodeURIComponent(target),
   };
-  return routes[action] || "";
+  return routes[action] || (nativeActionScreens[action] ? `/pages/${nativeActionScreens[action]}/index` : "");
 }
 export function openConfiguredAction(action: MiniappAction, target = "") {
   if (action === "participants") { wx.switchTab({ url: "/pages/account/index" }); return; }

@@ -1,6 +1,6 @@
 <view class="portal-page theme-{{theme}}">
-  <app-nav title="{{formTitle || copy.registrationTitle}}" back />
-  <view wx:if="{{hub}}" class="portal-content registration-history">
+  <app-nav title="{{screen.title || (formTitle || copy.registrationTitle)}}" back />
+  <screen-section presentation="{{screen.modules.registration}}"><view wx:if="{{hub}}" class="portal-content registration-history"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
     <view wx:if="{{saved}}" class="notice">{{copy.registrationReceipt}}</view>
     <button class="primary" bindtap="fillRegistration" disabled="{{loading}}">{{copy.registrationFill}}</button>
     <text class="registration-heading">{{copy.registrationHistory}}</text>
@@ -14,7 +14,7 @@
         <view wx:if="{{item.expanded}}" class="registration-details">
           <view wx:for="{{item.sections}}" wx:for-item="section" wx:key="index" class="registration-section">
             <text class="subheading block">{{section.title}}</text>
-            <view wx:for="{{section.fields}}" wx:for-item="field" wx:key="index" class="registration-field"><text class="muted">{{field.label}}</text><text>{{field.value}}</text></view>
+            <answer-list rows="{{section.fields}}" />
           </view>
         </view>
       </view>
@@ -23,8 +23,8 @@
       <view wx:elif="{{!records.length}}" class="empty-state">{{copy.registrationEmpty}}</view>
       <button wx:if="{{hasMore && !loading}}" class="text-button" bindtap="moreHistory">{{copy.registrationMore}}</button>
     </block>
-  </view>
-  <view wx:else class="portal-content has-fixed-actions">
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
+  <view wx:else class="portal-content has-fixed-actions"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
     <view wx:if="{{submitted}}" class="surface booking-success"><text class="success-symbol">✓</text><text class="row-title">{{copy.registrationReceipt}}</text><button class="primary" bindtap="explore">{{copy.seeActivities}}</button></view>
     <block wx:else>
       <text wx:if="{{loading}}" class="loading-line">{{copy.loading}}</text>
@@ -41,7 +41,7 @@
       </block>
       <view wx:if="{{error}}" class="notice" role="alert">{{error}}<button wx:if="{{!form}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
     </block>
-  </view>
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view></screen-section>
   <view wx:if="{{form && !submitted}}" class="fixed-actions"><button class="primary" bindtap="submit" loading="{{busy}}" disabled="{{busy}}">{{busy ? copy.submitting : copy.submit}}</button></view>
   <view wx:if="{{optionField >= 0}}" class="sheet-mask" bindtap="closeOptions" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop"><view class="sheet-heading"><text>{{fields[optionField].label}}</text><button class="sheet-close" bindtap="closeOptions" aria-label="{{copy.close}}">×</button></view><scroll-view scroll-y class="sheet-scroll"><view class="option-grid"><button wx:for="{{fields[optionField].options}}" wx:key="id" class="option-pill {{fields[optionField].index === index && fields[optionField].value ? 'selected' : ''}}" data-value="{{index}}" bindtap="chooseOption">{{item.label}}</button></view></scroll-view></view></view>
 </view>

@@ -1,9 +1,10 @@
+import { configuredPage } from "../../lib/native-page";
 import { experienceRead, session } from "../../lib/api";
 import type { ExperienceServiceDetail } from "../../lib/experience-runtime";
 import { localText } from "../../lib/miniapp-experience";
 import { openConfiguredAction } from "../../lib/miniapp-configuration";
 import { pageData, syncPage, currentLocale, errorText, loginPage } from "../../lib/page";
-Page({
+configuredPage("service-detail")({
   data: { ...pageData("discover"), id: "", detail: null as ExperienceServiceDetail | null, contentContext: {} as Record<string, unknown>, title: "", summary: "", price: "", resourceRows: [] as { id: string; name: string; detail: string }[], message: "" },
   generation: 0,
   onLoad(q: Record<string, string>) { this.setData({ id: q.id || "" }); },

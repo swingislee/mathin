@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { get,session } from "../../lib/api";
 import type { Report } from "../../lib/api-types";
 import { pageData,syncPage,date,errorText,loginPage,currentLocale } from "../../lib/page";
@@ -7,9 +8,10 @@ import { reportContentContext } from "../../lib/report-content";
 import type { ContentDocument } from "../../lib/miniapp-experience";
 import type { ContentData } from "../../lib/miniapp-content-render";
 type ReportRow = { id: string; kind: Report["kind"]; title: string; participantName: string; when: string; preview: string; sections: { source: string; type: string; label: string; text: string }[]; contentDocument: ContentDocument | null; context: ContentData; images: Record<string, string>; validity: string };
-Page({
+configuredPage("reflections")({
   source:[] as Report[],requestVersion:0,
   data:{...pageData("reflections"),authenticated:false,reports:[] as ReportRow[],expanded:""},
+  onLoad(query: Record<string, string>) { this.setData({ expanded: query.id || "" }); },
   onShow(){syncPage(this,"reflections");this.setData({authenticated:Boolean(session()),reports:[]});if(session())void this.load();},
   onHide(){this.requestVersion++;this.source=[];this.setData({reports:[],expanded:"",loading:false});},
   onUnload(){this.requestVersion++;this.source=[];},

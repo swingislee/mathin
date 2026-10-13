@@ -1,0 +1,20 @@
+:host{display:block}.slot-options{display:flex;flex-wrap:wrap;gap:12rpx;padding:12rpx 0}.time-option{font-size:25rpx;color:var(--ink);background:var(--card);border:1rpx solid var(--line);border-radius:12rpx;padding:14rpx;margin:0;line-height:1.6}.time-option::after{border:0}.time-option.chosen{background:var(--moon);border-color:var(--primary)}
+
+.slot-table { border: 2rpx solid var(--primary-pale); border-radius: 22rpx; overflow: hidden; }
+.slot-table-row { display: flex; border-bottom: 2rpx solid var(--primary-pale); align-items: stretch; }
+.slot-table-row:last-child { border-bottom: 0; }
+.slot-time-heading { display: flex; flex-direction: column; justify-content: center; align-items: center; flex: 0 0 104rpx; font-size: 22rpx; line-height: 1.5; background: var(--primary-soft); min-height: 72rpx; }
+.slot-table-cell { flex: 1; min-width: 0; border-left: 2rpx solid var(--primary-pale); display: flex; flex-direction: column; align-items: stretch; justify-content: center; background: var(--quiet); text-align: center; font-size: 21rpx; }
+.slot-table-header .slot-table-cell { background: var(--primary-pale); padding: 9rpx 0; line-height: 1.65; }
+.slot-option { width: 100%; min-height: 74rpx; display: flex; align-items: center; justify-content: center; padding: 8rpx 2rpx; box-sizing: border-box; color: var(--primary); background: var(--card); font-size: 21rpx; font-weight: 600; text-align: center; word-break: break-all; }
+.slot-option.selected { background: var(--primary); color: #fff; }
+.slot-table { border-color: var(--primary-pale); }
+.slot-week-label { text-align: center; background: var(--primary-soft); font-size: 25rpx; font-weight: 600; padding: 9rpx 0; }
+.slot-date-heading, .slot-period { display: flex; align-items: center; justify-content: center; background: var(--primary-soft); font-size: 21rpx; }
+.slot-date-heading { flex: 0 0 134rpx; background: var(--primary-pale); }
+.slot-period { flex: 0 0 56rpx; }
+.slot-time-heading { flex: 0 0 78rpx; box-sizing: border-box; border-left: 2rpx solid var(--primary-pale); min-height: 70rpx; font-size: 21rpx; }
+.slot-table-header .slot-table-cell { padding: 0; }
+.slot-day, .slot-weekday { padding: 6rpx 0; line-height: 1.5; }
+.slot-weekday { border-top: 2rpx solid var(--primary-soft); }
+.slot-option { min-height: 70rpx; padding: 0; font-size: 23rpx; }

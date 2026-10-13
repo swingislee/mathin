@@ -1,0 +1,1 @@
+<view wx:if="{{!presentation || presentation.visible}}" class="native-section density-{{presentation.density || 'comfortable'}}"><text wx:if="{{presentation.title}}" class="section-title native-section-title">{{presentation.title}}</text><slot /></view>

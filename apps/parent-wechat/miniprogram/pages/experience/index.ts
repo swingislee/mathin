@@ -1,8 +1,9 @@
+import { configuredPage } from "../../lib/native-page";
 import { experienceRead } from "../../lib/api";
 import { pageData, syncPage, currentLocale, errorText } from "../../lib/page";
 import { localText, type ContentDocument } from "../../lib/miniapp-experience";
 import type { ExperiencePublication } from "../../lib/experience-runtime";
-Page({
+configuredPage("experience")({
   data: { ...pageData("discover"), id: "", title: "", document: null as ContentDocument | null, images: {} as Record<string, string> },
   generation: 0,
   onLoad(q: Record<string, string>) { this.setData({ id: q.id || "" }); },

@@ -1,0 +1,2 @@
+
+.density-compact .activity-row,.density-compact .content-card{padding-top:12rpx;padding-bottom:12rpx;margin-bottom:8rpx}.density-compact .activity-tile{width:100rpx;height:110rpx}.density-compact .content-card image{width:90rpx;height:90rpx}

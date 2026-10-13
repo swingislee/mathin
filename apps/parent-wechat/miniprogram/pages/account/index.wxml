@@ -1,21 +1,25 @@
 <view class="portal-page account-page theme-{{theme}}">
-  <app-nav />
-  <view class="portal-content">
-    <view class="account-header"><button class="account-identity" bindtap="showAccount"><image class="account-avatar" src="/assets/account.png" aria-hidden="true" /><text wx:if="{{!authenticated || account}}" class="account-name">{{authenticated ? (accountName || copy.accountLabel) : copy.signInNow}}</text><view wx:else class="identity-placeholder" aria-label="{{copy.loading}}" /><view class="chevron"></view></button><button class="account-header-action" data-url="/pages/reservations/index" bindtap="open">{{copy.myBookings}}</button></view>
-    <view class="account-feature-row">
+  <app-nav title="{{screen.title}}" />
+  <view class="portal-content"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
+    <screen-section presentation="{{screen.modules.identity}}"><view class="account-header"><button class="account-identity" bindtap="showAccount"><image class="account-avatar" src="/assets/account.png" aria-hidden="true" /><text wx:if="{{!authenticated || account}}" class="account-name">{{authenticated ? (accountName || copy.accountLabel) : copy.signInNow}}</text><view wx:else class="identity-placeholder" aria-label="{{copy.loading}}" /><view class="chevron"></view></button><button class="account-header-action" data-url="/pages/reservations/index" bindtap="open">{{copy.myBookings}}</button></view></screen-section>
+
+
+    <block wx:for="{{screen.moduleOrder}}" wx:for-item="moduleId" wx:key="*this">
+<screen-section wx:if="{{moduleId === 'participants'}}" presentation="{{screen.modules.participants}}"><view class="account-feature-row">
       <button class="intake-tile surface" data-url="/pages/register/index?source=account" bindtap="open"><text class="intake-tile-title">{{copy.registrationTitle}}</text><text class="small-pill">{{copy.registrationAction}}</text><image class="intake-watermark" src="/assets/icons/form.png" aria-hidden="true" /></button>
       <view class="participants-tile surface"><view class="participants-heading"><text>{{copy.linkedParticipants}}</text><button class="text-link" bindtap="showParticipants">{{copy.view}}<view class="chevron"></view></button></view><view wx:if="{{account.participants.length}}" class="participants-row"><button wx:for="{{account.participants}}" wx:key="id" wx:if="{{index < 2}}" class="participant-entry" data-id="{{item.id}}" bindtap="participant"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><text>{{item.name}}</text></button></view><button wx:else class="participants-empty" bindtap="showParticipants"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><view wx:if="{{authenticated && !account}}" class="identity-placeholder" aria-label="{{copy.loading}}" /><text wx:else>{{authenticated ? copy.noLinkedParticipants : copy.signInNow}}</text></button></view>
-    </view>
-    <view class="surface booking-shortcuts">
+    </view></screen-section>
+<screen-section wx:if="{{moduleId === 'shortcuts'}}" presentation="{{screen.modules.shortcuts}}"><view class="surface booking-shortcuts">
       <button data-url="/pages/reservations/index?filter=upcoming" bindtap="open"><image class="line-icon" src="/assets/icons/reservations.png" aria-hidden="true" /><text>{{copy.upcoming}}</text></button>
       <button data-url="/pages/reservations/index?filter=attended" bindtap="open"><image class="line-icon" src="/assets/icons/complete.png" aria-hidden="true" /><text>{{copy.attended}}</text></button>
       <button data-url="/pages/reservations/index?filter=cancelled" bindtap="open"><image class="line-icon" src="/assets/icons/cancel.png" aria-hidden="true" /><text>{{copy.cancelled}}</text></button>
       <button data-url="/pages/reservations/index?filter=all" bindtap="open"><image class="line-icon" src="/assets/icons/ticket.png" aria-hidden="true" /><text>{{copy.allBookings}}</text></button>
-    </view>
-    <view wx:if="{{accountGroups.length}}" class="surface services-card"><block wx:for="{{accountGroups}}" wx:key="id" wx:for-item="group"><text class="section-title {{index ? 'tools-heading' : ''}}">{{group.label}}</text><view class="service-grid"><button wx:for="{{group.entries}}" wx:key="id" class="service-entry" data-action="{{item.action}}" data-target="{{item.target}}" bindtap="openConfigured"><image class="line-icon" src="{{item.iconUrl}}" aria-hidden="true" /><text>{{item.label}}</text></button></view></block></view>
-    <button wx:if="{{!hasPrivacyEntry}}" class="text-button" bindtap="privacy">{{copy.privacyEntry}}</button>
+    </view></screen-section>
+<screen-section wx:if="{{moduleId === 'menu'}}" presentation="{{screen.modules.menu}}"><view wx:if="{{accountGroups.length}}" class="surface services-card"><block wx:for="{{accountGroups}}" wx:key="id" wx:for-item="group"><text class="section-title {{index ? 'tools-heading' : ''}}">{{group.label}}</text><view class="service-grid"><button wx:for="{{group.entries}}" wx:key="id" class="service-entry" data-action="{{item.action}}" data-target="{{item.target}}" bindtap="openConfigured"><image class="line-icon" src="{{item.iconUrl}}" aria-hidden="true" /><text>{{item.label}}</text></button></view></block></view></screen-section>
+</block>
+    <button wx:if="{{!hasPrivacyEntry || !screen.modules.menu.visible}}" class="text-button" bindtap="privacy">{{copy.privacyEntry}}</button>
     <view wx:if="{{error && !sheet}}" class="notice" role="alert">{{error}}<button wx:if="{{authenticated}}" class="text-button" bindtap="load" disabled="{{busy}}">{{copy.retry}}</button></view>
-  </view>
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
   <tab-overlay wx:if="{{sheet}}" />
   <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop">
     <view class="sheet-heading"><text>{{sheet === 'login' ? copy.login : (sheet === 'bind' ? copy.wechatBindTitle : (sheet === 'participants' ? copy.linkedParticipants : copy.accountLabel))}}</text><button class="sheet-close" bindtap="closeSheet" disabled="{{busy && sheet !== 'login'}}" aria-label="{{copy.close}}">×</button></view>

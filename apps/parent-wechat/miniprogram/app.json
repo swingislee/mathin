@@ -65,7 +65,17 @@
     "content-document": "/components/content-document/index",
     "app-nav": "/components/app-nav/index",
     "empty-state": "/components/empty-state/index",
-    "tab-overlay": "/components/tab-overlay/index"
+    "tab-overlay": "/components/tab-overlay/index",
+    "screen-section": "/components/screen-section/index",
+    "screen-content": "/components/screen-content/index",
+    "participant-picker": "/components/participant-picker/index",
+    "schedule-list": "/components/schedule-list/index",
+    "record-card": "/components/record-card/index",
+    "answer-list": "/components/answer-list/index",
+    "date-grid": "/components/date-grid/index",
+    "contact-list": "/components/contact-list/index",
+    "filter-tabs": "/components/filter-tabs/index",
+    "slot-picker": "/components/slot-picker/index"
   },
   "permission": {
     "scope.userLocation": {

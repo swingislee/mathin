@@ -1,9 +1,9 @@
 <view class="portal-page theme-{{theme}} onboarding-page">
-  <view class="portal-content onboarding-content">
+  <view class="portal-content onboarding-content"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
     <text class="onboarding-eyebrow">{{brandName}}</text>
-    <text class="onboarding-title">{{stage === 'family' ? formTitle : (registration ? copy.registrationTitle : words.title)}}</text>
+    <text class="onboarding-title">{{screen.title || (stage === 'family' ? formTitle : (registration ? copy.registrationTitle : words.title))}}</text>
     <text class="onboarding-intro">{{stage === 'family' ? formDescription : words.intro}}</text>
-    <block wx:if="{{stage === 'wechat'}}"><text wx:if="{{busy}}" class="auth-hint">{{words.busy}}</text><button wx:else class="primary" bindtap="start">{{words.retry}}</button></block>
+    <screen-section presentation="{{screen.modules.identity}}"><block wx:if="{{stage === 'wechat'}}"><text wx:if="{{busy}}" class="auth-hint">{{words.busy}}</text><button wx:else class="primary" bindtap="start">{{words.retry}}</button></block>
     <block wx:elif="{{stage === 'phone'}}">
       <text class="auth-hint">{{words.phoneNote}}</text>
       <button class="primary" open-type="getPhoneNumber" bindgetphonenumber="phone" disabled="{{busy}}" loading="{{busy}}">{{words.phone}}</button>
@@ -31,8 +31,8 @@
       <view class="policy-links"><button class="text-button" bindtap="policy" data-kind="privacy">{{words.privacy}}</button><button class="text-button" bindtap="policy" data-kind="children">{{words.childrenPrivacy}}</button></view>
       <text class="auth-hint">{{words.locationNote}}</text>
       <button class="primary" bindtap="complete" loading="{{busy}}" disabled="{{busy}}">{{registration ? copy.submit : words.complete}}</button>
-    </block>
+    </block></screen-section>
     <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
     <button class="secondary" bindtap="discover" disabled="{{busy && (stage === 'family' || stage === 'bind')}}">{{stage === 'phone' ? words.declinePhone : words.cancel}}</button>
-  </view>
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
 </view>

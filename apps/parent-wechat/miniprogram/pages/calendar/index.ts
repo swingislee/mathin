@@ -1,3 +1,4 @@
+import { configuredPage } from "../../lib/native-page";
 import { get, participantCalendar, session } from "../../lib/api";
 import type { Account, Booking, Participant } from "../../lib/api-types";
 import { participantStageLabel } from "../../lib/catalog";
@@ -6,7 +7,7 @@ import { calendarItems, type CalendarItem } from "../../lib/calendar";
 import { selectedParticipant, selectParticipant } from "../../lib/navigation";
 import { pageData, syncPage, errorText, loginPage } from "../../lib/page";
 
-Page({
+configuredPage("calendar")({
   data: { ...pageData("calendar"), authenticated: false, participants: [] as Participant[], selected: 0,
     selectedDate: dateKey(new Date()), days: [] as ReturnType<typeof weekDays>, weekdays: [] as string[],
     sessions: [] as CalendarItem[], daySessions: [] as CalendarItem[], stageLabel: "", loaded: false, sheet: false },
@@ -99,13 +100,13 @@ Page({
   showParticipants() { if (!session()) this.login(); else this.setData({ sheet: true }); },
   closeSheet() { this.setData({ sheet: false }); },
   noop() {},
-  participant(e: WechatMiniprogram.TouchEvent) {
-    const selected = Number(e.currentTarget.dataset.index);
+  participant(e: WechatMiniprogram.PickerChange) {
+    const selected = Number(e.detail.value);
     if (!this.data.participants[selected]) return;
     this.setData({ selected, sheet: false }); void this.loadWeek();
   },
-  day(e: WechatMiniprogram.TouchEvent) {
-    const selectedDate = String(e.currentTarget.dataset.date);
+  day(e: WechatMiniprogram.CustomEvent<{ date: string }>) {
+    const selectedDate = String(e.detail.date);
     if (this.data.days.some(row => row.date === selectedDate)) { this.setData({ selectedDate }); this.renderWeek(); }
   },
   agenda() { wx.navigateTo({ url: "/pages/agenda/index" }); },

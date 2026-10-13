@@ -1,15 +1,15 @@
-<view class="portal-page theme-{{theme}} activity-signup-page"><app-nav title="{{t.selection}}" back />
-  <view class="portal-content activity-content">
+<view class="portal-page theme-{{theme}} activity-signup-page"><app-nav title="{{screen.title || (t.selection)}}" back />
+  <view class="portal-content activity-content"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
     <view wx:if="{{error}}" class="notice">{{error}}<button wx:if="{{!pending}}" class="text-button" disabled="{{busy}}" bindtap="load">{{copy.retry}}</button></view>
     <button wx:if="{{!authenticated}}" class="primary" bindtap="login">{{t.login}}</button><text wx:elif="{{loading}}" class="loading-line">{{copy.loading}}</text>
-    <view wx:if="{{sent}}" class="surface activity-summary"><text class="activity-heading">{{t.success}}</text><text wx:if="{{signup.success}}" class="activity-notice-copy">{{signup.success}}</text><text class="muted block">{{registrationNote}}</text><button class="primary" bindtap="applications">{{t.view}}</button></view>
+    <screen-section presentation="{{screen.modules.booking}}"><view wx:if="{{sent}}" class="surface activity-summary"><text class="activity-heading">{{t.success}}</text><text wx:if="{{signup.success}}" class="activity-notice-copy">{{signup.success}}</text><text class="muted block">{{registrationNote}}</text><button class="primary" bindtap="applications">{{t.view}}</button></view>
     <block wx:elif="{{offer && !loading}}">
-      <view class="surface activity-summary"><text class="activity-heading">{{offer.title}}</text><picker mode="selector" range="{{participants}}" range-key="name" value="{{selected}}" bindchange="participant" disabled="{{busy || pending}}"><view class="activity-participant"><text>{{participants[selected].name || t.selectParticipant}}</text><text class="text-link">{{t.switchParticipant}} ›</text></view></picker><text wx:if="{{!participants.length}}" class="notice">{{t.participantNeeded}}</text></view>
+      <view class="surface activity-summary"><text class="activity-heading">{{offer.title}}</text><participant-picker rows="{{participants}}" selected="{{selected}}" placeholder="{{t.selectParticipant}}" disabled="{{busy || !!pending}}" bindchange="participant" /><text wx:if="{{!participants.length}}" class="notice">{{t.participantNeeded}}</text></view>
       <view wx:if="{{offer.activity}}" class="surface activity-summary"><text class="section-title">{{t.activity}}</text><text class="block">{{activityWhen}}</text><text class="muted block">{{offer.activity.location}}</text></view>
       <view wx:if="{{signup.instructions}}" class="surface activity-summary"><text class="activity-notice-copy">{{signup.instructions}}</text></view>
       <view wx:if="{{questions.length && !pending}}" class="surface activity-summary"><form-questions fields="{{questions}}" answers="{{answers}}" locale="{{locale}}" disabled="{{busy}}" bindchange="questionChange" /></view>
       <text class="small muted block">{{registrationNote}}</text>
-    </block>
-  </view>
+    </block></screen-section>
+  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
   <view wx:if="{{authenticated && !sent}}" class="activity-signup-bottom"><view class="activity-submit-row"><button class="text-button" bindtap="applications">{{t.applications}}</button><button class="primary" loading="{{busy}}" disabled="{{busy || loading || (!pending && (!offer || !participants.length))}}" bindtap="submit">{{pending ? t.retry : t.apply}}</button></view></view>
 </view>

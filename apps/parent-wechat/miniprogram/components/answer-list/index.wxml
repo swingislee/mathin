@@ -1,0 +1,1 @@
+<view wx:for="{{rows}}" wx:key="index" class="answer"><text class="answer-label">{{item.label}}</text><text class="answer-value" selectable>{{item.value}}</text></view>

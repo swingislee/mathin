@@ -1,0 +1,1 @@
+.feed-state{display:block;color:var(--muted);font-size:26rpx;line-height:1.7;padding:16rpx 0}.feed-state button,.feed-all{font-size:26rpx;text-align:left;background:transparent;color:var(--primary);padding:12rpx 0;margin:0;line-height:1.6}.feed-state button::after,.feed-all::after{border:0}
