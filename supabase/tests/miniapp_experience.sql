@@ -64,7 +64,17 @@ begin
   perform public.miniapp_experience_document('page','private-page');
   update student_guardians set scope=array['activities'] where student_id=student and guardian_id=parent_id;
   if exists(select 1 from jsonb_array_elements(public.miniapp_notifications()) n join miniapp_notification_outbox o on o.id=(n->>'id')::uuid where o.source_id=report_id) then raise exception 'REVOKED_REPORT_PERMISSION_NOTIFICATION'; end if;
-  update student_guardians set scope=array['grades','activities'] where student_id=student and guardian_id=parent_id;
+  if public.miniapp_can_participate(student,'grades') or not public.miniapp_can_participate(student,'activities') then raise exception 'PARTICIPATION_SCOPE_FIXTURE'; end if;
+  perform public.miniapp_assert_experience_participants(array[student]);
+  perform public.miniapp_submit_experience_request(gen_random_uuid(),'fixture-request','request-form',revision,answer,array[student],'{}');
+  if exists(select 1 from jsonb_array_elements(public.miniapp_assessment_reports()) r where r->>'id'=report_id::text) then raise exception 'SERVICE_SCOPE_GRANTED_REPORT_ACCESS'; end if;
+  perform pg_temp.expect_experience_error(format('select public.miniapp_assert_experience_participants(array[%L]::uuid[])',another),'FORBIDDEN');
+  perform pg_temp.expect_experience_error(format('select public.miniapp_assert_experience_participants(array[%L,%L]::uuid[])',student,student),'FORBIDDEN');
+  update student_guardians set scope=array['finance'] where student_id=student and guardian_id=parent_id;
+  perform pg_temp.expect_experience_error(format('select public.miniapp_assert_experience_participants(array[%L]::uuid[])',student),'FORBIDDEN');
+  perform pg_temp.expect_experience_error(format('select public.miniapp_submit_experience_request(%L,''fixture-request'',''request-form'',%s,%L,array[%L]::uuid[],''{}'')',gen_random_uuid(),revision,answer,student),'FORBIDDEN');
+  update student_guardians set scope=array['grades'] where student_id=student and guardian_id=parent_id;
+  perform public.miniapp_assert_experience_participants(array[student]);
   perform pg_temp.expect_experience_error(format('select public.miniapp_submit_experience_request(%L,''fixture-request'',''request-form'',%s,%L,array[%L]::uuid[],''{}'')',gen_random_uuid(),revision,answer,another),'FORBIDDEN');
   perform pg_temp.expect_experience_error(format('select public.miniapp_submit_experience_request(%L,''fixture-request'',''request-form'',%s,%L,array[%L]::uuid[],''{}'')',gen_random_uuid(),revision,'{"details":[{"choice":"no"}]}',student),'VALIDATION');
   perform pg_temp.expect_experience_error(format('select public.miniapp_submit_experience_request(%L,''fixture-request'',''request-form'',%s,%L,array[%L]::uuid[],''{}'')',gen_random_uuid(),revision,'{"details":[{"name":"Fixture","choice":"no","note":"HIDDEN"}]}',student),'VALIDATION');

@@ -10,7 +10,7 @@ const pendingKey = (account: string, target: string) => "gezhi.experience.pendin
 configuredPage("experience-form")({
   data: { ...pageData("discover"), id: "", serviceId: "", accountId: "", authenticated: false, form: null as ExperienceForm | null, detail: null as ExperienceServiceDetail | null,
     revision: 0, title: "", introduction: "", submitLabel: "", answers: {} as ExperienceAnswers, errors: [] as string[], busy: false, pending: null as Command | null, sent: null as ExperienceRequest | null,
-    participants: [] as Participant[], selectedIds: [] as string[], consents: [] as { id: string; title: string; body: string; version: string; accepted: boolean }[] },
+    participants: [] as Participant[], selectedIds: [] as string[], selectedIndex: -1, consents: [] as { id: string; title: string; body: string; version: string; accepted: boolean }[] },
   generation: 0, active: false,
   onLoad(q: Record<string, string>) { this.setData({ id: q.id || "", serviceId: q.service || "" }); },
   onShow() { this.active = true; syncPage(this, "discover"); this.setData({ authenticated: !!session() }); if (!this.data.busy) void this.load(); },
@@ -29,13 +29,19 @@ configuredPage("experience-form")({
       if (generation !== this.generation) return;
       const answers: ExperienceAnswers = {}; form.groups.forEach(g => { answers[g.id] = Array.from({ length: g.minEntries }, () => ({})); });
       this.setData({ form, detail, revision: publication.revision, title: localText(form.title, currentLocale()), introduction: localText(form.introduction, currentLocale()), submitLabel: localText(form.submitLabel, currentLocale()),
-        answers: pending?.answers || answers, selectedIds: pending?.participantIds || [], consents, error: pending ? (currentLocale() === "en" ? "A submission needs confirmation. Retry with the same request." : "上次提交结果待确认，请使用下方按钮重试。") : "" });
+        answers: pending?.answers || answers, selectedIds: pending?.participantIds || [], selectedIndex: account.participants.findIndex(p => p.id === pending?.participantIds?.[0]), consents, error: pending ? (currentLocale() === "en" ? "A submission needs confirmation. Retry with the same request." : "上次提交结果待确认，请使用下方按钮重试。") : "" });
     } catch (error) { if (generation === this.generation) this.setData({ error: errorText(error) }); }
     finally { if (generation === this.generation) this.setData({ loading: false }); }
   },
   login() { loginPage("/pages/experience-form/index?" + (this.data.serviceId ? "service=" + encodeURIComponent(this.data.serviceId) : "id=" + encodeURIComponent(this.data.id))); },
   change(e: WechatMiniprogram.CustomEvent<{ answers: ExperienceAnswers }>) { if (!this.data.busy && !this.data.pending) this.setData({ answers: e.detail.answers, errors: [] }); },
-  participant(e: WechatMiniprogram.CheckboxGroupChange) { if (!this.data.busy && !this.data.pending) this.setData({ selectedIds: e.detail.value }); },
+  participant(e: WechatMiniprogram.CustomEvent<{ value: number | string[] }>) {
+    if (this.data.busy || this.data.pending) return;
+    const value = e.detail.value;
+    const ids = Array.isArray(value) ? value.filter(id => this.data.participants.some(p => p.id === id)) : this.data.participants[value] ? [this.data.participants[value].id] : [];
+    const selectedIds = this.data.detail?.flow?.allowMultipleParticipants ? ids : ids.slice(-1);
+    this.setData({ selectedIds, selectedIndex: this.data.participants.findIndex(p => p.id === selectedIds[0]) });
+  },
   consent(e: WechatMiniprogram.CheckboxGroupChange) { if (this.data.busy || this.data.pending) return; const id = String(e.currentTarget.dataset.id); this.setData({ consents: this.data.consents.map(d => d.id === id ? { ...d, accepted: e.detail.value.includes("yes") } : d) }); },
   async submit() { if (this.data.busy || this.data.loading || !session() || !this.data.accountId) return; const generation = this.generation, en = currentLocale() === "en";
     let command = this.data.pending; const form = this.data.form, flow = this.data.detail?.flow;

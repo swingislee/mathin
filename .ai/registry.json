@@ -7,7 +7,7 @@
       "title": "小程序页面装配与有内容流程验证",
       "agent": "codex",
       "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/MINI-ASSEMBLY-CONTENT-20261013.md",
@@ -29,8 +29,8 @@
         "docs/current.md",
         "apps/parent-wechat/docs/native-pages.md"
       ],
-      "checkpoint": "547d3605f1b8945f78eeb7a4ca4da9b449044929",
-      "next": "页面→组件→属性的装配工作台与真实有内容服务申请链路；隔离开发验证，生产/上传/提审暂停。"
+      "checkpoint": "458a69fc86fe8e375a671e00b126b040b80985bd",
+      "next": "页面装配和有内容服务申请链路已在开发端验证：单人选择与活动参与资格已修复；旧表单快照保留，临时配置及会话已恢复。待实际使用验收，生产、上传和提审继续暂停。"
     },
     {
       "id": "MINI-OVERALL-CHECK-20261013",
