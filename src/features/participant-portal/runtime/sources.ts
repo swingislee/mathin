@@ -14,7 +14,7 @@ const dateStart = (value: string) => Date.parse(value + "T00:00:00+08:00");
 export const validDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(dateStart(value)) && shanghaiDate(dateStart(value)) === value;
 
 export type RuntimeIdentity = {
-  signedIn: boolean; db: SupabaseClient | null; name: string; participants: { id: string; name: string }[];
+  signedIn: boolean; db: SupabaseClient | null; name: string; participants: { id: string; name: string; stage?: number | null }[];
   participant: string | null; stage: number | null;
 };
 export type SourceInput = { identity: RuntimeIdentity; locale: RuntimeLocale; settings: MiniappSettings; filters: Partial<Record<RuntimeFacetKind, string>>; now: number };
@@ -24,9 +24,9 @@ const item = (value: Partial<RuntimeItem> & Pick<RuntimeItem, "id" | "title">): 
   subtitle: "", summary: "", meta: [], tags: [], image: "", status: null, actionLabel: "", action: null, date: "", start: "", end: "", phase: "", ...value,
 });
 const words = {
-  zh: { stage: "参与者阶段", topic: "活动标签", allStages: "全部阶段", allTopics: "全部标签", booked: "待参与", attended: "已参与", no_show: "未参与", cancelled: "已取消",
+  zh: { stage: "参与者阶段", topic: "活动标签", stageHint: "按参与者阶段查看适合的公益活动", topicHint: "按活动标签筛选", allStages: "全部阶段", allTopics: "全部标签", booked: "待参与", attended: "已参与", no_show: "未参与", cancelled: "已取消",
     due: "截止", submitted: "已提交", pending: "待提交", assessment: "诊断报告", feedback: "活动反馈" },
-  en: { stage: "Participant stage", topic: "Activity tag", allStages: "All stages", allTopics: "All tags", booked: "Upcoming", attended: "Attended", no_show: "Not attended", cancelled: "Cancelled",
+  en: { stage: "Participant stage", topic: "Activity tag", stageHint: "Find activities for the participant's stage", topicHint: "Filter by activity tag", allStages: "All stages", allTopics: "All tags", booked: "Upcoming", attended: "Attended", no_show: "Not attended", cancelled: "Cancelled",
     due: "Due", submitted: "Submitted", pending: "To submit", assessment: "Assessment report", feedback: "Activity feedback" },
 };
 const dateLabel = (value: string) => shanghaiDate(Date.parse(value)).replaceAll("-", ".");
@@ -50,9 +50,9 @@ async function activities(input: SourceInput): Promise<SourceResult> {
       status: row.registration?.canApply === false ? { label: input.locale === "zh" ? "报名已截止" : "Closed", tone: "muted" } : null,
       action: { type: "route", route: "activity-detail", query: { id: row.id } } })),
     facets: [
-      { id: "stage", label: w.stage, value: stage?.id || "", valueLabel: stage ? stage.label[input.locale] || stage.label.zh : w.allStages,
+      { id: "stage", label: w.stage, hint: w.stageHint, value: stage?.id || "", valueLabel: stage ? stage.label[input.locale] || stage.label.zh : w.allStages,
         options: [{ value: "", label: w.allStages, group: "" }, ...stages.map(row => ({ value: row.id, label: row.label[input.locale] || row.label.zh, group: row.group }))] },
-      { id: "topic", label: w.topic, value: topic, valueLabel: topic || w.allTopics,
+      { id: "topic", label: w.topic, hint: w.topicHint, value: topic, valueLabel: topic || w.allTopics,
         options: [{ value: "", label: w.allTopics, group: "" }, ...topics.map(value => ({ value, label: value, group: "" }))] },
     ],
   };

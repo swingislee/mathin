@@ -48,25 +48,28 @@ type BlockBase = { id: string; visibleWhen?: RuntimeRule };
 export type RuntimeLinkSpec = { label: RuntimeText; action: RuntimeAction };
 export type RuntimeEntrySpec = { id: string; label: RuntimeText; icon: string; action: RuntimeAction; visibleWhen?: RuntimeRule };
 export type RuntimeBlockSpec = BlockBase & (
-  | { type: "section"; title: RuntimeText; style: "card" | "plain"; more?: RuntimeLinkSpec; blocks: RuntimeBlockSpec[] }
+  /** `row` places its blocks side by side, as in the original account header row. */
+  | { type: "section"; title: RuntimeText; style: "card" | "plain" | "row"; more?: RuntimeLinkSpec; blocks: RuntimeBlockSpec[] }
   | { type: "text"; text: RuntimeText; tone: "body" | "muted" | "notice" }
   | { type: "image"; image: string; fit: "width" | "cover"; action?: RuntimeAction }
-  | { type: "feature"; title: RuntimeText; body: RuntimeText; image: string; action?: RuntimeAction }
+  | { type: "feature"; title: RuntimeText; body: RuntimeText; image: string; action?: RuntimeAction; style?: "card" | "tile" }
   | { type: "entries"; title: RuntimeText; style: "grid" | "floating"; items: RuntimeEntrySpec[] }
   | { type: "list"; title: RuntimeText; source: RuntimeSource; template: "card" | "row"; limit: number; empty: RuntimeText;
       more?: RuntimeLinkSpec; facets: RuntimeFacetKind[]; actionLabel: RuntimeText }
-  | { type: "participants"; title: RuntimeText; empty: RuntimeText }
-  | { type: "calendar"; title: RuntimeText; empty: RuntimeText; more?: RuntimeLinkSpec }
+  | { type: "participants"; title: RuntimeText; empty: RuntimeText; style?: "chips" | "picker" | "tile" }
+  | { type: "calendar"; title: RuntimeText; empty: RuntimeText; more?: RuntimeLinkSpec; weekNavigation?: boolean; signInLabel?: RuntimeText }
+  /** Page-level filter pills for the data lists on the same screen that enable facets. */
+  | { type: "filters"; clearLabel: RuntimeText }
   | { type: "account"; trailing?: RuntimeLinkSpec }
   | { type: "content"; pageId: string }
   | { type: "button"; label: RuntimeText; appearance: "primary" | "secondary" | "link"; action: RuntimeAction }
   | { type: "divider" }
 );
 export type RuntimeBlockType = RuntimeBlockSpec["type"];
-export const runtimeBlockTypes: readonly RuntimeBlockType[] = ["section", "text", "image", "feature", "entries", "list", "participants", "calendar", "account", "content", "button", "divider"];
+export const runtimeBlockTypes: readonly RuntimeBlockType[] = ["section", "text", "image", "feature", "entries", "list", "participants", "calendar", "filters", "account", "content", "button", "divider"];
 /** Client view protocol that first rendered each block type. */
 export const runtimeBlockVersions: Readonly<Record<RuntimeBlockType, number>> = {
-  section: 1, text: 1, image: 1, feature: 1, entries: 1, list: 1, participants: 1, calendar: 1, account: 1, content: 1, button: 1, divider: 1,
+  section: 1, text: 1, image: 1, feature: 1, entries: 1, list: 1, participants: 1, calendar: 1, filters: 1, account: 1, content: 1, button: 1, divider: 1,
 };
 
 export type RuntimeScreenSpec = { id: string; title: RuntimeText; navigation: "brand" | "title"; blocks: RuntimeBlockSpec[] };
@@ -81,20 +84,22 @@ export type RuntimeItem = {
   status: { label: string; tone: "neutral" | "positive" | "warning" | "muted" } | null; actionLabel: string; action: RuntimeAction | null;
   date: string; start: string; end: string; phase: "" | "upcoming" | "ongoing" | "ended";
 };
-export type RuntimeFacet = { id: RuntimeFacetKind; label: string; value: string; valueLabel: string; options: { value: string; label: string; group: string }[] };
+export type RuntimeFacet = { id: RuntimeFacetKind; label: string; hint: string; value: string; valueLabel: string; options: { value: string; label: string; group: string }[] };
 export type RuntimeDay = { date: string; day: string; weekday: number; today: boolean; count: number };
 export type RuntimeDataState = "ready" | "signedOut" | "error";
 export type RuntimeBlockView = { id: string; fallback?: string } & (
-  | { type: "section"; title: string; style: "card" | "plain"; more: RuntimeLink | null; blocks: RuntimeBlockView[] }
+  | { type: "section"; title: string; style: "card" | "plain" | "row"; more: RuntimeLink | null; blocks: RuntimeBlockView[] }
   | { type: "text"; text: string; tone: "body" | "muted" | "notice" }
   | { type: "image"; image: string; fit: "width" | "cover"; action: RuntimeAction | null }
-  | { type: "feature"; title: string; body: string; image: string; action: RuntimeAction | null }
+  | { type: "feature"; title: string; body: string; image: string; action: RuntimeAction | null; style: "card" | "tile" }
   | { type: "entries"; title: string; style: "grid" | "floating"; items: { id: string; label: string; icon: string; action: RuntimeAction }[] }
   | { type: "list"; title: string; template: "card" | "row"; items: RuntimeItem[]; empty: string; more: RuntimeLink | null;
       facets: RuntimeFacet[]; state: RuntimeDataState; message: string }
-  | { type: "participants"; title: string; participants: { id: string; name: string; detail: string }[]; selected: string; empty: string; state: RuntimeDataState; message: string }
+  | { type: "participants"; title: string; style: "chips" | "picker" | "tile"; participants: { id: string; name: string; detail: string }[]; selected: string;
+      empty: string; state: RuntimeDataState; message: string }
   | { type: "calendar"; title: string; anchor: string; previous: string; next: string; days: RuntimeDay[]; items: RuntimeItem[];
-      empty: string; more: RuntimeLink | null; state: RuntimeDataState; message: string }
+      empty: string; more: RuntimeLink | null; state: RuntimeDataState; message: string; navigation: boolean; signInLabel: string }
+  | { type: "filters"; facets: RuntimeFacet[]; clearLabel: string; active: boolean }
   | { type: "account"; signedIn: boolean; name: string; prompt: string; trailing: RuntimeLink | null }
   | { type: "content"; pageId: string }
   | { type: "button"; label: string; appearance: "primary" | "secondary" | "link"; action: RuntimeAction }
@@ -102,7 +107,10 @@ export type RuntimeBlockView = { id: string; fallback?: string } & (
   | { type: "unsupported" }
 );
 
-export const runtimeStringKeys = ["loading", "retry", "unavailable", "signIn", "signInPrompt", "signOut", "today", "weekdays", "all", "close", "updateRequired", "choose", "clear"] as const;
+export const runtimeStringKeys = ["loading", "retry", "unavailable", "signIn", "signInPrompt", "signOut", "today", "weekdays", "all", "close", "updateRequired", "choose", "clear",
+  "account", "view", "chooseParticipant", "noParticipants", "signInNow"] as const;
+/** Filters chosen in a page-level filter bar are stored under this key and apply to every list on the screen. */
+export const runtimePageFilters = "_page";
 export type RuntimeStringKey = typeof runtimeStringKeys[number];
 export type RuntimeTab = { slot: RuntimeTabSlot; label: string; icon: string; activeIcon: string; screen: string };
 export type RuntimeApp = {

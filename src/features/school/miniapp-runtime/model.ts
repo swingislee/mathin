@@ -7,7 +7,7 @@ export type Locale = "zh" | "en";
 export const blockNames: Record<RuntimeBlockType, { zh: string; en: string }> = {
   section: { zh: "区段", en: "Section" }, text: { zh: "文字", en: "Text" }, image: { zh: "图片", en: "Image" }, feature: { zh: "功能卡", en: "Feature card" },
   entries: { zh: "入口", en: "Entries" }, list: { zh: "数据列表", en: "Data list" }, participants: { zh: "孩子切换", en: "Participants" },
-  calendar: { zh: "本周日历", en: "Week calendar" }, account: { zh: "账号头部", en: "Account header" }, content: { zh: "图文页", en: "Content page" },
+  calendar: { zh: "本周日历", en: "Week calendar" }, filters: { zh: "筛选条", en: "Filter bar" }, account: { zh: "账号头部", en: "Account header" }, content: { zh: "图文页", en: "Content page" },
   button: { zh: "按钮", en: "Button" }, divider: { zh: "分隔线", en: "Divider" },
 };
 const shortId = (prefix: string) => `${prefix}-${newId().slice(0, 8)}`;
@@ -26,6 +26,7 @@ export function newBlock(type: RuntimeBlockType): RuntimeBlockSpec {
     case "account": return { id, type, trailing: { label: t("我的预约", "My reservations"), action: { type: "route", route: "reservations" } } };
     case "content": return { id, type, pageId: "home" };
     case "button": return { id, type, label: t("按钮", "Button"), appearance: "primary", action: { type: "login" } };
+    case "filters": return { id, type, clearLabel: t("重置所有筛选", "Reset filters") };
     case "divider": return { id, type };
   }
 }

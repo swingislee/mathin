@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useTransition } from "react";
 import {
-  ArrowDown, ArrowUp, CalendarDays, FileText, ImageIcon, LayoutGrid, LayoutPanelTop, List, Minus, MousePointerClick, Plus, Redo2, SquareStack, Trash2, Type, Undo2, UserRound, Users,
+  ArrowDown, ArrowUp, CalendarDays, FileText, ImageIcon, LayoutGrid, LayoutPanelTop, List, Minus, MousePointerClick, Plus, Redo2, SlidersHorizontal, SquareStack, Trash2, Type, Undo2, UserRound, Users,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 const header = "h-11 min-h-11 max-h-11 shrink-0 border-b border-line";
 const tools: { type: RuntimeBlockType; icon: LucideIcon }[] = [
   { type: "section", icon: SquareStack }, { type: "text", icon: Type }, { type: "image", icon: ImageIcon }, { type: "feature", icon: LayoutPanelTop },
-  { type: "entries", icon: LayoutGrid }, { type: "list", icon: List }, { type: "calendar", icon: CalendarDays }, { type: "participants", icon: Users },
+  { type: "entries", icon: LayoutGrid }, { type: "filters", icon: SlidersHorizontal }, { type: "list", icon: List }, { type: "calendar", icon: CalendarDays }, { type: "participants", icon: Users },
   { type: "account", icon: UserRound }, { type: "content", icon: FileText }, { type: "button", icon: MousePointerClick }, { type: "divider", icon: Minus },
 ];
 type SaveState = "saved" | "pending" | "saving" | "invalid" | "conflict" | "error";
@@ -194,7 +194,8 @@ export function MiniappRuntimeConsole({ initial, locale }: { initial: RuntimeWor
           </div>
           <div className="min-h-0 flex-1 overflow-auto bg-moon/10 p-4">
             {preview ? <RuntimePhone title={preview.screen.title} brand={preview.screen.navigation === "brand"} blocks={preview.screen.blocks} tabs={preview.tabs} activeScreen={screen?.id ?? ""}
-              strings={{ signIn: editLocale === "zh" ? "登录" : "Sign in", today: editLocale === "zh" ? "今" : "Today", weekdays: editLocale === "zh" ? "一,二,三,四,五,六,日" : "M,T,W,T,F,S,S" }}
+              strings={editLocale === "zh" ? { signIn: "登录", today: "今", weekdays: "一,二,三,四,五,六,日", view: "查看", chooseParticipant: "选择参与人", signInNow: "点击登录" }
+                : { signIn: "Sign in", today: "Today", weekdays: "M,T,W,T,F,S,S", view: "View", chooseParticipant: "Choose participant", signInNow: "Sign in" }}
               selected={blockId} onSelect={setBlockId} onTab={id => { setScreenId(id); setBlockId(""); }} />
               : <p className="pt-20 text-center text-sm text-muted">{L("正在生成预览…", "Rendering preview…")}</p>}
             {preview && preview.issues.length > 0 && <ul className="mx-auto mt-3 max-w-[375px] space-y-1 text-xs text-rose">{preview.issues.slice(0, 5).map(issue => <li key={issue}>{issue}</li>)}</ul>}

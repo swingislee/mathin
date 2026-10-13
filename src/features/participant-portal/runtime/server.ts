@@ -9,7 +9,7 @@ import { tolerantRuntimeSpec } from "./spec";
 import { readSource, readWeek, shanghaiDate, validDate, type RuntimeIdentity, type SourceInput } from "./sources";
 import { sampleItems, sampleParticipants, sampleWeek } from "./samples";
 import {
-  runtimeBlockVersions, runtimeClientVersion, runtimeIcons, runtimeLocalText, runtimeStringKeys,
+  runtimeBlockVersions, runtimeClientVersion, runtimeIcons, runtimeLocalText, runtimePageFilters, runtimeStringKeys,
   type RuntimeApp, type RuntimeTab, type RuntimeBlockSpec, type RuntimeBlockView, type RuntimeFacetKind, type RuntimeLinkSpec,
   type RuntimeLocale, type RuntimeRule, type RuntimeScreen, type RuntimeScreenSpec, type RuntimeSpec,
 } from "../../../../contracts/participant-api/runtime";
@@ -60,9 +60,11 @@ async function loadIdentity(request: Request, requested: string | null): Promise
   if (!request.headers.get("authorization")) return { signedIn: false, db: null, participants: [], participant: null, stage: null, name: "" };
   const { db, profile } = await authorize(request);
   const [students, summary] = await Promise.all([db.rpc("get_my_students"), db.rpc("get_my_learning_summary")]);
-  const participants = ((requireResult(students) ?? []) as { id: string; name: string }[]).map(row => ({ id: row.id, name: row.name }));
+  const grades = (summary.error ? [] : summary.data ?? []) as { student_id: string; grade: number | null }[];
+  const participants = ((requireResult(students) ?? []) as { id: string; name: string }[])
+    .map(row => ({ id: row.id, name: row.name, stage: grades.find(grade => grade.student_id === row.id)?.grade ?? null }));
   const participant = participants.find(row => row.id === requested)?.id ?? participants[0]?.id ?? null;
-  const stage = participant ? ((summary.error ? [] : summary.data ?? []) as { student_id: string; grade: number | null }[]).find(row => row.student_id === participant)?.grade ?? null : null;
+  const stage = participants.find(row => row.id === participant)?.stage ?? null;
   return { signedIn: true, db, participants, participant, stage, name: (profile.display_name as string | null) || "" };
 }
 
@@ -103,7 +105,7 @@ async function view(block: RuntimeBlockSpec, context: Context): Promise<RuntimeB
   if (!allows(block.visibleWhen, context)) return null;
   if (runtimeBlockVersions[block.type] > context.client) return { id: block.id, type: "unsupported", fallback: text(runtimeStrings.updateRequired, context) };
   const sourceInput = (): SourceInput => ({ identity: context.identity, locale: context.locale, settings: context.published.settings,
-    filters: context.filters[block.id] ?? {}, now: context.now });
+    filters: { ...context.filters[runtimePageFilters], ...context.filters[block.id] }, now: context.now });
   switch (block.type) {
     case "section": {
       const blocks = (await Promise.all(block.blocks.map(row => view(row, context)))).filter((row): row is RuntimeBlockView => !!row);
@@ -111,7 +113,8 @@ async function view(block: RuntimeBlockSpec, context: Context): Promise<RuntimeB
     }
     case "text": { const value = text(block.text, context); return value ? { id: block.id, type: "text", text: value, tone: block.tone } : null; }
     case "image": return image(block.image) ? { id: block.id, type: "image", image: image(block.image), fit: block.fit, action: block.action ?? null } : null;
-    case "feature": return { id: block.id, type: "feature", title: text(block.title, context), body: text(block.body, context), image: image(block.image), action: block.action ?? null };
+    case "feature": return { id: block.id, type: "feature", title: text(block.title, context), body: text(block.body, context), image: image(block.image),
+      action: block.action ?? null, style: block.style ?? "card" };
     case "entries": {
       const items = block.items.filter(row => allows(row.visibleWhen, context)).map(row => ({ id: row.id, label: text(row.label, context), icon: icon(row.icon), action: row.action }));
       return items.length ? { id: block.id, type: "entries", title: text(block.title, context), style: block.style, items } : null;
@@ -132,12 +135,15 @@ async function view(block: RuntimeBlockSpec, context: Context): Promise<RuntimeB
     }
     case "participants": {
       const state = context.identity.signedIn ? "ready" : "signedOut";
-      return { id: block.id, type: "participants", title: text(block.title, context), selected: context.identity.participant ?? "", empty: text(block.empty, context),
-        participants: context.identity.participants.map(row => ({ id: row.id, name: row.name, detail: "" })), state, message: state === "signedOut" ? message("signedOut", context) : "" };
+      const stages = context.published.settings.stages.flatMap(group => group.stages);
+      const stageLabel = (value: number | null | undefined) => { const row = stages.find(stage => stage.stageNumber === value); return row ? text(row.label, context) : ""; };
+      return { id: block.id, type: "participants", title: text(block.title, context), style: block.style ?? "chips", selected: context.identity.participant ?? "", empty: text(block.empty, context),
+        participants: context.identity.participants.map(row => ({ id: row.id, name: row.name, detail: stageLabel(row.stage) })), state, message: state === "signedOut" ? message("signedOut", context) : "" };
     }
     case "calendar": {
       const anchor = context.anchor || shanghaiDate(context.now);
-      const base = { id: block.id, type: "calendar" as const, title: text(block.title, context), empty: text(block.empty, context), more: link(block.more, context) };
+      const base = { id: block.id, type: "calendar" as const, title: text(block.title, context), empty: text(block.empty, context), more: link(block.more, context),
+        navigation: block.weekNavigation === true, signInLabel: text(block.signInLabel, context) || text(runtimeStrings.signIn, context) };
       try {
         const real = await readWeek(sourceInput(), anchor);
         const week = context.sample ? { ...real, ...sampleWeek(real.days, context.locale) } : real;
@@ -151,6 +157,7 @@ async function view(block: RuntimeBlockSpec, context: Context): Promise<RuntimeB
     case "account": return { id: block.id, type: "account", signedIn: context.identity.signedIn,
       name: context.identity.signedIn ? context.identity.name || (context.locale === "zh" ? "我的账号" : "My account") : "",
       prompt: context.locale === "zh" ? "点击登录" : "Sign in", trailing: context.identity.signedIn ? link(block.trailing, context) : null };
+    case "filters": return { id: block.id, type: "filters", facets: [], clearLabel: text(block.clearLabel, context), active: false };
     case "content": return { id: block.id, type: "content", pageId: block.pageId };
     case "button": return { id: block.id, type: "button", label: text(block.label, context), appearance: block.appearance, action: block.action };
     case "divider": return { id: block.id, type: "divider" };
@@ -182,11 +189,26 @@ function findScreen(spec: RuntimeSpec, id: string | null): RuntimeScreenSpec {
   if (!screen) throw new PortalError("NOT_FOUND");
   return screen;
 }
+/** A page filter bar shows the facets of the screen's filterable lists; those lists then omit their own filter row. */
+function placeFilters(blocks: RuntimeBlockView[]): RuntimeBlockView[] {
+  const lists: Extract<RuntimeBlockView, { type: "list" }>[] = [];
+  const walk = (rows: RuntimeBlockView[]) => rows.forEach(row => { if (row.type === "list") lists.push(row); else if (row.type === "section") walk(row.blocks); });
+  walk(blocks);
+  const facets = lists.find(row => row.facets.length)?.facets ?? [];
+  const hasBar = blocks.some(row => row.type === "filters");
+  const place = (rows: RuntimeBlockView[]): RuntimeBlockView[] => rows.flatMap((row): RuntimeBlockView[] => {
+    if (row.type === "filters") return facets.length ? [{ ...row, facets, active: facets.some(facet => !!facet.value) }] : [];
+    if (row.type === "list" && hasBar) return [{ ...row, facets: [] }];
+    if (row.type === "section") return [{ ...row, blocks: place(row.blocks) }];
+    return [row];
+  });
+  return place(blocks);
+}
 async function screenView(value: Context, id: string | null): Promise<RuntimeScreen> {
   const screen = findScreen(value.published.spec, id);
-  const blocks = (await Promise.all(screen.blocks.map(row => view(row, value)))).filter((row): row is RuntimeBlockView => !!row);
+  const blocks = placeFilters((await Promise.all(screen.blocks.map(row => view(row, value)))).filter((row): row is RuntimeBlockView => !!row));
   return { id: screen.id, revision: value.published.revision, signedIn: value.identity.signedIn, participant: value.identity.participant,
-    title: screen.navigation === "brand" ? text(value.published.settings.brand.name, value) || text(screen.title, value) : text(screen.title, value),
+    title: screen.navigation === "brand" ? text(screen.title, value) || text(value.published.settings.brand.name, value) : text(screen.title, value),
     navigation: screen.navigation, blocks };
 }
 export async function runtimeScreenGet(request: Request) {

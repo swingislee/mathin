@@ -1,4 +1,6 @@
-<view class="surface runtime-participants">
+<view wx:if="{{block.style === 'picker'}}" class="runtime-picker"><participant-picker rows="{{block.participants}}" selected="{{index}}" subtitle="{{subtitle}}" placeholder="{{strings.chooseParticipant}}" bindchange="pick" bindempty="list" /></view>
+<view wx:elif="{{block.style === 'tile'}}" class="participants-tile surface"><view class="participants-heading"><text>{{block.title}}</text><button class="text-link" bindtap="list">{{strings.view}}<view class="chevron"></view></button></view><view wx:if="{{block.participants.length}}" class="participants-row"><button wx:for="{{block.participants}}" wx:key="id" wx:if="{{index < 2}}" class="participant-entry" data-id="{{item.id}}" bindtap="open"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><text>{{item.name}}</text></button></view><button wx:else class="participants-empty" bindtap="list"><image class="participant-avatar" src="/assets/participant.png" aria-hidden="true" /><text>{{block.state === 'signedOut' ? strings.signInNow : block.empty}}</text></button></view>
+<view wx:else class="surface runtime-participants">
   <text wx:if="{{block.title}}" class="section-title">{{block.title}}</text>
   <view wx:if="{{block.state === 'signedOut'}}" class="runtime-participants-signin"><text class="small muted">{{block.message}}</text><button class="primary" bindtap="login">{{strings.signIn}}</button></view>
   <text wx:elif="{{!block.participants.length}}" class="small muted runtime-participants-empty">{{block.empty}}</text>

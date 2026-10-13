@@ -145,7 +145,7 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
   switch (block.type) {
     case "section":
       fields.push(<TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
-        <Field key="style" label={L(locale, "样式", "Style")}><select className={select} value={block.style} onChange={event => set({ style: event.target.value as "card" | "plain" })}><option value="card">{L(locale, "白色卡片", "Card")}</option><option value="plain">{L(locale, "无底色", "Plain")}</option></select></Field>,
+        <Field key="style" label={L(locale, "样式", "Style")}><select className={select} value={block.style} onChange={event => set({ style: event.target.value as "card" | "plain" | "row" })}><option value="card">{L(locale, "白色卡片", "Card")}</option><option value="plain">{L(locale, "无底色", "Plain")}</option><option value="row">{L(locale, "左右并排", "Side by side")}</option></select></Field>,
         <LinkField key="more" label={L(locale, "标题右侧链接", "Heading link")} value={block.more} screens={screens} locale={locale} onChange={value => optional("more", value)} />);
       break;
     case "text":
@@ -159,6 +159,7 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
       break;
     case "feature":
       fields.push(<TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
+        <Field key="style" label={L(locale, "样式", "Style")}><select className={select} value={block.style ?? "card"} onChange={event => set({ style: event.target.value as "card" | "tile" })}><option value="card">{L(locale, "横向功能卡", "Card")}</option><option value="tile">{L(locale, "彩色磁贴", "Tile")}</option></select></Field>,
         <TextField key="body" label={L(locale, "按钮文字", "Badge")} value={block.body} locale={locale} onChange={body => set({ body })} />,
         <ImageField key="image" label={L(locale, "配图", "Image")} value={block.image} locale={locale} onChange={image => set({ image })} />,
         <ActionField key="action" label={L(locale, "点击后", "On tap")} value={block.action} screens={screens} locale={locale} onChange={value => optional("action", value)} />);
@@ -181,12 +182,16 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
         <LinkField key="more" label={L(locale, "标题右侧链接", "Heading link")} value={block.more} screens={screens} locale={locale} onChange={value => optional("more", value)} />);
       break;
     case "participants":
-      fields.push(<TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
+      fields.push(<Field key="style" label={L(locale, "样式", "Style")}><select className={select} value={block.style ?? "chips"} onChange={event => set({ style: event.target.value as "chips" | "picker" | "tile" })}>
+          <option value="picker">{L(locale, "下拉选择行", "Picker row")}</option><option value="tile">{L(locale, "头像磁贴", "Avatar tile")}</option><option value="chips">{L(locale, "横向标签", "Chips")}</option></select></Field>,
+        <TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
         <TextField key="empty" label={L(locale, "没有关联孩子时", "When none linked")} value={block.empty} locale={locale} onChange={empty => set({ empty })} />);
       break;
     case "calendar":
       fields.push(<TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
         <TextField key="empty" label={L(locale, "当天没有安排时", "When empty")} value={block.empty} locale={locale} onChange={empty => set({ empty })} />,
+        <TextField key="signin" label={L(locale, "未登录时的按钮文字", "Signed-out button")} value={block.signInLabel ?? { zh: "", en: "" }} locale={locale} onChange={signInLabel => set({ signInLabel })} />,
+        <label key="nav" className="flex items-center gap-2 text-sm"><input type="checkbox" checked={block.weekNavigation === true} onChange={event => set({ weekNavigation: event.target.checked })} />{L(locale, "显示上一周 / 下一周切换", "Show week switching")}</label>,
         <LinkField key="more" label={L(locale, "标题右侧链接", "Heading link")} value={block.more} screens={screens} locale={locale} onChange={value => optional("more", value)} />);
       break;
     case "account":
@@ -202,6 +207,10 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
       fields.push(<TextField key="label" label={L(locale, "按钮文字", "Label")} value={block.label} locale={locale} onChange={label => set({ label })} />,
         <Field key="appearance" label={L(locale, "样式", "Style")}><select className={select} value={block.appearance} onChange={event => set({ appearance: event.target.value as "primary" | "secondary" | "link" })}><option value="primary">{L(locale, "主按钮", "Primary")}</option><option value="secondary">{L(locale, "次按钮", "Secondary")}</option><option value="link">{L(locale, "文字链接", "Link")}</option></select></Field>,
         <ActionField key="action" label={L(locale, "点击后", "On tap")} value={block.action} screens={screens} locale={locale} allowNone={false} onChange={value => value && set({ action: value })} />);
+      break;
+    case "filters":
+      fields.push(<p key="hint" className="text-xs text-muted">{L(locale, "显示本页数据列表中开启的筛选（参与者阶段、活动标签），选择后整页列表一起更新。", "Shows the filters enabled on this page's lists; choosing one updates every list.")}</p>,
+        <TextField key="clear" label={L(locale, "重置按钮文字", "Reset label")} value={block.clearLabel} locale={locale} onChange={clearLabel => set({ clearLabel })} />);
       break;
     case "divider": break;
   }

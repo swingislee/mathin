@@ -3,9 +3,13 @@ import {
   cachedScreen, currentApp, findBlock, loadBlock, loadScreen, onAppChange, prepareBlocks, refreshApp, replaceBlock,
   runAction, setBlockFilter, setParticipant, tabScreen,
 } from "../../lib/runtime";
-import type { RuntimeBlockView, RuntimeFacet, RuntimeScreen, RuntimeTabSlot } from "../../lib/runtime-contract";
+import { runtimePageFilters, runtimeTabRoutes, type RuntimeBlockView, type RuntimeFacet, type RuntimeScreen, type RuntimeTabSlot } from "../../lib/runtime-contract";
 
-type Sheet = { block: string; facet: RuntimeFacet; groups: { group: string; options: RuntimeFacet["options"] }[] } | null;
+type Sheet =
+  | { kind: "facet"; block: string; page: boolean; facet: RuntimeFacet; groups: { group: string; options: RuntimeFacet["options"] }[] }
+  | { kind: "account"; name: string }
+  | { kind: "participants"; rows: { id: string; name: string }[] }
+  | null;
 function tabBar(hidden: boolean | null, slot?: number) {
   const page = getCurrentPages().slice(-1)[0] as unknown as { getTabBar?: () => WechatMiniprogram.Component.TrivialInstance | null } | undefined;
   const bar = page?.getTabBar?.();
@@ -18,7 +22,7 @@ Component({
   options: { styleIsolation: "apply-shared", pureDataPattern: /^_/ },
   properties: { tab: { type: Number, value: 0 }, screenId: { type: String, value: "" } },
   data: {
-    strings: currentApp().strings, theme: currentApp().theme, locale: currentApp().locale, title: "", navigation: "title" as "brand" | "title",
+    strings: currentApp().strings, theme: currentApp().theme, locale: currentApp().locale, title: "", navigation: "title" as "brand" | "title", pageClass: "",
     blocks: [] as RuntimeBlockView[], loading: false, error: "", missing: false, sheet: null as Sheet, back: false,
     _screen: "", _generation: 0, _session: "", _visible: false,
   },
@@ -41,7 +45,9 @@ Component({
       const screen = this.data.tab ? tabScreen(this.data.tab as RuntimeTabSlot) : this.data.screenId;
       const sessionMarker = session()?.refreshToken || "";
       const changed = screen !== this.data._screen || sessionMarker !== this.data._session;
-      this.setData({ strings: app.strings, theme: app.theme, locale: app.locale, missing: !screen, _screen: screen, _session: sessionMarker });
+      // The original tab pages keep their page-level background and spacing.
+      const pageClass = ({ discover: "discover-page", calendar: "calendar-page", account: "account-page" } as Record<string, string>)[screen] || "";
+      this.setData({ strings: app.strings, theme: app.theme, locale: app.locale, missing: !screen, pageClass, _screen: screen, _session: sessionMarker });
       if (screen) {
         const cached = cachedScreen(screen);
         if (cached) this.apply(cached);
@@ -79,26 +85,48 @@ Component({
     async action(e: WechatMiniprogram.CustomEvent<{ action: Parameters<typeof runAction>[0] }>) {
       if (await runAction(e.detail.action) === "reload") void this.load();
     },
-    participant(e: WechatMiniprogram.CustomEvent<{ id: string }>) { setParticipant(String(e.detail.id)); void this.load(); },
-    week(e: WechatMiniprogram.CustomEvent<{ block: string; anchor: string }>) { void this.refreshBlock(e.detail.block, { anchor: e.detail.anchor }); },
-    facet(e: WechatMiniprogram.CustomEvent<{ block: string; facet: string }>) {
+    participant(e: WechatMiniprogram.CustomEvent<{ id: string; open?: RuntimeTabSlot }>) {
+      if (!e.detail.id) return;
+      setParticipant(String(e.detail.id));
+      if (e.detail.open && runtimeTabRoutes[e.detail.open]) wx.switchTab({ url: runtimeTabRoutes[e.detail.open] }); else void this.load();
+    },
+    account(e: WechatMiniprogram.CustomEvent<{ name: string }>) { this.openSheet({ kind: "account", name: e.detail.name }); },
+    sheet(e: WechatMiniprogram.CustomEvent<{ kind: string; block: string }>) {
       const block = findBlock(this.data.blocks, e.detail.block);
-      const facet = block?.type === "list" ? block.facets.find(row => row.id === e.detail.facet) : undefined;
+      if (block?.type === "participants") this.openSheet({ kind: "participants", rows: block.participants.map(row => ({ id: row.id, name: row.name })) });
+    },
+    chooseParticipant(e: WechatMiniprogram.TouchEvent) {
+      const id = String(e.currentTarget.dataset.id || "");
+      this.close();
+      if (id) { setParticipant(id); wx.switchTab({ url: runtimeTabRoutes[2] }); }
+    },
+    async signOut() { this.close(); if (await runAction({ type: "logout" }) === "reload") void this.load(); },
+    openSheet(sheet: NonNullable<Sheet>) { this.setData({ sheet }); if (this.data.tab) tabBar(true); },
+    week(e: WechatMiniprogram.CustomEvent<{ block: string; anchor: string }>) { void this.refreshBlock(e.detail.block, { anchor: e.detail.anchor }); },
+    facet(e: WechatMiniprogram.CustomEvent<{ block: string; facet: string; clear?: boolean }>) {
+      const block = findBlock(this.data.blocks, e.detail.block);
+      if (e.detail.clear) {
+        ["stage", "topic"].forEach(id => setBlockFilter(this.data._screen, runtimePageFilters, id, ""));
+        void this.load();
+        return;
+      }
+      const page = block?.type === "filters";
+      const facet = block?.type === "list" || block?.type === "filters" ? block.facets.find(row => row.id === e.detail.facet) : undefined;
       if (!facet) return;
-      const groups: NonNullable<Sheet>["groups"] = [];
+      const groups: { group: string; options: RuntimeFacet["options"] }[] = [];
       facet.options.forEach(option => {
         const last = groups[groups.length - 1];
         if (last && last.group === option.group) last.options.push(option); else groups.push({ group: option.group, options: [option] });
       });
-      this.setData({ sheet: { block: e.detail.block, facet, groups } });
-      if (this.data.tab) tabBar(true);
+      this.openSheet({ kind: "facet", block: e.detail.block, page, facet, groups });
     },
     choose(e: WechatMiniprogram.TouchEvent) {
       const sheet = this.data.sheet;
-      if (!sheet) return;
-      setBlockFilter(this.data._screen, sheet.block, sheet.facet.id, String(e.currentTarget.dataset.value || ""));
+      if (sheet?.kind !== "facet") return;
+      setBlockFilter(this.data._screen, sheet.page ? runtimePageFilters : sheet.block, sheet.facet.id, String(e.currentTarget.dataset.value || ""));
       this.close();
-      void this.refreshBlock(sheet.block);
+      // A page filter bar changes every list on the screen, so the whole screen is read again.
+      if (sheet.page) void this.load(); else void this.refreshBlock(sheet.block);
     },
     close() { this.setData({ sheet: null }); if (this.data.tab) tabBar(false); },
     retry() { void this.load(); },

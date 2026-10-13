@@ -1,7 +1,14 @@
-.runtime-section { margin-bottom: 24rpx; }
+:host { display: block; width: 100%; }
 .runtime-section.surface { padding: 30rpx 32rpx; }
 .runtime-section.plain { padding: 0; }
 .runtime-block { margin-bottom: 24rpx; }
+/* Side-by-side sections reproduce the original account row: a 39% tile and a flexible companion. */
+.layout-row { display: flex; align-items: stretch; gap: 22rpx; }
+.layout-row > .runtime-flex-item { display: flex; flex: 1; min-width: 0; }
+.runtime-tile { position: relative; overflow: hidden; flex: 0 0 39%; width: 39%; min-width: 0; margin: 0; text-align: left; padding: 28rpx 24rpx;
+  background: linear-gradient(150deg, var(--primary-pale), var(--card)); min-height: 212rpx; }
+.layout-column > .runtime-tile { width: 100%; margin-bottom: 24rpx; }
+.runtime-group .service-grid { margin-bottom: 4rpx; }
 .runtime-text { display: block; margin: 0 0 20rpx; font-size: 28rpx; line-height: 1.7; color: var(--ink); white-space: pre-wrap; }
 .runtime-text.tone-muted { color: var(--muted); font-size: 25rpx; }
 .runtime-text.tone-notice { padding: 20rpx 24rpx; border-radius: 16rpx; background: var(--primary-soft); color: var(--ink); }
@@ -9,6 +16,7 @@
 .runtime-image.fit-cover { height: 320rpx; }
 .runtime-button { display: block; width: 100%; margin: 0 0 24rpx; }
 .runtime-button.appearance-secondary { padding: 22rpx 0; border: 1rpx solid var(--line); border-radius: 999rpx; background: var(--card); color: var(--ink); font-size: 28rpx; }
-.runtime-button.appearance-link { padding: 12rpx 0; background: none; color: var(--muted); font-size: 25rpx; }
-.floating-services.lifted { bottom: calc(124rpx + env(safe-area-inset-bottom)); }
+.floating-services.lifted { bottom: calc(202rpx + env(safe-area-inset-bottom)); }
+/* Original account shortcuts: four equal columns with the icon above the label. */
+.booking-shortcuts button { display: flex; align-items: center; justify-content: center; flex-direction: column; flex: 0 0 25%; gap: 22rpx; width: 25%; margin: 0; padding: 0; text-align: center; font-size: 26rpx; font-weight: 500; }
 .runtime-divider { height: 1rpx; margin: 12rpx 0 32rpx; background: var(--line); }

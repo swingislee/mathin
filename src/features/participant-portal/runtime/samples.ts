@@ -2,8 +2,8 @@ import type { RuntimeDay, RuntimeItem, RuntimeLocale, RuntimeSource } from "../.
 
 /** Clearly labelled example records for staff previews; no family data is read for the signed-in preview. */
 export const sampleParticipants = [
-  { id: "00000000-0000-4000-8000-00000000000a", name: "示例孩子 A" },
-  { id: "00000000-0000-4000-8000-00000000000b", name: "示例孩子 B" },
+  { id: "00000000-0000-4000-8000-00000000000a", name: "示例孩子 A", stage: 3 },
+  { id: "00000000-0000-4000-8000-00000000000b", name: "示例孩子 B", stage: 5 },
 ];
 const item = (value: Partial<RuntimeItem> & Pick<RuntimeItem, "id" | "title">): RuntimeItem => ({
   subtitle: "", summary: "", meta: [], tags: [], image: "", status: null, actionLabel: "", action: null, date: "", start: "", end: "", phase: "", ...value,

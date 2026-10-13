@@ -1,8 +1,8 @@
 <view class="surface week-card runtime-calendar">
   <view class="card-heading"><text class="section-title">{{block.title}}</text><button wx:if="{{block.more}}" class="text-link subtle" data-action="{{block.more.action}}" bindtap="act">{{block.more.label}}<view class="chevron"></view></button></view>
-  <view class="runtime-week-nav"><button class="week-step" bindtap="previous" aria-label="previous">‹</button><text>{{rangeLabel}}</text><button class="week-step" bindtap="next" aria-label="next">›</button></view>
+  <view wx:if="{{block.navigation}}" class="runtime-week-nav"><button class="week-step" bindtap="previous" aria-label="previous">‹</button><text>{{rangeLabel}}</text><button class="week-step" bindtap="next" aria-label="next">›</button></view>
   <date-grid mode="week" days="{{days}}" weekdays="{{weekdays}}" today-label="{{strings.today}}" bindselect="day" />
-  <view wx:if="{{block.state === 'signedOut'}}" class="inline-signin"><button class="primary" bindtap="login">{{strings.signIn}}</button></view>
+  <view wx:if="{{block.state === 'signedOut'}}" class="inline-signin"><button class="primary" bindtap="login">{{block.signInLabel || strings.signIn}}</button></view>
   <view wx:elif="{{block.state === 'error'}}" class="notice" role="alert">{{block.message}}</view>
   <empty-state wx:elif="{{!dayItems.length}}" label="{{block.empty}}" compact />
   <view wx:else class="schedule-list"><button wx:for="{{dayItems}}" wx:key="id" class="entry-card {{item.phase === 'ended' ? 'entry-ended' : ''}}" data-action="{{item.action}}" bindtap="act">

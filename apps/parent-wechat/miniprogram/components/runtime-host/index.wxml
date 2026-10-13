@@ -1,13 +1,25 @@
-<view class="portal-page runtime-page theme-{{theme}} {{tab ? 'with-tab-bar' : ''}}">
+<view class="portal-page runtime-page {{pageClass}} theme-{{theme}} {{tab ? 'with-tab-bar' : ''}}">
   <app-nav title="{{title}}" brand="{{navigation === 'brand'}}" back="{{back}}" />
   <view class="portal-content">
     <view wx:if="{{missing}}" class="runtime-state"><empty-state label="{{strings.unavailable}}" spacious /><button class="text-button" bindtap="firstTab">{{strings.retry}}</button></view>
     <text wx:elif="{{loading && !blocks.length}}" class="loading-line">{{strings.loading}}</text>
     <view wx:elif="{{error && !blocks.length}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="retry">{{strings.retry}}</button></view>
-    <runtime-blocks blocks="{{blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{tab > 0}}" bindaction="action" bindfacet="facet" bindweek="week" bindparticipant="participant" />
+    <runtime-blocks blocks="{{blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{tab > 0}}" bindaction="action" bindfacet="facet" bindweek="week" bindparticipant="participant" bindaccount="account" bindsheet="sheet" />
   </view>
-  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="close" catchtouchmove="noop"><view class="bottom-sheet catalog-sheet" catchtap="noop">
-    <view class="sheet-heading"><text class="block">{{sheet.facet.label}}</text><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
-    <scroll-view class="stage-scroll" scroll-y><view wx:for="{{sheet.groups}}" wx:for-item="group" wx:key="group" class="stage-group"><text wx:if="{{group.group}}" class="section-title">{{group.group}}</text><view class="option-grid"><button wx:for="{{group.options}}" wx:key="value" class="option-pill {{sheet.facet.value === item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="choose">{{item.label}}</button></view></view></scroll-view>
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="close" catchtouchmove="noop"><view class="bottom-sheet {{sheet.kind === 'facet' ? 'catalog-sheet' : ''}}" catchtap="noop">
+    <block wx:if="{{sheet.kind === 'facet'}}">
+      <view class="sheet-heading"><view><text class="block">{{sheet.facet.label}}</text><text wx:if="{{sheet.facet.hint}}" class="sheet-subtitle">{{sheet.facet.hint}}</text></view><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
+      <scroll-view class="stage-scroll" scroll-y><view wx:for="{{sheet.groups}}" wx:for-item="group" wx:key="group" class="stage-group"><text wx:if="{{group.group}}" class="section-title">{{group.group}}</text><view class="option-grid"><button wx:for="{{group.options}}" wx:key="value" class="option-pill {{sheet.facet.value === item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="choose">{{item.label}}</button></view></view></scroll-view>
+    </block>
+    <block wx:elif="{{sheet.kind === 'account'}}">
+      <view class="sheet-heading"><text>{{strings.account}}</text><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
+      <text class="account-display-name">{{sheet.name || strings.account}}</text>
+      <button class="secondary" bindtap="signOut">{{strings.signOut}}</button>
+    </block>
+    <block wx:else>
+      <view class="sheet-heading"><text>{{strings.chooseParticipant}}</text><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
+      <button wx:for="{{sheet.rows}}" wx:key="id" class="member-option" data-id="{{item.id}}" bindtap="chooseParticipant"><image src="/assets/participant.png" class="participant-avatar" aria-hidden="true" /><text>{{item.name}}</text><view class="chevron"></view></button>
+      <text wx:if="{{!sheet.rows.length}}" class="muted small">{{strings.noParticipants}}</text>
+    </block>
   </view></view>
 </view>

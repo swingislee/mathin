@@ -1,1 +1,1 @@
-{ "component": true }
+{ "component": true, "usingComponents": { "participant-picker": "/components/participant-picker/index" } }

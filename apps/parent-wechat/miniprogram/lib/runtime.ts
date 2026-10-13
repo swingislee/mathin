@@ -18,14 +18,16 @@ const builtIn: Record<Locale, RuntimeApp> = {
       { slot: 2, label: "日历", icon: "asset:tabs/calendar", activeIcon: "asset:tabs/calendar-active", screen: "calendar" },
       { slot: 3, label: "我的", icon: "asset:tabs/account", activeIcon: "asset:tabs/account-active", screen: "account" }],
     strings: { loading: "正在读取…", retry: "重新读取", unavailable: "内容暂时无法读取，请稍后重试。", signIn: "登录", signInPrompt: "登录后查看个人安排与记录",
-      signOut: "退出登录", today: "今", weekdays: "一,二,三,四,五,六,日", all: "全部", close: "关闭", updateRequired: "此内容需要更新小程序后查看", choose: "请选择", clear: "清除筛选" } },
+      signOut: "退出登录", today: "今", weekdays: "一,二,三,四,五,六,日", all: "全部", close: "关闭", updateRequired: "此内容需要更新小程序后查看", choose: "请选择", clear: "清除筛选",
+      account: "我的账号", view: "查看", chooseParticipant: "选择参与人", noParticipants: "暂未关联参与人，请联系工作人员。", signInNow: "点击登录" } },
   en: { protocol: 1, revision: "built-in", locale: "en", signedIn: false, theme: "paper", brandName: "Gezhi Future Thinking",
     tabs: [{ slot: 1, label: "Discover", icon: "asset:tabs/discover", activeIcon: "asset:tabs/discover-active", screen: "discover" },
       { slot: 2, label: "Calendar", icon: "asset:tabs/calendar", activeIcon: "asset:tabs/calendar-active", screen: "calendar" },
       { slot: 3, label: "Account", icon: "asset:tabs/account", activeIcon: "asset:tabs/account-active", screen: "account" }],
     strings: { loading: "Loading…", retry: "Try again", unavailable: "This content is unavailable. Please try again.", signIn: "Sign in",
       signInPrompt: "Sign in to view your arrangements and records", signOut: "Sign out", today: "Today", weekdays: "M,T,W,T,F,S,S", all: "All",
-      close: "Close", updateRequired: "Update the Mini Program to view this content", choose: "Choose", clear: "Clear filters" } },
+      close: "Close", updateRequired: "Update the Mini Program to view this content", choose: "Choose", clear: "Clear filters",
+      account: "My account", view: "View", chooseParticipant: "Choose participant", noParticipants: "No participant linked. Contact staff.", signInNow: "Sign in" } },
 };
 
 let app: RuntimeApp | null = null, appCheckedAt = 0, appPending: Promise<RuntimeApp> | null = null;
