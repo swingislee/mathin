@@ -3,6 +3,25 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "COMMUNICATION-ROW-LAYOUT-20261014",
+      "title": "待测评列表选择列与学生信息对齐",
+      "agent": "codex",
+      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-ROW-LAYOUT-20261014.md",
+      "writePaths": [
+        "src/features/school/source-worklist/Workspace.tsx",
+        ".ai/tasks/COMMUNICATION-ROW-LAYOUT-20261014.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "已实现：沟通列表移除重复登记列，复选框独立，姓名年级同列对齐，前导展开填写。文件静态检查通过，待开发端实际使用确认，生产未部署。"
+    },
+    {
       "id": "LEAD-COMMUNICATION-SUMMARY-20261013",
       "title": "线索主行精简与学服、年级口径",
       "agent": "codex",

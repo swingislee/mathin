@@ -12,6 +12,7 @@ import { Link, useRouter } from '@/i18n/navigation';
 import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandSelection, DashboardCommandState, DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from '../dashboard-page';
 import { useDashboardFieldView } from '../dashboard-page/useDashboardFieldView';
 import { FollowupRecordRow, FollowupTableBody } from '../dashboard-page/FollowupRecordRow';
+import { DashboardRowDisclosure } from '../dashboard-page/DashboardRowDisclosure';
 import { useDashboardPreference } from '../dashboard-page/DashboardPreferenceScope';
 import { FollowupCommandPanel } from '../FollowupCommandPanel';
 import { FilterSearchInput } from '../FilterBar';
@@ -53,7 +54,6 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
   const leadT = useTranslations('school.leads');
   const firstContact = query.stage === 'awaiting_first_contact';
   const showContext = query.stage === 'awaiting_enrollment' || query.stage === 'former_student';
-  const columnCount = showContext ? 7 : 6;
   const tasks = firstContact ? ['awaiting_first_contact' as const] : COMMUNICATION_STAGES;
   const allMonths = query.stage !== 'former_student' && showsMultiplePeriods(query.period);
   const router = useRouter();
@@ -65,6 +65,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
   const [collapsed, setCollapsed] = useState(() => query.fields || query.scope === 'mine' ? new Set<string>() : startingCollapsed(data.rows,allMonths));
   const [entryBusy, setBusy] = useState(false);
   const selection = useWorklistSelection();
+  const columnCount = (showContext ? 6 : 5) + (canAssign && selection ? 1 : 0);
   const busy = entryBusy || Boolean(selection?.busy);
   const selectionKey = (row: WorkRow) => firstContact && row.leadId ? 'lead:' + row.leadId : row.key;
   const selectedRows = rows.filter(row => selection?.keys.has(selectionKey(row)));
@@ -236,14 +237,14 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
       totalCount={data.count} pageSize={data.pageSize} disabled={busy} onPageChange={(page,pageSize) => navigate({ page,pageSize })} />}>
       {firstContactContent ?? <DashboardTableShell><Table mobileLayout="stacked" className="table-fixed text-xs [&_th]:px-2 [&_td]:px-2">
         <TableHeader className="sticky top-0 z-20"><TableRow>
-          <TableHead className="w-40"><div className="flex items-center gap-1.5">{canAssign && selection ? <Checkbox
+          {canAssign && selection ? <TableHead className="w-9"><div className="flex justify-center"><Checkbox
             checked={selectedRows.length && selectedRows.length === rows.length ? true : selectedRows.length ? 'indeterminate' : false}
-            disabled={busy || !rows.length} aria-label={locale.startsWith('en') ? 'Select this page' : '选择本页'} onCheckedChange={checked => selection.toggle(rows.map(selectionKey),checked === true)} /> : null}
-            <DashboardTableColumnHeader label={m.name} {...columnProps('name')} /></div></TableHead>
+            disabled={busy || !rows.length} aria-label={locale.startsWith('en') ? 'Select this page' : '选择本页'} onCheckedChange={checked => selection.toggle(rows.map(selectionKey),checked === true)} /></div></TableHead> : null}
+          <TableHead className="w-40"><div className="pl-6"><DashboardTableColumnHeader label={m.name} {...columnProps('name')} /></div></TableHead>
           <TableHead className="w-28"><DashboardTableColumnHeader label={m.phone} {...columnProps('phone')} /></TableHead>
           <TableHead className="w-36"><DashboardTableColumnHeader label={locale.startsWith('en') ? 'Learning support' : '学服'} {...columnProps('owner')} /></TableHead>
           <TableHead className="w-36"><DashboardTableColumnHeader label={m.stage} {...columnProps('state')} /></TableHead>{showContext ? <TableHead><DashboardTableColumnHeader label={m.contextByTask[query.stage]} {...columnProps('context')} /></TableHead> : null}
-          <TableHead><DashboardTableColumnHeader label={m.recent} {...columnProps('recent')} /></TableHead><TableHead className="w-24 text-right">{m.work}</TableHead>
+          <TableHead><DashboardTableColumnHeader label={m.recent} {...columnProps('recent')} /></TableHead>
         </TableRow></TableHeader>
         <FollowupTableBody onNavigate={id => { if (busy) return false; focus(id); return true; }}>
           {groups.map((group,index) => {
@@ -266,24 +267,31 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
                 ? date(communication.latestAt) : communication?.latestDateLabel;
               return <FollowupRecordRow key={placement.id} rowKey={placement.id} detailsId={`worklist-${placement.id}`} title={row.name} colSpan={columnCount}
                 profileSubject={row}
+                selected={Boolean(selection?.keys.has(selectionKey(row)))}
                 active={focused === placement.id && !hidden(row)} expanded={expanded} keepMounted={visited.has(placement.id)} pending={busy} focusOnActivate hideTitle
                 onActivate={() => focus(placement.id)} onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
                 onSave={row.canWrite ? () => entryRefs.current.get(placement.id)?.save() : undefined}
                 onOutcomeChange={query.stage === 'awaiting_first_contact' && row.canContact ? value => { open(row,'contact'); setOutcome({ id: placement.id,value }); } : undefined}
                 rowProps={{ hidden: hidden(row), className: 'h-12 cursor-pointer [&>td]:py-1.5 [&>td]:align-middle', 'data-worklist-record': placement.id }}
                 summary={<>
-                  <TableCell mobileSpan="primary"><div className="flex items-center gap-1.5">{canAssign && selection ? <span onClick={event => event.stopPropagation()}><Checkbox
+                  {canAssign && selection ? <TableCell mobileSpan="secondary" className="w-9" onClick={event => event.stopPropagation()}><div className="flex justify-center"><Checkbox
                     checked={selection.keys.has(selectionKey(row))} disabled={busy} aria-label={`${locale.startsWith('en') ? 'Select' : '选择'} ${row.name}`}
-                    onCheckedChange={checked => selection.toggle([selectionKey(row)],checked === true)} /></span> : null}
+                    onCheckedChange={checked => selection.toggle([selectionKey(row)],checked === true)} /></div></TableCell> : null}
+                  <TableCell mobileSpan="primary"><div className="flex items-start gap-1">
+                    <DashboardRowDisclosure expanded={expanded} controls={`worklist-${placement.id}`} label={`${m.recordByTask[query.stage]} · ${row.name}`}
+                      onToggle={() => { if (!busy) { if (expanded) setActive(null); else open(row); } }} />
+                    <div className="min-w-0"><div className="flex items-center gap-1.5">
                     <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{row.name}</Student360Trigger>
                     {handled.has(placement.id) ? <Check aria-label={m.handled} className="size-3.5 text-leaf-deep" /> : null}</div>
-                    <span className="text-[11px] text-muted">{worklistGrade(row, locale)}</span></TableCell>
+                    <span className="block text-[11px] text-muted">{worklistGrade(row, locale)}</span></div></div></TableCell>
                   <TableCell mobileLabel={m.phone}>{row.phone || '—'}</TableCell>
                   <TableCell mobileLabel={locale.startsWith('en') ? 'Learning support' : '学服'}>{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} context="lead"
                     onBusyChange={setBusy} onAssigned={result => { assigned(result); router.refresh(); }} /> : row.ownerName || stages.unassigned}</TableCell>
                   <TableCell mobileLabel={m.stage}>{row.detail !== 'unassigned' ? <div className="mb-1 text-[11px] text-muted">{stages.details[row.detail] ?? row.detail}</div> : null}
                     <RecordStatusIcons row={row} locale={locale} /></TableCell>
-                  {showContext ? <TableCell mobileLabel={m.contextByTask[query.stage]}><p className="line-clamp-2 leading-5" title={contextText(row)}>{contextText(row) || '—'}</p></TableCell> : null}
+                  {showContext ? <TableCell mobileLabel={m.contextByTask[query.stage]}><p className="line-clamp-2 leading-5" title={contextText(row)}>{contextText(row) || '—'}</p>
+                    {query.stage === 'awaiting_enrollment' && row.registrationId && canAssess ? <Link className="inline-block py-1 text-primary hover:underline" href={`/dashboard/assessments/${row.registrationId}`}>{m.assessment}</Link> : null}
+                  </TableCell> : null}
                   <TableCell mobileLabel={m.recent}>
                     <p className="line-clamp-2 leading-5" title={recentNote}>{recentNote || (communication?.count ? m.noContactNote : m.noNote)}</p>
                     {communication?.count ? <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted">
@@ -292,10 +300,6 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
                       <Student360Trigger className="font-normal text-muted" subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{m.contactCount(communication.count)}</Student360Trigger>
                     </div> : null}
                     {nextAt ? <span className={Date.parse(nextAt) < now ? 'text-rose-deep' : 'text-muted'}>{m.nextContact} · {date(nextAt)}</span> : null}</TableCell>
-                  <TableCell mobileLabel={m.work} data-table-mobile-actions><div className="flex flex-wrap justify-end gap-1">
-                    {row.canWrite ? <Button size="sm" variant="ghost" disabled={busy} onClick={() => open(row)}>{m.recordByTask[query.stage]}</Button> : <span className="text-muted">{m.noWrite}</span>}
-                    {query.stage === 'awaiting_enrollment' && row.registrationId && canAssess ? <Link className="rounded px-2 py-1 text-primary hover:underline" href={`/dashboard/assessments/${row.registrationId}`}>{m.assessment}</Link> : null}
-                  </div></TableCell>
                 </>}>
                 {() => <div className="space-y-2">
                   {row.canWrite ? <Entry row={row} requestedMode={active?.id === placement.id ? active.mode : modeFor(row)} locale={locale} currentUserId={currentUserId} canEnroll={canEnroll}
