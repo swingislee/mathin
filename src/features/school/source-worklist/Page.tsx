@@ -10,6 +10,7 @@ import { listInvitationOptions } from '../invitations';
 import { InvitationCoordinationWorkbench } from '../InvitationCoordinationWorkbench';
 import { CommunicationWorkSelectionProvider } from '../CommunicationWorkSelection';
 import { parseWorkQuery, href } from './contract';
+import { showsMultiplePeriods } from './period-selection';
 import { Workspace } from './Workspace';
 import { loadWorklistPage } from './data';
 import { WorklistSelectionProvider } from './Selection';
@@ -56,7 +57,7 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
     firstContactContent = <CommunicationWorkSelectionProvider key={sessionKey}>
       <InvitationCoordinationWorkbench firstContactOnly sessionKey={sessionKey} rows={[]} contactLeads={leads} leadDetails={leads}
         firstContactRows={page.rows}
-        sourceLayout={{ rows: page.rows, allMonths: page.period === 'all', query, fieldView: page.fieldView }}
+        sourceLayout={{ rows: page.rows, allMonths: showsMultiplePeriods(page.period), query, fieldView: page.fieldView }}
         historicalFirstContacts={page.rows.flatMap(row => !row.leadId && row.studentId ? [{ studentId: row.studentId, name: row.name, phone: row.phone, grade: row.grade, context: row.note }] : [])}
         rowOrder={page.rows.map(row => row.leadId ? 'lead:' + row.leadId : 'student:' + row.studentId)}
         activities={options.activities} assessors={options.assessors} locale={locale} currentUserId={user.id}

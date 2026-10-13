@@ -27,6 +27,7 @@ import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, type WorkPa
 import { sourceGroupLabels, sourceGroupPath } from './grouping';
 import { RecordStatusIcons } from '../record-status/RecordStatusIcons';
 import { SourceLayoutFilters } from './SourceLayoutFilters';
+import { showsMultiplePeriods } from './period-selection';
 import { WORKLIST_COLUMNS, worklistFields } from './fields';
 import { useWorklistFields } from './useWorklistFields';
 import { useWorklistSelection } from './Selection';
@@ -52,7 +53,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
   const showContext = query.stage === 'awaiting_enrollment' || query.stage === 'former_student';
   const columnCount = showContext ? 7 : 6;
   const tasks = firstContact ? ['awaiting_first_contact' as const] : COMMUNICATION_STAGES;
-  const allMonths = query.stage !== 'former_student' && query.period === 'all';
+  const allMonths = query.stage !== 'former_student' && showsMultiplePeriods(query.period);
   const router = useRouter();
   const [rows, setRows] = useState(data.rows);
   const [focused, setFocused] = useState<string | null>(null);

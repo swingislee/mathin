@@ -11,6 +11,7 @@ import { dashboardFieldMessages } from "./dashboard-page/dashboard-field-message
 import type { DashboardFieldDefinitions } from "./dashboard-page/dashboard-table-field-contract";
 import type { DashboardDateContext } from "./dashboard-page/dashboard-table-date-contract";
 import { sourceLayoutSchema } from './source-worklist/contract';
+import { parsePeriodSelection } from './source-worklist/period-selection';
 
 const pageSchema = z.object({
   sourceLayout: sourceLayoutSchema.optional(),
@@ -28,7 +29,7 @@ export async function loadAssessmentWorkbenchPage(fields: DashboardFieldDefiniti
   const pick = (key: string) => typeof raw[key] === 'string' ? raw[key] : '';
   const sourceLayout = {
     periodField: ['arrived','confirmed','enrolled'].includes(pick('periodField')) ? pick('periodField') : 'arrived',
-    period: /^(all|unknown|([1-9]|1[0-2])月)$/.test(pick('period')) ? pick('period') : '',
+    period: parsePeriodSelection(pick('period')),
     group: pick('group').slice(0,320),
   };
   const labels = { ...studentListFieldLabels(fields),

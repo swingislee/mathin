@@ -11,7 +11,7 @@ vi.mock("@/i18n/navigation", () => ({ usePathname: () => "/dashboard/assessments
 vi.mock("@/features/school/AssessmentUnifiedWorkbench", () => ({ AssessmentUnifiedWorkbench: (props: ComponentProps<typeof AssessmentUnifiedWorkbench>) => { state.props = props; return null; } }));
 let root: Root, container: HTMLDivElement;
 const props: ComponentProps<typeof AssessmentPagedWorkbench> = { locale: "zh", canAssess: true, canSupport: true, canManageAssessor: true, assessors: [],
-  data: { rows: [], count: 930, page: 3, pageSize: 50, totalPages: 19, q: "", state: "current", fieldView: { query: { version: 2, filters: {}, sort: null }, facets: {} } } };
+  data: { rows: [], count: 930, page: 3, pageSize: 50, totalPages: 19, q: "", state: "all", fieldView: { query: { version: 2, filters: {}, sort: null }, facets: {} } } };
 beforeEach(async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true }); vi.useFakeTimers();
   state.search = "page=3&pageSize=50"; state.replace.mockClear();
@@ -32,21 +32,21 @@ it("merges fast search and field changes into one request and resets page", asyn
   expect(JSON.parse(url.searchParams.get("fields")!).filters.grade.values).toEqual(["3"]);
 });
 
-it("preserves state and column conditions on a later page without slicing the returned page again", async () => {
+it("preserves selected months on a later page without slicing the returned page again", async () => {
   await act(async () => {
-    state.props!.pageControl!.onState("historical");
+    state.props!.pageControl!.onSourceLayout({ period: '6月,7月' });
     state.props!.pageControl!.onPage(2, 20);
     await vi.advanceTimersByTimeAsync(1);
   });
   const url = new URL(state.replace.mock.calls[0][0], "https://example.test");
-  expect(url.searchParams.get("state")).toBe("historical"); expect(url.searchParams.get("page")).toBe("2");
+  expect(url.searchParams.get("period")).toBe("6月,7月"); expect(url.searchParams.get("page")).toBe("2");
   expect(state.props!.initialRows).toBe(props.data.rows); expect(state.props!.pageControl!.data.count).toBe(930);
 });
 
 it("cancels pending search when browser history supplies a different route", async () => {
   await act(async () => state.props!.pageControl!.onSearch("unfinished"));
-  state.search = "page=1&state=historical";
-  await act(async () => root.render(createElement(AssessmentPagedWorkbench, { ...props, data: { ...props.data, page: 1, state: "historical" } })));
+  state.search = "page=1&period=all";
+  await act(async () => root.render(createElement(AssessmentPagedWorkbench, { ...props, data: { ...props.data, page: 1 } })));
   await act(async () => vi.advanceTimersByTimeAsync(300));
   expect(state.replace).not.toHaveBeenCalled(); expect(state.props!.pageControl!.q).toBe("");
 });

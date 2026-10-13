@@ -4,8 +4,9 @@ import type { ReactNode } from 'react';
 import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-styles';
 import { workMessages, type PeriodField, type SourceLayout, type SourcePlacement } from './contract';
 import { sourceGroupLabels } from './grouping';
+import { MonthMultiSelect } from './MonthMultiSelect';
 
-export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled, compactPeriods = false, layout = 'rows', onChange, actions, section = 'all', groupMode }: {
+export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled, layout = 'rows', onChange, actions, section = 'all', groupMode }: {
   data: SourceLayout; kind: SourcePlacement['kind']; periodFields: PeriodField[]; locale: string; disabled?: boolean; compactPeriods?: boolean;
   layout?: 'rows' | 'toolbar';
   section?: 'all' | 'groups' | 'periods'; groupMode?: SourcePlacement['groupMode'];
@@ -22,14 +23,7 @@ export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled
         <select aria-label={m.periodBasis} value={data.periodField} disabled={disabled} onChange={event => onChange({ periodField: event.target.value as PeriodField, period: '', group: '' })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
           {periodFields.map(field => <option key={field} value={field}>{m.periods[field]}</option>)}
         </select>
-        {compactPeriods ? <select aria-label={m.periods[data.periodField]} value={data.period} disabled={disabled}
-          onChange={event => onChange({ period: event.target.value, group: '' })} className="h-8 min-w-0 max-w-full rounded-md border border-line bg-card px-2 text-xs">
-          {data.periods.map(period => <option key={period.key} value={period.key}>{period.key === 'unknown' ? m.unknownPeriod : period.key} · {period.count}</option>)}
-          <option value="all">{m.allPeriods}</option>
-        </select> : <nav aria-label={m.periods[data.periodField]} className={`${tabsListClassName} h-auto max-w-full justify-start overflow-x-auto gap-1`}>
-          {data.periods.map(period => choice(period.key, period.key === 'unknown' ? m.unknownPeriod : period.key, data.period, () => onChange({ period: period.key, group: '' }), period.count))}
-          {choice('all',m.allPeriods,data.period,() => onChange({ period: 'all', group: '' }))}
-        </nav>}
+        <MonthMultiSelect data={data} locale={locale} disabled={disabled} onChange={period => onChange({ period, group: '' })} />
       </> : <span className="text-xs text-muted">{labels.group}{labels.subgroup ? ` → ${labels.subgroup}` : ''}</span>}
       {actions}
     </div> : null}

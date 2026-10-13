@@ -8,8 +8,8 @@ import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/Fol
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import {sourceCompletionMessages} from './source-completion-contract';
 
-import { BusinessRecordStateFilter, useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { isCurrentBusinessRecord, type BusinessRecordStateFilter as StateFilter } from './business-record-state-contract';
+import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
+import { isCurrentBusinessRecord } from './business-record-state-contract';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -48,6 +48,7 @@ import {
 } from "./assessment-workbench-contract";
 import {
   DashboardCommandFilters,
+  DashboardCommandState,
   DashboardCommandActions,
   DashboardPage,
   DashboardTableColumnHeader,
@@ -70,6 +71,7 @@ import type { FollowupPageSize } from "./followup-table-page";
 import { SourceGroupedRows } from './source-worklist/SourceGroupedRows';
 import { SourceLayoutFilters } from './source-worklist/SourceLayoutFilters';
 import type { SourceLayout } from './source-worklist/contract';
+import { showsMultiplePeriods } from './source-worklist/period-selection';
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
@@ -107,7 +109,6 @@ export function AssessmentUnifiedWorkbench({
   canManageAvailability = canAssess || canManageAssessor,
   canQuickEntry = canAssess,
   initialQuery,
-  initialRecordState = 'current',
   timeZone = "Asia/Shanghai",
   now,
   pageControl,
@@ -121,11 +122,10 @@ export function AssessmentUnifiedWorkbench({
   canManageAvailability?: boolean;
   canQuickEntry?: boolean;
   initialQuery?: string;
-  initialRecordState?: StateFilter;
   timeZone?: string;
   now?: number;
-  pageControl?: { data: AssessmentWorkbenchPage; pending: boolean; q: string; state: StateFilter; fields: DashboardFieldQuery;
-    onSearch: (query: string) => void; onState: (state: StateFilter) => void; onFields: (query: DashboardFieldQuery) => void;
+  pageControl?: { data: AssessmentWorkbenchPage; pending: boolean; q: string; fields: DashboardFieldQuery;
+    onSearch: (query: string) => void; onFields: (query: DashboardFieldQuery) => void;
     onSourceLayout: (change: Partial<Pick<SourceLayout,'periodField' | 'period' | 'group'>>) => void;
     onPage: (page: number, pageSize: FollowupPageSize) => void };
 }) {
@@ -157,9 +157,7 @@ export function AssessmentUnifiedWorkbench({
   }, [currentRows, initialRows]);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
   const [localQuery, setLocalQuery] = useBusinessSearchQuery("assessments",initialQuery);
-  const [localRecordState, setLocalRecordState] = useState(initialRecordState);
   const query = pageControl?.q ?? localQuery, setQuery = pageControl?.onSearch ?? setLocalQuery;
-  const recordState = pageControl?.state ?? localRecordState, setRecordState = pageControl?.onState ?? setLocalRecordState;
   const [clockNow] = useState(() => now ?? Date.now());
   const dateContext = useMemo(() => ({ locale, timeZone, now: clockNow }), [locale, timeZone, clockNow]);
   const fieldM = useMemo(() => dashboardFieldMessages(locale), [locale]);
@@ -170,7 +168,7 @@ export function AssessmentUnifiedWorkbench({
   const [retainedView, setRetainedView] = useState<{ key: string; ids: string[] } | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
   const paged = Boolean(pageControl);
-  const scopedRows = useMemo(() => paged ? rows : assessmentSearchRows(rows, query, recordState, locale), [paged, locale, query, rows, recordState]);
+  const scopedRows = useMemo(() => paged ? rows : assessmentSearchRows(rows, query, 'all', locale), [paged, locale, query, rows]);
   const fields = useMemo(() => assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT,
     stageFor: row => queueFor(row, drafts[row.id]),
   }), [locale, timeZone, tableT, assessmentT, t, teacherT, quickT, drafts]);
@@ -178,7 +176,7 @@ export function AssessmentUnifiedWorkbench({
     context: dateContext, persistenceKey: "followup-assessments", migrate: migrateAssessmentFieldQuery,
     server: pageControl ? { ...pageControl.data.fieldView, query: pageControl.fields, onChange: pageControl.onFields } : undefined,
     sourceSort: ASSESSMENT_SOURCE_SORT });
-  const filterKey = JSON.stringify([query, recordState, assessmentTable.filters, assessmentTable.sort, pageControl?.data.page, pageControl?.data.pageSize,
+  const filterKey = JSON.stringify([query, assessmentTable.filters, assessmentTable.sort, pageControl?.data.page, pageControl?.data.pageSize,
     pageControl?.data.sourceLayout?.periodField, pageControl?.data.sourceLayout?.period, pageControl?.data.sourceLayout?.group]);
   if (retainedView && retainedView.key !== filterKey) setRetainedView(null);
   const rowById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
@@ -368,7 +366,7 @@ export function AssessmentUnifiedWorkbench({
           </TableCell>
         </TableRow>
 
-        <FollowupInlineDetails open={expanded} keepMounted={retained}
+        <FollowupInlineDetails open={expanded} keepMounted={retained} profileSubject={row}
           loadingLabel={locale.startsWith("en") ? "Loading…" : "正在读取…"}
           onOpenChange={(open) => changeDetails(row.id, open)} title={row.name} hideTitle
           active={active} onActivate={() => setActiveId(row.id)} colSpan={7} id={`assessment-details-${row.id}`}>
@@ -402,9 +400,11 @@ export function AssessmentUnifiedWorkbench({
         totalCount={pagination.count} pageSize={pagination.pageSize} onPageChange={(page, size) => { setRetainedView(null); pagination.onPageChange(page, size); }} />}
       commandPanel={(
         <FollowupCommandPanel>
-
+          {pageControl?.data.sourceLayout ? <DashboardCommandState>
+            <SourceLayoutFilters data={pageControl.data.sourceLayout} kind="assessment" groupMode="lead" section="groups" periodFields={[]}
+              locale={locale} disabled={pageControl.pending} layout="toolbar" onChange={pageControl.onSourceLayout} />
+          </DashboardCommandState> : null}
           <DashboardCommandFilters>
-            <BusinessRecordStateFilter value={recordState} onChange={setRecordState} locale={locale} />
             <FollowupPrimaryFilter label={filterT("workQueue")} value={assessmentTable.filters.status?.kind === "enum" ? assessmentTable.filters.status.values[0] : "all"}
               options={[...ASSESSMENT_WORKBENCH_QUEUES.map(value => ({ value, label: filterT(`assessments_${value}`) })),{value:'no_show',label:sourceM.noShow}]}
               onValueChange={value => {
@@ -416,6 +416,8 @@ export function AssessmentUnifiedWorkbench({
               placeholder={t("searchPlaceholder")}
               aria-label={t("searchPlaceholder")}
             />
+            {pageControl?.data.sourceLayout ? <SourceLayoutFilters data={pageControl.data.sourceLayout} kind="assessment" groupMode="lead" section="periods"
+              periodFields={['arrived','confirmed','enrolled']} locale={locale} disabled={pageControl.pending} layout="toolbar" onChange={pageControl.onSourceLayout} /> : null}
           </DashboardCommandFilters>
           {canManageAvailability ? <DashboardCommandActions>
             <Link href="/dashboard/assessments/availability" className={buttonVariants({ variant: "secondary", size: "sm" })}>
@@ -425,7 +427,6 @@ export function AssessmentUnifiedWorkbench({
         </FollowupCommandPanel>
       )}
     >
-      {pageControl?.data.sourceLayout ? <SourceLayoutFilters data={pageControl.data.sourceLayout} kind="assessment" periodFields={['arrived','confirmed','enrolled']} locale={locale} disabled={pageControl.pending} onChange={pageControl.onSourceLayout} /> : null}
       {
         <SchoolSupportTableEntry workspace="assessments" enabled={canSupport} columns={["name","blank","blank","blank","blank","blank","blank"]}><DashboardTableShell data-assessment-unified-workbench data-followup-workbench data-followup-scroll aria-busy={pageControl?.pending}>
           <Table mobileLayout="stacked" className="w-full min-w-[68rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
@@ -442,7 +443,7 @@ export function AssessmentUnifiedWorkbench({
             </TableHeader>
             <FollowupTableBody onNavigate={(id) => { setActiveId(id); return true; }}>
               <SchoolSupportInsertion after="start" /><SchoolSupportPendingRows workspace="assessments" colSpan={7} />
-              <SourceGroupedRows rows={visibleRows} placementFor={row => row.worklist} rowKey={row => row.id} allMonths={pageControl?.data.sourceLayout?.period === 'all'} locale={locale} colSpan={7}
+              <SourceGroupedRows rows={visibleRows} placementFor={row => row.worklist} rowKey={row => row.id} allMonths={showsMultiplePeriods(pageControl?.data.sourceLayout?.period ?? '')} locale={locale} colSpan={7}
                 renderRow={row => <FollowupTableRecord row={row} active={activeId === row.id} expanded={expandedId === row.id} retained={visitedDetails.has(row.id)} render={renderRow} />} />
               {visibleRows.length === 0 ? (
                 <TableRow><TableCell colSpan={7} className="h-32 px-4 text-center text-sm text-muted">{tableT("filteredEmpty")}</TableCell></TableRow>

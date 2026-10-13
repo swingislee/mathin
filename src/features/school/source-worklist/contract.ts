@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { StudentStageRow } from '../student-stage-contract';
 import type { FollowupServerFields } from '../followup-table-page';
+import { parsePeriodSelection } from './period-selection';
 
 export const COMMUNICATION_STAGES = ['awaiting_assessment','awaiting_enrollment','former_student'] as const;
 export type WorkTask = typeof COMMUNICATION_STAGES[number] | 'awaiting_first_contact';
@@ -42,7 +43,7 @@ export function parseWorkQuery(raw: Record<string, string | string[] | undefined
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return { stage, scope: scope === 'all' || scope === 'mine' || scope === 'group' || scope === 'unassigned' ? scope : 'default',
     q: pick('q').trim().slice(0,80), group: pick('group').replace(/^\d{1,2}月 \/ /, '').slice(0,320), marker: pick('marker').slice(0,80), periodField,
-    period: /^(all|unknown|([1-9]|1[0-2])月)$/.test(pick('period')) ? pick('period') : '',
+    period: parsePeriodSelection(pick('period')),
     page: Math.max(1,Math.min(1000000,Math.floor(Number(pick('page')) || 1))),
     pageSize: pick('pageSize') === '50' ? 50 : pick('pageSize') === '100' ? 100 : 20,
     lead: uuid.test(pick('lead')) ? pick('lead') : '', students: pick('students').split(',').filter(id => uuid.test(id)).slice(0,200).join(','),

@@ -3,6 +3,40 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ASSESSMENT-MONTHS-GROUPS-20261014",
+      "title": "测评小组与三页月份多选",
+      "agent": "codex",
+      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ASSESSMENT-MONTHS-GROUPS-20261014.md",
+      "writePaths": [
+        ".ai/tasks/ASSESSMENT-MONTHS-GROUPS-20261014.md",
+        "src/features/school/AssessmentPagedWorkbench.tsx",
+        "src/features/school/AssessmentUnifiedWorkbench.tsx",
+        "src/features/school/assessment-list-data.ts",
+        "src/features/school/assessment-workbench-page.ts",
+        "src/features/school/source-worklist/MonthMultiSelect.tsx",
+        "src/features/school/source-worklist/period-selection.ts",
+        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
+        "src/features/school/source-worklist/contract.ts",
+        "supabase/migrations/20261014001000_worklist_months_assessment_groups.sql",
+        "tests/assessment-followup-layout.test.ts",
+        "tests/assessment-page-navigation.test.ts",
+        "tests/assessment-workbench-page.test.ts",
+        "tests/followup-primary-filter-interaction.test.ts",
+        ".tmp/assessment-months-groups-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/source-worklist/Page.tsx",
+        "src/features/school/source-worklist/Workspace.tsx"
+      ],
+      "checkpoint": null,
+      "next": "开发端已可验收：测评只按小组，当前与历史合并；三页月份可多选并按账号记忆。定向静态、数据库与页面读取通过，待实际操作验收，生产未发布。"
+    },
+    {
       "id": "LEAD-COMMUNICATION-REFINE-20261013",
       "title": "线索与沟通业务结构深化",
       "agent": "codex",

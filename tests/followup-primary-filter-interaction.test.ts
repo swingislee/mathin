@@ -121,9 +121,9 @@ describe("title-bar primary filters", () => {
       const rows = [row(`page-${number}`)];
       const fields = { version: 2 as const, filters: {}, sort: null };
       await render(createElement(AssessmentUnifiedWorkbench, { initialRows: rows, assessors: [], locale: "zh", canAssess: false,
-        canSupport: true, canManageAssessor: false, pageControl: { q: "", state: "current", fields, pending: false,
-          onSearch: vi.fn(), onState: vi.fn(), onFields: vi.fn(), onSourceLayout: vi.fn(), onPage: vi.fn(),
-          data: { rows, count: 21, page: number, pageSize: 20, totalPages: 2, q: "", state: "current", fieldView: { query: fields, facets: {} } } } }));
+        canSupport: true, canManageAssessor: false, pageControl: { q: "", fields, pending: false,
+          onSearch: vi.fn(), onFields: vi.fn(), onSourceLayout: vi.fn(), onPage: vi.fn(),
+          data: { rows, count: 21, page: number, pageSize: 20, totalPages: 2, q: "", state: "all", fieldView: { query: fields, facets: {} } } } }));
     };
     await page(1);
     await click(container.querySelector<HTMLElement>('[data-followup-row-key="page-1"]')!);
