@@ -5,11 +5,12 @@ import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Activity, Booking, ParticipantCalendar, AssessmentOverview, AssessmentRequest } from "../contracts/participant-api/portal";
+import type { Activity, ActivityOffer, Booking, ParticipantCalendar, AssessmentOverview, AssessmentRequest } from "../contracts/participant-api/portal";
 import type { ActivityFilter } from "../apps/parent-wechat/miniprogram/lib/discovery";
 import type * as AssessmentCalendar from "../apps/parent-wechat/miniprogram/lib/assessment-calendar";
 import type * as AssessmentBooking from "../apps/parent-wechat/miniprogram/lib/assessment-booking";
 import type { AssessmentAvailability } from "../contracts/participant-api/portal";
+import { defaultMiniappSettings } from "../contracts/participant-api/miniapp-settings";
 type PendingRequest = { id: string; facilitatorId: string; participantTimeOptions: string[] };
 type AssessmentPending = {
   pendingAssessment: (account: string, participant: string) => PendingRequest | null;
@@ -29,17 +30,18 @@ type RuntimePage = {
   };
   setData: (value: Record<string, unknown>) => void;
   book: () => Promise<void>; review: () => Promise<void>; back: () => void; loadMonth: () => Promise<void>;
-  signIn: () => Promise<void>; load: () => Promise<void>; participant: (event: { detail: { value: string } }) => void;
+  load: () => Promise<void>; participant: (event: { detail: { value: string } }) => void;
+  onLoad: (query: Record<string, string>) => void; overviewSnapshot: AssessmentOverview | null; availabilitySnapshot: AssessmentAvailability | null;
   onShow: () => void; onHide: () => void; updateSelection: () => void;
   selectActivity: (activity: Activity) => void; startAgain: () => void; loadWeek: () => Promise<void>;
   location: (event: { currentTarget: { dataset: { value: string } } }) => void;
   chooseSlot: (event: { currentTarget: { dataset: { id: string } } }) => void;
   chooseParticipant: (event: { currentTarget: { dataset: { index: number } } }) => void;
   chooseActivity: (event: Touch) => void;
-  openActivity: (event: Touch) => void; chooseFacilitator: (event: Touch) => void; chooseTime: (event: Touch) => void;
+  openActivity: (event: { detail: { id: string } }) => void; chooseFacilitator: (event: Touch) => void; chooseTime: (event: { detail: { id: string } }) => void;
   submit: () => Promise<void>; retryPending: () => Promise<void>; loadParticipant: () => Promise<void>; startOver: () => void;
   renderRequests: () => void; selectConfirmation: (event: Touch) => void; confirm: (event: Touch) => Promise<void>;
-  chooseCampus: (event: Touch) => void; chooseStage: (event: Touch) => void; chooseMode: () => void;
+  chooseCampus: (event: Touch) => void; chooseStage: (event: Touch) => void; chooseMode: (event: Touch) => void;
   showSheet: (event: Touch) => void; toggleTopic: (event: Touch) => void; confirmTopics: () => void;
   loadAvailability: () => Promise<void>;
 };
@@ -61,14 +63,15 @@ function runtime(api: Record<string, unknown> = {}, language = "zh_CN") {
   const storage = new Map<string, unknown>();
   const wx = {
     getAppBaseInfo: () => ({ language }), setNavigationBarTitle: vi.fn(), setTabBarItem: vi.fn(),
-    switchTab: vi.fn(), navigateTo: vi.fn(), showToast: vi.fn(),
-    showModal: vi.fn((options: { success?: (value: { confirm: boolean }) => void }) => options.success?.({ confirm: true })),
+    switchTab: vi.fn(), navigateTo: vi.fn(), redirectTo: vi.fn(), showToast: vi.fn(),
+    showModal: vi.fn(async (options: { success?: (value: { confirm: boolean }) => void }) => { options.success?.({ confirm: true }); return { confirm: true }; }),
     getStorageSync: (key: string) => storage.get(key),
     setStorageSync: (key: string, value: unknown) => storage.set(key, value),
     removeStorageSync: (key: string) => storage.delete(key),
   };
   const cache = new Map<string, Record<string, unknown>>();
-  const apiModule = { ApiError: class extends Error { constructor(public code: string) { super(code); } }, session: () => ({}), ...api };
+  const apiModule = { ApiError: class extends Error { constructor(public code: string) { super(code); } }, session: () => ({}),
+    miniappContentImage: () => "", miniappSettings: async () => ({ revision: 0, config: defaultMiniappSettings() }), ...api };
   function load(relative: "lib/discovery.ts"): DiscoveryModule;
   function load(relative: "lib/navigation.ts"): NavigationModule;
   function load(relative: "lib/assessment-calendar.ts"): typeof AssessmentCalendar;
@@ -128,6 +131,7 @@ const assessmentRequest = (patch: Partial<AssessmentRequest> = {}): AssessmentRe
 });
 const assessmentOverview = (participantId = "member-a", requests: AssessmentRequest[] = []): AssessmentOverview => ({
   participantId, timeZone: "Asia/Shanghai", eligibility: { canRequest: true, reason: null },
+  topics: [{ id: "math", label: { zh: "数学", en: "Math" }, available: true }, { id: "english", label: { zh: "英语", en: "English" }, available: true }],
   facilitators: [{ id: assessorId, displayName: "Assessor" }], requests,
 });
 const bookedAssessment = () => assessmentRequest({ state: "confirmed", participantTimeOptions: [], confirmedStartsAt: "2026-10-03T06:00:00Z",
@@ -142,14 +146,14 @@ async function assessmentPage(postAssessment: ReturnType<typeof vi.fn>, overview
   page.showSheet({ currentTarget: { dataset: { sheet: "topic" } } });
   page.toggleTopic({ currentTarget: { dataset: { id: "math" } } });
   page.toggleTopic({ currentTarget: { dataset: { id: "english" } } }); page.confirmTopics();
-  page.chooseStage({ currentTarget: { dataset: { stageNumber: 3 } } }); page.chooseMode();
+  page.chooseStage({ currentTarget: { dataset: { stageNumber: 3 } } }); page.chooseMode({ currentTarget: { dataset: { id: "campus" } } });
   return { run, page, getAssessments, getAssessmentSlots };
 }
 async function selectAssessment(page: RuntimePage) {
   await page.review();
   page.chooseCampus({ currentTarget: { dataset: { id: campusId } } });
   page.chooseFacilitator({ currentTarget: { dataset: { id: assessorId } } });
-  page.chooseTime({ currentTarget: { dataset: { id: slotId } } });
+  page.chooseTime({ detail: { id: slotId } });
 }
 
 describe("小程序发现与参与合同", () => {
@@ -180,7 +184,7 @@ describe("小程序发现与参与合同", () => {
     const old = page.loadAvailability();
     page.back(); page.chooseStage({ currentTarget: { dataset: { stageNumber: 4 } } });
     slow.resolve(availability()); await old;
-    expect(page.data.availability).toBeNull();
+    expect(page.availabilitySnapshot).toBeNull();
     expect(page.data.campusId).toBe(""); expect(page.data.facilitatorId).toBe(""); expect(page.data.selectedSlotId).toBe("");
   });
 
@@ -274,10 +278,10 @@ describe("小程序发现与参与合同", () => {
     expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/reservations/index?filter=cancelled" }], [{ url: "/pages/agenda/index" }]]);
   });
 
-  it("发现页的课程进入课程详情，测评继续使用独立入口", () => {
+  it("发现页的活动卡片进入详情，测评继续使用独立入口", () => {
     const run = runtime(); run.load("pages/discover/index.ts"); const page = run.page();
-    void page.book(); page.openActivity({ currentTarget: { dataset: { id: "course-offer" } } });
-    expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/assessment/index" }], [{ url: "/pages/course-detail/index?id=course-offer" }]]);
+    void page.book(); page.openActivity({ detail: { id: "activity-offer" } });
+    expect(run.wx.navigateTo.mock.calls).toEqual([[{ url: "/pages/assessment/index" }], [{ url: "/pages/activity-detail/index?id=activity-offer" }]]);
     const navigation = run.load("lib/navigation.ts");
     navigation.rememberReturn("/pages/assessment/index?view=history"); navigation.resumeAfterLogin();
     expect(run.wx.navigateTo).toHaveBeenLastCalledWith({ url: "/pages/assessment/index?view=history" });
@@ -375,91 +379,70 @@ describe("小程序发现与参与合同", () => {
     page.setData({ accountId: "account", participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] });
     const old = page.loadParticipant(); page.setData({ selected: 1 }); await page.loadParticipant();
     slow.resolve(assessmentOverview("member-a", [assessmentRequest()])); await old;
-    expect(page.data.overview?.participantId).toBe("member-b");
+    expect(page.overviewSnapshot?.participantId).toBe("member-b");
     expect(page.data.requests.every(row => row.participantId === "member-b")).toBe(true);
   });
 
-  it("预约需显式选择真实时段并确认，重复点击只提交一次", async () => {
-    const pending = deferred<{ id: string }>();
-    const post = vi.fn(() => pending.promise);
-    const run = runtime({ post }); run.load("pages/activity/index.ts");
-    const page = run.page();
-    page.setData({ loaded: true, source: [activity("event")], participants: [{ id: "member-a", name: "A" }] });
-    page.selectActivity(activity("event"));
-    await page.book(); expect(post).not.toHaveBeenCalled();
-    page.review(); expect(page.data.step).toBe(2);
-    await page.book(); expect(post).not.toHaveBeenCalled();
-    page.chooseSlot({ currentTarget: { dataset: { id: "event" } } });
-    const first = page.book(); await page.book(); expect(post).toHaveBeenCalledTimes(1);
-    expect(post).toHaveBeenCalledWith({ action: "book", activityId: "event", participantId: "member-a" });
-    page.onHide(); page.onShow();
-    expect(page.data.participants[0].id).toBe("member-a");
-    expect(page.data.loaded).toBe(true);
-    pending.resolve({ id: "booking" }); await first;
-    expect(page.data.booked).toBe(true);
-    expect(page.data.reservationConfirmed).toBe(true);
-    page.startAgain(); expect(page.data.booked).toBe(true);
-    expect(page.data.reservationConfirmed).toBe(false);
-    expect(page.data.step).toBe(1);
-    page.setData({ booked: false, source: [activity("event", { remaining: 0 })], activity: activity("event", { remaining: 0 }) });
-    page.review(); expect(page.data.step).toBe(1);
+  it.each([
+    [{ id: "event/one" }, "/pages/activity-detail/index?id=event%2Fone"],
+    [{}, "/pages/activity-catalog/index"],
+  ])("旧活动链接保留标识并跳转到当前页面 %j", (query, url) => {
+    const run = runtime(); run.load("pages/activity/index.ts"); run.page().onLoad(query);
+    expect(run.wx.redirectTo).toHaveBeenCalledExactlyOnceWith({ url });
   });
 
-  it("同名活动保持独立，满额活动不能暗中换成另一个年级或地点的名额", async () => {
-    const post = vi.fn().mockResolvedValue({ id: "booking" });
-    const run = runtime({ post }); run.load("pages/activity/index.ts"); const page = run.page();
-    const full = activity("full", { remaining: 0, targetStages: [3] });
-    const available = activity("south", { location: "South", targetStages: [6], durationMinutes: 90 });
-    page.setData({ loaded: true, source: [full, available], participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] });
-    page.selectActivity(full); page.review(); expect(page.data.step).toBe(1);
-    expect(page.data.locations).toEqual(["North"]);
-    page.chooseSlot({ currentTarget: { dataset: { id: "full" } } });
-    expect(page.data.selectedSlot).toBe("");
-    page.location({ currentTarget: { dataset: { value: "South" } } });
-    page.chooseSlot({ currentTarget: { dataset: { id: "south" } } });
-    await page.book();
-    expect(post).not.toHaveBeenCalled();
-    expect(page.data.id).toBe("full");
-    page.chooseActivity({ currentTarget: { dataset: { id: "south" } } }); page.review();
-    page.chooseSlot({ currentTarget: { dataset: { id: "south" } } });
-    await page.book();
-    expect(post).toHaveBeenCalledExactlyOnceWith({ action: "book", activityId: "south", participantId: "member-a" });
-    page.startAgain(); page.review(); expect(page.data.step).toBe(1);
-    page.chooseParticipant({ currentTarget: { dataset: { index: 1 } } }); page.review();
-    expect(page.data.step).toBe(2);
-    expect(page.data.booked).toBe(false);
-    page.chooseSlot({ currentTarget: { dataset: { id: "south" } } });
-    await page.book();
-    expect(post).toHaveBeenLastCalledWith({ action: "book", activityId: "south", participantId: "member-b" });
+  const offer = (canApply = true): ActivityOffer => ({ id: "event", kind: "activity", revision: 3,
+    title: "观察活动", description: "", priceCents: null, bookingClosesAt: timestamp(2), topic: null,
+    registration: { fee: "free", confirmation: "staff", reservesPlace: false, canApply },
+    activity: { id: "event-source", targetStages: [3], location: "North", startsAt: timestamp(3), durationMinutes: 60, remaining: 0 } });
+  async function signup(command: ReturnType<typeof vi.fn>, canApply = true) {
+    const detail = { offer: offer(canApply), page: null, pageRevision: 4 };
+    const run = runtime({ activityCommand: command, requestId: () => assessmentId,
+      activityRequests: vi.fn().mockResolvedValue([]), activityDetail: vi.fn().mockResolvedValue(detail),
+      get: vi.fn().mockResolvedValue({ id: "account", participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }] }) });
+    run.load("pages/activity-signup/index.ts"); const page = run.page(); page.onLoad({ id: "event" });
+    page.setData({ authenticated: true }); await page.load(); return { run, page };
+  }
+
+  it("预登记需要明确确认，取消不提交，重复点击只提交一次且不把申请显示为占位", async () => {
+    const pending = deferred<{ id: string }>(), command = vi.fn(() => pending.promise);
+    const { run, page } = await signup(command);
+    run.wx.showModal.mockResolvedValueOnce({ confirm: false });
+    await page.submit(); expect(command).not.toHaveBeenCalled();
+    const first = page.submit(); await page.submit();
+    expect(command).toHaveBeenCalledExactlyOnceWith({ action: "apply", kind: "activity", id: assessmentId,
+      publicationId: "event", revision: 3, participantId: "member-a", pageRevision: 4, answers: {} });
+    pending.resolve({ id: assessmentId }); await first;
+    expect(page.data.sent).toBe(true); expect(page.data.pending).toBeNull();
+    expect(page.data.reservationConfirmed).not.toBe(true);
   });
 
-  it("预约结果不明时引导查记录，页面不会直接再次提交", async () => {
-    const post = vi.fn().mockRejectedValue(new Error("connection lost"));
-    const run = runtime({ post }); run.load("pages/activity/index.ts"); const page = run.page();
-    page.setData({ loaded: true, id: "event", selectedSlot: "event", step: 2, activity: activity("event"), participants: [{ id: "member-a", name: "A" }] });
-    await page.book(); await page.book();
-    expect(page.data.uncertain).toBe(true); expect(post).toHaveBeenCalledTimes(1);
-    const error = page.data.error;
-    page.back(); page.review();
-    expect(page.data.error).toBe(error);
-    expect(page.data.uncertain).toBe(true);
+  it("已关闭的活动不会提交或切换到同名活动", async () => {
+    const command = vi.fn(); const { run, page } = await signup(command, false);
+    await page.submit(); expect(command).not.toHaveBeenCalled();
+    expect(run.wx.showModal).not.toHaveBeenCalled(); expect(page.data.id).toBe("event");
+    expect(page.data.error).toBeTruthy();
   });
 
-  it("同一活动按参与人判断已有预约，切换成员可继续预约", () => {
-    const run = runtime(); run.load("pages/activity/index.ts"); const page = run.page();
-    page.setData({ id: "event", participants: [{ id: "member-a", name: "Same" }, { id: "member-b", name: "Same" }],
-      bookings: [booking("a")], selected: 0 });
-    page.updateSelection(); expect(page.data.booked).toBe(true);
-    page.setData({ selected: 1 }); page.updateSelection(); expect(page.data.booked).toBe(false);
+  it("预登记结果不明时保留原参与人和版本，重开后显式重试沿用同一请求", async () => {
+    const command = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue({ id: assessmentId });
+    const { page } = await signup(command);
+    page.participant({ detail: { value: "1" } }); await page.submit();
+    expect(page.data.pending).toBeTruthy();
+    page.participant({ detail: { value: "0" } }); expect(page.data.selected).toBe(1);
+    await page.load(); expect(command).toHaveBeenCalledTimes(1);
+    expect(page.data.selected).toBe(1); await page.submit();
+    expect(command.mock.calls[1]).toEqual(command.mock.calls[0]);
+    expect(command.mock.calls[0][0].participantId).toBe("member-b");
+    expect(page.data.sent).toBe(true); expect(page.data.pending).toBeNull();
   });
 
   it("账号读取首次失败，重试成功后仍返回原活动", async () => {
     const get = vi.fn().mockRejectedValueOnce(new Error("connection lost")).mockResolvedValue({ id: "account", displayName: "Member", participants: [] });
-    const run = runtime({ login: vi.fn().mockResolvedValue(undefined), get });
+    const run = runtime({ get });
     run.load("lib/navigation.ts").rememberReturn("/pages/activity/index?id=event");
     run.load("pages/account/index.ts"); const page = run.page();
-    page.setData({ identifier: "test", password: "test" });
-    await page.signIn(); expect(run.wx.navigateTo).not.toHaveBeenCalled();
+    await page.load(); expect(run.wx.navigateTo).not.toHaveBeenCalled();
     await page.load(); expect(run.wx.navigateTo).toHaveBeenCalledExactlyOnceWith({ url: "/pages/activity/index?id=event" });
   });
 

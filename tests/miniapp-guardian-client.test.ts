@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
+import { defaultMiniappSettings } from "../contracts/participant-api/miniapp-settings";
 import { describe, expect, it, vi } from "vitest";
 import type { Session } from "../contracts/participant-api/portal";
 
@@ -27,6 +28,7 @@ function runtime() {
   const wx = { getAppBaseInfo: () => ({ language: "zh_CN" }), setNavigationBarTitle: vi.fn(), switchTab: vi.fn(),
     setStorageSync: vi.fn(), getStorageSync: vi.fn(), login: vi.fn(), request: vi.fn(), showModal: vi.fn() };
   const api = { ApiError: ClientError, cancelPendingAuthentication: vi.fn(),
+    miniappContentImage: () => "", miniappSettings: async () => ({ revision: 0, config: defaultMiniappSettings() }),
     guardianBindingPreview: vi.fn(async () => ({ maskedName: "测＊", expiresAt: "2026-10-18T00:00:00Z" })),
     beginGuardianBinding: vi.fn(async () => ({ state: "phone_required", ticket } as object)),
     guardianBindingPhone: vi.fn(async () => confirmationStep),

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
+import { defaultMiniappSettings } from "../contracts/participant-api/miniapp-settings";
 import { describe, expect, it, vi } from "vitest";
 import type { Account, WechatAuthResult, WechatAuthStatus, Session } from "../contracts/participant-api/portal";
 
@@ -67,6 +68,8 @@ function pageRuntime(overrides: Record<string, unknown> = {}, language = "zh_CN"
   };
   const api = {
     ApiError: ClientError, session: () => null, cancelPendingAuthentication: vi.fn(),
+    miniappContentImage: () => "", miniappSettings: async () => ({ revision: 0, config: defaultMiniappSettings() }),
+    loginWithWechat: vi.fn(async (): Promise<WechatAuthResult> => ({ state: "binding_required" })),
     wechatAuthStatus: vi.fn(async () => ({ available: true, linked: null, canBind: false })),
     get: vi.fn(async () => ({ id: "account", displayName: "Demo account", participants: [] })),
     ...overrides,
