@@ -1,1094 +1,1112 @@
 [
-  {
-    "id": "B1-T1",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "cad3d6642fc6c6765d53fc71bc95c472effdbe9d4fa2ee7798b6f6e4ce95e3bf"
-  },
-  {
-    "id": "B1-T2",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "838ab4806222c25cc6b306ac33d67c75bbacdb8fae044a35f6abe560a3dfb30d"
-  },
-  {
-    "id": "B1-T3",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "2038776bf84823da1e8d0c70e69a4c6263b0292e5312100077e8d2edb5e13190"
-  },
-  {
-    "id": "B1-T4",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "f84d7eb15bbfd9897b48c4c9bae19378bec426218b3a95bf37f1512544a6cfa4"
-  },
-  {
-    "id": "B1-T5",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "d3116d2bcb2915c71521dbf949e469d027cf14ca3c0a9589bd979477673b86d9"
-  },
-  {
-    "id": "B1-T6",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "451e04dfaf2d624a2d678e73eb939048e46cfa92614b497c3a05e610a8549baa"
-  },
-  {
-    "id": "B1-T7",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "81e55620c275c42861b4f4b1432b755ad502c0054c2e628bfc14a79aef1c7e39"
-  },
-  {
-    "id": "B1-T8",
-    "variantId": "classic-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "73d0e066a061c62ffbc60425e27c0e0042fe21922be20d5dba2532f3fbf9d153"
-  },
-  {
-    "id": "B1-C1",
-    "variantId": "classic-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "cda444ba1b69e8f8440e67a93cf2787856386263e4d0814b39ffbef9144952a4"
-  },
-  {
-    "id": "B1-C2",
-    "variantId": "classic-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "0b1f0886defb729d91a71b43ad808556d59bcde7630cbe5e3fb8a90566089e92"
-  },
-  {
-    "id": "B1-C3",
-    "variantId": "classic-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "782e63ce8452ce00853cffec283e31ab524fbc4e23ec6e953d2555573919b2d9"
-  },
-  {
-    "id": "B1-H1",
-    "variantId": "classic-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "59ba5775873ae7ab718f3ca12d195d18262964f915d630533cfa9b618eae1983"
-  },
-  {
-    "id": "B1-H2",
-    "variantId": "classic-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "e4f5c3015921780a477bc6edf924bfa1613914a4499f91cdba1ba61f1f9547de"
-  },
-  {
-    "id": "B1-H3",
-    "variantId": "classic-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "30d6271add21c915026a4821686a283e2ea938c808376f73a33a94857e83c40e"
-  },
-  {
-    "id": "B1-H4",
-    "variantId": "classic-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "b8f88126cedb3373bc5942ef58d9f61fcddd397d8618b57d9ee50acdaec91021"
-  },
-  {
-    "id": "B2-T1",
-    "variantId": "diagonal-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "62770874495586da4479a0746a856f5df5be5107ce77e918758ad545cd25d836"
-  },
-  {
-    "id": "B2-T2",
-    "variantId": "diagonal-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "260e191787009118561188516ec0c47725da8bad546115adf6c028ad88e6a6f7"
-  },
-  {
-    "id": "B2-T3",
-    "variantId": "diagonal-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "3d16b1f39c8edd84b9443e6999010b0ce5b411f3b58ae79c5a87ac9e01e4f2aa"
-  },
-  {
-    "id": "B2-T4",
-    "variantId": "diagonal-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "48e5c997eec91dd0a811687ac70d1e850cdd0cb060ccd00c31ce83078180f2a3"
-  },
-  {
-    "id": "B2-T5",
-    "variantId": "irregular-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "3b4216395a91d3962b67ea5f8c13707ba77a11029456adbccc25409ca430116d"
-  },
-  {
-    "id": "B2-T6",
-    "variantId": "irregular-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "6574ad8b2f9572b545da22504a74ee0bbf35955089834b1054d95cb498dbbac3"
-  },
-  {
-    "id": "B2-T7",
-    "variantId": "irregular-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "b584b50559e9d0abb9f53ed73438596dff0ee3585d83376e4e9e23152ffeafa3"
-  },
-  {
-    "id": "B2-T8",
-    "variantId": "irregular-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "4e0cacfbd078023b965b8b1fa2bf33c2f8759881c9197b73c257313831a4fbd2"
-  },
-  {
-    "id": "B2-C1",
-    "variantId": "diagonal-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "d151b1ad2061d0ba8f7c421eddf69438dfa27008246ed5823f240f9702cd4ebd"
-  },
-  {
-    "id": "B2-C2",
-    "variantId": "irregular-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "9df00797225e97405ccc7323d05f748eabd6633f039523ff3c5e6464aaa2084b"
-  },
-  {
-    "id": "B2-C3",
-    "variantId": "diagonal-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "539cfb72b27cd9ff7ab760b12abbdfc3a8af43b066971ea6adb6d9ae6a119ab9"
-  },
-  {
-    "id": "B2-H1",
-    "variantId": "irregular-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "6547ad795c297820c4dc14940cad1e8c58162e6bffd2df87f5ab89d168e4f2db"
-  },
-  {
-    "id": "B2-H2",
-    "variantId": "diagonal-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "2ee5015124301f56d93486d8aa089ca0c2b63a65db83e1dc6082f6d21ae22007"
-  },
-  {
-    "id": "B2-H3",
-    "variantId": "irregular-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "64792be692d49a8925631c0b11aa908b4e1524ccd9e6230917796aa29794172c"
-  },
-  {
-    "id": "B2-H4",
-    "variantId": "diagonal-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "30a5c737814acb0d1299d685b2bd3f6be50140fc7b7fc8b6d22fb402732e5706"
-  },
-  {
-    "id": "B3-T1",
-    "variantId": "inequality-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "232bbf39eca138a38c1305813531d43b8a5d8f59c841f32fee1a8cb394e773ba"
-  },
-  {
-    "id": "B3-T2",
-    "variantId": "inequality-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "7f67fc1985d91f2c2ba2d90456d35306292be353bbda60bc7849a708f68a2eef"
-  },
-  {
-    "id": "B3-T3",
-    "variantId": "inequality-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "462fbee46eb790b04eb000f462d608a407286c2c0d0b36767053f90be5bdf8a1"
-  },
-  {
-    "id": "B3-T4",
-    "variantId": "inequality-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "d41cbbd348ec8fe461f6f4c81156c6db99fc9b8fdbb2fa17d35a6394138c53f4"
-  },
-  {
-    "id": "B3-T5",
-    "variantId": "parity-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "f3714b81cc3dae9652102268a5540b3503ad4b091eddd9b5dc5ace23d9880ef5"
-  },
-  {
-    "id": "B3-T6",
-    "variantId": "parity-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "12f4a73a04a8d249fec4d6ea756a97a2b89e708871f12d2a5f501e925ac2c6e6"
-  },
-  {
-    "id": "B3-T7",
-    "variantId": "parity-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "ca497e4a353de32aacaf927f8ef823593daed2fd65566ad88c0d4ea57800572c"
-  },
-  {
-    "id": "B3-T8",
-    "variantId": "parity-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "938256e46c7777c01f40fa85da0890699f6bb3e440fbabd0662c9a3552503998"
-  },
-  {
-    "id": "B3-C1",
-    "variantId": "inequality-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "a5a5df95c0c6d2471fbe911ac2c062cc304eab0687e1f50b20d17e1e9fe7e381"
-  },
-  {
-    "id": "B3-C2",
-    "variantId": "parity-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "2f59a8c64ff80e86fd494113828657aca6f66311b7d7281855807992b723f7e5"
-  },
-  {
-    "id": "B3-C3",
-    "variantId": "inequality-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "75df0501e6bb357978711f3ab0f82a45f6975d522e1c6199688ccb87b43354fd"
-  },
-  {
-    "id": "B3-H1",
-    "variantId": "parity-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "34fe7cc371c6545d38f5aa557f5135a60836b2e79a8af9f626632997947b9ca1"
-  },
-  {
-    "id": "B3-H2",
-    "variantId": "inequality-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "ad84f7dede25bb9a0555061a11adf27c3d0117746239bbf692921e8d184b411b"
-  },
-  {
-    "id": "B3-H3",
-    "variantId": "parity-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "30544e6270e59a3dd4beaa22da37559e45531784f9ef15bb4b98e141c97bea9c"
-  },
-  {
-    "id": "B3-H4",
-    "variantId": "inequality-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "02b1a73da3c98cda5d0bd0b7fd6072a2b4412177aacc25f4a3d3caed90e59b79"
-  },
-  {
-    "id": "B4-T1",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "43ffbe36b1fc52b32b0fa4e6233e603282fa3f2789d0ffdd4a78ea8210191302"
-  },
-  {
-    "id": "B4-T2",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "fac69220e86aa1567bf8701638008892d24b1d72b1213dd908ef6557a1b4f89a"
-  },
-  {
-    "id": "B4-T3",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "2c722d33041d992c9a59a213e714987d6c09e9535f68801a204c9e13431f1c54"
-  },
-  {
-    "id": "B4-T4",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "506f28077739028db401cdffb438c6bc0a1bf1dd41dddc24959970443f4f5748"
-  },
-  {
-    "id": "B4-T5",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "5a782f85aecf0c0c61be17825432c3569de7039333ceb0b8f70ccbbe1ac3e159"
-  },
-  {
-    "id": "B4-T6",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "59f2ef1d3f8ffd7fc6b0f53e03dc310487bf143b0f56ed21fd6cecd581e23717"
-  },
-  {
-    "id": "B4-T7",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "1a59661ea6e5fe6b0d3f418a5687e9896a29d6d9ccc4a3763114f17cd18771e7"
-  },
-  {
-    "id": "B4-T8",
-    "variantId": "skyscraper-4x4",
-    "code": "teaching-target-ready",
-    "payloadHash": "5b4df1fc7fa99a7300c9c83f9f0d2cdc81037728bb63327dd8d63e8bf34737b8"
-  },
-  {
-    "id": "B4-C1",
-    "variantId": "skyscraper-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "7731683d7b07c56f02519a23f776dd3ae3b072295a545e1622fc9ed037d42ca8"
-  },
-  {
-    "id": "B4-C2",
-    "variantId": "skyscraper-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "c25609b5a25c17f2e07d0ce8abf3abe91793f960809e5d8207ea09eb34d1e847"
-  },
-  {
-    "id": "B4-C3",
-    "variantId": "skyscraper-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "00d9d7ef633e5ddce63bfefd61b85ca57b258edb47ad99a5a64a49821f5b7649"
-  },
-  {
-    "id": "B4-H1",
-    "variantId": "skyscraper-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "f153a56b60cb0a5beaa1c94aade78ca27087538460d287d5953917743c2ad871"
-  },
-  {
-    "id": "B4-H2",
-    "variantId": "skyscraper-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "8e6272132d94cfed5f5a1a9ef6a384b6d28c29f39be2e91d439006c38f0efb97"
-  },
-  {
-    "id": "B4-H3",
-    "variantId": "skyscraper-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "115cd8437d1c7a2f24f5f9279aec3110bb848e2369fb8f622fce3f358ae7caa7"
-  },
-  {
-    "id": "B4-H4",
-    "variantId": "skyscraper-4x4",
-    "code": "full-solution-ready",
-    "payloadHash": "6a81a458b5d0a0bdaa78e01d688079dcd3eed9fd8d64cf854c48790ca56c21e7"
-  },
-  {
-    "id": "M1-T1",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "19585bfb3639b2dbd9de58ed25b6ad83a2b3ea8d689cb1d0aa960eec06eac97b"
-  },
-  {
-    "id": "M1-T2",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "636807f6eeead122496d169bf88bee514eaccf4796b73bf92d373988b70933a3"
-  },
-  {
-    "id": "M1-T3",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "d61d2c37e10970caccdebb1ee0d6be2e524582dcde5fc8f8eed07c8a19e306f0"
-  },
-  {
-    "id": "M1-T4",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "815989e8320b69ff78d76bf24d5e99cc01ac7db98458eaabeefa9924eadc630f"
-  },
-  {
-    "id": "M1-T5",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "1ecddf4e164fe3b25d6a59d8a2388f46cd11c566fb23381b6bd20842cad0bbcb"
-  },
-  {
-    "id": "M1-T6",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "846fab4624180ab602573b88fcc2e47bf9f67d06d0a2a992b7f6d1e98fd3e0b1"
-  },
-  {
-    "id": "M1-T7",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "57a041c64f1af8681b04a22beab7fd7420bd24db467d767ce9aa86bdfbaa2bed"
-  },
-  {
-    "id": "M1-T8",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "9f8c939e4c5da891daeb0f63420a133cf282e4fd7c8a29e54e2d513b4d5e3a1a"
-  },
-  {
-    "id": "M1-C1",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "6510143226275975479e4c50bc6a63ec519e9f911bcf558250a9a4234277955c"
-  },
-  {
-    "id": "M1-C2",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "c47f97bbe5cbc8f116d23a9a588442fa2c048f2c919069e5387a04eededb0d4f"
-  },
-  {
-    "id": "M1-C3",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "5367e652316760598dc53f070cf1b1074cb2b98a6b5e2c8f30207b4a90ad6962"
-  },
-  {
-    "id": "M1-H1",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "5a4abf250f6984ab5bf5e251e4145bf34723fa875c3e42345eeb6145f9788228"
-  },
-  {
-    "id": "M1-H2",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "598d9673f74564ec33b03731b8f4d8cb0bc43d1a5d6bc1938608abcb2423d8cd"
-  },
-  {
-    "id": "M1-H3",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "da09efde94c7f707b665c28002309d4fb8ae0338ac1ce0df85f3cbfb5053bc15"
-  },
-  {
-    "id": "M1-H4",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "9f4a0318c22e10f2cc2963914e1ae5fc0a2475435307b0fced28652b462f511e"
-  },
-  {
-    "id": "M2-T1",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "c87606b9d5b4bb2d4cba9738da7e6fed563c0c4d5b965e27f3b796ed27137214"
-  },
-  {
-    "id": "M2-T2",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "e57204ac5e8b6c4f9d2ca134ee8f5b096a055c182f5e27b19600ce2a60f9a02c"
-  },
-  {
-    "id": "M2-T3",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "262b673abed8da6a6980d936ebfbd10dc70fb28a9dbefea04ecc35e02d23ded0"
-  },
-  {
-    "id": "M2-T4",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "1e100917a5abffb2c735e3c65ea5598c44f511ed4c18e6972fe605c4fe438761"
-  },
-  {
-    "id": "M2-T5",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "4d5200ca740c8d1412821b6f01de451effb195a32f856eb8e658906009219468"
-  },
-  {
-    "id": "M2-T6",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "6426014f3ddcc9b2d2b7291ab03a60f92ebcf977be85ef5321b35ea81f2e6e95"
-  },
-  {
-    "id": "M2-T7",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "6dac6c4c5ab47052fd5305b27dc9fce6b99ca81f20605f34e3299c5aacbd8f38"
-  },
-  {
-    "id": "M2-T8",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "db422249bbf47ab15160ec790ea00fe709591ad5aa537c85ac1c5acb981f5b1e"
-  },
-  {
-    "id": "M2-C1",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "9bbed5d83fd41add28b31151e250fc464a3c9d01d86c83245ca99c67636ff03f"
-  },
-  {
-    "id": "M2-C2",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "adf69cc355859d1a7300fa8aa7105beecbab19553f6a1fe74cdd910716b86678"
-  },
-  {
-    "id": "M2-C3",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "97b86f5e25b940982a29fb252a1d85785f92ddeb8c5e2efcc455bbfde725dd9e"
-  },
-  {
-    "id": "M2-H1",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "af047b3f52a1664c5af6d9a03162206f8a246c85cc5ad578a8d9eed7ec78df27"
-  },
-  {
-    "id": "M2-H2",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "e00f1621aa0e13fd6df4e322b785479f3cdaccfa0fa3b9859f012e35b9a42b8d"
-  },
-  {
-    "id": "M2-H3",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "3035498a039a2dd96226f7a41a17a088bd8940390a13de4520c422c9e4387ad3"
-  },
-  {
-    "id": "M2-H4",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "6dafeb7ca11d41f92e4eacf8656dc27f1db2e5c188171576176c5d14c5a0d70a"
-  },
-  {
-    "id": "M3-T1",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "45b5cd58c9e5be353cca5f5c9dd870b64b74972129fe9e4c80d0f18e2c0a88f7"
-  },
-  {
-    "id": "M3-T2",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "50da77a22f069f9a5da4472c4a72e265a4d06cbc67211dbd9247fe4eb6de970b"
-  },
-  {
-    "id": "M3-T3",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "bdb1456a5d95b950ea011fc6230e835e933f456cd15ce3238d5eaa1bff0f1f58"
-  },
-  {
-    "id": "M3-T4",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "375f47198020335aeb050b9667630a5584a8a1f497932e7b0c8ec550edd33fd2"
-  },
-  {
-    "id": "M3-T5",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "0dfcc3bef6708066d81c587028b831ff279dd36d64fb34f60abc96728c784826"
-  },
-  {
-    "id": "M3-T6",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "8bf0a985b628bf208c5a6f8fd973c624f68778637139982ab48ef803bb11ac8a"
-  },
-  {
-    "id": "M3-T7",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "91ec3eb806ff5c9497db433c6a6e83d335a3950380921bb369166d5118e4b3c3"
-  },
-  {
-    "id": "M3-T8",
-    "variantId": "classic-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "202c3dc4c73738a49ad7dc4fde201ecc04347747dfdadc8d1b7047c5698ca151"
-  },
-  {
-    "id": "M3-C1",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "1918d36715710468813c49dec58be95f5bbb2f248c674c0036bf8ea7eb8e791e"
-  },
-  {
-    "id": "M3-C2",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "bcf48b11c034d6285e991b27636e88052099a1c2b69d5c38a38fb7b934bf6733"
-  },
-  {
-    "id": "M3-C3",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "ec7a59cd978639dc78befeeed596bb7d3f8b47a2059adc438c35cc7ddb385b0e"
-  },
-  {
-    "id": "M3-H1",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "9114c09470a6f7735fd804a30faa5d3e7de0e8d1376148904f3837ea4dca5304"
-  },
-  {
-    "id": "M3-H2",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "a3e72c9f60ca81fba32de1805363e166a068ee376adad8fedbe17793e22cc094"
-  },
-  {
-    "id": "M3-H3",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "ecd9886cc21138459508896ca91cedb7d55584749d5cb2e1b4467d11208da34e"
-  },
-  {
-    "id": "M3-H4",
-    "variantId": "classic-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "c8832ff6ed691fe3333bdfb7b0b18468529b8157dfc935b52dc68242d4097567"
-  },
-  {
-    "id": "M4-T1",
-    "variantId": "diagonal-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "59baa3905b05af39c3b210a58f711eaabe52b318ea2fed711a483b47062e73be"
-  },
-  {
-    "id": "M4-T2",
-    "variantId": "diagonal-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "9b7ddc6c962b5da30617e7431d90299d05359739d3f05047ec16b25cc77fbba9"
-  },
-  {
-    "id": "M4-T3",
-    "variantId": "diagonal-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "9b313b25c829382c0ecfe4d8298e52e4f270ec5f86185c98766433a5ae05677e"
-  },
-  {
-    "id": "M4-T4",
-    "variantId": "irregular-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "38f93ec0c946f356a98161873a3f095265e232133a941969c112f3a308a062c0"
-  },
-  {
-    "id": "M4-T5",
-    "variantId": "irregular-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "59c9b86adf3c56d9d5af0c99a02b1d863b62f9baee200bf58c20e548cd5c39e4"
-  },
-  {
-    "id": "M4-T6",
-    "variantId": "irregular-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "d1822d244b31793177ec42884ba4bad10694e2923e5f420a977a8e1bff871456"
-  },
-  {
-    "id": "M4-T7",
-    "variantId": "inequality-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "e0e388e6035938a59d0d4c7bf6c9e141aaf8d1992acde99c2c8e5bb62a2a1c1f"
-  },
-  {
-    "id": "M4-T8",
-    "variantId": "inequality-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "6086835360ac31bfd69ade77424a14846016a451e0980d8aca24982e6f436d81"
-  },
-  {
-    "id": "M4-T9",
-    "variantId": "inequality-6x6",
-    "code": "teaching-target-ready",
-    "payloadHash": "192b426ccabd37438a2c40dea392f8deb6411c01be1db3c8a9e177510fcfb3a2"
-  },
-  {
-    "id": "M4-C1",
-    "variantId": "diagonal-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "15476c72756e40ff00898bdc369409924505abb1009c4c3af8c6786e703d4f8d"
-  },
-  {
-    "id": "M4-C2",
-    "variantId": "irregular-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "5ee810985302a6c020ce964dbc7cf4ffded2b2538230789fbe6c0886f46534b3"
-  },
-  {
-    "id": "M4-C3",
-    "variantId": "inequality-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "5c48643e0747331f295fab879afec7a0bc1c2c833086b0e0eff6173a4b47bab6"
-  },
-  {
-    "id": "M4-H1",
-    "variantId": "diagonal-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "4a739ed2426a6626211ff3229363254f6b1f2b51dea4466e432290cd6928083c"
-  },
-  {
-    "id": "M4-H2",
-    "variantId": "irregular-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "833f11a9e1cc5ebb065d5f3a9b14f2743b5f8ef31199def40ba65b077069a4b1"
-  },
-  {
-    "id": "M4-H3",
-    "variantId": "inequality-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "e62d2ccb8af49588410b2adeafc6da2134f645f7d4db373f0eb50d72644bab43"
-  },
-  {
-    "id": "M4-H4",
-    "variantId": "diagonal-6x6",
-    "code": "full-solution-ready",
-    "payloadHash": "436c8136872965790abee6018317eab83612246fee3650b002ddaf7c8cc75727"
-  },
-  {
-    "id": "H1-T1",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "ea9fc2c1f02c55c25000fbd6a6025584d0c5846be79dc995932eb2786dbefb39"
-  },
-  {
-    "id": "H1-T2",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "e5a174a4d8045d36a324d02092aa42c93aac72848e12f23efd1ae79e63683ec4"
-  },
-  {
-    "id": "H1-T3",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "a7429a10f0aa2659d0d07591c35d4724e5246d5b5ad02e2939d33f6d41d14a66"
-  },
-  {
-    "id": "H1-T4",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "789410c407f0c1f4f90bccad50ef38048797e9c3a5eecc5ed9a8ce8beaaab6b5"
-  },
-  {
-    "id": "H1-T5",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "251a26f29c709a7be5f40e2177c4bbeee5aa62a32b76331dbe7e94279f129686"
-  },
-  {
-    "id": "H1-T6",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "3ed8c1fbf98606c937f6a5489b060f7fd80cc56958043dcc63bf73a9e13fa8de"
-  },
-  {
-    "id": "H1-T7",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "9eeb0ec9fe54d4853b395febaf1ae22f25de4b81ad864cb4d5124e4a05f8ff44"
-  },
-  {
-    "id": "H1-T8",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "8144aa341dd3272d1891d71926ed3f45fdcb2abefbbc48fec84a2b0dbbbccbfc"
-  },
-  {
-    "id": "H1-C1",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "92735cc50aaf675ccef492c276c26ae9627c8659f0ef5555acde65e3de9e231b"
-  },
-  {
-    "id": "H1-C2",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "61d58e4705a9728d0bd9b0104c0b665728fe7e8322a3e6443bf996a0e06b9937"
-  },
-  {
-    "id": "H1-C3",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "0a434e35309f238519b6ec84fe1702fe773c31843e1d326f2e0d61bf6f92058c"
-  },
-  {
-    "id": "H1-H1",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "e06bc39afa2823eaf0cc68d4cdb9d390bf64f07841899e5145a5e32b1bc2b9f3"
-  },
-  {
-    "id": "H1-H2",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "db88a4e492a1097658f86783c746104687cc84397b65e1ff2704a8054cfe43a9"
-  },
-  {
-    "id": "H1-H3",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "a288cae0bc25bed3e49b8fcd6e7552835c4a997c48a6bfc181c88a01d892faf2"
-  },
-  {
-    "id": "H1-H4",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "e2f2223d768339d3b5c7a68996aa0a8f2b8c4db459eddc8b72d92338d757f0a2"
-  },
-  {
-    "id": "H2-T1",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "bcf0eacefb6465d02fe7fd58026a839952ecf3cfdc26ffe57c5687f67bedf4a3"
-  },
-  {
-    "id": "H2-T2",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "937958072d1d3d2a32b07270c66711d698eb2e64f7a4c037a92d13fa9d820b46"
-  },
-  {
-    "id": "H2-T3",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "2e3c178628a1dad6ddee2b01c53441a61080cdb76d003f7e04a4637c640e7abf"
-  },
-  {
-    "id": "H2-T4",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "73a69a9bbc9f3b639f67fa2c3f0fa6705e41fb76029844fc5329b6e396058ba0"
-  },
-  {
-    "id": "H2-T5",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "8575448681d1ca6fd58e0fd4553bca49fce2e08dc8ac3fc2276e78e8fb4c8a9b"
-  },
-  {
-    "id": "H2-T6",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "c0a146834a3db906ceef8b52a75294e38a8c5110629eb37f960433b43794dfc8"
-  },
-  {
-    "id": "H2-T7",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "3f08229448e2874d78b1e368a1cc3c4e09cea77ab5c365f63ca64f0703fa9302"
-  },
-  {
-    "id": "H2-T8",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "852fe8680fbd5b3d1f90155fa060a4b5a74915ba9b876139d968257592beb3e1"
-  },
-  {
-    "id": "H2-C1",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "1461a6ee1f73e269026836e8132964ca79f58dc5584db1d5a4c5e3269b1aa4d8"
-  },
-  {
-    "id": "H2-C2",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "d8c4eced66d6632bef229b99edb135d027e625fadf860d94e3365bfce9b36c87"
-  },
-  {
-    "id": "H2-C3",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "ef7935d1f4119692b391ed5844adc44a6453595990e538140156429d26d45837"
-  },
-  {
-    "id": "H2-H1",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "447eaa4015777d01eb6d36af841a9083bab75a683251673353f0fd9cb2731a87"
-  },
-  {
-    "id": "H2-H2",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "bef8f2019032bd30c37012bdd87925ffad9051ab2bb32f8579cbb571bda6c661"
-  },
-  {
-    "id": "H2-H3",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "0a56feda3a196debea8a0dbf85cdcd3056e563e1a8bcee48500478d069841244"
-  },
-  {
-    "id": "H2-H4",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "b966159c0827d570688e21f8d33b78960caad05e22e1fdd725124df4ce7a87c1"
-  },
-  {
-    "id": "H3-T1",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "60716d2174d2881e3b086fa7ab55536adeb8de73bb539c1a7aecc91eb3c095e8"
-  },
-  {
-    "id": "H3-T2",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "8eb55759cd86d8ea5835de52cee5182bae9dd124d6ac6b2f24d2e04c70eaecf9"
-  },
-  {
-    "id": "H3-T3",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "b37e28dc3bc9c5c83e7561649607d060fb80ffc1e1c7a0e6591ffa8d8d8eeb91"
-  },
-  {
-    "id": "H3-T4",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "3b9e262767588d01be19ff2c0140de7618f6b78341b6f4beca2095e28bd281cc"
-  },
-  {
-    "id": "H3-T5",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "2319e072577b7890f4f07c115f968c803554078acb09eba614eec920df1d9783"
-  },
-  {
-    "id": "H3-T6",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "df1928048666de43966cda01bc739fd168f31b35cce26c5f9a0ccb571290f61b"
-  },
-  {
-    "id": "H3-T7",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "ae6a1fdf07e66a783064ec7907bc75d5ce6ae59bb9cf82bf9d871fb03fb6bf07"
-  },
-  {
-    "id": "H3-T8",
-    "variantId": "classic-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "6c8604ad78aa0d6878cc5f808cd957b48f3d4cb03c7e460e5298e40c7bda6936"
-  },
-  {
-    "id": "H3-C1",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "8e5e443be64a421e5c0439ce774206dea98560f99fab5dd7ae8b47750b232013"
-  },
-  {
-    "id": "H3-C2",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "ebc17132ebbfacecfb9a13ea1f83dd6289724813ba15468334c1a948bd1d04d6"
-  },
-  {
-    "id": "H3-C3",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "f98ace55faefcdaa6ccc0a5a6fa7d0871a5914776cdcd54058835c00830e3340"
-  },
-  {
-    "id": "H3-H1",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "bd6eb6973250f2f781bc02552467642bc03b177130782aa1437017126a0fd4bd"
-  },
-  {
-    "id": "H3-H2",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "13d2f987ab0310e4d0facea1c69000f924a1a481ce0a7e700e503b52e21494b5"
-  },
-  {
-    "id": "H3-H3",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "a7ab04f5a77ce5c5c60c94718ae643fa92b2a281d3ddf6b5c3d8ebc029749211"
-  },
-  {
-    "id": "H3-H4",
-    "variantId": "classic-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "ca281f5b970f6ec5bcfe0f3b641bc8282ec646d0c235b8c0398b738e7374419c"
-  },
-  {
-    "id": "H4-T1",
-    "variantId": "diagonal-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "a04b6401e685562f714885e8bf524f429d0c35581d7d3d35429dd6d307ca0055"
-  },
-  {
-    "id": "H4-T2",
-    "variantId": "diagonal-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "348e28b0075eddd972e1257ce19b92e6cd501af963e1dbea1b3c70a3113233e6"
-  },
-  {
-    "id": "H4-T3",
-    "variantId": "diagonal-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "78db76236dc8a9c30cf35aaf49f981fa4798506142a16ec5b8042ceb7d7b3547"
-  },
-  {
-    "id": "H4-T4",
-    "variantId": "irregular-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "eb9067db1c177664cf412bf700fb52342f05c050bcf953442cf4bfc3a404e40d"
-  },
-  {
-    "id": "H4-T5",
-    "variantId": "irregular-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "75e2fcd0a7f04bb46604862f4a5577495ae487710537ed26382f46c33e2f3f66"
-  },
-  {
-    "id": "H4-T6",
-    "variantId": "irregular-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "23a289079090b658b5ac84350a620a8305e222dabcc02a57ac7ab03e0d1ca8fc"
-  },
-  {
-    "id": "H4-T7",
-    "variantId": "inequality-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "f6bd633b9467b31c6f787324c33430eebe09693970a850a11b0882507fec8153"
-  },
-  {
-    "id": "H4-T8",
-    "variantId": "inequality-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "0be8e19d5e5ee8aa2115cc59982c06807c7f6791b68800a073c53633ca48bdad"
-  },
-  {
-    "id": "H4-T9",
-    "variantId": "inequality-9x9",
-    "code": "teaching-target-ready",
-    "payloadHash": "ca37c76a4240f66f5c4303f7e6f90c543893a1c2a9b332eafb6b3ac5b8a2f693"
-  },
-  {
-    "id": "H4-C1",
-    "variantId": "diagonal-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "a098dc70acd78521cfdb7a897c0709749e3f7bb5e864cebaad4e1cdbe8c20378"
-  },
-  {
-    "id": "H4-C2",
-    "variantId": "irregular-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "30eaac1f1f5f158f52231328a1e02dd2692bd35fe1ac60fccc91baf1e6399dc7"
-  },
-  {
-    "id": "H4-C3",
-    "variantId": "inequality-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "9858c690a666faf9ffb41dd16343418d726394738dbc16112c4846b95eae671c"
-  },
-  {
-    "id": "H4-H1",
-    "variantId": "diagonal-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "54ab7b84d6560cc9872c2f0045a0659a1416a1c1d902c28f8cf29d19840e76fa"
-  },
-  {
-    "id": "H4-H2",
-    "variantId": "irregular-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "09e3f59b7fdd15295b487bf147fc2794180518c7ad358a03ef286789a5004dcb"
-  },
-  {
-    "id": "H4-H3",
-    "variantId": "inequality-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "85d8254fbaf31c40c7146b27ba2da009f8da01785ba40684a2848d3e3b4d89c0"
-  },
-  {
-    "id": "H4-H4",
-    "variantId": "diagonal-9x9",
-    "code": "full-solution-ready",
-    "payloadHash": "c50bf6b74b9fc3ecb26bd8d620114634c447ca1f3d3830149a3ce2d2aa78c5b2"
-  }
+ {
+  "id": "B1-rules",
+  "variantId": "classic-4x4",
+  "code": "teacher-led-ready",
+  "payloadHash": "393872332a40c570489b5dd69666dae119c8ae80e128c56d47f1384cd28c2935"
+ },
+ {
+  "id": "B1-warmup",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "615cc642405879977e5f6946c1814e5690b9136a3d73bc8b0eecc01cedf5eff0"
+ },
+ {
+  "id": "B1-explore-1",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "c8d32f94201c243cee634ef9bf85f699347639a94b52b91210827dc9c1d117d1"
+ },
+ {
+  "id": "B1-explore-2",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "1c014bad681f6077f7da15b93c7f57cc840711c54d84341463982d7f5d5602b8"
+ },
+ {
+  "id": "B1-practice-1",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "3eeb8a5d0cc8400130a6e3fa1782186898f9627b54f6ed5a28c7a196cc2a56d9"
+ },
+ {
+  "id": "B1-practice-2",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "c98c0acbee82d8710a8013444c643a69bd8890a5f8fc31cf5f7e846a44e2b7fd"
+ },
+ {
+  "id": "B1-practice-3",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "edd7e568e64df33f35d988170f21c7f4c6bbaa16d00a3d09515a0a3d9c2eda83"
+ },
+ {
+  "id": "B1-chain",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "4384c85a4cd7f72e84388993b8d04a55522caab55e304343848449f722f44fff"
+ },
+ {
+  "id": "B1-scan",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "5df113a4656009f476b821136b2576659ac1d9a0630030b33e2ba63aafc7ea59"
+ },
+ {
+  "id": "B1-cell-1",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "c943f4370fc64a7f532769be1eab3091f1e6e2a09f8c80ac78daef19460dedc4"
+ },
+ {
+  "id": "B1-cell-2",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "f5c55bd2e48485eadda3d761f619e4804e1285e815d5816a557437a59fcffe04"
+ },
+ {
+  "id": "B1-c1",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "ab07882d0c330ed85202802fb69fc382a27ff8b6f5be1c6805d4464237ecd45b"
+ },
+ {
+  "id": "B1-c2",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "16e38370cb4357091b32fb61af3fe2fa9a35b2dd069f052e49efa7473bd3b97b"
+ },
+ {
+  "id": "B1-c3",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "acdc09d370631c2318564d7c1a93864a9d2688a75dd6a6384e018d9142e38d50"
+ },
+ {
+  "id": "B1-c4",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "d5511772b4b0491f5a37919dda84516982f22223050e5bed8a89ced8e603eda7"
+ },
+ {
+  "id": "B1-c5",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "6d063c0119aa36ffc9177a733cbec055c7eec5d991521e717e8dd7791829591d"
+ },
+ {
+  "id": "B1-c6",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "4631e738080939a7042c9bcb0839792e84eee76dc3c94451a95e5585e8202668"
+ },
+ {
+  "id": "B1-hw1",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "b451e6bc3f77f7b0afc67c28a0d2caa4073e1131dab5355ca46284203202f78a"
+ },
+ {
+  "id": "B1-hw2",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "1d4995bd8aae71609c82e72fea179ec94455c9edef3e40bba94ddeae0bf997c7"
+ },
+ {
+  "id": "B1-hw3",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "f60ff9b11a8e8a29ca55e6597a7c9879cd676eec7055d4022748a302d29c5f79"
+ },
+ {
+  "id": "B1-hw4",
+  "variantId": "classic-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "42641311ba870ec2e4f3ff4b4fee95df7fe198b581cec87d5b3384558a160705"
+ },
+ {
+  "id": "B2-warmup",
+  "variantId": "classic-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "bd518304cb60f6067bf6e95f3782801f4d03e155f9aa55091fd434f342c32e67"
+ },
+ {
+  "id": "B2-diag-rules",
+  "variantId": "diagonal-4x4",
+  "code": "teacher-led-ready",
+  "payloadHash": "02bc5c4eb38d6b3fa78ea94e2cfd620a3ce73699e409a209a793fb06f723dfa1"
+ },
+ {
+  "id": "B2-diag-explore",
+  "variantId": "diagonal-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "4efecccf22528c8275a4d907fb8a2191a52cb413f8dcb482a118f31a86e3ca1a"
+ },
+ {
+  "id": "B2-diag-practice",
+  "variantId": "diagonal-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "e9f48b447445640935bcf26f830ad779d48c8015fe53bae1c1414f45e364b067"
+ },
+ {
+  "id": "B2-jig-rules",
+  "variantId": "irregular-4x4",
+  "code": "teacher-led-ready",
+  "payloadHash": "2de0df9dd5dd662f8173a4d13e888bbd613dbf63d76e5c1fdeac68aa7ffd1ed0"
+ },
+ {
+  "id": "B2-jig-explore",
+  "variantId": "irregular-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "f3313eeb8c8e6721ab57c109bc40d7f39342a74df07ec88a81d7b8d423e7441a"
+ },
+ {
+  "id": "B2-jig-practice",
+  "variantId": "irregular-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "fac0d45ee0c05245f1cff7aa5a91b2b66d88f7d6249dbd79c9f4a5e0031d90ad"
+ },
+ {
+  "id": "B2-c1",
+  "variantId": "diagonal-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "17b441adb5b7d1cc8dfe7f4c4731b17e51fd953551d8dad345a9c6e67c6e118c"
+ },
+ {
+  "id": "B2-c2",
+  "variantId": "diagonal-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "5bf968f6be9a452c6ae500282cfb9a2cc03ab58cfaffd59edbb4cede1715bf13"
+ },
+ {
+  "id": "B2-c3",
+  "variantId": "diagonal-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "def352ad55e371ef035b61037eec36b289fcc0dbf014b3a4b53eec90902e9170"
+ },
+ {
+  "id": "B2-c4",
+  "variantId": "irregular-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "567a1febb6002ad0d6268a335bd5164b33d9f1e1468b297e640e14f14e7bc9c9"
+ },
+ {
+  "id": "B2-c5",
+  "variantId": "irregular-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "54b27e13dda39311e389400583657202d91bbdc96656b54d6408eaa22bd2402a"
+ },
+ {
+  "id": "B2-c6",
+  "variantId": "irregular-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "0c8a89e085fdbb2580921ad8cc45b2422dbd6732926fdf11fbcc9bccd130aed7"
+ },
+ {
+  "id": "B2-hw1",
+  "variantId": "diagonal-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "508d72ab92c44a8e6ee622c8ace06eebb9ec0787003e2f581804ac6dabc0155e"
+ },
+ {
+  "id": "B2-hw2",
+  "variantId": "irregular-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "595e2c16bd3594036443a064b584bc28f5c86a97e2cd155ab72cbbe7885949e5"
+ },
+ {
+  "id": "B2-hw3",
+  "variantId": "diagonal-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "2abcf9923bbf04c7a5ce4f13985c1e25cbd50dd21142ee8c02d5ab72c0d30749"
+ },
+ {
+  "id": "B2-hw4",
+  "variantId": "irregular-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "521d5f97385644c81d4be42b79eaf1c096fabe0363523abe781ab4e3461dc4af"
+ },
+ {
+  "id": "B3-ineq-rules",
+  "variantId": "inequality-4x4",
+  "code": "teacher-led-ready",
+  "payloadHash": "95522a7090440bf52e49c6d7547ffcc13b5b538a264ebeb2f55a0879d3c41fb5"
+ },
+ {
+  "id": "B3-ineq-explore",
+  "variantId": "inequality-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "62c105be511c02174b3d544fcb4a323c9bc4c05069c84ee4c65a9db9a6f0cd52"
+ },
+ {
+  "id": "B3-ineq-practice",
+  "variantId": "inequality-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "78b812a80612d33e41d477a1d8c1e382e72210b8eb410dab74587c280df27937"
+ },
+ {
+  "id": "B3-parity-rules",
+  "variantId": "parity-4x4",
+  "code": "teacher-led-ready",
+  "payloadHash": "0e8c8cc738cac427fcbda4ce3fb19ade20d1e5504e13d3b4423c6cdb4c7dadd4"
+ },
+ {
+  "id": "B3-parity-explore",
+  "variantId": "parity-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "324d23d773286829582b54e40eae9ca64cfd8117b05648dddb58cbc919060257"
+ },
+ {
+  "id": "B3-parity-practice",
+  "variantId": "parity-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "b0368100d6f3905818fd2fd45fe9404f18d848ae1232f50999636e3d294c2ce0"
+ },
+ {
+  "id": "B3-c1",
+  "variantId": "inequality-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "9f2e964690ca684e5237fca746bcac6d29a209a29c0eb6b2cb46c17cb0ca30c6"
+ },
+ {
+  "id": "B3-c2",
+  "variantId": "inequality-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "84d28928b6f794f6a98806dfcbf1777c94a36476e7f77fdc00c2fd8b918cbc2c"
+ },
+ {
+  "id": "B3-c3",
+  "variantId": "inequality-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "b35a341d2260585d08cf22f7867a2eb31e381fc43193226784364c3823fd035d"
+ },
+ {
+  "id": "B3-c4",
+  "variantId": "parity-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "b3975c1152c9f6d07516e9a2e10b607f1011156cca9c03917d58f3301e76e630"
+ },
+ {
+  "id": "B3-c5",
+  "variantId": "parity-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "4590eaf04aa4e468a3267626e219bccaeab70b4775053694641cb0c29f0d4537"
+ },
+ {
+  "id": "B3-c6",
+  "variantId": "parity-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "62313f6be75dbadee0437fcaf0775b2a88ead848aa983d1e2fcc5a20906ed051"
+ },
+ {
+  "id": "B3-hw1",
+  "variantId": "inequality-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "b4913b15c36825087692146e62ca774251279b06a5262fd1b8ff905596d4fb20"
+ },
+ {
+  "id": "B3-hw2",
+  "variantId": "parity-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "865e5595ca5dd04d36999543b71bbb26077e944a67a9476723608e40a53cabb1"
+ },
+ {
+  "id": "B3-hw3",
+  "variantId": "inequality-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "fa420661f61968bea9032bdd55289db24e5fc81281f901aa1aa4e626d65183e6"
+ },
+ {
+  "id": "B3-hw4",
+  "variantId": "parity-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "f52bb780845ced72ea113b7e67aab543f8627b2cdf9e79de08f2df76bbc6159a"
+ },
+ {
+  "id": "B4-sky-one",
+  "variantId": "skyscraper-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "57a069a545b5e0fd0c51c878de2da6d4b30bcd3b21c440aec4b48a9e9cafc893"
+ },
+ {
+  "id": "B4-sky-full",
+  "variantId": "skyscraper-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "a8040c12d0f6a33d7f7be0a921975990f79852393f75830dce212fa0220ae4ef"
+ },
+ {
+  "id": "B4-sky-limit",
+  "variantId": "skyscraper-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "f1f998dd8a9c1798d28625cd7774183373cd2f6e51399501a3f02bcb875f7301"
+ },
+ {
+  "id": "B4-practice-1",
+  "variantId": "skyscraper-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "21923b36f6d1cbfa1363f2a9b5f31ccf18fbd5d9c4e48c39c2719077550524e0"
+ },
+ {
+  "id": "B4-practice-2",
+  "variantId": "skyscraper-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "0deab27de78ede67652176a263ff29334b1d2c3f03eb6854316a25e48b20c423"
+ },
+ {
+  "id": "B4-practice-3",
+  "variantId": "skyscraper-4x4",
+  "code": "teaching-target-ready",
+  "payloadHash": "a1936a3d6bb3200d4194630882aaacd7c667c297671e4aa7fc60518a4ea9b6aa"
+ },
+ {
+  "id": "B4-c1",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "68d9d628f24c804c9d37ce1aae95ed5a59cd2d307e955b75a23549235096db4a"
+ },
+ {
+  "id": "B4-c2",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "8d09ac792c156b2f08d48b27ccaeb1a88b9bd7732a20b267c12ce1add327828f"
+ },
+ {
+  "id": "B4-c3",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "5c0f15f0ce506fea1c5e784fa6453b5970cf6206e1c1582d07249bc7544d245f"
+ },
+ {
+  "id": "B4-c4",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "39a51f609a459642233dd3d7b7bb5c96c11d93d106c523aebcf3ed33f71fedd9"
+ },
+ {
+  "id": "B4-c5",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "1055054be57d2e601c47b07023456501366f3ac0c5b41fb318edc12540ee4577"
+ },
+ {
+  "id": "B4-c6",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "629e126e49b9e6fd372f659f9fc85278c0342efedc557c0972338c676c964ceb"
+ },
+ {
+  "id": "B4-hw1",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "e08b6d157cc2f5cd882d1ea86c16a69430ec22a8b4fd5155c0ec8343cc9147a4"
+ },
+ {
+  "id": "B4-hw2",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "bad61ff136f08bd3b75fbb74825faee47d569f8afaa57bacfca36c66be987b0d"
+ },
+ {
+  "id": "B4-hw3",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "c9255a8cd5ac70b41fb6a3c82da6793753978f975f7962a284b21e64abbe1c36"
+ },
+ {
+  "id": "B4-hw4",
+  "variantId": "skyscraper-4x4",
+  "code": "full-solution-ready",
+  "payloadHash": "c764bb7ae9d03987381a17dd129751642b8dc3eac51a21fe3e87e5b785833227"
+ },
+ {
+  "id": "M1-rules",
+  "variantId": "classic-6x6",
+  "code": "teacher-led-ready",
+  "payloadHash": "9f928cfd522dbe8094ba62c9852901f5e44510f1d6925dc39460a2ee2b9546aa"
+ },
+ {
+  "id": "M1-warmup",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "83f5c85395aa85cab29731f6defdebf03124ca169051a35b9c8b0cdaecb68e97"
+ },
+ {
+  "id": "M1-explore-1",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "1370d9d0533d8d620f150b2181309cb0e5f4d712da1e3907e007f911db06efa5"
+ },
+ {
+  "id": "M1-explore-2",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "b5b47b8d41be78c5a95c54cd0b44c905ee7f636a0a8edf11794496473cb7a0b2"
+ },
+ {
+  "id": "M1-practice-1",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "c3b5cb7f9e1fbcdfc02e16af062c9d1c191a7f233b3942ae6ce9e7feac5fbca2"
+ },
+ {
+  "id": "M1-practice-2",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "318689afc4472bbc8a80645b69af1e85fddc79d3ddc0d4de428ded7f56341fbf"
+ },
+ {
+  "id": "M1-practice-3",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "1f41585f574ac90e6c04ac55aefa92c76cdb63a1a09bc1ee93392b07fbf2dbc8"
+ },
+ {
+  "id": "M1-chain",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "1861147597673d67b6fbb295b8038d65dc6fec608c792a3e5b4e005cabc4080d"
+ },
+ {
+  "id": "M1-scan",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "2fd5b04d190d24bee8f06624fff3b533c0d22c51c72532705fd8f757fb049c5b"
+ },
+ {
+  "id": "M1-c1",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "6691a325119e86b928894622f2db2b75104079cd07af89de61fc39417e220181"
+ },
+ {
+  "id": "M1-c2",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "c15194e6b0e3bef11b782d792ed6e1a10763207413d97354eab086e4469cd7cc"
+ },
+ {
+  "id": "M1-c3",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "e663940589c2f790725a14c744c6ba41cbbd349dc0f92ff1490d8c5258999e45"
+ },
+ {
+  "id": "M1-hw1",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "3dafc6a229d413385caf0635669bf702fef6b9716e5ea28b9d12159c4bc8695f"
+ },
+ {
+  "id": "M1-hw2",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "9fac3179939b87bf8b7a44404a9eaa9c191f9ec8c176d8cde5b6accb4aa4b345"
+ },
+ {
+  "id": "M1-hw3",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "2e7e03256eeff4ff47bf14c8306b7bc50f3bde209e52a461bce7922264187c7b"
+ },
+ {
+  "id": "M1-hw4",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "d897f9439194a8c34221c0a83fc240396472235c49e1f9dfd19698b44e224386"
+ },
+ {
+  "id": "M2-warmup",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "b747ed91d7be48eb08f5882f9b7ab26a3f0d4fa61385ea59d0a642d77dfa7f7f"
+ },
+ {
+  "id": "M2-stuck",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "5ddfed85714f9045dcf73a0f78d2e0482f9d3e9f1c868e8c1be92c94c1e67f58"
+ },
+ {
+  "id": "M2-explore",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "77a53df1b7fb23bc5699ebda0301da61f7db3d37774aa0a9270de8e1c6db0d45"
+ },
+ {
+  "id": "M2-practice-1",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "8ebd6126d5d6456f083b57a537e7779dd9eb274ab4cf3c0757204b287e510134"
+ },
+ {
+  "id": "M2-practice-2",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "c6a1e3044e0f4eeedc2046a9327fb58e3b1862363f30697e8fb6b6fb9da29450"
+ },
+ {
+  "id": "M2-practice-3",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "4ac276d30b203c3df4f59e70c528d1bda1908d2a1a88a7177fb0a7d632fc1e07"
+ },
+ {
+  "id": "M2-practice-4",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "7d01c28d0b255e5eb38d341afff1801489c75ad655235e1b3c7239ee0583d01a"
+ },
+ {
+  "id": "M2-cell-1",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "92763b73e9dc2b10f4757562f7104ceb052aa0291481e2ec8c34bf8d49d346da"
+ },
+ {
+  "id": "M2-cell-2",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "9ec99a4c3a4174197bd33daaa59f0ee026078bfe9fab9c4970c9a4578e723924"
+ },
+ {
+  "id": "M2-c1",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "d21259f0d08cd719f6d7119077f7341ffbe56671b924edfed5b5426093c47210"
+ },
+ {
+  "id": "M2-c2",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "dd71a7473900d1dedf3b51bdd389cffe3c1757b9fbd66eae08cc2d658d05bceb"
+ },
+ {
+  "id": "M2-c3",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "5732c46ded05fa0742fb36d780db964e01fddddc961e4e425fa60c56fd02d471"
+ },
+ {
+  "id": "M2-hw1",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "16112eda3f7d7ab5458383dfd874827bc5dfb8fc05af4074ce059ca948a3746b"
+ },
+ {
+  "id": "M2-hw2",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "977aca6397c72f7856b3a4587894f725d5032f58bfa8f3e4ea6285efaeb96f88"
+ },
+ {
+  "id": "M2-hw3",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "0f583bebe18ffbb10f50acbb41b5aa3b75e536a289960676fa40d2e30d8ebdf2"
+ },
+ {
+  "id": "M2-hw4",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "3560d5d2b03b519737fcb135e74bc118e3241fa898a48099a90eb552f1424562"
+ },
+ {
+  "id": "M3-warmup",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "f8eefae7e517b061cff6ad9434992d4f47b185f208111b74c008423948a8e5b2"
+ },
+ {
+  "id": "M3-explore-1",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "49e292bdb2f2a815c39172cb950f176058b3ea60d78949921f2edbb479338f81"
+ },
+ {
+  "id": "M3-practice-1",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "b193e415cb43b6f6c03cd2c885076c895c9548e17d5d75b61ad1da3d72e109de"
+ },
+ {
+  "id": "M3-practice-2",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "537f342204c646bb83e81e8214da2a26c5c01ef0a2c372649e9885b9cc7e7471"
+ },
+ {
+  "id": "M3-explore-2",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "60a830f459c08164538a7b30e62e045aaaaf6deb203c8b629418f90525c60646"
+ },
+ {
+  "id": "M3-practice-3",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "cb4616640b5bcb261d63a460de9056f6e78cfacbead2e8210ff819219eb793d9"
+ },
+ {
+  "id": "M3-practice-4",
+  "variantId": "classic-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "b1584a5df13c18bdae7fc4aa91a81021a4f033e91e3243f19006024dfd96e5d5"
+ },
+ {
+  "id": "M3-c1",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "234d5fc065ffc7558ef539e25147decd4e59bab191255c372283df4336e50f58"
+ },
+ {
+  "id": "M3-c2",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "7f7cc2d99683638e3b09f63fd0c86aa1b555b28b26a6552adbaae6fa500f93b8"
+ },
+ {
+  "id": "M3-c3",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "9b12361f96b2ae660a94f5523cacd4083d9e777afd64738067262e074028bb12"
+ },
+ {
+  "id": "M3-hw1",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "da252ef10826689bc8e4d17b70e85e358793e1dd4faf4f9ca11d2c5169a2a952"
+ },
+ {
+  "id": "M3-hw2",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "5601edf819972fe79022408379252b0264a9e07f67b2b95e08c10d7e42800c1a"
+ },
+ {
+  "id": "M3-hw3",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "821631e72f864c8d5a57070f2288d4c617d77cfb8042a723b520cead6f5ba478"
+ },
+ {
+  "id": "M3-hw4",
+  "variantId": "classic-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "8dc383e6333360a11e77bdb87634a2f18366f4dbde45acc6ffbfccb4bb37e6b9"
+ },
+ {
+  "id": "M4-diag-rules",
+  "variantId": "diagonal-6x6",
+  "code": "teacher-led-ready",
+  "payloadHash": "5428a7c0b216b888adecda99afba59a435475373d8af9c9340c79ecd470b590d"
+ },
+ {
+  "id": "M4-diag-explore",
+  "variantId": "diagonal-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "f0033fa696c05c1bced2848f2139cae309e25aadefdbe8d61136e3c0508d464b"
+ },
+ {
+  "id": "M4-jig-rules",
+  "variantId": "irregular-6x6",
+  "code": "teacher-led-ready",
+  "payloadHash": "8c0002fcb8ef59d2f2f199a4dc0b5d02d8defec17ab67183ae0752183d17fb6d"
+ },
+ {
+  "id": "M4-jig-explore",
+  "variantId": "irregular-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "de0246a5d7063b6f26da3c7d940ca22a7e196e714d9692f1dd59608b37660ccc"
+ },
+ {
+  "id": "M4-ineq-rules",
+  "variantId": "inequality-6x6",
+  "code": "teacher-led-ready",
+  "payloadHash": "62ace2108e361089c95190fa34f605553d915e52f31bc8fb9a2c3be485e41cd3"
+ },
+ {
+  "id": "M4-ineq-explore",
+  "variantId": "inequality-6x6",
+  "code": "teaching-target-ready",
+  "payloadHash": "f69c909979e72a154eee3d4190e5cdb565ab95cba578da824e41b4a5bba01bd2"
+ },
+ {
+  "id": "M4-c1",
+  "variantId": "diagonal-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "d9ffe4f62758a06c262cf705af70aebe7e1302a1793927a36c4f5e52ae4afb61"
+ },
+ {
+  "id": "M4-c2",
+  "variantId": "irregular-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "4e9051386886e6dd2f59170d89b41d7f870de0b7368c685eb58da16bc60471df"
+ },
+ {
+  "id": "M4-c3",
+  "variantId": "inequality-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "fefc10746d241c6b9c67eb1668d2fa7901e35feb8e6a669b46a321754abab780"
+ },
+ {
+  "id": "M4-hw1",
+  "variantId": "diagonal-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "80a4c2ad26a932826780015f74bdc3f7ab58ed679a82206ede9aff7f8bb36f71"
+ },
+ {
+  "id": "M4-hw2",
+  "variantId": "irregular-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "8eeda802e7945f5f262fa9552a5153894c6f5f23b7aed02235a1d16ad886d2f9"
+ },
+ {
+  "id": "M4-hw3",
+  "variantId": "inequality-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "6daea285846d1be66a2a4332f4d8362834876f5baade2fbfec8b38821a3e1390"
+ },
+ {
+  "id": "M4-hw4",
+  "variantId": "diagonal-6x6",
+  "code": "full-solution-ready",
+  "payloadHash": "ce08a6c3ed1d73044b27c855f6aeb736b6641f29dd6af982730284193c097911"
+ },
+ {
+  "id": "H1-rules",
+  "variantId": "classic-9x9",
+  "code": "teacher-led-ready",
+  "payloadHash": "b47603e646271d1748db613ed38b824292c45ecec869c97f265586ea38349d1f"
+ },
+ {
+  "id": "H1-explore-1",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "7b705dfc33b93ec57e385b0c6a2caf05a60eff5a992577e4653743d38257280f"
+ },
+ {
+  "id": "H1-explore-2",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "e9c91e64f1663abae8395b122e97670500353d2a3786b1f72be08dd76c3f54ac"
+ },
+ {
+  "id": "H1-practice-1",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "66b8ea77fe917f31d6fc40445805d61db7a2988ddfbd711c2018170a1099b90c"
+ },
+ {
+  "id": "H1-practice-2",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "850d7664d005ee7f05cd6082f55e6288394f929d03eeccd0b3b9d49b78bbf878"
+ },
+ {
+  "id": "H1-practice-3",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "343fc77663db8101adc7fbbe672441e9b25c2fccd2e35f6f25e50a1f476640df"
+ },
+ {
+  "id": "H1-chain",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "63afab1ca6c0d3ba0da595bb368b8b78c721d35adbb0ae076c45ded4d64b4028"
+ },
+ {
+  "id": "H1-scan",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "e541013fbaedc43a6c0b49c75ed2ddc49cf9e44b7d2edb56d1445a72b85ccd95"
+ },
+ {
+  "id": "H1-c1",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "9491571de20ae2b7dc800fc515d114bf076fa24489f4c1ec4e3546e2861f418d"
+ },
+ {
+  "id": "H1-c2",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "7a69196d69efc0460cc72b5054b79f03587b574503fc4949f3c2a4ed2e580e6a"
+ },
+ {
+  "id": "H1-c3",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "64f31e9c2b9b9a3d1e67e16ac63fce494506d41e9e5115a7f2bf8fef29147437"
+ },
+ {
+  "id": "H1-hw1",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "36efa26255d9906f483803c7d30284b5ccba78e7feb917d4598258a7e0e80195"
+ },
+ {
+  "id": "H1-hw2",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "281759038b9a3222958d5c15ec03b6d4c440274f2de263ed46ac3cab2dd40cb4"
+ },
+ {
+  "id": "H1-hw3",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "60363e2721bb99cc6c6076a6b0c4bec08ecc1334e97671a5064b6b0d4861f886"
+ },
+ {
+  "id": "H1-hw4",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "0138231cb96330737a4509c74cfe54b0a5b5e4092d7d1aaf56af63babc26f25f"
+ },
+ {
+  "id": "H2-warmup",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "442e295d16b47f27fa7e6b928f292a66b764a53504219d8043c9e268f3845c12"
+ },
+ {
+  "id": "H2-stuck",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "d76cd6d69e97beafd6558594790e49bcb59b1086aac3110403127fbb8dacf32a"
+ },
+ {
+  "id": "H2-explore",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "25ce77acd3c8347a5412a8fcd25bb4d4e320bafb92e05b8695c41d23b44fc84d"
+ },
+ {
+  "id": "H2-practice-1",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "96b91016703233128c9e3d858e4f9d9f6d7f3bec9eab5eef897abe881253e27f"
+ },
+ {
+  "id": "H2-practice-2",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "80908887332121adbb17bea99e577210659934374441732e1b7d169262149e58"
+ },
+ {
+  "id": "H2-practice-3",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "5296252a2df1f7bd8b64720ea506edcc52c55340bff9d2147da3b4da57c384d5"
+ },
+ {
+  "id": "H2-practice-4",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "11e8c960c7d6579baed5ee75ecba305fa1c8d3258d953260318057cce90c0802"
+ },
+ {
+  "id": "H2-c1",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "4a3df36fc2d218872cbad6b9d12d2eb570f2eded1e7040f14bc47d46f83c5832"
+ },
+ {
+  "id": "H2-c2",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "99f2827055ab9daadb03bd4f02aa3462f644d515263f44b4846f904e717c5a28"
+ },
+ {
+  "id": "H2-c3",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "e7095083bfbebe8e2bba196d995c573b5dd60ce1222bac1f8fc37918591a85db"
+ },
+ {
+  "id": "H2-hw1",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "057c1e76662a8fc53ff535ed313e673f4e51f92604df70b49442df3f880dddda"
+ },
+ {
+  "id": "H2-hw2",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "d8452e34bb71e1b102bfbdbe6090aa610c1c01e8a11d0d49998b5f1a93377764"
+ },
+ {
+  "id": "H2-hw3",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "4c61972e06606a2dd232f0e21989649266e3b6b5c42b935ae6989d98a5390909"
+ },
+ {
+  "id": "H2-hw4",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "db657db4caf332fdfb1d3c19723cbd9a87650f998727a49a5dd16f8dbc6b5ef1"
+ },
+ {
+  "id": "H3-warmup",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "3033b55ad233e237a7fbd33c9d9f6b74675d916c9cb2f7deb5efb2ecff28347d"
+ },
+ {
+  "id": "H3-cell-1",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "11fe963255bfa7f166d08dfb563518c7ed5c7c15bca4ba5594e0682d425f6516"
+ },
+ {
+  "id": "H3-cell-2",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "15530c76acef8d3eff30c0f88f1cb92286b6b10aeae1def9a12a6522cd1fa35b"
+ },
+ {
+  "id": "H3-explore-1",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "0b8905b74684fe177571ba1e7731811bccf92326d4d8fb9bec290f47aa78e945"
+ },
+ {
+  "id": "H3-practice-1",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "2570a3215c1b7d432128cbc292d0b18681d33e240229a3456e5763fbcc4d1c68"
+ },
+ {
+  "id": "H3-practice-2",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "f1d224a2362621cd3fa87d47b8fb8f120d90991405e09d5037626e822a0695a8"
+ },
+ {
+  "id": "H3-practice-3",
+  "variantId": "classic-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "c1f5e13b210054cfb7945f167b5c6dfeadd6c8c30acbe7cf3ec9b98b679561cd"
+ },
+ {
+  "id": "H3-c1",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "aee0f4eb8111fb034d71eaa91e7317dd8d07750e0e620a6014ea222cee466a59"
+ },
+ {
+  "id": "H3-c2",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "c1a54f36bc5cf79ec8d19c0e2227ce3017da61607ead98d32297f45daaf90bde"
+ },
+ {
+  "id": "H3-c3",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "d581a8180d027af978967c47019dd53b5eb0dd832b0b30bf9a3d42ca80cfad3f"
+ },
+ {
+  "id": "H3-hw1",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "851210b10e81d105d277e83c076fac443da7d1fddf8083633bb1e3b9805aee80"
+ },
+ {
+  "id": "H3-hw2",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "55cee5670b8948fa836b76426c558193074bb89d8bd539d67c3a353f11a5eeaa"
+ },
+ {
+  "id": "H3-hw3",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "e412c0db51e1fc31ce89379196836907f95896d1d63dc6e93e1aeabe48e48eaa"
+ },
+ {
+  "id": "H3-hw4",
+  "variantId": "classic-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "f92245c4ba716600709736a9ab2c377f2ea8949944942d9198fd51a2964c7f6b"
+ },
+ {
+  "id": "H4-diag-rules",
+  "variantId": "diagonal-9x9",
+  "code": "teacher-led-ready",
+  "payloadHash": "34f0e9cba5aafcb6fe0f0b5faf573e88919932948798113361ede5581d76f552"
+ },
+ {
+  "id": "H4-diag-explore",
+  "variantId": "diagonal-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "5f2a5034944e267f0f18431ae32763536ff3bac0eab19f363387a8c4c9dfb2dc"
+ },
+ {
+  "id": "H4-window-rules",
+  "variantId": "window-9x9",
+  "code": "teacher-led-ready",
+  "payloadHash": "7c516170d6334f616d93f8482ab6cea302b876d32c9ca518c222d47ef7673045"
+ },
+ {
+  "id": "H4-window-explore",
+  "variantId": "window-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "cd82d9c58681cde24bc3236d4386e248207df57404c19af53e0a88af0580fff5"
+ },
+ {
+  "id": "H4-jig-rules",
+  "variantId": "irregular-9x9",
+  "code": "teacher-led-ready",
+  "payloadHash": "02c8261dd93e981b11b5d83a75474cc805b69f4ad8d5a8e91b4be5df819ea475"
+ },
+ {
+  "id": "H4-jig-explore",
+  "variantId": "irregular-9x9",
+  "code": "teaching-target-ready",
+  "payloadHash": "19beb07acefa3e6cbd86dc43223c1740baad9a033d7a9b9cecb335f4d9f2e7b9"
+ },
+ {
+  "id": "H4-c1",
+  "variantId": "diagonal-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "a2f762c23f8d74d814d06d72f4870ea24923de462ab98ae0943aa892316a4882"
+ },
+ {
+  "id": "H4-c2",
+  "variantId": "window-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "14075aa79c491414b5d7fde9dd1e1de0c5a15a01197ee4280a5c1c8c12606cd0"
+ },
+ {
+  "id": "H4-c3",
+  "variantId": "irregular-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "19821bbca542b05cc3e43ffe92e933f326febf3e8874340137c53adaa28920a8"
+ },
+ {
+  "id": "H4-hw1",
+  "variantId": "diagonal-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "cdbf5689569027f62f6154bb3575d4fc0247d57eae9c7984e5f880af39de8311"
+ },
+ {
+  "id": "H4-hw2",
+  "variantId": "window-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "bf4636a49e042d4c02e7cfc091ab579e9782bd9823399ed5e04551bb61130bc5"
+ },
+ {
+  "id": "H4-hw3",
+  "variantId": "irregular-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "6ec8806a5fcf365259be8a9dfa163ffb15e01e17bb9c83436c8856dbd210cafc"
+ },
+ {
+  "id": "H4-hw4",
+  "variantId": "window-9x9",
+  "code": "full-solution-ready",
+  "payloadHash": "8339f2e601522bea969513df0d21619e31538a23c8e328287ba6ef8b3dff0f5e"
+ }
 ]

@@ -23,7 +23,8 @@ if(permission!=='t') throw Error('DEVELOPMENT_ADMIN_PERMISSION_REQUIRED');
 const existing=sql(`begin read only; select count(*) from public.course_families where title='数独教学' and publisher='Math.ing' and edition='2026版'; commit;`);
 if(existing!=='0') throw Error('COURSE_ALREADY_EXISTS: inspect its existing identity; do not import a duplicate.');
 const pkg=JSON.parse(fs.readFileSync(`${dir}/course-package.json`,'utf8'));
-if(pkg.lessons.length!==12 || pkg.lessons.reduce((n,l)=>n+l.pages.length,0)!==239 || pkg.nativeAudit.length!==182) throw Error('COURSE_PACKAGE_INCOMPLETE');
+const bank=JSON.parse(fs.readFileSync('content/courses/sudoku-2026/bank.json','utf8')), totalPages=pkg.lessons.reduce((n,l)=>n+l.pages.length,0);
+if(pkg.lessons.length!==12 || pkg.nativeAudit.length!==bank.puzzles.length) throw Error('COURSE_PACKAGE_INCOMPLETE');
 const versions=['20261013160000_formal_courseware_sudoku_games','20261013161000_course_grade_ranges','20261013162000_course_year_round'].map(version=>{
  const file=`supabase/migrations/${version}.sql`,checksum=textFileSha256(file), recorded=sql(`begin read only; select checksum from public.schema_migrations where version='${version}'; commit;`);
  if(recorded && recorded!==checksum) throw Error('MIGRATION_CHECKSUM_MISMATCH');
@@ -31,7 +32,7 @@ const versions=['20261013160000_formal_courseware_sudoku_games','20261013161000_
 });
 const pending=versions.filter(v=>!v.recorded),migration=pending.map(v=>fs.readFileSync(v.file,'utf8').replace(/^begin;\r?$/m,'').replace(/^commit;\r?$/m,'')).join('\n');
 const encoded=Buffer.from(JSON.stringify(pkg)).toString('base64');
-console.log(JSON.stringify({target:observed.supabaseOrigin,newFamilies:1,newVariants:3,newLectures:12,newPages:239,pendingMigrations:pending.map(v=>v.version)}));
+console.log(JSON.stringify({target:observed.supabaseOrigin,newFamilies:1,newVariants:3,newLectures:12,newPages:totalPages,pendingMigrations:pending.map(v=>v.version)}));
 // The transaction contains only this course's creation and its additive contracts.
 // It uses the same capability-checked authoring RPCs as the editor for every page.
 const result=sql(`begin;
@@ -62,7 +63,7 @@ begin
       courses:=courses||jsonb_build_object(level_name,course);
     else course:=(courses->>level_name)::uuid;
     end if;
-    lecture:=public.create_course_lecture(course,lesson->>'title','90分钟；'||(lesson->>'focus')||'。先探索、再归纳、后练习；3道课堂完整题、4道课后题。教师用书与逐题方法依据见数独教学2026版资料包。');
+    lecture:=public.create_course_lecture(course,lesson->>'title','90分钟；'||(lesson->>'goal')||' 先探索、再归纳、后练习；完整挑战由易到难。教师用书与逐题理由见数独教学2026版资料包。');
     for page_data in select value from jsonb_array_elements(lesson->'pages') loop
       if public.cw_manual_composition_doc_is_valid(page_data->'doc') is not true then raise exception 'INVALID_COURSE_PAGE: %',page_data->>'title'; end if;
       page:=public.create_blank_cw_page(lecture,null,page_data->>'title');
@@ -73,7 +74,7 @@ begin
     lessons:=lessons||jsonb_build_array(jsonb_build_object('id',lesson->>'id','title',lesson->>'title','lectureId',lecture,'courseId',course,'pages',jsonb_array_length(lesson->'pages')));
   end loop;
   detail:=public.get_course_family_detail(family);
-  if jsonb_array_length(detail->'variants')<>3 or count_pages<>239 then raise exception 'COURSE_IMPORT_COUNT_MISMATCH'; end if;
+  if jsonb_array_length(detail->'variants')<>3 or count_pages<>${totalPages} then raise exception 'COURSE_IMPORT_COUNT_MISMATCH'; end if;
   if exists(select 1 from jsonb_array_elements(detail->'variants') v where (v->>'gradeEnd')::int is distinct from (v->>'grade')::int+1) then raise exception 'GRADE_RANGE_READBACK_MISMATCH'; end if;
   for grade_start in 1..6 loop
     if not exists(select 1 from public.list_course_families('all',jsonb_build_object('q','数独教学','grade',grade_start::text),1) f where f.id=family) then raise exception 'GRADE_RANGE_FILTER_MISMATCH'; end if;

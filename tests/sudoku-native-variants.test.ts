@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 import { createDefaultSudokuVariantPayload, sudokuActivityPayloadSchema, sudokuPayloadVariant, sudokuVariantPayloadSchema } from "@/features/games/sudoku/courseware-contract";
 import { analyzeSudokuCoursewareActivity } from "@/features/games/sudoku/activity";
 import { countSudokuSolutions, isSolvedGrid, solveSudokuGrid, forcedSudokuCellValue } from "@/features/games/sudoku/logic";
-import { sudokuRulesValid } from "@/features/games/sudoku/rules";
+import { SUDOKU_WINDOW_ORIGINS, sudokuRulesValid, sudokuWindowCells } from "@/features/games/sudoku/rules";
 import { chooseSudokuDigit, createSudokuBoardState, selectSudokuCell, setSudokuHighlightTool, sudokuHighlightRegions, toSudokuMirrorState } from "@/features/games/sudoku/state";
 import { validateGameCoursewareContent } from "@/features/games/courseware/server";
 import { formalManualPageSchema } from "@/features/courseware-studio/formal-manual-page-contract";
@@ -41,6 +41,15 @@ describe("authored native Sudoku variants", () => {
     payload.rules.top[0]=1;
     expect(isSolvedGrid(cyclic,sudokuPayloadVariant(payload))).toBe(false);
   });
+  it("adds the four windoku windows as regions on 9x9 only", () => {
+    const window=getSudokuVariant("window-9x9")!;
+    const solution=solveSudokuGrid(Array(81).fill(0),window)!;
+    expect(isSolvedGrid(solution,window)).toBe(true);
+    for (const origin of SUDOKU_WINDOW_ORIGINS) expect(new Set(sudokuWindowCells(origin).map((i)=>solution[i])).size).toBe(9);
+    const broken=[...solution]; [broken[10],broken[19]]=[broken[19],broken[10]];
+    expect(isSolvedGrid(broken,window)).toBe(false);
+    expect(sudokuRulesValid({...getSudokuVariant("classic-6x6")!,family:"window",rules:{kind:"window"}} as never)).toBe(false);
+  });
   it("saves unfinished region drafts but rejects them as playable activities", () => {
     const payload=createDefaultSudokuVariantPayload("irregular-4x4");
     payload.rules={kind:"irregular",regions:Array.from({length:16},(_,i)=>i%4)};
@@ -67,7 +76,7 @@ describe("authored native Sudoku variants", () => {
   });
   it("embeds a native teaching target in a formal course without asserting a full solution", () => {
     const bank=JSON.parse(readFileSync("content/courses/sudoku-2026/bank.json","utf8"));
-    const record=bank.puzzles.find((p:{id:string})=>p.id==="B3-T1");
+    const record=bank.puzzles.find((p:{id:string})=>p.id==="B3-ineq-explore");
     const payload=sudokuVariantPayloadSchema.parse({...createDefaultSudokuVariantPayload("inequality-4x4"),puzzle:record.puzzle,rules:record.rules,goal:{kind:"teaching-target",targets:record.targets.map((t:object)=>({kind:"cell-value",...t}))}});
     const checked=validateGameCoursewareContent("sudoku","sudoku-authored-v3",payload);
     expect(checked.validation).toMatchObject({publishable:true,code:"teaching-target-ready"});

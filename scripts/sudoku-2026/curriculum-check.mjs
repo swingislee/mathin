@@ -1,124 +1,167 @@
 import assert from 'node:assert/strict';
-import {logicalSolve} from '../lib/sudoku-curriculum.mjs';
+import { makeSpec, solveExact, forcedCells, logicalSolve, explainSteps } from '../lib/sudoku-curriculum.mjs';
+import { specFrom, relaxedSpec, classifyBox } from './generators.mjs';
 
-// This policy comes from the agreed lesson sequence, not a puzzle's own labels.
-const policy = {
-  B1: {size:4,allowed:['box','naked'],full:['box'],drills:[...Array(6).fill('box'),'naked','naked']},
-  B2: {size:4,allowed:['box','naked','extra'],families:['diagonal','irregular']},
-  B3: {size:4,allowed:['box','naked','extra'],families:['inequality','parity']},
-  B4: {size:4,allowed:['naked','extra'],families:['skyscraper']},
-  M1: {size:6,allowed:['box'],drills:Array(8).fill('box')},
-  M2: {size:6,allowed:['box','line','naked'],required:['line'],drills:[...Array(6).fill('line'),'naked','naked']},
-  M3: {size:6,allowed:['box','line','naked','locked'],required:['locked'],drills:Array(8).fill('locked')},
-  M4: {size:6,allowed:['box','line','naked','locked','extra'],families:['diagonal','irregular','inequality']},
-  H1: {size:9,allowed:['box'],drills:Array(8).fill('box')},
-  H2: {size:9,allowed:['box','line'],required:['line'],drills:Array(8).fill('line')},
-  H3: {size:9,allowed:['box','line','naked','locked'],drills:[...Array(4).fill('naked'),...Array(4).fill('locked')]},
-  H4: {size:9,allowed:['box','line','naked','locked','extra'],families:['diagonal','irregular','inequality']},
-};
-
-export function checkCurriculum(p, spec) {
-  const lesson = policy[p.lessonId];
-  assert(lesson, `${p.id}: unknown lesson`);
-  assert.equal(p.size, lesson.size, `${p.id}: wrong grid size`);
-  assert((lesson.families ?? ['classic']).includes(p.rules.kind), `${p.id}: unintroduced variant`);
-  const allowed = p.role === 'target' ? lesson.allowed : lesson.full ?? lesson.allowed;
-  assert(p.trace.every(step => allowed.includes(step.method)), `${p.id}: out-of-syllabus trace`);
-  assert(lesson.families ? p.variantEssential === true : !p.variantEssential, `${p.id}: variant necessity must be checked`);
-  if (p.role === 'target' && lesson.drills) {
-    assert.equal(p.method, lesson.drills[p.number - 1], `${p.id}: wrong target method`);
-    assert(p.trace.some(step => step.method === p.method), `${p.id}: target method missing`);
+/** L1 mathematics: what the board asks for is true in every legal completion. */
+export function checkMathematics(p, spec) {
+  if (p.role === 'discover') {
+    assert(p.puzzle.every(Boolean), `${p.id}: discovery board must be complete`);
+    assert.equal(solveExact(p.puzzle, spec, 2).length, 1, `${p.id}: completed board breaks its rules`);
+    return { kind: 'completed-board' };
   }
-  if (p.equivalent) assert(p.lessonId === 'B1' && p.role === 'target' && p.method === 'naked', `${p.id}: invalid equivalence exception`);
-  const fullProof = {};
   if (p.role !== 'target') {
-    assert(logicalSolve(p.puzzle,spec,allowed).solved, `${p.id}: cannot solve using this lesson's methods`);
-    for (const method of lesson.required ?? []) {
-      const without = logicalSolve(p.puzzle,spec,allowed.filter(m=>m!==method));
-      assert(!without.solved, `${p.id}: lesson method ${method} is optional`);
-      fullProof[method] = {necessary:true,remaining:without.grid.filter(v=>!v).length};
-    }
-    if (['M2','H2'].includes(p.lessonId)) assert(p.trace.filter(s=>s.method==='line').length>=2, `${p.id}: fewer than two line deductions`);
-    if (p.lessonId === 'H3') {
-      const earlier = logicalSolve(p.puzzle,spec,['box','line']);
-      assert(!earlier.solved, `${p.id}: does not require naked singles or locked candidates`);
-      fullProof.nakedOrLocked = {necessary:true,remaining:earlier.grid.filter(v=>!v).length};
-    }
+    const solutions = solveExact(p.puzzle, spec, 2);
+    assert.equal(solutions.length, 1, `${p.id}: full puzzle must be unique`);
+    assert.deepEqual(solutions[0], p.solution, `${p.id}: stored solution differs`);
+    return { kind: 'unique', solutions: 1 };
   }
-  return {lessonMethods:allowed,necessaryMethods:fullProof};
+  const forced = forcedCells(p.puzzle, spec, p.solution);
+  for (const t of p.targets) assert(forced.some(f => f.index === t.index && f.value === t.value), `${p.id}: target ${t.index} is not forced`);
+  const exact = ['E1', 'E2', 'E4', 'E6', 'L2', 'N1', 'K1', 'K2', 'K3', 'K4', 'S1', 'S2', 'L1'].includes(p.meta.pattern) || (p.meta.pattern?.startsWith('V-') && !p.meta.pattern.endsWith('-named'));
+  if (exact) assert.equal(forced.length, p.targets.length, `${p.id}: other cells are also determined`);
+  if (p.meta.pattern === 'E5') assert.equal(forced.filter(f => f.value === p.meta.digit).length, p.targets.length, `${p.id}: chain misses a forced digit`);
+  return { kind: 'teaching-target', forced: forced.length, targets: p.targets.length };
 }
 
-/** Replay the stated reasons directly, without calling the trace-producing solver. */
-export function checkTraceReasons(p, spec) {
-  const grid=[...p.puzzle], eliminated=grid.map(()=>new Set()), digits=Array.from({length:p.size},(_,i)=>i+1);
-  const permitted=p.equivalent?['naked']:p.allowed;
-  let nextDigit=1;
-  const candidates=index=>grid[index]?[grid[index]]:digits.filter(d=>!eliminated[index].has(d)&&!spec.peers[index].some(j=>grid[j]===d));
-  const places=(unit,d)=>unit.cells.filter(i=>!grid[i]&&candidates(i).includes(d));
-  const hidden=kinds=>spec.units.filter(u=>kinds.includes(u.kind)).flatMap(u=>digits.flatMap(d=>{
-    if(u.cells.some(i=>grid[i]===d)) return [];
-    const cells=places(u,d);
-    return cells.length===1?[{unit:u,value:d,index:cells[0],empty:u.cells.filter(i=>!grid[i]).length}]:[];
-  }));
-  const visibility=values=>values.reduce((state,value)=>({max:Math.max(state.max,value),count:state.count+Number(value>state.max)}),{max:0,count:0}).count;
-  for (const [index,step] of p.trace.entries()) {
-    const fail=message=>`${p.id} step ${index+1}: ${message}`;
-    assert(permitted.includes(step.method),fail('method not allowed'));
-    const boxes=permitted.includes('box')?hidden(['box']):[];
-    const lines=permitted.includes('line')?hidden(['row','col']):[];
-    if(step.method==='box') {
-      let preferred;
-      for(let offset=0;offset<p.size&&!preferred;offset++) preferred=boxes.find(m=>m.value===(nextDigit+offset-1)%p.size+1);
-      assert(preferred&&preferred.value===step.value,fail('switches digits before exhausting box deductions'));
-    } else assert.equal(boxes.length,0,fail('uses another method before box deductions are exhausted'));
-    if(!['box','line'].includes(step.method)) assert.equal(lines.length,0,fail('skips an available line deduction'));
-    if(['box','line'].includes(step.method)||(!step.removals&&step.method==='extra')) {
-      const kind=step.method==='box'?'box':step.method==='extra'?'diagonal':step.unit;
-      assert((step.method!=='line'||['row','col'].includes(kind)),fail('invalid line'));
-      const unit=spec.units.find(u=>u.kind===kind&&u.i===step.unitIndex);
-      assert(unit&&!unit.cells.some(i=>grid[i]===step.value),fail('digit already in unit'));
-      assert.deepEqual(places(unit,step.value),[step.index],fail('digit has other possible positions'));
-      if(step.method==='line') assert.equal(unit.cells.filter(i=>!grid[i]).length,Math.min(...lines.map(m=>m.empty)),fail('does not prioritize the least-empty lines'));
-    } else if(step.method==='naked') {
-      assert.deepEqual(candidates(step.index),[step.value],fail('cell has another candidate'));
-    } else if(step.method==='locked') {
-      const source=spec.units.find(u=>u.kind===step.unit&&u.i===step.unitIndex);
-      const target=spec.units.find(u=>u.kind===step.targetUnit&&u.i===step.targetUnitIndex);
-      assert(source&&target&&(source.kind==='box')!==(target.kind==='box'),fail('not a box/line intersection'));
-      const spots=places(source,step.value);
-      assert(spots.length>=2&&spots.every(i=>target.cells.includes(i)),fail('candidate positions are not locked'));
-      assert.deepEqual(step.cells,spots,fail('incomplete source candidate set'));
-      for(const r of step.removals) assert(target.cells.includes(r.index)&&!source.cells.includes(r.index)&&r.digits.every(d=>d===step.value),fail('removal outside locked intersection'));
-    } else if(step.rule==='parity') {
-      for(const r of step.removals) assert(spec.parity[r.index]&&r.digits.every(d=>d%2!==spec.parity[r.index]%2),fail('parity does not exclude this value'));
-    } else if(step.rule==='inequality') {
-      const [a,b]=step.cells;
-      assert(spec.inequalities.some(([x,y])=>x===a&&y===b),fail('inequality is absent'));
-      for(const r of step.removals) for(const d of r.digits) assert(
-        r.index===a?!candidates(b).some(v=>d<v):r.index===b&&!candidates(a).some(v=>v<d),fail('inequality still supports the removed value'));
-    } else if(step.rule==='visibility') {
-      const unit=step.unit==='row'?spec.rows[step.unitIndex]:spec.cols[step.unitIndex];
-      const clues=step.unit==='row'?[spec.sky.left[step.unitIndex],spec.sky.right[step.unitIndex]]:[spec.sky.top[step.unitIndex],spec.sky.bottom[step.unitIndex]];
-      assert.deepEqual(step.clues,clues,fail('wrong visibility clues'));
-      const arrangements=[];
-      const extend=line=>{
-        if(line.length===p.size) {
-          if((!clues[0]||visibility(line)===clues[0])&&(!clues[1]||visibility([...line].reverse())===clues[1])) arrangements.push(line);
-        } else for(const d of candidates(unit[line.length])) if(!line.includes(d)) extend([...line,d]);
-      };
-      extend([]);
-      assert(arrangements.length>0&&arrangements.length===step.arrangements,fail('wrong set of possible building arrangements'));
-      for(const r of step.removals) assert(unit.includes(r.index)&&r.digits.every(d=>arrangements.every(a=>a[unit.indexOf(r.index)]!==d)),fail('a valid arrangement supports the removed height'));
-    } else assert.fail(fail('unknown deduction'));
-    if(step.removals) for(const r of step.removals) {
-      assert(!grid[r.index]&&r.digits.length>0&&r.digits.every(d=>candidates(r.index).includes(d)),fail('removal has no candidate to remove'));
-      for(const d of r.digits) eliminated[r.index].add(d);
-      assert(candidates(r.index).length,fail('removal empties a cell'));
-    } else {
-      assert(!grid[step.index]&&candidates(step.index).includes(step.value),fail('invalid placement'));
-      grid[step.index]=step.value;
+/** L2 syllabus: only methods introduced by this lesson; lesson methods cannot be skipped. */
+export function checkSyllabus(p, spec, taught) {
+  for (const s of p.trace) assert(taught.includes(s.method), `${p.id}: ${s.method} is not taught in ${p.lessonId}`);
+  if (p.role === 'class' || p.role === 'homework') {
+    const solved = logicalSolve(p.puzzle, spec, p.allowed);
+    assert(solved.solved, `${p.id}: lesson methods do not finish the puzzle`);
+    assert.deepEqual(solved.steps, p.trace, `${p.id}: trace changed`);
+    const necessity = {};
+    for (const m of p.required) {
+      const without = logicalSolve(p.puzzle, spec, p.allowed.filter(x => x !== m));
+      assert(!without.solved, `${p.id}: ${m} can be skipped`);
+      necessity[m] = without.grid.filter(v => !v).length;
     }
-    nextDigit=step.method==='box'?step.value:1;
+    if (p.lessonId === 'M2' || p.lessonId === 'H2') assert(p.trace.filter(s => s.method === 'line' && s.empty >= 2).length >= 2, `${p.id}: fewer than two real line deductions`);
+    if (p.family !== 'classic') assert.equal(solveExact(p.puzzle, relaxedSpec(p.size, p.family), 2).length, 2, `${p.id}: variant rule is redundant`);
+    return { necessity };
   }
-  return {steps:p.trace.length,methodReasons:true,boxDigitPriority:permitted.includes('box')?true:null,leastEmptyLinePriority:permitted.includes('line')?true:null};
+  if (p.role === 'target' && p.meta.pattern?.startsWith('V-') && p.family !== 'skyscraper') {
+    const relaxed = relaxedSpec(p.size, p.family);
+    assert(!forcedCells(p.puzzle, relaxed, p.solution).some(f => f.index === p.targets[0].index), `${p.id}: target does not need the new rule`);
+  }
+  return {};
 }
+
+/** L3 teaching design: the page shows the pattern it was written for, at the planned difficulty. */
+export function checkDesign(p, spec) {
+  const plan = p.plan, steps = explainSteps(p.puzzle, spec, p.trace);
+  switch (plan.gen) {
+    case 'box': {
+      const cls = classifyBox(p.puzzle, spec, p.targets[0].index, p.targets[0].value);
+      assert.equal(cls.pattern, plan.pattern, `${p.id}: box pattern ${cls.pattern} instead of ${plan.pattern}`);
+      assert.equal(p.trace.length, 1); assert.equal(p.trace[0].method, 'box');
+      return { pattern: cls.pattern, occupied: cls.occupied, lines: cls.lines };
+    }
+    case 'fill': return { pattern: 'E0', boxes: p.targets.length };
+    case 'chain': {
+      assert(p.trace.every(s => s.method === 'box' && s.value === p.meta.digit), `${p.id}: chain uses another digit`);
+      assert(p.trace.length >= { 4: 2, 6: 3, 9: 4 }[p.size], `${p.id}: chain too short`);
+      return { pattern: 'E5', chain: p.trace.length };
+    }
+    case 'scan': {
+      assert(p.trace.every(s => s.method === 'box'), `${p.id}: scan must use box elimination only`);
+      assert(!logicalSolve(p.puzzle, spec, ['box']).solved, `${p.id}: scan page should stop before the end`);
+      return { pattern: 'E6', placements: p.trace.length, digits: new Set(p.trace.map(s => s.value)).size };
+    }
+    case 'line': case 'midgame': {
+      const first = p.trace[0];
+      assert.equal(first.method, 'line', `${p.id}: first step must be a line deduction`);
+      assert.equal(logicalSolve(p.puzzle, spec, ['box']).steps.length, 0, `${p.id}: box elimination still advances`);
+      const unit = spec.units.find(u => u.kind === first.unit && u.i === first.unitIndex), empties = unit.cells.filter(i => !p.puzzle[i]).length;
+      if (plan.gen === 'line') assert(empties >= plan.empties[0] && empties <= plan.empties[1], `${p.id}: line has ${empties} empty cells`);
+      if (plan.gen === 'line') assert(steps[0].reasons.some(r => r.kind !== 'occupied'), `${p.id}: line page is only the last empty cell`);
+      if (plan.gen === 'midgame') for (const s of p.trace) assert(spec.units.find(u => u.kind === s.unit && u.i === s.unitIndex).cells.filter(i => !p.puzzle[i]).length >= 2, `${p.id}: a breakthrough is only the last empty cell`);
+      return { pattern: p.meta.pattern, empties };
+    }
+    case 'naked': {
+      const t = p.targets[0].index, units = spec.unitsOf[t].filter(u => ['row', 'col', 'box'].includes(u.kind));
+      const filled = units.map(u => u.cells.filter(i => p.puzzle[i]).length);
+      assert(Math.max(...filled) < p.size - 1, `${p.id}: one unit already shows the missing number`);
+      assert(filled.filter(Boolean).length >= 2, `${p.id}: exclusions come from one unit only`);
+      return { pattern: p.meta.pattern, filled };
+    }
+    case 'locked': {
+      const locked = p.trace.filter(s => s.method === 'locked'), placed = p.trace.at(-1);
+      assert(locked.length === 1 && locked[0].rule === plan.rule, `${p.id}: locked form differs`);
+      assert(placed.method === 'naked' ? locked[0].removals.some(r => r.index === placed.index) : locked[0].value === placed.value, `${p.id}: locked step does not lead to the placement`);
+      assert([plan.follow].flat().includes(placed.method), `${p.id}: follow-up is ${placed.method}`);
+      assert.equal(logicalSolve(p.puzzle, spec, ['box', 'line', 'naked']).steps.length, 0, `${p.id}: basic methods already advance`);
+      return { pattern: p.meta.pattern, rule: plan.rule, follow: placed.method };
+    }
+    case 'variant': {
+      const place = steps.find(s => !s.removals);
+      if (plan.kind === 'region') assert(place.rule === 'region' && place.reasons.some(r => r.kind !== 'occupied'), `${p.id}: not a region exclusion`);
+      if (plan.kind === 'assist') assert(place.variantUse, `${p.id}: diagonal is not used`);
+      if (plan.kind === 'mark') assert(steps.some(s => s.method === 'extra' && s.removals), `${p.id}: marks are not used`);
+      if (plan.kind === 'sky-limit') assert(p.trace[0].rule === 'sky-limit' && !logicalSolve(p.puzzle, spec, p.allowed, { skipRules: ['sky-limit'] }).steps.some(s => !s.removals), `${p.id}: skyline limit is not needed`);
+      if (plan.kind === 'sky') assert(steps.some(s => s.method === 'extra') && place.method !== 'extra', `${p.id}: skyline practice does not combine rules`);
+      assert(p.trace.length <= (plan.maxSteps ?? 3), `${p.id}: too many reasoning steps`);
+      return { pattern: p.meta.pattern, steps: p.trace.length };
+    }
+    case 'skyOpener': return { pattern: p.meta.pattern };
+    case 'completed': return { pattern: 'R0' };
+    case 'full': {
+      const [lo, hi] = plan.givens;
+      assert(p.givens >= lo && p.givens <= hi, `${p.id}: ${p.givens} givens outside ${lo}–${hi}`);
+      if (plan.maxBottleneck !== undefined) assert(p.profile.bottleneck <= plan.maxBottleneck, `${p.id}: bottleneck ${p.profile.bottleneck}`);
+      const ruleUse = steps.filter(s => s.variantUse).length;
+      if (plan.minRule) assert(ruleUse >= plan.minRule, `${p.id}: new rule used ${ruleUse} times`);
+      return { givens: p.givens, bottleneck: p.profile.bottleneck, steps: p.profile.steps, ruleUse };
+    }
+    default: assert.fail(`${p.id}: unknown generator ${plan.gen}`);
+  }
+}
+
+const SIDE_ORDER = { left: ['rows', false], right: ['rows', true], top: ['cols', false], bottom: ['cols', true] };
+/** Replay every stated reason from scratch, without the solver that produced it. */
+export function replayReasons(p, spec) {
+  const n = p.size, grid = [...p.puzzle], eliminated = grid.map(() => new Set()), all = Array.from({ length: n }, (_, i) => i + 1);
+  const candidates = i => grid[i] ? [grid[i]] : all.filter(d => !eliminated[i].has(d) && !spec.peers[i].some(j => grid[j] === d));
+  const places = (cells, d) => cells.filter(i => !grid[i] && candidates(i).includes(d));
+  for (const [k, step] of p.trace.entries()) {
+    const fail = m => `${p.id} step ${k + 1}: ${m}`;
+    if (!step.removals && (step.method === 'box' || step.method === 'line' || step.rule === 'region')) {
+      const unit = spec.units.find(u => u.kind === step.unit && u.i === step.unitIndex);
+      assert(unit && !unit.cells.some(i => grid[i] === step.value), fail('digit already in unit'));
+      assert.deepEqual(places(unit.cells, step.value), [step.index], fail('digit has other positions'));
+    } else if (step.method === 'naked') {
+      assert.deepEqual(candidates(step.index), [step.value], fail('cell has other candidates'));
+    } else if (step.method === 'locked') {
+      const source = spec.units.find(u => u.kind === step.unit && u.i === step.unitIndex), target = spec.units.find(u => u.kind === step.targetUnit && u.i === step.targetUnitIndex);
+      const spots = places(source.cells, step.value);
+      assert(spots.length >= 2 && spots.every(i => target.cells.includes(i)), fail('candidates are not locked'));
+      for (const r of step.removals) assert(target.cells.includes(r.index) && !source.cells.includes(r.index), fail('removal outside intersection'));
+    } else if (step.rule === 'parity') {
+      for (const r of step.removals) assert(r.digits.every(d => d % 2 !== spec.parity[r.index] % 2), fail('parity allows this value'));
+    } else if (step.rule === 'inequality') {
+      const [a, b] = step.cells;
+      assert(spec.inequalities.some(([x, y]) => x === a && y === b), fail('no such inequality'));
+      for (const r of step.removals) for (const d of r.digits) assert(r.index === a ? !candidates(b).some(v => d < v) : !candidates(a).some(v => v < d), fail('inequality still supports value'));
+    } else if (step.rule?.startsWith('sky-')) {
+      const [group, reverse] = SIDE_ORDER[step.side], line = spec[group][step.unitIndex], ordered = reverse ? [...line].reverse() : line;
+      assert.equal(spec.sky[step.side][step.unitIndex], step.clue, fail('wrong clue'));
+      if (step.rule === 'sky-one') assert(step.clue === 1 && ordered[0] === step.index && step.value === n, fail('clue 1 means the tallest is first'));
+      if (step.rule === 'sky-full') assert(step.clue === n && step.value === ordered.indexOf(step.index) + 1, fail('clue n means ascending'));
+      if (step.rule === 'sky-limit') for (const r of step.removals) {
+        const k = ordered.indexOf(r.index);
+        assert(k >= 0 && k < step.clue - 1 && r.digits.every(d => d > n - step.clue + 1 + k), fail('height is not too tall'));
+      }
+    } else assert.fail(fail(`unknown step ${step.method}/${step.rule}`));
+    if (step.removals) for (const r of step.removals) {
+      for (const d of r.digits) { assert(candidates(r.index).includes(d), fail('nothing to remove')); eliminated[r.index].add(d); }
+      assert(candidates(r.index).length, fail('removal empties a cell'));
+    } else {
+      assert(!grid[step.index] && candidates(step.index).includes(step.value), fail('invalid placement'));
+      if (p.solution) assert.equal(step.value, p.solution[step.index], fail('placement differs from the solution'));
+      grid[step.index] = step.value;
+    }
+  }
+  return { steps: p.trace.length };
+}
+
+export function specOf(p) { return p.family === 'classic' ? makeSpec(p.size) : specFrom(p.size, p.rules); }

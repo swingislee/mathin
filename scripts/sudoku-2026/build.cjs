@@ -6,11 +6,15 @@ Module._resolveFilename=function(request,parent,...rest){return resolve.call(thi
 Module._load=function(request,...rest){return request==='server-only'?{}:load.call(this,request,...rest);};
 for(const ext of ['.ts','.tsx']) require.extensions[ext]=(module,file)=>module._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX,esModuleInterop:true},fileName:file}).outputText,file);
 const {buildNativeCourse}=require('./native-materials.ts');
-console.time('Native audit and composition build');
-const prior=process.argv.includes('--reuse-audit')?JSON.parse(fs.readFileSync('content/courses/sudoku-2026/native-audit.json','utf8')):undefined;
-const result=buildNativeCourse(prior);
-fs.mkdirSync('.tmp/sudoku-2026',{recursive:true});
-fs.writeFileSync('.tmp/sudoku-2026/course-package.json',JSON.stringify(result));
-fs.writeFileSync('content/courses/sudoku-2026/native-audit.json',JSON.stringify(result.nativeAudit,null,2)+'\n');
-console.log(JSON.stringify({lessons:result.lessons.length,pages:result.lessons.reduce((n,l)=>n+l.pages.length,0),puzzles:result.nativeAudit.length}));
-console.timeEnd('Native audit and composition build');
+(async()=>{
+  const {LESSONS}=await import('./lessons.mjs');
+  const bank=JSON.parse(fs.readFileSync('content/courses/sudoku-2026/bank.json','utf8'));
+  console.time('Native audit and composition build');
+  const prior=process.argv.includes('--reuse-audit')?JSON.parse(fs.readFileSync('content/courses/sudoku-2026/native-audit.json','utf8')):undefined;
+  const result=buildNativeCourse(LESSONS,bank,prior);
+  fs.mkdirSync('.tmp/sudoku-2026',{recursive:true});
+  fs.writeFileSync('.tmp/sudoku-2026/course-package.json',JSON.stringify(result));
+  fs.writeFileSync('content/courses/sudoku-2026/native-audit.json',JSON.stringify(result.nativeAudit,null,1)+'\n');
+  console.log(JSON.stringify({lessons:result.lessons.length,pages:result.lessons.reduce((n,l)=>n+l.pages.length,0),puzzles:result.nativeAudit.length}));
+  console.timeEnd('Native audit and composition build');
+})().catch(error=>{console.error(error);process.exit(1);});
