@@ -72,7 +72,7 @@ async function CourseFamilyLibrary({ locale, searchParams }: { locale: string; s
   const [rawSearchParams] = await Promise.all([searchParams, requirePerm(locale, "course.view")]);
   const filters = parseCourseFamilyFilters(rawSearchParams);
   const { families, totalCount } = await listCourseFamilies(filters);
-  const hasFilters = Boolean(filters.q || filters.grade || filters.courseSeason || filters.classType || filters.catalogVersion || filters.familyStatus || filters.variantStatus || filters.purpose || filters.readiness);
+  const hasFilters = Boolean(filters.q || filters.grade || filters.courseSeason || filters.yearRound || filters.classType || filters.catalogVersion || filters.familyStatus || filters.variantStatus || filters.purpose || filters.readiness);
   const params = Object.fromEntries(Object.entries(rawSearchParams).flatMap(([key, value]) => {
     const first = Array.isArray(value) ? value[0] : value;
     return first ? [[key, first]] : [];

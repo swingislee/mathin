@@ -12,6 +12,7 @@ import { CreateVariantDialog } from "./CreateVariantDialog";
 import type { CourseFamilyDetail } from "./course-family-detail";
 import { compareCourseDifficulty } from "./course-difficulty";
 import { COURSE_SEASONS, type CourseSeason } from "./types";
+import { courseGradeLabel } from "./course-grade-range";
 
 type Variant = CourseFamilyDetail["variants"][number];
 type CatalogVersion = CourseFamilyDetail["catalogVersions"][number];
@@ -79,10 +80,12 @@ export function VariantMatrix({ familyId, variants, catalogVersions, canManage }
     ? variants.filter((variant) => variant.catalogVersionId === activeVersion.id)
     : variants;
   const grades = Array.from(new Set(scopedVariants.map((variant) => variant.grade))).sort((a, b) => a - b);
+  const gradeRanges = [...new Map([...scopedVariants].sort((a,b) => a.grade-b.grade).map((variant) => [courseGradeLabel(variant), variant])).values()];
   const unspecifiedSeasonVariants = scopedVariants
-    .filter((variant) => variant.courseSeason === null)
+    .filter((variant) => variant.courseSeason === null && !variant.yearRound)
     .sort((left, right) => left.grade - right.grade || compareCourseDifficulty(left.classType, right.classType));
   const createVersionId = activeVersion?.id ?? null;
+  const hasYearRound = scopedVariants.some(variant => variant.yearRound);
 
   const versionTabs = showVersionTabs && <div className="mb-3 flex flex-wrap gap-1.5" role="tablist" aria-label={t("catalogVersion")}>
     {catalogVersions.map((version) => <button
@@ -120,28 +123,32 @@ export function VariantMatrix({ familyId, variants, catalogVersions, canManage }
   return <section className="overflow-x-auto rounded-2xl border border-line bg-card p-4">
     <h2 className="mb-3 text-base font-medium text-ink">{t("versionMatrix")}</h2>
     {versionTabs}
-    <div className="grid min-w-[640px] gap-2" style={{ gridTemplateColumns: `5rem repeat(${COURSE_SEASONS.length}, 1fr)` }}>
+    <div className="grid min-w-[640px] gap-2" style={{ gridTemplateColumns: `5rem repeat(${COURSE_SEASONS.length + Number(hasYearRound)}, 1fr)` }}>
       <div />
       {COURSE_SEASONS.map((season) => <div key={season.value} className="px-2 text-center text-xs font-medium uppercase text-muted">{t(season.labelKey)}</div>)}
-      {grades.map((grade) => <Fragment key={grade}>
-        <div className="flex items-center px-2 text-sm font-medium text-ink">{t("gradeRowLabel", { grade })}</div>
+      {hasYearRound && <div className="px-2 text-center text-xs font-medium text-muted">{t("courseYearRound")}</div>}
+      {gradeRanges.map((range) => <Fragment key={courseGradeLabel(range)}>
+        <div className="flex items-center px-2 text-sm font-medium text-ink">{t("gradeRowLabel", { grade: courseGradeLabel(range) })}</div>
         {COURSE_SEASONS.map((season) => {
           const cellVariants = scopedVariants
-            .filter((variant) => variant.grade === grade && variant.courseSeason === season.value)
+            .filter((variant) => courseGradeLabel(variant) === courseGradeLabel(range) && variant.courseSeason === season.value)
             .sort((left, right) => compareCourseDifficulty(left.classType, right.classType));
           return <div key={season.value} className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg bg-paper/60 p-1.5">
             {cellVariants.length === 0
-              ? <EmptyCell familyId={familyId} catalogVersionId={createVersionId} grade={grade} courseSeason={season.value} canManage={canManage} />
+              ? <EmptyCell familyId={familyId} catalogVersionId={createVersionId} grade={range.grade} courseSeason={season.value} canManage={canManage && (!range.gradeEnd || range.gradeEnd === range.grade)} />
               : cellVariants.map((variant) => <VariantBadge key={variant.id} familyId={familyId} variant={variant} />)}
           </div>;
         })}
+        {hasYearRound && <div className="flex flex-wrap items-center justify-center gap-1.5 rounded-lg bg-paper/60 p-1.5">
+          {scopedVariants.filter(variant => variant.yearRound && courseGradeLabel(variant) === courseGradeLabel(range)).map(variant => <VariantBadge key={variant.id} familyId={familyId} variant={variant} />)}
+        </div>}
       </Fragment>)}
     </div>
     {unspecifiedSeasonVariants.length > 0 && <div className="mt-3 rounded-xl bg-paper/60 p-3">
       <p className="mb-2 text-xs font-medium text-muted">{t("courseSeasonUnspecified")}</p>
       <div className="flex flex-wrap gap-2">
         {unspecifiedSeasonVariants.map((variant) => <div key={variant.id} className="flex items-center gap-2">
-          <span className="text-xs text-muted">{t("grade", { grade: variant.grade })}</span>
+          <span className="text-xs text-muted">{t("grade", { grade: courseGradeLabel(variant) })}</span>
           <VariantBadge familyId={familyId} variant={variant} />
         </div>)}
       </div>

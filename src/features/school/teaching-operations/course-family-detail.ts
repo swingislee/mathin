@@ -58,6 +58,8 @@ const detailSchema = z.object({
     catalogVersionTitle: z.string(),
     supersededByCourseId: uuidSchema.nullable(),
     grade: z.number().int().min(1).max(9),
+    gradeEnd: z.number().int().min(1).max(9).nullish(),
+    yearRound: z.boolean().optional(),
     courseSeason: courseSeasonSchema.nullable(),
     classType: z.string(),
     status: courseStatusSchema,
@@ -77,6 +79,8 @@ const detailSchema = z.object({
     catalogVersionTitle: z.string(),
     supersededByCourseId: uuidSchema.nullable(),
     grade: z.number().int().min(1).max(9),
+    gradeEnd: z.number().int().min(1).max(9).nullish(),
+    yearRound: z.boolean().optional(),
     courseSeason: courseSeasonSchema.nullable(),
     classType: z.string(),
     status: courseStatusSchema,
@@ -136,6 +140,8 @@ export interface CourseFamilyDetail {
     catalogVersionTitle: string;
     supersededByCourseId: string | null;
     grade: number;
+    gradeEnd?: number | null;
+    yearRound?: boolean;
     courseSeason: CourseSeason | null;
     classType: string;
     status: CourseStatus;
@@ -155,6 +161,8 @@ export interface CourseFamilyDetail {
     catalogVersionTitle: string;
     supersededByCourseId: string | null;
     grade: number;
+    gradeEnd?: number | null;
+    yearRound?: boolean;
     courseSeason: CourseSeason | null;
     classType: string;
     status: CourseStatus;

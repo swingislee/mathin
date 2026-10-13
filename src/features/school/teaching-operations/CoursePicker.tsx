@@ -116,7 +116,8 @@ export function CoursePicker({
     return catalog.filter((candidate) => {
       if (effectiveCourseKind && candidate.courseKind !== effectiveCourseKind) return false;
       if (grade !== null && candidate.grade !== grade) return false;
-      if (courseSeason !== null && candidate.courseSeason !== courseSeason) return false;
+      if (courseSeason !== null && candidate.courseSeason !== courseSeason
+        && !(candidate.courseKind === "curriculum" && candidate.courseSeason === null)) return false;
       if (classType && candidate.classType !== classType) return false;
       if (!includeSuperseded && candidate.isSuperseded) return false;
       if (primaryTopicSlug && candidate.primaryTopicSlug !== primaryTopicSlug) return false;

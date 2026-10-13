@@ -5,6 +5,7 @@ import { COURSE_SEASONS } from "./course-queries";
 import { compareCourseDifficulty } from "./course-difficulty";
 import type { CourseFamilyDetail, SelectedCourseVariant } from "./course-family-detail";
 import type { CourseSeason } from "./types";
+import { courseGradeLabel } from "./course-grade-range";
 
 type Variant = CourseFamilyDetail["variants"][number];
 
@@ -56,7 +57,7 @@ export async function VariantSelector({
   // 年级/班型/季节三个切换组只在当前教材年度版本内跳转：跨版本跳转会在用户以为自己
   // 只换了个年级时把课程换成另一套教材，这正是版本层要防的事。换版本是显式的第四组。
   const scoped = variants.filter((variant) => variant.catalogVersionId === current.catalogVersionId);
-  const grades = Array.from(new Set(scoped.map((variant) => variant.grade))).sort((a, b) => a - b);
+  const grades = [...new Map([...scoped].sort((a,b) => a.grade-b.grade).map((variant) => [courseGradeLabel(variant), variant])).values()];
   const classTypes = Array.from(new Set(scoped.map((variant) => variant.classType))).sort(compareCourseDifficulty);
 
   // doc23 §8.2：三行按钮阵列压成一条。它现在住在 sticky 的导航行里（ObjectContextSwitcher），
@@ -76,14 +77,15 @@ export async function VariantSelector({
       />)}
     </SelectorGroup>}
     <SelectorGroup label={t("gradeLabel")}>
-      {grades.map((grade) => <OptionLink key={grade} active={current.grade === grade} label={String(grade)} target={pickVariant(scoped, currentVariant, (variant) => variant.grade === grade)} familyId={familyId} />)}
+      {grades.map((grade) => <OptionLink key={courseGradeLabel(grade)} active={courseGradeLabel(current) === courseGradeLabel(grade)} label={courseGradeLabel(grade)} target={pickVariant(scoped, currentVariant, (variant) => courseGradeLabel(variant) === courseGradeLabel(grade))} familyId={familyId} />)}
     </SelectorGroup>
     <SelectorGroup label={t("classType")}>
       {classTypes.map((classType) => <OptionLink key={classType || "default"} active={current.classType === classType} label={classType || t("defaultClassType")} target={pickVariant(scoped, currentVariant, (variant) => variant.classType === classType)} familyId={familyId} />)}
     </SelectorGroup>
     <SelectorGroup label={t("courseSeason")}>
       {COURSE_SEASONS.map((season) => <OptionLink key={season.value} active={current.courseSeason === season.value} label={t(season.labelKey)} target={pickVariant(scoped, currentVariant, (variant) => variant.courseSeason === season.value as CourseSeason)} familyId={familyId} />)}
-      {scoped.some((variant) => variant.courseSeason === null) && <OptionLink key="unspecified" active={current.courseSeason === null} label={t("courseSeasonUnspecified")} target={pickVariant(scoped, currentVariant, (variant) => variant.courseSeason === null)} familyId={familyId} />}
+      {scoped.some((variant) => variant.yearRound) && <OptionLink key="year-round" active={current.yearRound === true} label={t("courseYearRound")} target={pickVariant(scoped, currentVariant, (variant) => variant.yearRound === true)} familyId={familyId} />}
+      {scoped.some((variant) => variant.courseSeason === null && !variant.yearRound) && <OptionLink key="unspecified" active={current.courseSeason === null && !current.yearRound} label={t("courseSeasonUnspecified")} target={pickVariant(scoped, currentVariant, (variant) => variant.courseSeason === null && !variant.yearRound)} familyId={familyId} />}
     </SelectorGroup>
   </div>;
 }

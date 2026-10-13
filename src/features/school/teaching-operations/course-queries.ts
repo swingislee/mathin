@@ -17,6 +17,7 @@ export interface CourseFamilyFilters {
   q?: string;
   grade?: number;
   courseSeason?: CourseSeason;
+  yearRound?: boolean;
   classType?: string;
   /** 教材年度版本 slug（如 `2026`）。跨课程族按 slug 匹配，因此只在版本命名一致时有意义。 */
   catalogVersion?: string;
@@ -80,7 +81,7 @@ function parseMatchedVariants(value: Json): CourseVariantSummary[] {
       || catalogVersionSlug === null || catalogVersionTitle === null) continue;
     variants.push({
       id, title, productCode, catalogVersionSlug, catalogVersionTitle, supersededByCourseId,
-      grade, courseSeason, classType, lectureCount, releasedLectureCount,
+      grade, gradeEnd: number(item.gradeEnd), yearRound: item.yearRound === true, courseSeason, classType, lectureCount, releasedLectureCount,
     });
   }
   return variants;
@@ -99,6 +100,7 @@ export function parseCourseFamilyFilters(input: Record<string, string | string[]
     q,
     grade: Number.isInteger(grade) && grade >= 1 && grade <= 9 ? grade : undefined,
     courseSeason: isCourseSeason(courseSeason) ? courseSeason : undefined,
+    yearRound: first(input.courseSeason) === "year-round" || undefined,
     classType: first(input.classType)?.trim().slice(0, 20) || undefined,
     catalogVersion: first(input.catalogVersion)?.trim().toLowerCase().slice(0, 40) || undefined,
     familyStatus: familyStatus === "draft" || familyStatus === "enabled" || familyStatus === "disabled" ? familyStatus : undefined,
@@ -142,6 +144,7 @@ export async function listCourseFamilies(filters: CourseFamilyFilters): Promise<
       q: filters.q ?? "",
       grade: filters.grade?.toString() ?? "",
       courseSeason: filters.courseSeason?.toString() ?? "",
+      yearRound: filters.yearRound ? "true" : "",
       classType: filters.classType ?? "",
       catalogVersion: filters.catalogVersion ?? "",
       familyStatus: filters.familyStatus ?? "",

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { compareCourseDifficulty } from "./course-difficulty";
 import { type CourseFamilyListItem, COURSE_SEASONS } from "./course-queries";
 import type { CourseSeason } from "./types";
+import { courseGrades } from "./course-grade-range";
 
 /** 与 list_course_families 的每页条数一致。 */
 const PAGE_SIZE = 20;
@@ -34,9 +35,9 @@ function summarizeGrades(grades: number[]) {
 function summarizeFamily(family: CourseFamilyListItem, t: Translator) {
   const variants = family.matchedVariants;
   return {
-    grades: summarizeGrades(variants.map((variant) => variant.grade)),
+    grades: summarizeGrades(variants.flatMap(courseGrades)),
     classTypes: [...new Set(variants.map((variant) => variant.classType))].sort(compareCourseDifficulty).map((classType) => classType || t("defaultClassType")),
-    seasons: [...new Set(variants.map((variant) => variant.courseSeason))].sort((a, b) => (a ?? 5) - (b ?? 5)).map((season) => courseSeasonLabel(season, t)),
+    seasons: [...new Set(variants.map((variant) => variant.yearRound ? t("courseYearRound") : courseSeasonLabel(variant.courseSeason, t)))],
     catalogVersions: [...new Map(variants
       .filter((variant) => variant.catalogVersionSlug !== "default")
       .map((variant) => [variant.catalogVersionSlug, variant.catalogVersionTitle])).values()],
