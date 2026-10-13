@@ -55,10 +55,10 @@ export function ActionField({ value, target, onChange, locale }: {
     {choices && <label className="grid flex-1 gap-1 text-sm">{locale === "zh" ? "绑定目标" : "Destination"}<select className={settingsField} value={target} onChange={e => onChange(value, e.target.value)}><option value="">{locale === "zh" ? "请选择" : "Choose"}</option>{choices.map(c => <option key={c.id} value={c.id}>{c.title[locale] || c.title.zh || c.id}</option>)}</select></label>}
   </div>;
 }
-export function MenuEditor({ value, onChange, locale, max = 20 }: { value: MiniappEntry[]; onChange: (v: MiniappEntry[]) => void; locale: "zh" | "en"; max?: number }) {
+export function MenuEditor({ value, onChange, locale, max = 20, focusedId }: { value: MiniappEntry[]; onChange: (v: MiniappEntry[]) => void; locale: "zh" | "en"; max?: number; focusedId?: string }) {
   const en = locale === "en";
   const patch = (index: number, change: Partial<MiniappEntry>) => onChange(value.map((v, i) => i === index ? { ...v, ...change } : v));
-  return <div className="divide-y divide-line">{value.map((item, index) => <div className="space-y-3 py-4" key={item.id}>
+  return <div className="divide-y divide-line">{value.map((item, index) => (!focusedId || item.id === focusedId) && <div className="space-y-3 py-4" key={item.id}>
     <MoveControls index={index} length={value.length} move={offset => onChange(moveItem(value, index, offset))} remove={() => onChange(value.filter((_, i) => i !== index))} en={en}>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={item.visible} onChange={e => patch(index, { visible: e.target.checked })} />{en ? "Visible" : "展示"}</label>
     </MoveControls>

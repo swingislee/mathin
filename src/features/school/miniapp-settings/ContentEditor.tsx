@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { newId } from "@/lib/uuid";
 import { experienceText as t, localText, type ContentBlock, type ContentDocument, type ContentItem, type ExperienceText, type MiniappExperience } from "../../../../contracts/participant-api/miniapp-experience";
@@ -7,15 +7,18 @@ import { contentKindNames, experiencePageTemplates, newContentBlock } from "../.
 import { LocalizedField, MoveControls, moveItem, settingsField } from "./fields";
 import { ExperienceActionField } from "./ExperienceActionField";
 import { ExperiencePreview } from "./ExperiencePreview";
-import { PhonePreview } from "./WorkbenchContext";
+import { PhonePreview, WorkbenchContext } from "./WorkbenchContext";
 import { availableContentSources, moduleGroups } from "../../../../contracts/participant-api/miniapp-experience-catalog";
 import { accountRecordNames } from "../../../../contracts/participant-api/miniapp-records";
 
 
 export type ExperienceImageUpload = (file: File, accept: (path: string) => void) => void;
 export function ContentEditor({ value, experience, locale, onChange, upload }: { value: ContentDocument; experience: MiniappExperience; locale: "zh" | "en"; onChange: (v: ContentDocument) => void; upload: ExperienceImageUpload }) {
-  const en = locale === "en", [selectedId, select] = useState(value.blocks[0]?.id || ""), [addKind, setAddKind] = useState<ContentBlock["kind"]>("paragraph");
-  const selected = value.blocks.find(b => b.id === selectedId) || value.blocks[0];
+  const context = useContext(WorkbenchContext), assembled = context?.assembly && context.selectedId === value.id;
+  const en = locale === "en", [localId, selectLocal] = useState(value.blocks[0]?.id || ""), [addKind, setAddKind] = useState<ContentBlock["kind"]>("paragraph");
+  const selectedId = assembled ? context.selectedPart?.replace(/^block:/, "") || "" : localId;
+  const select = (id: string) => assembled ? context.selectPart?.(id ? `block:${id}` : "") : selectLocal(id);
+  const selected = value.blocks.find(b => b.id === selectedId) || (!assembled ? value.blocks[0] : undefined);
   const sources = availableContentSources(value), compatibleSources = availableContentSources(value, selected?.kind);
   const optionalSource = selected && "binding" in selected && compatibleSources.find(s => s.path === selected.binding)?.availability === "optional";
   const patch = (change: Record<string, unknown>) => { if (selected) onChange({ ...value, blocks: value.blocks.map(b => b.id === selected.id ? { ...b, ...change } as ContentBlock : b) }); };
@@ -23,7 +26,7 @@ export function ContentEditor({ value, experience, locale, onChange, upload }: {
   const titleOf = (block: ContentBlock) => localText("title" in block ? block.title : "text" in block ? block.text : block.kind === "action" ? block.action.label : undefined, locale) || localText(contentKindNames[block.kind], locale);
   const sourceField = (binding: string) => <div className="space-y-2"><label className="grid gap-1 text-sm">{en ? "Data binding" : "绑定数据字段"}<select className={settingsField} value={binding} onChange={e => patch({ binding: e.target.value })}><option value="">{selected && ["chart", "metric", "scale", "evidence"].includes(selected.kind) ? (en ? "Choose a field" : "选择数据字段") : (en ? "Write content in this module" : "在当前模块编写内容")}</option>{compatibleSources.map(source => <option key={source.path} value={source.path}>{localText(source.name, locale)}{source.availability === "optional" ? (en ? " · when recorded" : " · 有记录时") : ""}</option>)}{binding && !compatibleSources.some(s => s.path === binding) && <option value={binding}>{en ? "Incompatible field: " : "待调整字段："}{binding}</option>}</select></label>{binding && <p className="text-xs leading-5 text-muted">{en ? "This module displays the referenced record. Edit the record in its business workspace." : "此处只定义展示方式，字段值由对应业务记录提供。"}</p>}</div>;
   return <div className="space-y-5">
-    <div className="space-y-4"><LocalizedField label={value.purpose === "report" ? (en ? "Layout name" : "报告版式名称") : (en ? "Page name" : "页面名称")} value={value.title} max={200} onChange={title => onChange({ ...value, title })} />
+    {(!assembled || !selected) && <><div className="space-y-4"><LocalizedField label={value.purpose === "report" ? (en ? "Layout name" : "报告版式名称") : (en ? "Page name" : "页面名称")} value={value.title} max={200} onChange={title => onChange({ ...value, title })} />
       <div className="grid grid-cols-2 gap-3"><label className="grid gap-1 text-sm">{en ? "Audience" : "可见对象"}<select className={settingsField} value={value.audience} onChange={e => onChange({ ...value, audience: e.target.value as ContentDocument["audience"] })}><option value="all">{en ? "Everyone" : "所有人"}</option><option value="signedIn">{en ? "Signed-in users" : "已登录账号"}</option><option value="participants">{en ? "With participants" : "已有参与人的账号"}</option></select></label>
       <label className="grid gap-1 text-sm">{en ? "Layout" : "页面排版"}<select className={settingsField} value={value.layout} onChange={e => onChange({ ...value, layout: e.target.value as ContentDocument["layout"] })}><option value="reading">{en ? "Continuous reading" : "连续阅读"}</option><option value="sections">{en ? "Separated sections" : "章节分隔"}</option></select></label></div>
     </div>
@@ -31,10 +34,11 @@ export function ContentEditor({ value, experience, locale, onChange, upload }: {
       <label className="grid min-w-0 gap-1 text-sm">{en ? "Page role" : "使用场景"}<select className={settingsField} value={value.purpose} onChange={e => onChange({ ...value, purpose: e.target.value as ContentDocument["purpose"] })}>{[["page", "通用页面", "Page"], ["service", "服务详情", "Service"], ["preparation", "参加前说明", "Preparation"], ["confirmation", "提交后说明", "Confirmation"], ["report", "报告版式", "Report layout"], ["help", "帮助内容", "Help"]].filter(([id]) => value.purpose === "report" ? id === "report" : id !== "report").map(([id, zh, english]) => <option key={id} value={id}>{en ? english : zh}</option>)}</select></label>
       <label className="grid min-w-0 gap-1 text-sm">{en ? "Start from a template" : "从模板重新编排"}<select className={settingsField} value="" onChange={e => { const template = experiencePageTemplates().find(p => p.id === e.target.value); if (template) { onChange({ ...value, purpose: template.purpose, blocks: template.blocks.map(b => ({ ...b, id: newId() })) }); select(""); } }}><option value="">{en ? "Choose a layout…" : "选择预设版式…"}</option>{experiencePageTemplates().filter(p => (p.purpose === "report") === (value.purpose === "report")).map(p => <option key={p.id} value={p.id}>{localText(p.title, locale)}</option>)}</select></label>
     </div>
+    </>}
     <div className="space-y-5">
-      <div className="space-y-3 border-y border-line py-4"><details open><summary className="cursor-pointer text-sm font-medium">{en ? "Modules in this page" : "页面内模块"} · {value.blocks.length}</summary><div className="mt-3 grid max-h-52 gap-1 overflow-y-auto">{value.blocks.map((block, index) => <button type="button" key={block.id} aria-pressed={selected?.id === block.id} title={titleOf(block)} className={"flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left text-sm " + (selected?.id === block.id ? "bg-moon text-ink" : "hover:bg-line/30") + (!block.visible ? " opacity-50" : "")} onClick={() => select(block.id)}><span className="w-5 shrink-0 text-muted">{index + 1}</span><span className="min-w-0 flex-1 truncate">{titleOf(block)}</span><span className="shrink-0 text-xs text-muted">{localText(contentKindNames[block.kind], locale)}</span></button>)}</div></details>
+      {!assembled && <div className="space-y-3 border-y border-line py-4"><details open><summary className="cursor-pointer text-sm font-medium">{en ? "Modules in this page" : "页面内模块"} · {value.blocks.length}</summary><div className="mt-3 grid max-h-52 gap-1 overflow-y-auto">{value.blocks.map((block, index) => <button type="button" key={block.id} aria-pressed={selected?.id === block.id} title={titleOf(block)} className={"flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left text-sm " + (selected?.id === block.id ? "bg-moon text-ink" : "hover:bg-line/30") + (!block.visible ? " opacity-50" : "")} onClick={() => select(block.id)}><span className="w-5 shrink-0 text-muted">{index + 1}</span><span className="min-w-0 flex-1 truncate">{titleOf(block)}</span><span className="shrink-0 text-xs text-muted">{localText(contentKindNames[block.kind], locale)}</span></button>)}</div></details>
         <div className="flex flex-wrap gap-2"><select aria-label={en ? "Module to add" : "待添加模块"} className={settingsField + " flex-1 basis-44"} value={addKind} onChange={e => setAddKind(e.target.value as ContentBlock["kind"])}>{moduleGroups.filter(g => g.id !== "report" || value.purpose === "report").map(group => <optgroup key={group.id} label={localText(group.name, locale)}>{group.kinds.filter(kind => value.purpose !== "report" || kind !== "accountRecords").map(kind => <option key={kind} value={kind}>{localText(contentKindNames[kind], locale)}</option>)}</optgroup>)}</select><Button type="button" variant="secondary" size="sm" disabled={value.blocks.length >= 80} onClick={() => { const block = newContentBlock(addKind, newId()); onChange({ ...value, blocks: [...value.blocks, block] }); select(block.id); }}>{en ? "Add module" : "添加模块"}</Button></div>
-      </div>
+      </div>}
       <div className="min-w-0 space-y-4">{selected && <>
         <MoveControls en={en} index={value.blocks.indexOf(selected)} length={value.blocks.length} move={offset => onChange({ ...value, blocks: moveItem(value.blocks, value.blocks.indexOf(selected), offset) })} remove={() => { onChange({ ...value, blocks: value.blocks.filter(b => b.id !== selected.id) }); select(""); }}>
           <span className="text-sm font-medium">{localText(contentKindNames[selected.kind], locale)}</span><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={selected.visible} onChange={e => patch({ visible: e.target.checked })} />{en ? "Visible" : "显示"}</label>

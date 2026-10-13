@@ -1,5 +1,6 @@
 .workspace { container-type: inline-size; }
-.columns { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr) 22rem; align-items: start; border-top: 1px solid var(--line); }
+.page [data-dashboard-page-header] { border-bottom: 0; }
+.columns { display: grid; grid-template-columns: 16rem minmax(0, 1fr) 22rem; align-items: start; }
 .navigation { position: sticky; top: 1rem; max-height: calc(100dvh - 11rem); overflow: auto; padding: 1rem .8rem 1rem 0; }
 .editor { min-width: 0; border-left: 1px solid var(--line); padding: 1.25rem 1.5rem; }
 .fields { min-width: 0; max-width: 46rem; margin-inline: auto; container-type: inline-size; }
@@ -13,7 +14,19 @@
 .statusBar { display: flex; align-items: center; justify-content: space-between; padding: .65rem 1.2rem; font-size: .65rem; border-bottom: 1px solid var(--line); }
 .localized { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .fieldGrid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
-@container (max-width: 1180px) { .columns { grid-template-columns: 11rem minmax(0, 1fr) 19rem; } .editor { padding-inline: 1rem; } .preview { padding-left: .75rem; } }
-@container (max-width: 940px) { .columns { grid-template-columns: 10rem minmax(0, 1fr); } .preview { grid-column: 2; position: static; width: 100%; max-width: 24rem; } .editor { border-bottom: 1px solid var(--line); } }
+.treeHeading { padding: .55rem .5rem; font-size: .7rem; font-weight: 600; color: var(--muted); cursor: pointer; }
+.treePage, .treeNode, .paletteItem, .addComponent { display: flex; width: 100%; align-items: center; gap: .45rem; min-width: 0; padding: .55rem .5rem; border-radius: .375rem; font-size: .8rem; text-align: left; }
+.treePage > span:first-of-type { min-width: 0; flex: 1; }
+.treePage > svg, .treeNode > svg, .paletteItem > svg, .addComponent > svg { flex-shrink: 0; }
+.treePage[aria-current=page] { font-weight: 600; background: color-mix(in srgb, var(--moon) 35%, transparent); }
+.treeNode[aria-current=true] { background: var(--moon); color: var(--ink); }
+.treeNode[data-visible=false] { color: var(--muted); opacity: .65; }
+.treeNode:hover, .paletteItem:hover, .treePage:hover, .addComponent:hover { background: color-mix(in srgb, var(--moon) 30%, transparent); }
+.outline { margin: .3rem 0 .6rem .6rem; padding-left: .45rem; border-left: 1px solid var(--line); }
+.nestedOutline { margin-left: .7rem; padding-left: .35rem; border-left: 1px solid var(--line); }
+.addComponent { color: var(--leaf-deep); font-size: .75rem; }
+.paletteItem > span { flex: 1; }
+@container (max-width: 1180px) { .columns { grid-template-columns: 14rem minmax(0, 1fr) 19rem; } .editor { padding-inline: 1rem; } .preview { padding-left: .75rem; } }
+@container (max-width: 940px) { .columns { grid-template-columns: 13rem minmax(0, 1fr); } .preview { grid-column: 2; position: static; width: 100%; max-width: 24rem; } .editor { border-bottom: 1px solid var(--line); } }
 @container (max-width: 560px) { .columns { display: block; } .navigation { position: static; max-height: 14rem; border-bottom: 1px solid var(--line); padding-right: 0; } .editor { border-left: 0; padding-inline: 0; } .preview { border-left: 0; padding-left: 0; margin-inline: auto; } }
 @container (max-width: 430px) { .localized { grid-template-columns: minmax(0, 1fr); } }
