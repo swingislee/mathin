@@ -149,6 +149,15 @@ function textBlockStyle(node: DocNode): CSSProperties {
   };
 }
 
+/** Plain text keeps its authored line breaks and weight; inline editing reads them back through innerText. */
+function plainTextStyle(node: DocNode): CSSProperties {
+  return {
+    ...textBlockStyle(node),
+    whiteSpace: node.style.whiteSpace ?? undefined,
+    fontWeight: node.style.fontWeight ?? undefined,
+  };
+}
+
 function DocVideo({
   node,
   src,
@@ -486,7 +495,7 @@ function nodeBody(
       return (
         <div
           data-courseware-inline-text-editor={inlineTextEditing ? "true" : undefined}
-          style={textBlockStyle(node)}
+          style={plainTextStyle(node)}
           contentEditable={inlineTextEditing || undefined}
           suppressContentEditableWarning={inlineTextEditing}
           spellCheck={inlineTextEditing}
