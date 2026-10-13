@@ -1,0 +1,6 @@
+<view wx:if="{{!hidden}}" class="runtime-tab-bar" role="tablist">
+  <button wx:for="{{tabs}}" wx:key="slot" class="runtime-tab {{selected === item.slot ? 'selected' : ''}}" data-slot="{{item.slot}}" bindtap="open" role="tab" aria-selected="{{selected === item.slot}}">
+    <image class="runtime-tab-icon" src="{{selected === item.slot ? item.activeUrl : item.iconUrl}}" aria-hidden="true" />
+    <text>{{item.label}}</text>
+  </button>
+</view>

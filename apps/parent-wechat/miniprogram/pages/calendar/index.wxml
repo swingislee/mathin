@@ -1,17 +1,1 @@
-<view class="portal-page theme-{{theme}} calendar-page">
-  <app-nav title="{{screen.title || (title)}}" />
-  <view class="portal-content"><screen-content description="{{screen.description}}" page-id="{{screen.beforePageId}}" locale="{{locale}}" revision="{{configurationRevision}}" />
-    <screen-section presentation="{{screen.modules.participant}}"><participant-picker rows="{{participants}}" selected="{{selected}}" subtitle="{{stageLabel}}" placeholder="{{copy.chooseLinkedParticipant}}" bindchange="participant" bindempty="showParticipants" /></screen-section>
-    <screen-section presentation="{{screen.modules.calendar}}"><view class="surface week-card">
-      <view class="card-heading"><text class="section-title">{{copy.weekCalendar}}</text><button class="text-link subtle" bindtap="agenda">{{copy.allArrangements}}<view class="chevron"></view></button></view>
-      <date-grid mode="week" days="{{days}}" weekdays="{{weekdays}}" today-label="{{copy.todayShort}}" bindselect="day" />
-      <view wx:if="{{!authenticated}}" class="inline-signin"><button class="primary" bindtap="login">{{copy.loginCalendar}}</button></view>
-      <text wx:elif="{{loading && !loaded}}" class="loading-line">{{copy.loading}}</text>
-      <view wx:elif="{{error}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="load">{{copy.retry}}</button></view>
-      <empty-state wx:elif="{{loaded && !daySessions.length}}" label="{{participants.length ? copy.noDayEntries : copy.noLinkNote}}" compact />
-      <schedule-list rows="{{daySessions}}" labels="{{copy}}" />
-    </view></screen-section>
-  <screen-content page-id="{{screen.afterPageId}}" locale="{{locale}}" revision="{{configurationRevision}}" /></view>
-  <tab-overlay wx:if="{{sheet}}" />
-  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="closeSheet" catchtouchmove="noop"><view class="bottom-sheet" catchtap="noop"><view class="sheet-heading"><text>{{copy.chooseLinkedParticipant}}</text><button class="sheet-close" bindtap="closeSheet" aria-label="{{copy.close}}">×</button></view><participant-picker mode="list" rows="{{participants}}" selected="{{selected}}" bindchange="participant" /><text wx:if="{{!participants.length}}" class="muted small">{{loaded ? copy.noLinkNote : copy.loading}}</text></view></view>
-</view>
+<runtime-host id="host" tab="2" />

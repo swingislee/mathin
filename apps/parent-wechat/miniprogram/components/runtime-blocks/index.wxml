@@ -1,0 +1,31 @@
+<block wx:for="{{blocks}}" wx:key="id" wx:for-item="block">
+  <view wx:if="{{block.type === 'section'}}" class="runtime-section {{block.style === 'card' ? 'surface' : 'plain'}}">
+    <view wx:if="{{block.title || block.more}}" class="card-heading"><text class="section-title">{{block.title}}</text><button wx:if="{{block.more}}" class="text-link" data-action="{{block.more.action}}" bindtap="act">{{block.more.label}}<view class="chevron"></view></button></view>
+    <runtime-blocks blocks="{{block.blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{lifted}}" bindaction="forward" bindfacet="forwardFacet" bindweek="forwardWeek" bindparticipant="forwardParticipant" />
+  </view>
+  <text wx:elif="{{block.type === 'text'}}" class="runtime-text tone-{{block.tone}}" user-select>{{block.text}}</text>
+  <image wx:elif="{{block.type === 'image'}}" class="runtime-image fit-{{block.fit}}" src="{{block.image}}" mode="{{block.fit === 'cover' ? 'aspectFill' : 'widthFix'}}" data-action="{{block.action}}" bindtap="act" lazy-load />
+  <button wx:elif="{{block.type === 'feature'}}" class="feature-entry surface runtime-block" data-action="{{block.action}}" bindtap="act" hover-class="pressed">
+    <image class="feature-art" src="{{block.image || '/assets/appointment.png'}}" mode="aspectFit" aria-hidden="true" />
+    <view class="feature-copy"><text class="feature-title">{{block.title}}</text><text wx:if="{{block.body}}" class="small-pill">{{block.body}}</text></view>
+    <view wx:if="{{block.action}}" class="chevron"></view>
+  </button>
+  <view wx:elif="{{block.type === 'entries' && block.style === 'floating'}}" class="floating-services surface {{lifted ? 'lifted' : ''}}">
+    <button wx:for="{{block.items}}" wx:key="id" data-action="{{item.action}}" bindtap="act"><image class="line-icon" src="{{item.icon}}" aria-hidden="true" /><text>{{item.label}}</text></button>
+  </view>
+  <view wx:elif="{{block.type === 'entries'}}" class="surface services-card runtime-block">
+    <text wx:if="{{block.title}}" class="section-title">{{block.title}}</text>
+    <view class="service-grid"><button wx:for="{{block.items}}" wx:key="id" class="service-entry" data-action="{{item.action}}" bindtap="act"><image class="line-icon" src="{{item.icon}}" aria-hidden="true" /><text>{{item.label}}</text></button></view>
+  </view>
+  <runtime-list wx:elif="{{block.type === 'list'}}" block="{{block}}" strings="{{strings}}" bindaction="forward" bindfacet="forwardFacet" />
+  <runtime-calendar wx:elif="{{block.type === 'calendar'}}" block="{{block}}" strings="{{strings}}" bindaction="forward" bindweek="forwardWeek" />
+  <runtime-participants wx:elif="{{block.type === 'participants'}}" block="{{block}}" strings="{{strings}}" bindaction="forward" bindparticipant="forwardParticipant" />
+  <view wx:elif="{{block.type === 'account'}}" class="account-header runtime-block">
+    <button class="account-identity" data-action="{{block.signedIn ? null : loginAction}}" bindtap="act"><image class="account-avatar" src="/assets/account.png" aria-hidden="true" /><text class="account-name">{{block.signedIn ? block.name : block.prompt}}</text><view wx:if="{{!block.signedIn}}" class="chevron"></view></button>
+    <button wx:if="{{block.trailing}}" class="account-header-action" data-action="{{block.trailing.action}}" bindtap="act">{{block.trailing.label}}</button>
+  </view>
+  <screen-content wx:elif="{{block.type === 'content'}}" page-id="{{block.pageId}}" locale="{{locale}}" />
+  <button wx:elif="{{block.type === 'button'}}" class="runtime-button appearance-{{block.appearance}} {{block.appearance === 'primary' ? 'primary' : ''}}" data-action="{{block.action}}" bindtap="act">{{block.label}}</button>
+  <view wx:elif="{{block.type === 'divider'}}" class="runtime-divider" />
+  <text wx:elif="{{block.fallback}}" class="runtime-text tone-muted">{{block.fallback}}</text>
+</block>

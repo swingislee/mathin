@@ -1,0 +1,13 @@
+<view class="portal-page runtime-page theme-{{theme}} {{tab ? 'with-tab-bar' : ''}}">
+  <app-nav title="{{title}}" brand="{{navigation === 'brand'}}" back="{{back}}" />
+  <view class="portal-content">
+    <view wx:if="{{missing}}" class="runtime-state"><empty-state label="{{strings.unavailable}}" spacious /><button class="text-button" bindtap="firstTab">{{strings.retry}}</button></view>
+    <text wx:elif="{{loading && !blocks.length}}" class="loading-line">{{strings.loading}}</text>
+    <view wx:elif="{{error && !blocks.length}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="retry">{{strings.retry}}</button></view>
+    <runtime-blocks blocks="{{blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{tab > 0}}" bindaction="action" bindfacet="facet" bindweek="week" bindparticipant="participant" />
+  </view>
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="close" catchtouchmove="noop"><view class="bottom-sheet catalog-sheet" catchtap="noop">
+    <view class="sheet-heading"><text class="block">{{sheet.facet.label}}</text><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
+    <scroll-view class="stage-scroll" scroll-y><view wx:for="{{sheet.groups}}" wx:for-item="group" wx:key="group" class="stage-group"><text wx:if="{{group.group}}" class="section-title">{{group.group}}</text><view class="option-grid"><button wx:for="{{group.options}}" wx:key="value" class="option-pill {{sheet.facet.value === item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="choose">{{item.label}}</button></view></view></scroll-view>
+  </view></view>
+</view>

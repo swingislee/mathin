@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "日历"
+  "navigationBarTitleText": "日历",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": { "runtime-host": "/components/runtime-host/index" }
 }

@@ -3,10 +3,12 @@ import { nativeScreenIds } from "./miniapp-native";
 let returnPath = "";
 let loginRequested = false;
 let participantId = "";
-const tabs = ["discover", "calendar", "account"];
+const tabs = ["discover", "calendar", "account", "tab-4", "tab-5"];
+// Runtime screens and the extra tab slots are valid return targets alongside the original pages.
+const pages = [...(nativeScreenIds as readonly string[]), ...tabs, "screen"];
 function isDestination(url: string): boolean {
-  const match = /^\/pages\/([a-z-]+)\/index(\?[^#]*)?$/.exec(url);
-  return !!match && (nativeScreenIds as readonly string[]).includes(match[1]) && !(tabs.includes(match[1]) && match[2]);
+  const match = /^\/pages\/([a-z0-9-]+)\/index(\?[^#]*)?$/.exec(url);
+  return !!match && pages.includes(match[1]) && !(tabs.includes(match[1]) && match[2]);
 }
 
 export function openPage(url: string) {
@@ -25,6 +27,9 @@ export function resumeAfterLogin() {
   if (target) openPage(target);
   return Boolean(target);
 }
+/** Hands the requested return page to the sign-in page and clears the pending request. */
+export function takeReturn() { const target = returnPath; cancelLogin(); return target; }
+export function isTabPath(url: string) { return tabs.some(tab => url === `/pages/${tab}/index`); }
 export function selectedParticipant() { return participantId; }
 export function hasReturn() { return Boolean(returnPath); }
 export function selectParticipant(id: string) { participantId = id; }

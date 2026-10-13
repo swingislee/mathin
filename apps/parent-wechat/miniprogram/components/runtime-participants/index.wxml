@@ -1,0 +1,8 @@
+<view class="surface runtime-participants">
+  <text wx:if="{{block.title}}" class="section-title">{{block.title}}</text>
+  <view wx:if="{{block.state === 'signedOut'}}" class="runtime-participants-signin"><text class="small muted">{{block.message}}</text><button class="primary" bindtap="login">{{strings.signIn}}</button></view>
+  <text wx:elif="{{!block.participants.length}}" class="small muted runtime-participants-empty">{{block.empty}}</text>
+  <scroll-view wx:else scroll-x class="runtime-participant-scroll"><view class="runtime-participant-row">
+    <button wx:for="{{block.participants}}" wx:key="id" class="runtime-participant {{item.id === block.selected ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="choose" aria-selected="{{item.id === block.selected}}"><image src="/assets/participant.png" class="runtime-participant-avatar" aria-hidden="true" /><text>{{item.name}}</text></button>
+  </view></scroll-view>
+</view>

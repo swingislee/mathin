@@ -1,2 +1,2 @@
-import { registerActivityCatalogPage } from "../../lib/activity-catalog-page";
-registerActivityCatalogPage(false);
+import { registerRuntimePage } from "../../lib/runtime-page";
+registerRuntimePage();

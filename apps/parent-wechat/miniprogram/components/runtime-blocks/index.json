@@ -1,0 +1,10 @@
+{
+  "component": true,
+  "usingComponents": {
+    "runtime-blocks": "/components/runtime-blocks/index",
+    "runtime-list": "/components/runtime-list/index",
+    "runtime-calendar": "/components/runtime-calendar/index",
+    "runtime-participants": "/components/runtime-participants/index",
+    "screen-content": "/components/screen-content/index"
+  }
+}

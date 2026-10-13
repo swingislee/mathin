@@ -18,6 +18,7 @@ import { reportContentResponse } from "./report-content-server";
 import { experienceProviderPost, experienceBookingsGet, experienceBookingDetailGet } from "./experience-provider-server";
 import { notificationsGet } from "./notification-server";
 import { miniappDocumentGet, miniappConsentsGet, miniappConsentsPost } from "./document-server";
+import { runtimeAppGet, runtimeBlockGet, runtimeScreenGet } from "./runtime/server";
 import { questionAnswersSchema, formAnswerSnapshotSchema } from "@/features/parent-portal/form-questions";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 
@@ -68,6 +69,9 @@ async function projected<T>(result: Response, map: (value: T) => unknown) {
 
 async function get(request: Request, endpoint: string) {
   switch (endpoint) {
+    case "runtime/app": return runtimeAppGet(request);
+    case "runtime/screen": return runtimeScreenGet(request);
+    case "runtime/block": return runtimeBlockGet(request);
     case "settings": return miniappSettingsGet(request);
     case "experience": return experienceGet(request);
     case "experience/requests": return experienceRequestsGet(request);

@@ -1,0 +1,16 @@
+<view class="portal-page login-page theme-{{theme}}">
+  <app-nav title="{{copy.login}}" back />
+  <view class="portal-content">
+    <view class="surface login-card">
+      <image class="login-art" src="/assets/account.png" mode="aspectFit" aria-hidden="true" />
+      <text class="auth-hint">{{copy.wechatLoginHint}}</text>
+      <view wx:if="{{info}}" class="auth-info" role="status">{{info}}</view>
+      <view wx:if="{{error}}" class="notice" role="alert">{{error}}</view>
+      <text wx:if="{{wechatLoading}}" class="auth-hint">{{copy.wechatStatusLoading}}</text>
+      <view wx:elif="{{wechatStatusFailed}}" class="auth-hint">{{copy.wechatStatusFailed}}<button class="text-button" bindtap="loadWechat" disabled="{{busy}}">{{copy.retry}}</button></view>
+      <button wx:elif="{{wechat.available}}" class="primary" bindtap="signIn" loading="{{busy}}" disabled="{{busy}}">{{copy.wechatLogin}}</button>
+      <text wx:else class="auth-hint">{{copy.wechatUnavailable}}</text>
+      <button class="secondary" bindtap="browse">{{copy.cancelLogin}}</button>
+    </view>
+  </view>
+</view>

@@ -1,7 +1,7 @@
 {
   "navigationStyle": "custom",
   "navigationBarTitleText": "发现",
-  "usingComponents": {
-    "activity-list": "/components/activity-list/index"
-  }
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark",
+  "usingComponents": { "runtime-host": "/components/runtime-host/index" }
 }

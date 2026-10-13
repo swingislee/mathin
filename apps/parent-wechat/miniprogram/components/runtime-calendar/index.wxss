@@ -1,0 +1,4 @@
+.runtime-calendar { margin-bottom: 24rpx; }
+.runtime-week-nav { display: flex; align-items: center; justify-content: space-between; margin: 8rpx 0 4rpx; color: var(--muted); font-size: 24rpx; }
+.week-step { width: 64rpx; height: 56rpx; line-height: 56rpx; padding: 0; background: none; color: var(--muted); font-size: 40rpx; }
+.schedule-list .entry-card { width: 100%; text-align: left; }

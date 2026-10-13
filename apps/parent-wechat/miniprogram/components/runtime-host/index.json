@@ -1,0 +1,8 @@
+{
+  "component": true,
+  "usingComponents": {
+    "app-nav": "/components/app-nav/index",
+    "runtime-blocks": "/components/runtime-blocks/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}

@@ -1,0 +1,16 @@
+<view class="surface runtime-list template-{{block.template}}">
+  <view wx:if="{{block.title || block.more}}" class="card-heading"><text class="section-title">{{block.title}}</text><button wx:if="{{block.more}}" class="text-link" data-action="{{block.more.action}}" bindtap="act">{{block.more.label}}<view class="chevron"></view></button></view>
+  <view wx:if="{{block.facets.length}}" class="discovery-filters runtime-facets"><button wx:for="{{block.facets}}" wx:key="id" class="filter-pill {{item.value ? 'selected' : ''}}" data-facet="{{item.id}}" bindtap="facet"><text>{{item.value ? item.valueLabel : item.label}}</text><view class="chevron down"></view></button></view>
+  <view wx:if="{{block.state === 'signedOut'}}" class="inline-signin runtime-signin"><text class="small muted">{{block.message}}</text><button class="primary" bindtap="login">{{strings.signIn}}</button></view>
+  <view wx:elif="{{block.state === 'error'}}" class="notice" role="alert">{{block.message}}</view>
+  <empty-state wx:elif="{{!rows.length}}" label="{{block.empty}}" compact />
+  <block wx:elif="{{block.template === 'card'}}"><button wx:for="{{rows}}" wx:key="id" class="activity-row" data-action="{{item.action}}" bindtap="act" hover-class="pressed">
+    <view class="activity-tile"><image wx:if="{{item.image}}" src="{{item.image}}" class="activity-tile-cover" mode="aspectFill" lazy-load /><image wx:else src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
+    <view class="activity-row-content"><text class="activity-row-title">{{item.title}}</text><text wx:if="{{item.summary}}" class="activity-row-summary">{{item.summary}}</text><text wx:if="{{item.metaText}}" class="activity-row-meta">{{item.metaText}}</text><view wx:if="{{item.tags.length}}" class="activity-labels"><text wx:for="{{item.tags}}" wx:for-item="label" wx:key="*this" class="small-pill">{{label}}</text></view><view class="activity-row-bottom"><text class="activity-price">{{item.status ? item.status.label : ''}}</text><text wx:if="{{item.actionLabel}}" class="small-pill">{{item.actionLabel}}</text></view></view>
+  </button></block>
+  <block wx:else><button wx:for="{{rows}}" wx:key="id" class="runtime-row" data-action="{{item.action}}" bindtap="act" hover-class="pressed">
+    <view class="runtime-row-main"><text class="runtime-row-title">{{item.title}}</text><text wx:if="{{item.subtitle}}" class="runtime-row-subtitle">{{item.subtitle}}</text><text wx:if="{{item.metaText}}" class="runtime-row-meta">{{item.metaText}}</text><text wx:if="{{item.summary}}" class="runtime-row-summary">{{item.summary}}</text></view>
+    <text wx:if="{{item.status}}" class="runtime-status tone-{{item.status.tone}}">{{item.status.label}}</text>
+    <view wx:if="{{item.action}}" class="chevron"></view>
+  </button></block>
+</view>

@@ -1,0 +1,9 @@
+.runtime-participants { margin-bottom: 24rpx; padding: 26rpx 32rpx; }
+.runtime-participants-signin { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; margin-top: 8rpx; }
+.runtime-participants-signin .primary { flex-shrink: 0; margin: 0; padding: 14rpx 36rpx; font-size: 26rpx; }
+.runtime-participants-empty { display: block; margin-top: 12rpx; }
+.runtime-participant-scroll { width: 100%; white-space: nowrap; margin-top: 12rpx; }
+.runtime-participant-row { display: inline-flex; gap: 18rpx; }
+.runtime-participant { display: inline-flex; align-items: center; gap: 12rpx; margin: 0; padding: 12rpx 26rpx 12rpx 12rpx; border: 1rpx solid var(--line); border-radius: 999rpx; background: var(--card); color: var(--ink); font-size: 26rpx; }
+.runtime-participant.selected { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.runtime-participant-avatar { width: 52rpx; height: 52rpx; border-radius: 50%; }

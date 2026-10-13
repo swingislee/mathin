@@ -1,4 +1,5 @@
 import { config } from "../config.local";
+import { runtimeClientVersion } from "./runtime-contract";
 import { activityPageImageUrl, type ActivityPage } from "./activity-detail";
 import type { MiniappDocument, MiniappSettingsPublication } from "./miniapp-settings";
 import type { Account, GuardianBindingPreview, GuardianBindingStep, GuardianConfirmation } from "./api-types";
@@ -23,7 +24,7 @@ function send<T>(path:string,method:"GET"|"POST",data?:object,token?:string,prom
     // WeChat entry can wait for development compilation before the server exchanges its one-time code.
     const wechatEntry = path === "auth/wechat" || path === "auth/wechat/onboarding" || path === "guardian-binding";
     wx.request({url:origin()+"/api/v1/participant/"+path,method,data,timeout:wechatEntry ? 60000 : 20000,
-      header:{"content-type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},
+      header:{"content-type":"application/json","x-mathin-runtime":String(runtimeClientVersion),...(token?{Authorization:"Bearer "+token}:{})},
       success:result=>{
         if(token&&session()?.accessToken!==token){reject(new ApiError("UNAUTHENTICATED"));return;}
         if(result.statusCode>=200&&result.statusCode<300)resolve(result.data as T);
@@ -63,6 +64,17 @@ export async function post<T>(data:object,authenticated=true):Promise<T>{
 export async function serviceContacts(stageNumber?: number): Promise<import("./api-types").ServiceContact[]> {
   return send("services" + (stageNumber === undefined ? "" : "?stage=" + stageNumber), "GET");
 }
+/** Runtime reads use the session when one exists; an expired session is cleared and the read continues as a visitor. */
+export async function runtimeRead<T>(path: string): Promise<T> {
+  if (!session()) return send<T>("runtime/" + path, "GET");
+  try { return await send<T>("runtime/" + path, "GET", undefined, await accessToken()); }
+  catch (error) {
+    if (!(error instanceof ApiError) || error.code !== "UNAUTHENTICATED") throw error;
+    clearSession();
+    return send<T>("runtime/" + path, "GET");
+  }
+}
+export function apiOrigin() { return origin(); }
 export async function miniappSettings(revision?: number): Promise<MiniappSettingsPublication> {
   return send("settings?protocol=2" + (revision === undefined ? "" : "&revision=" + revision), "GET");
 }

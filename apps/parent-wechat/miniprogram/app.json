@@ -27,7 +27,11 @@
     "pages/experience-requests/index",
     "pages/provider-booking/index",
     "pages/provider-bookings/index",
-    "pages/experience-notifications/index"
+    "pages/experience-notifications/index",
+    "pages/tab-4/index",
+    "pages/tab-5/index",
+    "pages/screen/index",
+    "pages/login/index"
   ],
   "window": {
     "navigationBarTitleText": "格致未来思维",
@@ -36,6 +40,7 @@
     "backgroundColor": "@paper"
   },
   "tabBar": {
+    "custom": true,
     "color": "@muted",
     "selectedColor": "@primary",
     "backgroundColor": "@card",
@@ -58,6 +63,14 @@
         "text": "我的",
         "iconPath": "assets/tabs/account.png",
         "selectedIconPath": "assets/tabs/account-active.png"
+      },
+      {
+        "pagePath": "pages/tab-4/index",
+        "text": "第四项"
+      },
+      {
+        "pagePath": "pages/tab-5/index",
+        "text": "第五项"
       }
     ]
   },

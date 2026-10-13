@@ -4,6 +4,8 @@
 
 运行验证补充：发现首页配置发布、服务目录筛选与卡片导航、共用参与人/时段选择及本地预约提交—重开—取消已在开发者工具验证。已修正阻断编译的条件/循环组合、重复导航栏、主按钮样式及并发刷新时原生标题滞后一次的问题。取消的系统弹窗返回值使用官方 SDK 模拟，其余按钮、预约和读取接口真实执行；真机弹窗及手感待验收。[本批范围与结果](../../../.ai/tasks/MINI-RUNTIME-VERIFY-20261013.md)。
 
+2026-10-13 运行时：`discover`、`calendar`、`account` 三个底栏页和新增的 `tab-4`、`tab-5`、`screen` 由 `components/runtime-host` 渲染 Mathin 发布的运行时页面（规划见 [runtime-v1.md](runtime-v1.md)，后台入口 `/zh/dashboard/miniapp-runtime`）。底栏改为 `custom-tab-bar`，登录统一进入 `pages/login`。下表其余页面继续使用原生页面配置，由运行时动作 `route` 打开。
+
 ## 数据与渲染如何接通
 
 - `contracts/participant-api/miniapp-native.ts` 是原生页面、模块、数据来源、可执行动作和配置边界的共享定义。后台编辑器、原生路由白名单及客户端使用它；`scripts/sync-participant-contract.mjs` 同步小程序合同。

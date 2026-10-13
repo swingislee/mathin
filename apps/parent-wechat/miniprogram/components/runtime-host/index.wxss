@@ -1,0 +1,4 @@
+.runtime-page { padding-bottom: 40rpx; }
+/* The custom tab bar is drawn over the page, so tab pages reserve its height. */
+.runtime-page.with-tab-bar { padding-bottom: calc(140rpx + env(safe-area-inset-bottom)); }
+.runtime-state { display: flex; flex-direction: column; align-items: center; gap: 16rpx; padding-top: 80rpx; }
