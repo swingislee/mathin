@@ -1,4 +1,4 @@
-import { sudokuRules } from "./rules";
+import { SUDOKU_WINDOW_ORIGINS, sudokuRules } from "./rules";
 import type { SudokuVariantDefinition } from "./variant";
 
 /** One native, scale-independent annotation layer shared by authoring and play. */
@@ -9,6 +9,10 @@ export function SudokuRuleMarks({ variant }: { variant: SudokuVariantDefinition 
     {rules.kind === "diagonal" && <g stroke="#b56829" strokeWidth="3" strokeDasharray="9 7" opacity="0.55">
       <path d={`M 0 0 L ${n * 100} ${n * 100}`} /><path d={`M ${n * 100} 0 L 0 ${n * 100}`} />
     </g>}
+    {rules.kind === "window" && SUDOKU_WINDOW_ORIGINS.map(([row, column]) => (
+      <rect key={`${row}:${column}`} x={column * 100 + 6} y={row * 100 + 6} width="288" height="288" rx="14"
+        fill="#d9a441" fillOpacity="0.16" stroke="#b56829" strokeWidth="5" strokeDasharray="14 9" opacity="0.7" />
+    ))}
     {rules.kind === "parity" && rules.cells.map((v, i) => !v ? null : v === 1
       ? <circle key={i} cx={i % n * 100 + 50} cy={Math.floor(i / n) * 100 + 50} r="38" fill="none" stroke="#a55b38" strokeWidth="4" opacity="0.6" />
       : <rect key={i} x={i % n * 100 + 14} y={Math.floor(i / n) * 100 + 14} width="72" height="72" fill="none" stroke="#366d96" strokeWidth="4" opacity="0.6" />)}

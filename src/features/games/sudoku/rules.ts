@@ -8,6 +8,7 @@ const clues = z.array(z.number().int().min(0).max(9)).max(9);
 export const sudokuVariantRulesSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("classic") }).strict(),
   z.object({ kind: z.literal("diagonal") }).strict(),
+  z.object({ kind: z.literal("window") }).strict(),
   z.object({ kind: z.literal("irregular"), regions: indexes }).strict(),
   z.object({ kind: z.literal("inequality"), lessThan: z.array(z.tuple([
     z.number().int().nonnegative(), z.number().int().nonnegative(),
@@ -21,6 +22,7 @@ export function defaultSudokuRules(variant: SudokuVariantDefinition): SudokuVari
   const n = variant.size;
   switch (variant.family) {
     case "diagonal": return { kind: "diagonal" };
+    case "window": return { kind: "window" };
     case "irregular": return { kind: "irregular", regions: Array.from({ length: n * n }, (_, i) =>
       Math.floor(i / n / variant.boxRows) * (n / variant.boxColumns) + Math.floor(i % n / variant.boxColumns)) };
     case "inequality": return { kind: "inequality", lessThan: [] };
@@ -64,6 +66,7 @@ export function sudokuRulesValid(variant: SudokuVariantDefinition): boolean {
       });
     }
     case "parity": return rules.cells.length === count;
+    case "window": return n === 9;
     case "skyscraper": return n === 4 && [rules.top, rules.bottom, rules.left, rules.right].every((a) => a.length === n && a.every((v) => v <= n));
     default: return true;
   }
@@ -82,5 +85,13 @@ export function sudokuRuleUnits(variant: SudokuVariantDefinition): number[][] {
   units.push(...Array.from({ length: n }, (_, c) => Array.from({ length: n }, (_, r) => r * n + c)));
   if (rules.kind !== "skyscraper") for (let b = 0; b < n; b++) units.push(Array.from({ length: n * n }, (_, i) => i).filter((i) => sudokuRegionAt(variant, i) === b));
   if (rules.kind === "diagonal") units.push(Array.from({ length: n }, (_, i) => i * n + i), Array.from({ length: n }, (_, i) => i * n + n - 1 - i));
+  if (rules.kind === "window") units.push(...SUDOKU_WINDOW_ORIGINS.map(sudokuWindowCells));
   return units;
+}
+
+/** Windoku adds four 3×3 windows whose top-left cells are B2, B6, F2 and F6. */
+export const SUDOKU_WINDOW_ORIGINS = [[1, 1], [1, 5], [5, 1], [5, 5]] as const;
+
+export function sudokuWindowCells([row, column]: readonly [number, number]): number[] {
+  return Array.from({ length: 9 }, (_, k) => (row + Math.floor(k / 3)) * 9 + column + k % 3);
 }

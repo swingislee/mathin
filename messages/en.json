@@ -421,7 +421,8 @@
       "parity-4x4": "Odd/even 4×4",
       "parity-6x6": "Odd/even 6×6",
       "parity-9x9": "Odd/even 9×9",
-      "skyscraper-4x4": "Skyscrapers 4×4"
+      "skyscraper-4x4": "Skyscrapers 4×4",
+      "window-9x9": "Windoku 9×9"
     },
     "sudokuVariantTitle": "Sudoku · {size}",
     "pickDifficulty": "Pick a difficulty — you can restart anytime.",
@@ -1372,6 +1373,7 @@
       "irregular": "Each outlined region has N connected cells. Select a cell to assign its region.",
       "inequality": "Standard rules; the point faces the smaller number. Select a cell to set its right or bottom relation.",
       "parity": "Standard rules: circles are odd; squares are even.",
+      "window": "Standard rules plus each of the four shaded windows contains 1–9 once.",
       "skyscraper": "Rows and columns contain 1–4 once. Edge clues count visible buildings; taller buildings hide shorter ones. There are no region rules.",
       "selectCell": "Select a cell above to edit its marker.",
       "selected": "Selected: {coordinate}",

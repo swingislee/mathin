@@ -421,7 +421,8 @@
       "parity-4x4": "奇偶 4×4",
       "parity-6x6": "奇偶 6×6",
       "parity-9x9": "奇偶 9×9",
-      "skyscraper-4x4": "摩天楼 4×4"
+      "skyscraper-4x4": "摩天楼 4×4",
+      "window-9x9": "窗口 9×9"
     },
     "sudokuVariantTitle": "数独 · {size}",
     "pickDifficulty": "选择难度，随时可以重开。",
@@ -1372,6 +1373,7 @@
       "irregular": "粗线围成宫；每宫 N 格且连通。先选格，再设置所属宫。",
       "inequality": "标准规则，加尖端指向较小的数。选格后设置右边或下边的不等号。",
       "parity": "标准规则：圆圈填奇数，方框填偶数。",
+      "window": "标准规则，加四个阴影窗口也各含 1～9。",
       "skyscraper": "每行每列填 1～4；边数是从该方向看到的楼数，高楼挡矮楼。本题型没有宫规则。",
       "selectCell": "点击上方格子设置标记。",
       "selected": "当前格：{coordinate}",

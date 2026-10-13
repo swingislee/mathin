@@ -99,6 +99,13 @@ export const SUDOKU_VARIANTS = [
   },
   ...AUTHORED_VARIANTS,
   {
+    id: "window-9x9", family: "window", size: 9,
+    boxRows: 3, boxColumns: 3,
+    runtimeId: "variant-latin-v1", rendererId: "variant-grid-v1", seedEncoding: "variant-v2",
+    messageKey: "sudokuVariants.window-9x9", selectableIn: ["courseware-authored"],
+    ranked: false, givens: { easy: 40, medium: 32, hard: 26 },
+  },
+  {
     id: "skyscraper-4x4", family: "skyscraper", size: 4,
     boxRows: 2, boxColumns: 2,
     runtimeId: "variant-latin-v1", rendererId: "variant-grid-v1", seedEncoding: "variant-v2",
