@@ -5,18 +5,19 @@ import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-st
 import { workMessages, type PeriodField, type SourceLayout, type SourcePlacement } from './contract';
 import { sourceGroupLabels } from './grouping';
 
-export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled, compactPeriods = false, layout = 'rows', onChange, actions }: {
+export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled, compactPeriods = false, layout = 'rows', onChange, actions, section = 'all', groupMode }: {
   data: SourceLayout; kind: SourcePlacement['kind']; periodFields: PeriodField[]; locale: string; disabled?: boolean; compactPeriods?: boolean;
   layout?: 'rows' | 'toolbar';
+  section?: 'all' | 'groups' | 'periods'; groupMode?: SourcePlacement['groupMode'];
   onChange: (change: Partial<Pick<SourceLayout,'periodField' | 'period' | 'group'>>) => void; actions?: ReactNode;
 }) {
-  const m = workMessages(locale), labels = sourceGroupLabels(kind, locale);
+  const m = workMessages(locale), labels = sourceGroupLabels(kind, locale, groupMode);
   const choice = (key: string, label: string, selected: string, onClick: () => void, count?: number) =>
     <button key={key} type="button" disabled={disabled} className={`${tabsTriggerClassName} gap-1.5 px-2 text-xs`} data-state={selected === key ? 'active' : 'inactive'} aria-current={selected === key ? 'page' : undefined} onClick={onClick}>
       {label}{count !== undefined ? <span className="text-[10px] tabular-nums text-muted">{count}</span> : null}
     </button>;
   return <>
-    {layout === 'rows' || periodFields.length > 0 || actions ? <div className={layout === 'toolbar' ? 'flex min-w-0 max-w-full flex-wrap items-center gap-2' : 'flex min-w-0 flex-wrap items-center gap-2 border-b border-line py-2'}>
+    {section !== 'groups' && (layout === 'rows' || periodFields.length > 0 || actions) ? <div className={layout === 'toolbar' ? 'flex min-w-0 max-w-full flex-wrap items-center gap-2' : 'flex min-w-0 flex-wrap items-center gap-2 border-b border-line py-2'}>
       {periodFields.length ? <>
         <select aria-label={m.periodBasis} value={data.periodField} disabled={disabled} onChange={event => onChange({ periodField: event.target.value as PeriodField, period: '', group: '' })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
           {periodFields.map(field => <option key={field} value={field}>{m.periods[field]}</option>)}
@@ -32,12 +33,12 @@ export function SourceLayoutFilters({ data, kind, periodFields, locale, disabled
       </> : <span className="text-xs text-muted">{labels.group}{labels.subgroup ? ` → ${labels.subgroup}` : ''}</span>}
       {actions}
     </div> : null}
-    <div className={layout === 'toolbar' ? 'flex min-w-0 max-w-full items-center gap-1.5' : 'flex min-w-0 flex-wrap items-center gap-2 border-b border-line py-1.5'}>
+    {section !== 'periods' ? <div className={layout === 'toolbar' ? 'flex min-w-0 max-w-full items-center gap-1.5' : 'flex min-w-0 flex-wrap items-center gap-2 border-b border-line py-1.5'}>
       <span className="shrink-0 text-xs text-muted" title={m.sourceOrder}>{labels.group}</span>
       <nav aria-label={labels.group} className={`${tabsListClassName} h-auto max-w-full justify-start overflow-x-auto gap-1`}>
         {choice('all',m.allGroups,data.group,() => onChange({ group: 'all' }))}
         {data.groups.map(group => choice(group.key,group.key,data.group,() => onChange({ group: group.key }),group.count))}
       </nav>
-    </div>
+    </div> : null}
   </>;
 }

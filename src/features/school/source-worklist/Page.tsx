@@ -44,6 +44,7 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
     loadWorklistPage(client, query, locale, user.id, { subjects }), getOrganizationTimezoneV2(), getNow(),
     canAssign ? listSchoolSupportOwners() : Promise.resolve([]),
   ]);
+  query.scope = page.scope;
   let firstContactContent;
   if (firstContact) {
     const leadIds = page.rows.flatMap(row => row.leadId ? [row.leadId] : []);

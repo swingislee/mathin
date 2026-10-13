@@ -3,6 +3,42 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "LEAD-COMMUNICATION-REFINE-20261013",
+      "title": "线索与沟通业务结构深化",
+      "agent": "codex",
+      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/LEAD-COMMUNICATION-REFINE-20261013.md",
+      "writePaths": [
+        ".ai/tasks/LEAD-COMMUNICATION-REFINE-20261013.md",
+        "src/features/school/FirstContactRecordRow.tsx",
+        "src/features/school/FirstContactStatusTags.tsx",
+        "src/features/school/FollowupContactOutcome.tsx",
+        "src/features/school/InvitationCoordinationWorkbench.tsx",
+        "src/features/school/LeadFirstContactWorkbench.tsx",
+        "src/features/school/source-worklist/Page.tsx",
+        "src/features/school/source-worklist/SourceInfo.tsx",
+        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
+        "src/features/school/source-worklist/Workspace.tsx",
+        "src/features/school/source-worklist/contract.ts",
+        "src/features/school/source-worklist/data.ts",
+        "src/features/school/source-worklist/grouping.ts",
+        "src/features/school/source-worklist/useWorklistFields.ts",
+        "supabase/migrations/20261013210000_communication_worklist_roles.sql",
+        "supabase/migrations/20261013211000_communication_worklist_batch_reads.sql",
+        "supabase/tests/communication_worklist_roles.sql",
+        ".tmp/lead-communication-refine-20261013/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/workflows/school-operations.md"
+      ],
+      "checkpoint": null,
+      "next": "开发端线索与沟通可验收：真实小组导航、来源与兼职、行内首联、学服范围与 A 级筛选；7 条历史待报保留并提示。本增量未部署生产，待真实使用反馈。"
+    },
+    {
       "id": "COURSEWARE-ENTRY-GROUPS-20261013",
       "title": "课程草稿入口与研发任务分组",
       "agent": "codex",

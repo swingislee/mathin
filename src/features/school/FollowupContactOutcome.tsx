@@ -14,22 +14,23 @@ const selectedClasses: Record<LeadContactOutcome, string> = {
   invalid_number: "border-rose/60 bg-rose/15 font-semibold text-rose-deep hover:bg-rose/20",
 };
 
-export function FollowupContactOutcome({ value, onChange, disabled, locale }: {
-  value: LeadContactOutcome | ""; onChange: (value: LeadContactOutcome | "") => void; disabled?: boolean; locale: string;
+export function FollowupContactOutcome({ value, onChange, disabled, locale, compact = false }: {
+  value: LeadContactOutcome | ""; onChange: (value: LeadContactOutcome | "") => void; disabled?: boolean; locale: string; compact?: boolean;
 }) {
   const t = useTranslations("school.leads");
   const entryT = useTranslations("school.followupEntry");
   return <div className="space-y-1.5">
-    <p className="text-xs font-medium text-ink">{entryT("outcome")}</p>
+    {!compact ? <p className="text-xs font-medium text-ink">{entryT("outcome")}</p> : null}
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <FollowupChoice presentation="buttons" label={entryT("outcome")} value={value} disabled={disabled}
+        className={compact ? "gap-1 [&>button]:min-h-7 [&>button]:gap-1 [&>button]:px-1.5 [&>button]:py-0.5 [&>button]:text-[11px] [&>button>span:first-child]:hidden" : undefined}
         onValueChange={outcome => onChange(outcome as LeadContactOutcome)}
         options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome }) => ({ value: outcome, label: `${t(`contactOutcome_${outcome}`)} · ${key}`, shortcut: key,
           selectedClassName: selectedClasses[outcome] }))} />
-      <Button type="button" size="sm" variant="ghost" className="h-9 rounded-md px-2 text-xs"
+      {!compact || value ? <Button type="button" size="sm" variant="ghost" className={compact ? "h-7 rounded-md px-1 text-[11px]" : "h-9 rounded-md px-2 text-xs"}
         disabled={disabled || !value} aria-keyshortcuts="0" onClick={() => onChange("")}>
         {firstContactRowMessages(locale).clearOutcome}<kbd className="text-[10px]">0</kbd>
-      </Button>
+      </Button> : null}
     </div>
   </div>;
 }

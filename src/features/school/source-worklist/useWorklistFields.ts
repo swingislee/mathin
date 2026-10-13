@@ -8,7 +8,7 @@ import type { getWorklistFacetsAction } from './facets-action';
 import type { WorkQuery } from './contract';
 
 export function useWorklistFields(data: FollowupServerFields | undefined, query: WorkQuery | undefined, locale: string) {
-  const key = JSON.stringify(query && { stage: query.stage, scope: query.scope, q: query.q, batch: query.batch, students: query.students });
+  const key = JSON.stringify(query && { stage: query.stage, scope: query.scope, q: query.q, batch: query.batch, students: query.students, interest: query.interest, channel: query.channel });
   const [loaded, setLoaded] = useState<{ key: string | undefined; facets?: FollowupServerFields['facets']; status: 'loading' | 'error' | 'ready' } | null>(null);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), [key]);

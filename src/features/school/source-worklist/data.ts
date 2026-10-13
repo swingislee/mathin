@@ -8,6 +8,7 @@ import { markerSchema, placementSchema, PERIOD_FIELDS, type WorkQuery, type Work
 import { worklistFields } from './fields';
 
 const pageSchema = z.object({ rows: z.array(studentStageRowSchema.extend({ worklist: placementSchema })),
+  scope: z.enum(['all','mine','group','unassigned']), channels: z.array(z.object({ key: z.string(), count: z.number() })),
   count: z.number(), page: z.number(), pageSize: z.union([z.literal(20),z.literal(50),z.literal(100)]), totalPages: z.number(),
   periodField: z.union([z.enum(PERIOD_FIELDS),z.literal('')]), period: z.string(), group: z.string(), periods: z.array(z.object({ key: z.string(), count: z.number() })),
   groups: z.array(z.object({ key: z.string(), count: z.number(), subgroups: z.array(z.object({ key: z.string(), count: z.number() })) })), markers: z.array(markerSchema.extend({ count: z.number() })),
@@ -25,6 +26,7 @@ export async function loadWorklistPage(client: Awaited<ReturnType<typeof createC
     p_page: query.page, p_page_size: query.pageSize, p_period_field: query.periodField, p_period: query.period,
     p_subjects: subjects, p_batch: query.batch || null, p_query: studentListRpcQuery(fieldQuery),
     p_locale: locale.startsWith('en') ? 'en' : 'zh', p_labels: studentListFieldLabels(fields), p_include_facets: includeFacets, p_facets_only: includeFacets,
+    p_interest: query.interest ?? '', p_channel: query.channel ?? '',
   }));
   return { ...page, fieldView: { query: fieldQuery, facets: studentListFacets(facets, fields, locale), facetsDeferred: !includeFacets } };
 }

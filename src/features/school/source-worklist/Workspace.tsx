@@ -32,7 +32,7 @@ import { useWorklistFields } from './useWorklistFields';
 import { useWorklistSelection } from './Selection';
 
 const Entry = dynamic(() => import('../StudentStageEntryLoader').then(m => m.StudentStageEntryLoader));
-const QUERY_KEYS = ['stage','scope','group','marker','periodField','period','page','pageSize','fields','batch'];
+const QUERY_KEYS = ['stage','scope','group','marker','periodField','period','page','pageSize','fields','batch','interest','channel'];
 const monthKey = (row: WorkRow) => `month:${row.worklist.period}`;
 const parentKey = (row: WorkRow) => JSON.stringify(['group',row.worklist.period,row.worklist.group]);
 const childKey = (row: WorkRow) => JSON.stringify(['person',row.worklist.period,row.worklist.group,row.worklist.subgroup]);
@@ -59,7 +59,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
   const [active, setActive] = useState<{ id: string; mode: StudentEntryMode } | null>(null);
   const [visited, setVisited] = useState(new Set<string>());
   const [handled, setHandled] = useState(new Set<string>());
-  const [collapsed, setCollapsed] = useState(() => query.fields ? new Set<string>() : startingCollapsed(data.rows,allMonths));
+  const [collapsed, setCollapsed] = useState(() => query.fields || query.scope === 'mine' ? new Set<string>() : startingCollapsed(data.rows,allMonths));
   const [entryBusy, setBusy] = useState(false);
   const selection = useWorklistSelection();
   const busy = entryBusy || Boolean(selection?.busy);
@@ -90,7 +90,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
     }
   }
   const scopeKey = JSON.stringify(query);
-  const memory = useDashboardPreference(`communication-stages:v3:${scopeKey}`);
+  const memory = useDashboardPreference(`communication-stages:v4:${scopeKey}`);
   const searchOrigin = useDashboardPreference('communication-stages:before-search');
   const entryRefs = useRef(new Map<string, { save(): void }>());
   const restored = useRef(false);
@@ -173,7 +173,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
     try { const previous = JSON.parse(searchOrigin.raw ?? 'null'); if (previous && typeof previous === 'object') { router.replace(href(query, { ...previous, q: '' }), { scroll: false }); return; } } catch { /* Return to the current list. */ }
     navigate({ q: '' });
   };
-  return <><FollowupQueryMemory preferenceKey={firstContact ? "leads-first-contact-entry" : "communication-stage-entry"} keys={QUERY_KEYS} />
+  return <><FollowupQueryMemory preferenceKey={firstContact ? "leads-first-contact-entry:v2" : "communication-stage-entry:v2"} keys={QUERY_KEYS} />
     <DashboardPage title={firstContact ? (locale.startsWith('en') ? 'Leads' : '线索') : m.title} density="compact" commandPanel={<FollowupCommandPanel>
       {selectedRows.length > 0 && selection ? <DashboardCommandSelection>
         <span className="text-xs">{locale.startsWith('en') ? `${selectedRows.length} selected` : `已选 ${selectedRows.length} 人`}</span>
@@ -181,31 +181,39 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
           onBusyChange={selection.setBusy} onAssigned={result => { assigned(result); selection.clear(); router.refresh(); }} />
         <Button size="sm" variant="ghost" disabled={busy} onClick={selection.clear}>{locale.startsWith('en') ? 'Clear selection' : '取消选择'}</Button>
       </DashboardCommandSelection> : <>
-      <DashboardCommandState><nav aria-label={m.title} className={`${tabsListClassName} h-auto flex-wrap justify-start gap-1`}>
+      <DashboardCommandState>{firstContact ? <SourceLayoutFilters data={data} kind="acquisition" groupMode="lead" section="groups" periodFields={[]} locale={locale} disabled={busy} layout="toolbar"
+        onChange={change => navigate({ ...change, marker: '' })} /> : <nav aria-label={m.title} className={`${tabsListClassName} h-auto flex-wrap justify-start gap-1`}>
         {tasks.map(task => <button key={task} type="button" className={`${tabsTriggerClassName} gap-2`} data-state={query.stage === task ? 'active' : 'inactive'} disabled={busy}
           aria-current={query.stage === task ? 'page' : undefined} onClick={() => navigate({ stage: task, lead: '', students: '', group: '', marker: '', q: '', periodField: '', period: '', fields: '' })}>
           {m.tasks[task]}<span className="text-xs tabular-nums text-muted">{data.counts[task]}</span>
         </button>)}
-      </nav></DashboardCommandState>
+      </nav>}</DashboardCommandState>
       <DashboardCommandFilters>
         <form className="flex min-w-0 max-w-full flex-wrap items-center gap-2" onSubmit={event => { event.preventDefault(); if (!busy) { if (!query.q) searchOrigin.save(query); navigate({ q: String(new FormData(event.currentTarget).get('q') ?? '').trim().slice(0,80) }); } }}>
           <FilterSearchInput name="q" defaultValue={query.q} placeholder={m.search} aria-label={m.search} disabled={busy} />
+          <select aria-label={locale.startsWith('en') ? 'Source channel' : '来源渠道'} value={query.channel ?? ''} disabled={busy}
+            onChange={event => navigate({ channel: event.target.value, batch: '', fields: '' })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
+            <option value="">{locale.startsWith('en') ? 'All sources' : '全部来源'}</option>
+            {data.channels.map(channel => <option key={channel.key} value={channel.key}>{channel.key} · {channel.count}</option>)}
+          </select>
           {data.batches.length ? <select aria-label={locale.startsWith('en') ? 'Import batch' : '导入批次'} value={query.batch ?? ''} disabled={busy}
             onChange={event => navigate({ batch: event.target.value, period: 'all', group: 'all', fields: '' })} className="h-8 max-w-64 rounded-md border border-line bg-card px-2 text-xs">
             <option value="">{locale.startsWith('en') ? 'All import batches' : '全部导入批次'}</option>
             {data.batches.map(batch => <option key={batch.id} value={batch.id}>{batch.label} · {date(batch.createdAt)}</option>)}
           </select> : null}
           {query.q ? <Button size="sm" variant="ghost" type="button" disabled={busy} onClick={returnFromSearch}>{m.clearSearch}</Button> : null}
-          <select aria-label={m.sourceMarks} value={query.marker} disabled={busy} onChange={event => navigate({ marker: event.target.value })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
+          {data.markers.length ? <select aria-label={m.sourceMarks} value={query.marker} disabled={busy} onChange={event => navigate({ marker: event.target.value })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
             <option value="">{m.allMarkers}</option>{data.markers.map(mark => <option key={mark.key} value={mark.key}>{mark.label} · {mark.count}</option>)}
-          </select>
+          </select> : null}
+          {!firstContact ? <Button type="button" size="sm" variant={query.interest === 'A' ? 'secondary' : 'ghost'} aria-pressed={query.interest === 'A'} disabled={busy}
+            onClick={() => navigate({ interest: query.interest === 'A' ? '' : 'A' })}>{locale.startsWith('en') ? 'High interest · A' : '高意向 · A 级'}</Button> : null}
           <select aria-label={m.all} value={query.scope} disabled={busy} onChange={event => navigate({ scope: event.target.value as WorkQuery['scope'] })} className="h-8 rounded-md border border-line bg-card px-2 text-xs">
             <option value="mine">{m.mine}</option><option value="all">{m.all}</option>
             <option value="group">{locale.startsWith('en') ? 'My groups' : '我的小组'}</option>
             {canAssign || query.scope === 'unassigned' ? <option value="unassigned">{locale.startsWith('en') ? 'Unassigned' : '待分配'}</option> : null}
           </select>
         </form>
-        <SourceLayoutFilters data={data} kind={query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'} periodFields={taskPeriodFields(query.stage)} locale={locale} disabled={busy} compactPeriods layout="toolbar"
+        <SourceLayoutFilters data={data} kind="acquisition" groupMode={firstContact ? 'lead' : 'support'} section={firstContact ? 'periods' : 'all'} periodFields={taskPeriodFields(query.stage)} locale={locale} disabled={busy} compactPeriods layout="toolbar"
           onChange={change => navigate({ ...change, marker: '' })} />
       </DashboardCommandFilters>
       <DashboardCommandActions>
@@ -230,7 +238,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
             disabled={busy || !rows.length} aria-label={locale.startsWith('en') ? 'Select this page' : '选择本页'} onCheckedChange={checked => selection.toggle(rows.map(selectionKey),checked === true)} /> : null}
             <DashboardTableColumnHeader label={m.name} {...columnProps('name')} /></div></TableHead>
           <TableHead className="w-28"><DashboardTableColumnHeader label={m.phone} {...columnProps('phone')} /></TableHead>
-          <TableHead className="w-36"><DashboardTableColumnHeader label={locale.startsWith('en') ? 'Owner' : '负责人'} {...columnProps('owner')} /></TableHead>
+          <TableHead className="w-36"><DashboardTableColumnHeader label={locale.startsWith('en') ? 'Learning support' : '学服'} {...columnProps('owner')} /></TableHead>
           <TableHead className="w-36"><DashboardTableColumnHeader label={m.stage} {...columnProps('state')} /></TableHead>{showContext ? <TableHead><DashboardTableColumnHeader label={m.contextByTask[query.stage]} {...columnProps('context')} /></TableHead> : null}
           <TableHead><DashboardTableColumnHeader label={m.recent} {...columnProps('recent')} /></TableHead><TableHead className="w-24 text-right">{m.work}</TableHead>
         </TableRow></TableHeader>
@@ -240,7 +248,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
             const topHidden = allMonths && collapsed.has(monthKey(first));
             const parentHidden = topHidden || collapsed.has(parentKey(first));
             const count = data.groups.find(g => g.key === first.worklist.group);
-            const labels = sourceGroupLabels(first.worklist.kind ?? (query.stage === 'former_student' ? 'service' : query.stage === 'awaiting_enrollment' ? 'assessment' : 'acquisition'),locale);
+            const labels = sourceGroupLabels(first.worklist.kind,locale,first.worklist.groupMode);
             return <Fragment key={`${group.key}:${index}`}>
             {allMonths && (!previous || monthKey(previous) !== monthKey(first)) ? groupHeader(monthKey(first),periodLabel(first.worklist.period),data.periods.find(p => p.key === first.worklist.period)?.count,0) : null}
             {!previous || parentKey(previous) !== parentKey(first) ? groupHeader(parentKey(first),`${labels.group} · ${first.worklist.group}`,allMonths ? undefined : count?.count,allMonths ? 1 : 0,topHidden) : null}
@@ -266,9 +274,9 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
                     {handled.has(placement.id) ? <Check aria-label={m.handled} className="size-3.5 text-leaf-deep" /> : null}</div>
                     <span className="text-[11px] text-muted">{row.grade != null ? `${row.grade}${locale.startsWith('en') ? '' : ' 年级'}` : row.gradeText}</span></TableCell>
                   <TableCell mobileLabel={m.phone}>{row.phone || '—'}</TableCell>
-                  <TableCell mobileLabel={locale.startsWith('en') ? 'Owner' : '负责人'}>{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} context="lead"
+                  <TableCell mobileLabel={locale.startsWith('en') ? 'Learning support' : '学服'}>{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} context="lead"
                     onBusyChange={setBusy} onAssigned={result => { assigned(result); router.refresh(); }} /> : row.ownerName || stages.unassigned}</TableCell>
-                  <TableCell mobileLabel={m.stage}><div className="mb-1 text-[11px] text-muted">{stages.details[row.detail] ?? row.detail}</div>
+                  <TableCell mobileLabel={m.stage}>{row.detail !== 'unassigned' ? <div className="mb-1 text-[11px] text-muted">{stages.details[row.detail] ?? row.detail}</div> : null}
                     <RecordStatusIcons row={row} locale={locale} /></TableCell>
                   {showContext ? <TableCell mobileLabel={m.contextByTask[query.stage]}><p className="line-clamp-2 leading-5" title={contextText(row)}>{contextText(row) || '—'}</p></TableCell> : null}
                   <TableCell mobileLabel={m.recent}>

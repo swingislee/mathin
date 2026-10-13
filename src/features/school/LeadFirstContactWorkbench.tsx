@@ -102,10 +102,14 @@ export function LeadContactEntryRow({
   historicalEntryLabel,
   statusRow,
   ownerControl,
+  sourceInfo,
+  inlineOutcomes = false,
 }: {
   lead: LeadPoolRow;
   statusRow?: StudentStageRow;
   ownerControl?: ReactNode;
+  sourceInfo?: ReactNode;
+  inlineOutcomes?: boolean;
   formatAt: (value: string) => string;
   active: boolean;
   selected?: boolean;
@@ -291,7 +295,7 @@ export function LeadContactEntryRow({
 
   const contactFacts = reachable ? <FollowupContactFacts wechat={leadWechatValue(wechatState, lead.wechatAdded)}
     onWechatChange={(added) => setWechatState(added === null ? "unknown" : added ? "yes" : "no")} interest={interestLevel} onInterestChange={setInterestLevel} disabled={pending} /> : null;
-  const outcomeControl = <FollowupContactOutcome value={outcome} onChange={chooseOutcome} disabled={!canEdit || pending} locale={locale} />;
+  const outcomeControl = <FollowupContactOutcome value={outcome} onChange={chooseOutcome} disabled={!canEdit || pending} locale={locale} compact={inlineOutcomes} />;
   const entryContent = (
       <>
         {historicalSummary ? <div className="mb-1 min-w-0">{historicalSummary.details}</div> : null}
@@ -321,7 +325,7 @@ export function LeadContactEntryRow({
       statusContent: statusRow ? <RecordStatusIcons row={statusRow} locale={locale} /> : undefined,
       key: layout === "communication" ? `lead:${lead.id}` : lead.id,
       visitCommitted: leadHasCommittedVisit(lead),
-      person: { name: lead.provisionalStudentName, phone: lead.phone, owner: lead.ownerName || rowM.unassigned,
+      person: { name: lead.provisionalStudentName, phone: lead.phone, owner: (statusRow ? statusRow.ownerName : lead.ownerName) || rowM.unassigned,
         grade: lead.gradeText || (lead.gradeHint ? t("gradeValue", { grade: lead.gradeHint }) : t("unknownGrade")),
         subject: { studentId: lead.studentId ?? null, leadId: lead.id }, studentGrade: lead.gradeHint },
       status: { label: statusLabel,
@@ -338,6 +342,8 @@ export function LeadContactEntryRow({
     detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)}
     onOutcomeChange={canUseEntry ? chooseOutcome : undefined} onSave={canUseEntry ? () => saveEntry(false) : undefined}
     selection={leadingSelection} historicalSummary={historicalSummary} ownerControl={ownerControl}
+    sourceInfo={sourceInfo} inlineOutcomes={inlineOutcomes ? outcomeControl : undefined}
+    hideStatusLabel={inlineOutcomes && (!lead.lastContactOutcome || statusRow?.detail === 'unassigned')}
     identityHint={<PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />}
     defaultCells={layout === "default" ? <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
@@ -379,7 +385,7 @@ export function LeadContactEntryRow({
         hint={!canUseEntry ? entryT("readOnly")
           : !outcome && note.trim() ? entryT(noteOnly && !reminderDirty ? "studentNoteOnly" : "chooseOutcome")
           : hasDeferredFacts ? entryT("deferredFacts") : outcome ? undefined : entryT(canWriteNote ? "studentNoteAvailable" : "chooseOutcome")}>
-        {layout === "communication" ? outcomeControl : null}
+        {layout === "communication" && !inlineOutcomes ? outcomeControl : null}
         {outcome === "connected" ? <InvitationDraftFields key={draftStorageKey} value={invitation} activities={activities} assessors={assessors} locale={locale}
           gradeHint={lead.gradeHint} contactFacts={contactFacts} enableProgressShortcuts={false} disabled={pending} showReminder={false} draftStorageKey={draftStorageKey}
           onChange={(value) => setInvitation(value && !invitation && invitationCanHaveNextContactReminder(value) ? { ...value, nextContactAt: value.nextContactAt ?? nextContactAt } : value)} /> : contactFacts}

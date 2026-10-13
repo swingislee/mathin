@@ -9,6 +9,7 @@ export type PeriodField = typeof PERIOD_FIELDS[number] | '';
 export const taskPeriodFields = (stage: WorkTask): PeriodField[] => stage === 'former_student' ? [] : stage === 'awaiting_enrollment' ? ['arrived','confirmed','enrolled'] : ['acquired','followed','confirmed'];
 export const markerSchema = z.object({ key: z.string(), label: z.string(), color: z.enum(['yellow','lime','green','purple','blue']), field: z.string().optional() });
 export const placementSchema = z.object({ id: z.string(), kind: z.enum(['acquisition','assessment','service']).nullable().optional(), group: z.string(), subgroup: z.string(), groupKey: z.string(), rank: z.number(),
+  groupMode: z.enum(['lead','support']).optional(), channel: z.string().optional(), attention: z.string().optional(),
   period: z.string(), periods: z.record(z.string(), z.string().nullable()),
   markers: z.array(markerSchema), context: z.array(z.object({ label: z.string(), value: z.string() })) });
 export type WorkRow = StudentStageRow & { worklist: z.infer<typeof placementSchema> };
@@ -19,18 +20,19 @@ export const sourceLayoutSchema = z.object({
   groups: z.array(z.object({ key: z.string(), count: z.number() })),
 });
 export type SourceLayout = z.infer<typeof sourceLayoutSchema>;
-export interface WorkQuery { stage: WorkTask; scope: 'all' | 'mine' | 'group' | 'unassigned'; q: string; group: string; marker: string; periodField: PeriodField; period: string; page: number; pageSize: 20 | 50 | 100; lead: string; students: string; fields?: string; batch?: string }
+export interface WorkQuery { stage: WorkTask; scope: 'default' | 'all' | 'mine' | 'group' | 'unassigned'; q: string; group: string; marker: string; periodField: PeriodField; period: string; page: number; pageSize: 20 | 50 | 100; lead: string; students: string; fields?: string; batch?: string; interest?: '' | 'A'; channel?: string }
 export interface WorkPage { rows: WorkRow[]; count: number; page: number; pageSize: 20 | 50 | 100; totalPages: number;
   periodField: PeriodField; period: string; group: string; periods: Array<{ key: string; count: number }>;
   groups: Array<{ key: string; count: number; subgroups: Array<{ key: string; count: number }> }>; markers: Array<z.infer<typeof markerSchema> & { count: number }>;
-  counts: Record<WorkTask | 'awaiting_renewal', number>; fieldView: FollowupServerFields;
+  counts: Record<WorkTask | 'awaiting_renewal', number>; fieldView: FollowupServerFields; scope: Exclude<WorkQuery['scope'],'default'>;
+  channels: Array<{ key: string; count: number }>;
   batches: Array<{ id: string; label: string; createdAt: string }> }
 export const href = (query: WorkQuery, change: Partial<WorkQuery> = {}) => {
   const next = { ...query, ...change };
   const params = new URLSearchParams(Object.entries(next).filter(([,v]) => v !== '' && v !== undefined).map(([k,v]) => [k,String(v)]));
   return (next.stage === 'awaiting_first_contact' ? '/dashboard/leads' : '/dashboard/communication') + '?' + params;
 };
-export function parseWorkQuery(raw: Record<string, string | string[] | undefined>, canViewAll: boolean, firstContact = false): WorkQuery {
+export function parseWorkQuery(raw: Record<string, string | string[] | undefined>, _canViewAll: boolean, firstContact = false): WorkQuery {
   const pick = (k: string) => typeof raw[k] === 'string' ? raw[k] : '';
   const legacy: Record<string,string> = { assessment: 'awaiting_enrollment', service: 'former_student' };
   const requested = pick('stage') || legacy[pick('task')] || 'awaiting_assessment';
@@ -38,22 +40,23 @@ export function parseWorkQuery(raw: Record<string, string | string[] | undefined
   const scope = pick('scope');
   const periodField = taskPeriodFields(stage).includes(pick('periodField') as PeriodField) ? pick('periodField') as PeriodField : '';
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return { stage, scope: scope === 'all' || scope === 'mine' || scope === 'group' || scope === 'unassigned' ? scope : canViewAll ? 'all' : 'mine',
+  return { stage, scope: scope === 'all' || scope === 'mine' || scope === 'group' || scope === 'unassigned' ? scope : 'default',
     q: pick('q').trim().slice(0,80), group: pick('group').replace(/^\d{1,2}月 \/ /, '').slice(0,320), marker: pick('marker').slice(0,80), periodField,
     period: /^(all|unknown|([1-9]|1[0-2])月)$/.test(pick('period')) ? pick('period') : '',
     page: Math.max(1,Math.min(1000000,Math.floor(Number(pick('page')) || 1))),
     pageSize: pick('pageSize') === '50' ? 50 : pick('pageSize') === '100' ? 100 : 20,
     lead: uuid.test(pick('lead')) ? pick('lead') : '', students: pick('students').split(',').filter(id => uuid.test(id)).slice(0,200).join(','),
-    batch: uuid.test(pick('batch')) ? pick('batch') : '', fields: pick('fields').length <= 16_384 ? pick('fields') : '' };
+    batch: uuid.test(pick('batch')) ? pick('batch') : '', fields: pick('fields').length <= 16_384 ? pick('fields') : '',
+    interest: pick('interest') === 'A' ? 'A' : '', channel: pick('channel').slice(0,80) };
 }
 export function workMessages(locale: string) {
   return locale.startsWith('en') ? {
     title: 'Communication', tasks: { awaiting_first_contact: 'First contact', awaiting_assessment: 'Awaiting assessment', awaiting_enrollment: 'Awaiting enrollment', former_student: 'Former students' },
-    allGroups: 'All groups', allMarkers: 'All classifications', sourceMarks: 'Classification', search: 'Name or phone', all: 'All visible', mine: 'My work',
+    allGroups: 'All groups', allMarkers: 'All source marks', sourceMarks: 'Source mark', search: 'Name or phone', all: 'All visible', mine: 'My work',
     allPeriods: 'All months', unknownPeriod: 'Month not recorded', periodBasis: 'Month of', collapseAll: 'Collapse groups', expandAll: 'Expand groups',
     periods: { acquired: 'Acquisition', followed: 'Follow-up', confirmed: 'Confirmation', arrived: 'Visit', enrolled: 'Enrollment', '': '' },
     groupByTask: { awaiting_first_contact: 'Group', awaiting_assessment: 'Group', awaiting_enrollment: 'Group / support teacher', former_student: 'Group / teacher' },
-    subgroupByTask: { awaiting_first_contact: 'Contact person', awaiting_assessment: 'Contact person', awaiting_enrollment: 'Contact person', former_student: 'Class' },
+    subgroupByTask: { awaiting_first_contact: '', awaiting_assessment: 'Learning support', awaiting_enrollment: 'Learning support', former_student: 'Learning support' },
     name: 'Student', stage: 'Progress', context: 'Context', recent: 'Latest communication / next step', phone: 'Phone', work: 'Record', open: 'Student overview',
     contactCount: (count: number) => `${count} contact records`, noContactNote: 'No note recorded', unknownOutcome: 'Outcome not recorded', nextContact: 'Next contact',
     contactOutcomes: { connected: 'Connected', unreachable: 'Unreachable', declined: 'Contact later', invalid_number: 'Invalid number' },
@@ -64,11 +67,11 @@ export function workMessages(locale: string) {
     source: 'Earlier records', recordNote: 'Add note', invitation: 'Arrange visit', enrollment: 'Enrollment / renewal', noWrite: 'Read only',
   } : {
     title: '沟通', tasks: { awaiting_first_contact: '待首联', awaiting_assessment: '待测评', awaiting_enrollment: '待报名', former_student: '已停课' },
-    allGroups: '全部分组', allMarkers: '全部分类', sourceMarks: '分类', search: '姓名或电话', all: '全部可见', mine: '与我相关',
+    allGroups: '全部小组', allMarkers: '全部来源标记', sourceMarks: '来源标记', search: '姓名或电话', all: '全部可见', mine: '我的名单',
     allPeriods: '全部月份', unknownPeriod: '月份未填', periodBasis: '月份依据', collapseAll: '收起分组', expandAll: '展开分组',
     periods: { acquired: '获取月份', followed: '跟进月份', confirmed: '确认月份', arrived: '到访月份', enrolled: '报名月份', '': '' },
     groupByTask: { awaiting_first_contact: '小组', awaiting_assessment: '小组', awaiting_enrollment: '小组 / 学服老师', former_student: '小组 / 授课老师' },
-    subgroupByTask: { awaiting_first_contact: '确认 / 跟进人员', awaiting_assessment: '确认 / 跟进人员', awaiting_enrollment: '确认 / 跟进人员', former_student: '班序' },
+    subgroupByTask: { awaiting_first_contact: '', awaiting_assessment: '学服', awaiting_enrollment: '学服', former_student: '学服' },
     name: '学生', stage: '进展', context: '相关情况', recent: '最近沟通 / 下一步', phone: '联系电话', work: '登记', open: '学生全貌',
     contactCount: (count: number) => `${count} 条沟通记录`, noContactNote: '本次未填写备注', unknownOutcome: '结果未记录', nextContact: '下次联系',
     contactOutcomes: { connected: '已沟通', unreachable: '未接通', declined: '暂缓联系', invalid_number: '号码无效' },

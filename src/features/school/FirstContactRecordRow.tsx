@@ -33,7 +33,7 @@ export function FirstContactRecordRow({
   record, locale, active, selected = false, expanded, onExpandedChange, onActivate,
   rowRef, tabIndex = 0, pending = false, layout = "communication", canAssign = false,
   detailsId, onKeyDown, onClick, selection, historicalSummary,
-  defaultCells, children, onOutcomeChange, onSave, identityHint, ownerControl,
+  defaultCells, children, onOutcomeChange, onSave, identityHint, ownerControl, sourceInfo, inlineOutcomes, hideStatusLabel = false,
 }: {
   record: FirstContactRecord;
   locale: string;
@@ -55,6 +55,9 @@ export function FirstContactRecordRow({
   defaultCells?: ReactNode;
   identityHint?: ReactNode;
   ownerControl?: ReactNode;
+  sourceInfo?: ReactNode;
+  inlineOutcomes?: ReactNode;
+  hideStatusLabel?: boolean;
   children?: ReactNode | (() => ReactNode);
   onOutcomeChange?: ComponentProps<typeof FollowupRecordRow>["onOutcomeChange"];
   onSave?: () => void;
@@ -64,7 +67,7 @@ export function FirstContactRecordRow({
   return <FollowupRecordRow rowKey={record.key} active={active} selected={selected} expanded={expanded} pending={pending}
     focusOnActivate={Boolean(rowRef)}
     rowRef={rowRef} onActivate={onActivate} onExpandedChange={onExpandedChange} onKeyDown={onKeyDown} onOutcomeChange={onOutcomeChange} onSave={onSave}
-    detailsId={detailsId} title={record.person.name} hideTitle colSpan={layout === "communication" ? 7 : canAssign ? 6 : 5}
+    detailsId={detailsId} title={record.person.name} hideTitle colSpan={layout === "communication" ? sourceInfo !== undefined ? 8 : 7 : canAssign ? 6 : 5}
     rowProps={{ tabIndex, onClick, "data-first-contact-record": record.key, "data-record-state": record.state ?? "current",
       "data-first-contact-missing": record.missingFirstContact ? record.person.subject.studentId : undefined,
       "data-communication-work-key": layout === "communication" ? record.key : undefined,
@@ -78,8 +81,10 @@ export function FirstContactRecordRow({
         <TableCell mobileLabel={fields.phone} className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${record.person.phone}`} title={record.person.phone}>{record.person.phone || "—"}</a></TableCell>
         <TableCell mobileLabel={fields.grade} className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>
         <TableCell mobileLabel={fields.owner} className="px-2 py-1.5">{ownerControl ?? <p className="truncate text-xs" title={record.person.owner}>{record.person.owner || fields.unassigned}</p>}</TableCell>
+        {sourceInfo !== undefined ? <TableCell mobileLabel={locale.startsWith('en') ? 'Source / promoter' : '来源 / 推广兼职'} className="px-2 py-1.5">{sourceInfo}</TableCell> : null}
         <TableCell mobileSpan="secondary" className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <>
-          <FirstContactStatusTags label={record.status.label} tone={record.status.tone} facts={record.statusContent ? undefined : record.contactFacts} locale={locale} dirty={record.pendingChanges} />
+          {inlineOutcomes}
+          <FirstContactStatusTags label={hideStatusLabel ? '' : record.status.label} tone={record.status.tone} facts={record.statusContent ? undefined : record.contactFacts} locale={locale} dirty={record.pendingChanges} />
           {record.statusContent}
           {record.state === "historical" ? <HistoricalRecordBadge locale={locale} /> : null}
         </>}</TableCell>

@@ -24,7 +24,7 @@ export function FirstContactStatusTags({ label, tone, facts, locale, dirty = fal
     ...(facts?.visitCommitted ? [{ key: "visit", label: m.visitCommitted, tone: "attention" }] : []),
   ];
   return <div data-first-contact-status-tags className="min-w-0 space-y-0.5">
-    <div className="flex min-w-0 items-center gap-1"><Badge variant="outline" className={cn(tagClass, tones[tone])} title={label}><span className="truncate">{label}</span></Badge>
+    <div className="flex min-w-0 items-center gap-1">{label ? <Badge variant="outline" className={cn(tagClass, tones[tone])} title={label}><span className="truncate">{label}</span></Badge> : null}
       {dirty ? <span className="size-1.5 shrink-0 rounded-full bg-crater" role="img" aria-label={m.unsaved} title={m.unsaved} /> : null}
     </div>
     {tags.length ? <div className="flex min-w-0 items-center gap-1">{tags.map(tag => <Badge key={tag.key} variant="outline"
