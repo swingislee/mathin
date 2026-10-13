@@ -1,0 +1,19 @@
+.workspace { container-type: inline-size; }
+.columns { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr) 22rem; align-items: start; border-top: 1px solid var(--line); }
+.navigation { position: sticky; top: 1rem; max-height: calc(100dvh - 11rem); overflow: auto; padding: 1rem .8rem 1rem 0; }
+.editor { min-width: 0; border-left: 1px solid var(--line); padding: 1.25rem 1.5rem; }
+.fields { min-width: 0; max-width: 46rem; margin-inline: auto; container-type: inline-size; }
+.fields input:not([type=checkbox]):not([type=radio]), .fields select, .fields textarea { min-width: 0; max-width: 100%; }
+.fields input[type=number] { max-width: 14rem; }
+.fields label, .fields fieldset { min-width: 0; overflow-wrap: anywhere; }
+.preview { min-width: 0; position: sticky; top: 1rem; padding: 1rem 0 1rem 1.25rem; border-left: 1px solid var(--line); }
+.phone { overflow: hidden; border: 1px solid var(--line); border-radius: 1.75rem; background: var(--paper); }
+.screen { min-height: 32rem; max-height: calc(100dvh - 16rem); overflow-y: auto; overflow-x: hidden; overflow-wrap: anywhere; }
+.screen:empty::before { content: attr(data-empty); display: block; padding: 2rem 1.5rem; font-size: .875rem; color: var(--muted); }
+.statusBar { display: flex; align-items: center; justify-content: space-between; padding: .65rem 1.2rem; font-size: .65rem; border-bottom: 1px solid var(--line); }
+.localized { display: grid; gap: .75rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.fieldGrid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); }
+@container (max-width: 1180px) { .columns { grid-template-columns: 11rem minmax(0, 1fr) 19rem; } .editor { padding-inline: 1rem; } .preview { padding-left: .75rem; } }
+@container (max-width: 940px) { .columns { grid-template-columns: 10rem minmax(0, 1fr); } .preview { grid-column: 2; position: static; width: 100%; max-width: 24rem; } .editor { border-bottom: 1px solid var(--line); } }
+@container (max-width: 560px) { .columns { display: block; } .navigation { position: static; max-height: 14rem; border-bottom: 1px solid var(--line); padding-right: 0; } .editor { border-left: 0; padding-inline: 0; } .preview { border-left: 0; padding-left: 0; margin-inline: auto; } }
+@container (max-width: 430px) { .localized { grid-template-columns: minmax(0, 1fr); } }

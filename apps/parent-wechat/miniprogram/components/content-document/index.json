@@ -1,1 +1,1 @@
-{ "component": true }
+{ "component": true, "usingComponents": { "content-cards": "../content-cards/index", "activity-list": "../activity-list/index" } }

@@ -77,6 +77,6 @@ export function registerActivityCatalogPage(full: boolean) {
     book() { wx.navigateTo({ url: "/pages/assessment/index" }); },
     service() { wx.navigateTo({ url: "/pages/service/index?stage=" + encodeURIComponent(this.data.stage) }); },
     applications() { wx.navigateTo({ url: "/pages/activity-requests/index" }); },
-    openActivity(e: WechatMiniprogram.TouchEvent) { wx.navigateTo({ url: "/pages/activity-detail/index?id=" + encodeURIComponent(String(e.currentTarget.dataset.id)) }); },
+    openActivity(e: WechatMiniprogram.CustomEvent<{ id: string }>) { wx.navigateTo({ url: "/pages/activity-detail/index?id=" + encodeURIComponent(String(e.detail.id)) }); },
   });
 }

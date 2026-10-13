@@ -1,4 +1,7 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "发现"
+  "navigationBarTitleText": "发现",
+  "usingComponents": {
+    "activity-list": "/components/activity-list/index"
+  }
 }

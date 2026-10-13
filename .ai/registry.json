@@ -3,6 +3,33 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-SETTINGS-WORKBENCH-20261013",
+      "title": "小程序工作台逻辑层级与三栏编排",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-SETTINGS-WORKBENCH-20261013.md",
+      "writePaths": [
+        ".ai/tasks/MINI-SETTINGS-WORKBENCH-20261013.md",
+        "src/features/school/miniapp-settings/",
+        "contracts/participant-api/",
+        "apps/parent-wechat/miniprogram/",
+        ".tmp/mini-settings-workbench-20261013/",
+        "apps/parent-wechat/docs/booking-platform.md",
+        "supabase/migrations/20261013100000_miniapp_visual_modules.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "src/app/[locale]/dashboard/miniapp-settings/page.tsx",
+        "scripts/sync-participant-contract.mjs"
+      ],
+      "checkpoint": "5d64cb72",
+      "next": "逻辑层级、三栏、页面/模块目录、类型化数据绑定、引用关系、实际条目复用与报告图表已交付开发端；类型、迁移兼容与入口通过。视觉待验收，分项和历次数值需来源接入，生产与上传暂停。"
+    },
+    {
       "id": "ASSESSMENT-RESULT-VALIDITY-20261012",
       "title": "历史测评结果参考有效期",
       "agent": "codex",

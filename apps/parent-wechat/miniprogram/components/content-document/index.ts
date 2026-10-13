@@ -3,7 +3,9 @@ import { localText, type ContentDocument, type ExperienceAction } from "../../li
 import { configuration, openConfiguredAction } from "../../lib/miniapp-configuration";
 import { openExperienceAction } from "../../lib/experience-actions";
 import { activityCatalog, serviceContacts, miniappContentImage } from "../../lib/api";
-type Row = RenderedContentBlock & { cards: { id: string; title: string; text: string; image: string; action: ExperienceAction }[] };
+import { activityCard } from "../../lib/activity-catalog";
+import { serviceCard } from "../../lib/service-card";
+type Row = RenderedContentBlock & { cards: { id: string; title: string; text: string; image: string; meta?: string; action: ExperienceAction }[]; activities: ReturnType<typeof activityCard>[] };
 Component({
   properties: { document: { type: Object, value: null as ContentDocument | null }, context: { type: Object, value: {} as ContentData }, images: { type: Object, value: {} as Record<string, string> }, locale: { type: String, value: "zh" } },
   data: { rows: [] as Row[], expanded: {} as Record<string, boolean>, generation: 0 },
@@ -14,14 +16,14 @@ Component({
       const document = this.properties.document as ContentDocument | null, locale = this.properties.locale === "en" ? "en" : "zh";
       if (!document) { this.setData({ rows: [] }); return; }
       const image = (path: string) => this.properties.images[path] || (document.audience === "all" ? miniappContentImage(path) : "");
-      const rows: Row[] = renderContent(document, this.properties.context, locale).map(row => ({ ...row, image: image(row.image), items: row.items.map(i => ({ ...i, image: image(i.image) })), cards: [] }));
+      const rows: Row[] = renderContent(document, this.properties.context, locale).map(row => ({ ...row, image: image(row.image), items: row.items.map(i => ({ ...i, image: image(i.image) })), cards: [], activities: [] }));
       for (const row of rows) if (row.kind === "services") row.cards = (configuration().experience?.services || []).filter(s => s.enabled && (!row.ids.length || row.ids.includes(s.id))).slice(0, row.limit)
-        .map(s => ({ id: s.id, title: localText(s.name, locale), text: localText(s.summary, locale), image: miniappContentImage(s.image, true), action: { kind: "offering", target: s.id, label: s.name } }));
+        .map(s => ({ ...serviceCard(s, locale, miniappContentImage(s.image, true)), action: { kind: "offering", target: s.id, label: s.name } }));
       const generation = this.data.generation + 1;
       this.setData({ rows, generation });
       if (rows.some(r => r.kind === "activities")) void activityCatalog().then(offers => {
         if (this.data.generation !== generation) return;
-        this.setData({ rows: this.data.rows.map(r => r.kind !== "activities" ? r : { ...r, cards: offers.filter(o => !r.ids.length || r.ids.includes(o.id)).slice(0, r.limit).map(o => ({ id: o.id, title: o.title, text: "", image: "", action: { kind: "none", target: o.id, label: { zh: o.title, en: o.title } } })) }) });
+        this.setData({ rows: this.data.rows.map(r => r.kind !== "activities" ? r : { ...r, activities: offers.filter(o => !r.ids.length || r.ids.includes(o.id)).slice(0, r.limit).map(o => activityCard(o, locale)) }) });
       }).catch(() => {});
       if (rows.some(r => r.kind === "contacts")) void serviceContacts().then(contacts => {
         if (this.data.generation !== generation) return;
@@ -31,7 +33,7 @@ Component({
       }).catch(() => {});
     },
     action(e: WechatMiniprogram.TouchEvent) { const row = this.data.rows.find(r => r.id === e.currentTarget.dataset.id); openExperienceAction(row?.action); },
-    card(e: WechatMiniprogram.TouchEvent) { const row = this.data.rows.find(r => r.id === e.currentTarget.dataset.block), card = row?.cards.find(c => c.id === e.currentTarget.dataset.id); if (row?.kind === "activities" && card) wx.navigateTo({ url: "/pages/activity-detail/index?id=" + encodeURIComponent(card.id) }); else openExperienceAction(card?.action); },
+    card(e: WechatMiniprogram.CustomEvent<{ id: string }>) { const row = this.data.rows.find(r => r.id === e.currentTarget.dataset.block); if (row?.kind === "activities" && row.activities.some(a => a.id === e.detail.id)) wx.navigateTo({ url: "/pages/activity-detail/index?id=" + encodeURIComponent(e.detail.id) }); else openExperienceAction(row?.cards.find(c => c.id === e.detail.id)?.action); },
     toggle(e: WechatMiniprogram.TouchEvent) { const key = String(e.currentTarget.dataset.key); this.setData({ expanded: { ...this.data.expanded, [key]: !this.data.expanded[key] } }); },
     directory(e: WechatMiniprogram.TouchEvent) { openConfiguredAction(e.currentTarget.dataset.kind === "contacts" ? "service" : "activities"); },
     image(e: WechatMiniprogram.TouchEvent) { const url = String(e.currentTarget.dataset.url || ""); if (url) wx.previewImage({ current: url, urls: [url] }); },

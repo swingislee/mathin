@@ -39,7 +39,7 @@ export function ExperienceFormEditor({ value, locale, onChange }: { value: Exper
   const group = value.groups.find(g => g.id === groupId) || value.groups[0];
   const patchGroup = (change: Partial<ExperienceFormGroup>) => { if (group) onChange({ ...value, groups: value.groups.map(g => g.id === group.id ? { ...g, ...change } : g) }); };
   const patchField = (id: string, change: Partial<ExperienceField>) => patchGroup({ fields: group.fields.map(f => f.id === id ? { ...f, ...change } : f) });
-  return <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_350px]"><div className="min-w-0 space-y-5">
+  return <div className="space-y-5"><div className="min-w-0 space-y-5">
     <LocalizedField label={en ? "Form title" : "表单名称"} value={value.title} max={200} onChange={title => onChange({ ...value, title })} />
     <LocalizedField label={en ? "Introduction" : "填写说明"} value={value.introduction} multiline max={4000} onChange={introduction => onChange({ ...value, introduction })} />
     <div className="flex flex-wrap items-center gap-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={value.enabled} onChange={e => onChange({ ...value, enabled: e.target.checked })} />{en ? "Enabled" : "启用表单"}</label><label className="flex items-center gap-2 text-sm">{en ? "Purpose" : "用途"}<select className={settingsField + " w-auto"} value={value.purpose} onChange={e => onChange({ ...value, purpose: e.target.value as ExperienceForm["purpose"] })}>{[["intake", "参加前资料", "Intake"], ["request", "咨询与预约意向", "Request"], ["feedback", "服务后反馈", "Feedback"], ["followup", "后续补充", "Follow-up"]].map(([id, zh, english]) => <option key={id} value={id}>{en ? english : zh}</option>)}</select></label></div>
@@ -63,5 +63,7 @@ export function ExperienceFormEditor({ value, locale, onChange }: { value: Exper
       </div>)}</div><Button type="button" variant="secondary" size="sm" disabled={group.fields.length >= 40} onClick={() => patchGroup({ fields: [...group.fields, newField()] })}>{en ? "Add question" : "添加问题"}</Button>
     </section>}
     <div className="space-y-4 border-t border-line pt-5"><LocalizedField label={en ? "Submit button" : "提交按钮"} value={value.submitLabel} max={120} onChange={submitLabel => onChange({ ...value, submitLabel })} /><LocalizedField label={en ? "Success message" : "提交成功说明"} value={value.successMessage} max={2000} multiline onChange={successMessage => onChange({ ...value, successMessage })} /></div>
-  </div><div className="min-w-0 border-l border-line pl-5 xl:sticky xl:top-4"><p className="mb-3 text-xs text-muted">{en ? "Interactive form preview" : "可试填的手机预览"}</p><ExperienceFormPreview key={value.id} value={value} locale={locale} /></div></div>;
+  </div><PhonePreview><div className="p-5"><ExperienceFormPreview key={value.id} value={value} locale={locale} /></div></PhonePreview></div>;
 }
+
+import { PhonePreview } from "./WorkbenchContext";

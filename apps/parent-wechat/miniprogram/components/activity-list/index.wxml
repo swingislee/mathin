@@ -1,0 +1,4 @@
+<block wx:for="{{rows}}" wx:key="id"><button class="activity-row" data-id="{{item.id}}" bindtap="select" hover-class="pressed">
+  <view class="activity-tile"><image wx:if="{{item.coverUrl}}" src="{{item.coverUrl}}" class="activity-tile-cover" mode="aspectFill" lazy-load /><image wx:else src="/assets/icons/activity.png" class="activity-tile-icon" aria-hidden="true" /></view>
+  <view class="activity-row-content"><text class="activity-row-title">{{item.label}}</text><text wx:if="{{item.summary}}" class="activity-row-summary">{{item.summary}}</text><text class="activity-row-meta">{{item.startLabel}} · {{item.meta}}</text><view wx:if="{{item.labels.length}}" class="activity-labels"><text wx:for="{{item.labels}}" wx:for-item="label" wx:key="*this" class="small-pill">{{label}}</text></view><view class="activity-row-bottom"><text class="activity-price">{{item.priceLabel}}</text><text class="small-pill">{{actionLabel}}</text></view></view>
+</button></block>

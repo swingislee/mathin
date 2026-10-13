@@ -1,12 +1,15 @@
 import { experienceNativeTargets, type ExperienceAction, type ExperienceIssue, type MiniappExperience } from "./miniapp-experience";
 import type { MiniappSettings } from "./miniapp-settings";
+import { bindingIssue } from "./miniapp-experience-catalog";
 
 /** Cross references and business readiness are checked at publish, so incomplete drafts remain editable. */
 export function experienceIssues(value: MiniappExperience, entryActions: ExperienceAction[] = []): ExperienceIssue[] {
   const issues: ExperienceIssue[] = [];
   const add = (path: string, code: string, zh: string, en: string) => issues.push({ path, code, zh, en });
-  const checkPage = (id: string, path: string, required = false) => {
+  const checkPage = (id: string, path: string, required = false, report = false) => {
     if ((id || required) && !value.pages.some(p => p.id === id && p.enabled)) add(path, "PAGE_REQUIRED", "请选择已启用的内容页面", "Choose an enabled content page");
+    const page = value.pages.find(p => p.id === id);
+    if (page && (page.purpose === "report") !== report) add(path, "PAGE_ROLE", report ? "报告绑定需要选择报告版式" : "报告版式由报告记录承载，请选择普通页面", report ? "Choose a report layout" : "Report layouts belong to report records; choose a content page");
   };
   const checkAction = (a: ExperienceAction, path: string) => {
     if (a.kind !== "none" && a.kind !== "catalog" && !a.target) add(path, "TARGET_REQUIRED", "操作入口还没有绑定目标", "This action needs a destination");
@@ -34,6 +37,8 @@ export function experienceIssues(value: MiniappExperience, entryActions: Experie
     for (const block of page.blocks.filter(b => b.visible)) {
       if (block.kind === "action") checkAction(block.action, `pages.${page.id}.${block.id}`);
       if (block.kind === "table" && !block.binding && block.rows.some(row => row.length !== block.columns.length)) add(`pages.${page.id}.${block.id}`, "TABLE_COLUMNS", "表格每行的列数需要一致", "Use the same column count in every table row");
+      if (bindingIssue(page, block)) add(`pages.${page.id}.${block.id}`, "DATA_BINDING", "模块需要绑定当前页面场景支持且类型匹配的数据字段", "Bind a field with a compatible type and page context");
+      if (block.kind === "chart" && !block.binding) add(`pages.${page.id}.${block.id}`, "CHART_SOURCE", "图表需要绑定数值序列", "Charts need a measurement series");
     }
   }
   for (const form of value.forms.filter(f => f.enabled)) {
@@ -95,7 +100,7 @@ export function experienceIssues(value: MiniappExperience, entryActions: Experie
   const reportKeys = new Set<string>();
   for (const binding of value.reportBindings.filter(b => b.enabled)) {
     if (binding.serviceId) add(`reports.${binding.kind}`, "SERVICE_REPORT_ADAPTER", "当前报告使用统一类型模板，按外部服务选模板需接入对应报告适配器", "Current reports use a shared template per kind; service-specific templates need a report adapter");
-    checkPage(binding.pageId, `reports.${binding.kind}`, true);
+    checkPage(binding.pageId, `reports.${binding.kind}`, true, true);
     const key = binding.kind + ":" + binding.serviceId;
     if (reportKeys.has(key)) add(`reports.${binding.kind}`, "DUPLICATE_REPORT", "同一报告类型与服务只能启用一个模板", "Enable one template for each report kind and service");
     reportKeys.add(key);

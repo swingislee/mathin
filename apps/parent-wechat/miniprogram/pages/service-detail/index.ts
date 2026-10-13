@@ -4,7 +4,7 @@ import { localText } from "../../lib/miniapp-experience";
 import { openConfiguredAction } from "../../lib/miniapp-configuration";
 import { pageData, syncPage, currentLocale, errorText, loginPage } from "../../lib/page";
 Page({
-  data: { ...pageData("discover"), id: "", detail: null as ExperienceServiceDetail | null, title: "", summary: "", price: "", resourceRows: [] as { id: string; name: string; detail: string }[], message: "" },
+  data: { ...pageData("discover"), id: "", detail: null as ExperienceServiceDetail | null, contentContext: {} as Record<string, unknown>, title: "", summary: "", price: "", resourceRows: [] as { id: string; name: string; detail: string }[], message: "" },
   generation: 0,
   onLoad(q: Record<string, string>) { this.setData({ id: q.id || "" }); },
   onShow() { syncPage(this, "discover"); void this.load(); },
@@ -12,7 +12,7 @@ Page({
   onUnload() { this.generation++; },
   async load() { const generation = ++this.generation; this.setData({ loading: true, error: "" });
     try { const detail = await experienceRead<ExperienceServiceDetail>("service", this.data.id); if (generation !== this.generation) return;
-      const locale = currentLocale(), s = detail.document; this.setData({ detail, title: localText(s.name, locale), summary: localText(s.summary, locale), message: localText(detail.unavailableMessage, locale),
+      const locale = currentLocale(), s = detail.document; this.setData({ detail, contentContext: { service: s }, title: localText(s.name, locale), summary: localText(s.summary, locale), message: localText(detail.unavailableMessage, locale),
         price: s.price.mode === "free" ? (locale === "en" ? "Free" : "免费") : `${s.price.currency} ${(s.price.amountMinor / 100).toFixed(2)} ${localText(s.price.note, locale)}`,
         resourceRows: detail.resources.map(r => ({ id: r.id, name: localText(r.name, locale), detail: localText(r.address, locale) || localText(r.description, locale) })) });
     } catch (error) { if (generation === this.generation) this.setData({ error: errorText(error) }); }

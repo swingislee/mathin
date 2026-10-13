@@ -7,6 +7,7 @@ for (const [sourcePath, target] of [
   ["contracts/participant-api/miniapp-experience.ts", "apps/parent-wechat/miniprogram/lib/miniapp-experience.ts"],
   ["contracts/participant-api/miniapp-experience-templates.ts", "apps/parent-wechat/miniprogram/lib/miniapp-experience-templates.ts"],
   ["contracts/participant-api/miniapp-content-render.ts", "apps/parent-wechat/miniprogram/lib/miniapp-content-render.ts"],
+  ["contracts/participant-api/miniapp-chart.ts", "apps/parent-wechat/miniprogram/lib/miniapp-chart.ts"],
   ["contracts/participant-api/form-questions.ts", "apps/parent-wechat/miniprogram/lib/form-questions.ts"],
   ["contracts/participant-api/report-template.ts", "apps/parent-wechat/miniprogram/lib/report-template.ts"],
   ["contracts/participant-api/task-submission.ts", "apps/parent-wechat/miniprogram/lib/task-submission.ts"],

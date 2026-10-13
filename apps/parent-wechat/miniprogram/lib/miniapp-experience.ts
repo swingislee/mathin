@@ -14,7 +14,7 @@ export type ExperienceAction = {
 export type ExperienceAudience = "all" | "signedIn" | "participants";
 export type ContentCondition = { field: string; operator: "present" | "equals" | "notEquals"; value: string };
 type BlockBase = { id: string; version: 1; visible: boolean; condition?: ContentCondition; fallback?: ExperienceText };
-export const contentBlockKinds = ["heading", "paragraph", "image", "callout", "quote", "bullets", "steps", "facts", "table", "faq", "action", "divider", "services", "activities", "contacts", "metric", "scale", "evidence"] as const;
+export const contentBlockKinds = ["heading", "paragraph", "image", "callout", "quote", "bullets", "steps", "facts", "table", "faq", "action", "divider", "services", "activities", "contacts", "metric", "scale", "evidence", "chart"] as const;
 export type ContentBlockKind = typeof contentBlockKinds[number];
 export type ContentItem = { id: string; title: ExperienceText; body: ExperienceText; image?: string; binding?: string };
 export type ContentBlock = BlockBase & (
@@ -29,6 +29,7 @@ export type ContentBlock = BlockBase & (
   | { kind: "metric"; title: ExperienceText; binding: string; unit: ExperienceText; description: ExperienceText }
   | { kind: "scale"; title: ExperienceText; binding: string; labels: ExperienceText[]; description: ExperienceText }
   | { kind: "evidence"; title: ExperienceText; binding: string; emptyText: ExperienceText }
+  | { kind: "chart"; title: ExperienceText; binding: string; chart: "donut" | "bars" | "radar" | "trend"; description: ExperienceText }
 );
 export type ContentDocument = {
   id: string; version: 1; title: ExperienceText; description: ExperienceText;

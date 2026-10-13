@@ -25,6 +25,7 @@ const block = z.discriminatedUnion("kind", [
   z.object({ ...base, kind: z.literal("metric"), title: text(200), binding, unit: text(50), description: text(1000) }).strict(),
   z.object({ ...base, kind: z.literal("scale"), title: text(200), binding, labels: z.array(text(100)).min(2).max(10), description: text(1000) }).strict(),
   z.object({ ...base, kind: z.literal("evidence"), title: text(200), binding, emptyText: text(500) }).strict(),
+  z.object({ ...base, kind: z.literal("chart"), title: text(200), binding, chart: z.enum(["donut", "bars", "radar", "trend"]), description: text(1000) }).strict(),
 ]);
 export const contentDocumentSchema = z.object({ id: experienceId, version: z.literal(1), title: text(200), description: text(1000),
   purpose: z.enum(["page", "service", "preparation", "confirmation", "report", "help"]), audience, enabled: z.boolean(), layout: z.enum(["reading", "sections"]), blocks: list(block, 80) }).strict();

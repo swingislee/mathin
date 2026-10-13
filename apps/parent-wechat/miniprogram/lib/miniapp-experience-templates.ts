@@ -15,6 +15,7 @@ export const contentKindNames: Record<ContentBlockKind, { zh: string; en: string
   bullets: t("要点列表", "Bullet list"), steps: t("步骤与时间线", "Steps"), facts: t("资料与键值", "Facts"), table: t("对照表格", "Table"), faq: t("常见问题", "FAQ"),
   action: t("操作入口", "Action"), divider: t("分隔线", "Divider"), services: t("服务目录", "Services"), activities: t("活动目录", "Activities"), contacts: t("服务联系人", "Contacts"),
   metric: t("指标与分值", "Metric"), scale: t("表现等级", "Scale"), evidence: t("表现与证据", "Evidence"),
+  chart: t("数据图表", "Data chart"),
 };
 export function newContentBlock(kind: ContentBlockKind, id: string): ContentBlock {
   const common = base(id);
@@ -28,6 +29,7 @@ export function newContentBlock(kind: ContentBlockKind, id: string): ContentBloc
   if (kind === "services" || kind === "activities" || kind === "contacts") return { ...common, kind, title: contentKindNames[kind], ids: [], limit: 6, emptyText: t("暂时没有可展示的内容", "Nothing is available yet"), layout: "list" };
   if (kind === "metric") return { ...common, kind, title: t("表现概览", "Overview"), binding: "report.score", unit: t(), description: t() };
   if (kind === "scale") return { ...common, kind, title: t("表现等级", "Performance level"), binding: "report.assessmentBand", labels: [t("起步", "Starting"), t("发展中", "Developing"), t("熟练", "Proficient")], description: t() };
+  if (kind === "chart") return { ...common, kind, title: t("本次表现", "Performance"), binding: "report.scoreBreakdown", chart: "donut", description: t() };
   return { ...common, kind: "evidence", title: t("表现依据", "Evidence"), binding: "report.evidence", emptyText: t() };
 }
 
@@ -75,8 +77,10 @@ export function experiencePageTemplates(): ContentDocument[] {
     ]),
     page("assessment-report", "学习诊断报告", "Learning assessment report", "report", [
       { ...base("context"), kind: "facts", title: t("本次诊断", "Assessment context"), binding: "report.context", items: [] },
-      paragraph("opening", "这份报告围绕本次任务中的实际表现展开。未记录的内容保持空缺，后续建议结合老师观察理解。", "This report describes performance observed during the assessment. Unrecorded information is left blank; interpret the next steps together with the teacher's observations."),
-      { ...base("score"), kind: "metric", title: t("本次表现", "Performance"), binding: "report.score", unit: t(), description: t(), condition: { field: "report.score", operator: "present", value: "" } },
+      { ...base("score"), kind: "chart", title: t("本次表现", "Performance"), binding: "report.scoreBreakdown", chart: "donut", description: t() },
+      { ...base("dimension-bars"), kind: "chart", title: t("分项表现", "Performance by dimension"), binding: "report.dimensionScores", chart: "bars", description: t() },
+      { ...base("dimension-radar"), kind: "chart", title: t("能力分布", "Dimension profile"), binding: "report.dimensionScores", chart: "radar", description: t() },
+      { ...base("history"), kind: "chart", title: t("历次变化", "Progress over time"), binding: "report.scoreHistory", chart: "trend", description: t("仅比较同一量尺下的已记录结果。", "Compare recorded results on the same scale only.") },
       { ...base("dimensions"), kind: "table", title: t("分项表现", "Performance by task"), columns: [], rows: [], binding: "report.dimensions" },
       heading("observation-heading", "老师如何看待这些表现", "Teacher observations"),
       paragraph("observation", "", "", "report.summary"),

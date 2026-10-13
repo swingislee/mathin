@@ -5,7 +5,7 @@ import { LocalizedField, actionNames, settingsField } from "./fields";
 const names = { none: ["无操作", "No action"], native: ["现有业务入口", "Native destination"], page: ["内容页面", "Content page"], offering: ["服务详情", "Service details"], catalog: ["服务目录", "Service catalog"], form: ["填写表单", "Fill a form"], web: ["外部网页", "Website"], phone: ["拨打电话", "Phone call"] };
 export function ExperienceActionField({ value, experience, locale, onChange, label = true }: { value: ExperienceAction; experience: MiniappExperience; locale: "zh" | "en"; onChange: (v: ExperienceAction) => void; label?: boolean }) {
   const choices = value.kind === "native" ? experienceNativeTargets.map(id => ({ id, title: actionNames[id] }))
-    : value.kind === "page" ? experience.pages.map(p => ({ id: p.id, title: p.title }))
+    : value.kind === "page" ? experience.pages.filter(p => p.purpose !== "report").map(p => ({ id: p.id, title: p.title }))
     : value.kind === "offering" ? experience.services.map(s => ({ id: s.id, title: s.name }))
     : value.kind === "form" ? experience.forms.map(f => ({ id: f.id, title: f.title }))
     : value.kind === "web" ? experience.destinations.map(d => ({ id: d.id, title: d.name })) : [];

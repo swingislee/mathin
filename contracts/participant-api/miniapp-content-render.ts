@@ -1,4 +1,5 @@
 import { localText, type ContentDocument, type ContentItem, type ExperienceAction, type ExperienceLocale, type ExperienceText } from "./miniapp-experience";
+import { contentChart, contentChartSvg, type ContentChart } from "./miniapp-chart";
 
 export type ContentData = Record<string, unknown>;
 export type RichTextNode = { type?: "text"; text?: string; name?: string; children?: RichTextNode[] };
@@ -7,6 +8,7 @@ export type RenderedContentBlock = {
   items: { id: string; title: string; text: string; nodes: RichTextNode[]; image: string }[];
   columns: string[]; rows: string[][]; action?: ExperienceAction; appearance: string; tone: string; layout: string;
   limit: number; ids: string[]; value: string; labels: string[];
+  chart?: ContentChart; chartImage?: string;
 };
 
 /** Deliberately bounded formatting: strong, emphasis and line breaks, never HTML or executable content. */
@@ -83,6 +85,16 @@ export function renderContent(document: ContentDocument, data: ContentData, loca
       case "services": case "activities": case "contacts": row.ids = block.ids; row.limit = block.limit; row.layout = block.layout; row.text = localText(block.emptyText, locale); break;
       case "metric": row.value = asText(bound, locale); row.caption = localText(block.unit, locale); row.text = localText(block.description, locale); break;
       case "scale": row.value = asText(bound, locale); row.labels = block.labels.map(l => localText(l, locale)); row.text = localText(block.description, locale); break;
+      case "chart": {
+        row.chart = contentChart(bound, locale);
+        if (!row.chart.points.length || block.chart === "radar" && row.chart.points.length < 3 || block.chart === "trend" && row.chart.points.length < 2) {
+          if (!block.fallback) continue;
+          row.kind = "paragraph"; row.text = localText(block.fallback, locale); break;
+        }
+        row.appearance = block.chart; row.text = localText(block.description, locale);
+        if (block.chart !== "bars") row.chartImage = contentChartSvg(row.chart, block.chart);
+        break;
+      }
       case "evidence": row.items = (Array.isArray(bound) ? bound : []).slice(0, 100).map((raw, index) => {
         const item = (raw && typeof raw === "object" ? raw : {}) as { id?: string; title?: unknown; body?: unknown; text?: unknown; image?: string };
         const text = asText(item.body || item.text, locale);

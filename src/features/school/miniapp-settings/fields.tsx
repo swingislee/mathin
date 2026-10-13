@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { newId } from "@/lib/uuid";
 import { miniappActions, miniappIcons, type MiniappAction, type MiniappEntry, type MiniappText } from "../../../../contracts/participant-api/miniapp-settings";
 import { ExperienceContext } from "./ExperienceContext";
+import styles from "./workbench.module.css";
 
-export const settingsField = "w-full rounded-lg border border-line bg-card px-3 py-2 text-sm";
+export const settingsField = "w-full min-w-0 max-w-full rounded-lg border border-line bg-card px-3 py-2 text-sm leading-6";
 export const actionNames: Record<MiniappAction, MiniappText> = {
   none: { zh: "无跳转", en: "No action" }, assessment: { zh: "诊断预约", en: "Assessments" }, activities: { zh: "活动列表", en: "Activities" },
   applications: { zh: "报名记录", en: "Applications" }, service: { zh: "联系服务", en: "Contact service" }, agenda: { zh: "全部安排", en: "Arrangements" },
@@ -18,7 +19,7 @@ export const actionNames: Record<MiniappAction, MiniappText> = {
 export function LocalizedField({ label, value, onChange, max = 120, multiline = false }: {
   label: string; value: MiniappText; onChange: (v: MiniappText) => void; max?: number; multiline?: boolean;
 }) {
-  return <div className="grid gap-1 text-sm"><span>{label}</span><div className="grid gap-2 sm:grid-cols-2">{(["zh", "en"] as const).map(locale => <label key={locale} className="grid gap-1">
+  return <div className="grid min-w-0 max-w-2xl gap-1 text-sm"><span>{label}</span><div className={styles.localized}>{(["zh", "en"] as const).map(locale => <label key={locale} className="grid min-w-0 gap-1">
     <span className="text-xs text-muted">{locale === "zh" ? "中文" : "English"}</span>{multiline
       ? <textarea className={settingsField} value={value[locale]} maxLength={max} rows={3} onChange={e => onChange({ ...value, [locale]: e.target.value })} />
       : <input className={settingsField} value={value[locale]} maxLength={max} onChange={e => onChange({ ...value, [locale]: e.target.value })} />}
@@ -41,12 +42,13 @@ export function ActionField({ value, target, onChange, locale }: {
   value: MiniappAction; target: string; onChange: (action: MiniappAction, target: string) => void; locale: "zh" | "en";
 }) {
   const experience = useContext(ExperienceContext);
-  const choices = value === "page" ? experience?.pages.map(p => ({ id: p.id, title: p.title }))
+  const choices = value === "page" ? experience?.pages.filter(p => p.purpose !== "report").map(p => ({ id: p.id, title: p.title }))
     : value === "offering" ? experience?.services.map(s => ({ id: s.id, title: s.name }))
     : value === "form" ? experience?.forms.map(f => ({ id: f.id, title: f.title }))
     : value === "web" ? experience?.destinations.map(d => ({ id: d.id, title: d.name })) : undefined;
-  return <div className="flex flex-wrap gap-2"><label className="grid min-w-44 flex-1 gap-1 text-sm">{locale === "zh" ? "点击后打开" : "Open on tap"}
-    <select className={settingsField} value={value} onChange={e => onChange(e.target.value as MiniappAction, "")}>{miniappActions.map(action => <option key={action} value={action}>{actionNames[action][locale]}</option>)}</select></label>
+  const groups = [["page", "catalog", "offering", "activities", "service", "document", "privacy"], ["assessment", "form", "register", "guardian"], ["applications", "agenda", "calendar", "reflections", "records", "participants", "account"], ["web"]];
+  return <div className={styles.fieldGrid}><label className="grid min-w-0 gap-1 text-sm">{locale === "zh" ? "点击后执行的动作" : "Action on tap"}
+    <select className={settingsField} value={value} onChange={e => onChange(e.target.value as MiniappAction, "")}><option value="none">{actionNames.none[locale]}</option>{groups.map((group, i) => <optgroup key={i} label={(locale === "zh" ? ["打开页面", "进入业务功能", "查看个人记录", "外部跳转"] : ["Open a page", "Start a business operation", "View personal records", "External navigation"])[i]}>{miniappActions.filter(a => group.includes(a)).map(action => <option key={action} value={action}>{actionNames[action][locale]}</option>)}</optgroup>)}</select></label>
     {value === "document" && <label className="grid flex-1 gap-1 text-sm">{locale === "zh" ? "文档标识" : "Document key"}<input className={settingsField} value={target} placeholder="privacy / children_privacy" maxLength={64} pattern="[a-zA-Z0-9_-]*" onChange={e => onChange(value, e.target.value)} /></label>}
     {choices && <label className="grid flex-1 gap-1 text-sm">{locale === "zh" ? "绑定目标" : "Destination"}<select className={settingsField} value={target} onChange={e => onChange(value, e.target.value)}><option value="">{locale === "zh" ? "请选择" : "Choose"}</option>{choices.map(c => <option key={c.id} value={c.id}>{c.title[locale] || c.title.zh || c.id}</option>)}</select></label>}
   </div>;
