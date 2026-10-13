@@ -220,7 +220,7 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
         <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-[11px] leading-5 text-muted" title={row.payment?.note ?? row.note}>{row.payment?.note ?? row.note}</p>
       </TableCell>
     </TableRow>
-    <FollowupInlineDetails open={active} keepMounted={visited} hideTitle title={`${row.name} · ${t("details")}`} colSpan={7} id={detailId} pending={pending}
+    <FollowupInlineDetails open={active} keepMounted={visited} hideTitle title={`${row.name} · ${t("details")}`} colSpan={7} id={detailId} pending={pending} profileSubject={{ studentId: row.studentId }}
       onOpenChange={value => { if (!value && !pending) onClose(); }} onSubmit={() => submit(false)}>
       {() => <div data-renewal-entry-detail onKeyDown={keyDown}>
         <FollowupEntryLayout data-renewal-detail-layout>

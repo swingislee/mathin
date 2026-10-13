@@ -86,7 +86,7 @@ function LeadOwnerControl({ row, ...props }: Omit<AssignmentProps, "rows"> & { r
         title={`${m.owner} · ${current.ownerName || m.unassigned}`} disabled={props.disabled || Boolean(pendingOwnerId) || !props.assignees.length}
         onChange={event => { if (event.target.value !== current.ownerId) void submit(event.target.value); }}
         className={`h-8 w-full min-w-0 rounded-md border px-1 text-xs text-ink ${current.ownerId ? "border-line bg-card" : "border-crater/40 bg-moon/20"}`}>
-        {!current.ownerId ? <option value="" disabled>{m.unassigned}</option> : null}
+        {!current.ownerId ? <option value="" disabled>{current.ownerName || (row.stage === 'awaiting_first_contact' ? m.unassigned : props.locale.startsWith('en') ? 'Support to verify' : '学服待核对')}</option> : null}
         {current.ownerId && !props.assignees.some(member => member.userId === current.ownerId) ? <option value={current.ownerId} disabled>{current.ownerName}</option> : null}
         {props.assignees.map(member => <option key={member.userId} value={member.userId}>{member.displayName}</option>)}
       </select>

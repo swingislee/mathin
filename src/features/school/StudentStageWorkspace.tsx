@@ -189,6 +189,7 @@ export function StudentStageWorkspace({ data, filters, locale, currentUserId, ca
           const background = row.assessmentSource === "class_band" ? `${m.classBandReference} · ${learning || row.classBandLabel}`
             : learning || (row.assessmentSource === "assessment" ? m.completedAssessment : row.courseTitle ? `${row.courseTitle} · ${row.termName}` : m.noAssessment);
           return <Fragment key={row.key}><FollowupRecordRow key={row.key} rowKey={row.key} expanded={expanded} active={focusedKey === row.key} focusOnActivate
+            profileSubject={row}
             pending={busy} keepMounted={visited.has(row.key)} onActivate={() => { if (!busy) setFocusedKey(row.key); }}
             onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
             onOutcomeChange={row.stage === "awaiting_first_contact" && row.canContact ? value => { open(row, "contact"); setOutcomeRequest({ key: row.key, value }); } : undefined}

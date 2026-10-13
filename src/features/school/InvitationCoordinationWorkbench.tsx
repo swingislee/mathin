@@ -4,7 +4,7 @@ import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/Fol
 import { FirstContactRecordRow } from './FirstContactRecordRow';
 import { FirstContactStatusTags } from './FirstContactStatusTags';
 import { FollowupContactOutcome } from './FollowupContactOutcome';
-import { SourceInfo } from './source-worklist/SourceInfo';
+import { SourceAttention, SourceInfo } from './source-worklist/SourceInfo';
 import { RecordStatusIcons } from './record-status/RecordStatusIcons';
 import { StudentStageOwnerControl } from './StudentStageAssignmentControl';
 import dynamic from 'next/dynamic';
@@ -694,7 +694,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const sourceFields = useWorklistFields(sourceLayout?.fieldView, sourceLayout?.query, locale);
   const sourceSelection = useWorklistSelection();
   const [profileOutcome, setProfileOutcome] = useState<{ key: string; value: LeadContactInput['outcome'] | '' } | null>(null);
-  const columnCount = sourceLayout ? 8 : 7;
+  const columnCount = 7;
   const assignmentKeys = sourceLayout && canAssign ? combined.map(communicationRowKey) : [];
   const deferred = useFirstContactFacets(!sourceLayout && firstContactRows ? fieldView : undefined, locale, currentUserId);
   const legacyServerFields = useFollowupServerFields(firstContactRows ? deferred.fieldView : fieldView);
@@ -843,6 +843,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const statusRow = firstContactRows?.find(subject => subject.key === canonicalKey || (row.source === 'contact' && subject.leadId === row.value.id));
     const placement = sourceLayout?.rows.find(subject => subject.key === canonicalKey || (row.source === 'contact' && subject.leadId === row.value.id))?.worklist;
     const sourceInfo = sourceLayout ? <SourceInfo placement={placement} locale={locale} /> : undefined;
+    const attention = <SourceAttention placement={placement} locale={locale} />;
     const chooseProfileOutcome = (value: LeadContactInput['outcome'] | '') => {
       if (!statusRow?.canContact || !canContact || pending) return;
       setProfileOutcome({ key: canonicalKey, value }); changeDetails(canonicalKey, true);
@@ -856,7 +857,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
       status: { label: firstContactOnly ? studentStageMessages(locale).details[statusRow?.detail ?? 'not_contacted'] ?? rowM.notContacted : stateOf(row), tone: 'neutral', context: '' },
       updated: recordM.unknown, note: row.value.context,
-    }} active={active} expanded={expanded} ownerControl={ownerControl} selection={leadingSelectionFor(row)} sourceInfo={sourceInfo}
+    }} active={active} expanded={expanded} ownerControl={ownerControl} selection={leadingSelectionFor(row)} sourceInfo={sourceInfo} attention={attention}
       hideStatusLabel={Boolean(sourceLayout) && statusRow?.detail === 'unassigned'}
       inlineOutcomes={sourceLayout ? <FollowupContactOutcome locale={locale} compact value={profileOutcome?.key === canonicalKey ? profileOutcome.value : ''}
         onChange={chooseProfileOutcome} disabled={!statusRow?.canContact || !canContact || pending} /> : undefined}
@@ -870,7 +871,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     if (row.source === "contact") {
       const previous = row.previousInvitation;
       return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
-        statusRow={statusRow} ownerControl={ownerControl} sourceInfo={sourceInfo} inlineOutcomes={Boolean(sourceLayout)}
+        statusRow={statusRow} ownerControl={ownerControl} sourceInfo={sourceInfo} attention={attention} inlineOutcomes={Boolean(sourceLayout)}
         active={active} onActivate={setActiveContactId}
         selected={selected}
         onSaved={saveContact} onReminderSaved={saveContactReminder} onAdvance={() => advanceAfter(canonicalKey)}
@@ -923,7 +924,8 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         <TableCell mobileLabel={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} mobileEmpty={!historicalSummary && !noteOf(row)} className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={noteOf(row)}>{noteOf(row) || "—"}</p>}</TableCell>
         <TableCell mobileLabel={recordsMode ? workT("occurredAtColumn") : rowM.updated} className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <p className="truncate" title={updatedOf(row) ? formatAt(updatedOf(row)!) : undefined}>{updatedOf(row) ? formatAt(updatedOf(row)!) : recordM.unknown}</p>}</TableCell>
       </TableRow>
-      <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={7} pending={pending}>
+      <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={(open) => changeDetails(canonicalKey, open)} title={nameOf(row)} hideTitle={row.source === "invitation"} colSpan={7} pending={pending}
+        profileSubject={{ studentId: row.source === 'invitation' ? leadById.get(row.value.leadId)?.studentId : row.value.studentId, leadId: row.value.leadId }}>
         {() => <>
         {canResumeContact && row.source === "invitation" ? <Button type="button" size="sm" variant="secondary" className="h-8 text-xs" disabled={pending} onClick={() => {
           setRecontactIds((current) => new Set(current).add(row.id));
@@ -942,9 +944,9 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   }, [activities, advanceAfter, arrangementOf, assignees, assigning, assessors, beginSave, canAssign, canContact, canManageIdentity, canManageInvitation, changeDetails, contactPending, currentUserId, endSave, entryDrafts, firstContactOnly, firstContactRows, formatAt, gradeOf, historicalSummaryFor, historyFor, laterContactFor, leadById, leadT, leadingSelectionFor, locale, nameOf, noteOf, onSaved, recordM.unknown, recordsMode, router, rowM.grade, rowM.notContacted, rowM.notes, rowM.owner, rowM.phone, rowM.updated, saveContact, saveContactReminder, savePost, savingIds.size, stateOf, t, updateEntryDraft, updatedOf, workMode, workT, workday, sourceLayout, profileOutcome]);
 
 
-  return <SchoolSupportTableEntry workspace="communication" enabled={canContact} columns={sourceLayout ? ["name","phone","grade","blank","blank","blank","note","blank"] : ["name","phone","grade","blank","blank","note","blank"]} initialWork={{date:workday?.date??worklist?.date,worklistId:worklist?.id??null}}><DashboardTableShell data-followup-workbench data-communication-scroll>
-    <Table mobileLayout="stacked" className={cn("w-full table-fixed text-xs", sourceLayout ? "min-w-[70rem]" : "min-w-[55rem]")} containerClassName="overflow-auto [scrollbar-gutter:stable]">
-      <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.75rem" }} /><col style={{ width: firstContactOnly ? "7.5rem" : "6rem" }} />{sourceLayout ? <col style={{ width: "12rem" }} /> : null}<col style={{ width: sourceLayout ? "17rem" : "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
+  return <SchoolSupportTableEntry workspace="communication" enabled={canContact} columns={["name","phone","grade","blank","blank","note","blank"]} initialWork={{date:workday?.date??worklist?.date,worklistId:worklist?.id??null}}><DashboardTableShell data-followup-workbench data-communication-scroll>
+    <Table mobileLayout="stacked" className="w-full min-w-[55rem] table-fixed text-xs" containerClassName="overflow-auto [scrollbar-gutter:stable]">
+      <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "4rem" }} /><col style={{ width: "7rem" }} /><col style={{ width: sourceLayout ? "19rem" : "12rem" }} /><col /><col style={{ width: "7rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">
           {sourceLayout && canAssign && sourceSelection ? <Checkbox checked={assignmentKeys.length > 0 && assignmentKeys.every(key => sourceSelection.keys.has(key)) ? true : assignmentKeys.some(key => sourceSelection.keys.has(key)) ? 'indeterminate' : false}
@@ -955,7 +957,6 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={rowM.phone} {...columnProps("phone")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-1 [&>div]:ml-0 [&_[data-dashboard-table-menu]]:px-1"><DashboardTableColumnHeader label={rowM.grade} {...columnProps("grade")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={sourceLayout ? locale.startsWith('en') ? 'Learning support' : '学服' : rowM.owner} {...columnProps("owner")} /></TableHead>
-        {sourceLayout ? <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={locale.startsWith('en') ? 'Source / promoter' : '来源 / 推广兼职'} {...columnProps("source")} /></TableHead> : null}
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayResultColumn") : firstContactOnly ? rowM.contactStatus : workspaceT("contactStage")} {...columnProps("state")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("dayCommunicationColumn") : rowM.notes} {...columnProps("note")} /></TableHead>
         <TableHead className="sticky top-0 z-20 h-9 bg-card px-2"><DashboardTableColumnHeader label={recordsMode ? workT("occurredAtColumn") : rowM.updated} {...columnProps("updated")} /></TableHead>

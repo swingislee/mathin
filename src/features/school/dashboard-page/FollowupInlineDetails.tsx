@@ -6,12 +6,13 @@ import { TableCell, TableRow } from "@/components/ui/table";
 import { DashboardInlineEntry } from "./DashboardInlineEntry";
 import { restoreCollapsedRow } from "./restore-collapsed-row";
 import { cn } from "@/lib/utils";
+import type { StudentProfileSubject } from '../StudentBasicProfileBar';
 
 export { FollowupDetailLoading } from "./DashboardInlineDetailBoundary";
 
 /** 详情单独占据当前记录的下一行；数据行和固定列宽保持原样。 */
 export function FollowupInlineDetails({
-  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate, keepMounted = false, loadingLabel, closeLabel, flush = false,
+  open, onOpenChange, title, colSpan, children, pending = false, autoFocus = false, onSubmit, id, hideTitle = false, active = true, onKeyDown, onActivate, keepMounted = false, loadingLabel, closeLabel, flush = false, profileSubject,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -34,6 +35,7 @@ export function FollowupInlineDetails({
   closeLabel?: string;
   /** 已有详情内容自行提供内边距时，共用外壳贴合其布局。 */
   flush?: boolean;
+  profileSubject?: StudentProfileSubject;
 }) {
   const t = useTranslations("school.followupWorkspace");
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -57,7 +59,7 @@ export function FollowupInlineDetails({
       }
     }}>
     <TableCell colSpan={colSpan} className={cn("align-top whitespace-normal", flush ? "p-0" : "p-3")}>
-      <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={closeLabel ?? t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} loadingLabel={loadingLabel} flush>
+      <DashboardInlineEntry title={title} hideTitle={hideTitle} closeLabel={closeLabel ?? t("close")} onClose={close} onSubmit={onSubmit} pending={pending} autoFocus={autoFocus} loadingLabel={loadingLabel} profileSubject={profileSubject} flush>
         {() => <div data-followup-detail-content className={cn("@container/followup-entry min-w-0 max-w-full space-y-3 break-words", !flush && "pt-2")}>{typeof children === "function" ? children() : children}</div>}
       </DashboardInlineEntry>
     </TableCell>

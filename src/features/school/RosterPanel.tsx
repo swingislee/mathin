@@ -191,7 +191,7 @@ export function RosterPanel({ classroomId, roster, canManage, viewerRole, signal
               </div>
               {latest ? <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs leading-5 text-muted" title={latest.content}>{t("latestFollowup")} · {latest.content}</p> : null}
               {canWriteFollowup && visitedStudents.has(row.studentId) ? <div id={detailId} hidden={!active} inert={!active || undefined}>
-                <DashboardInlineEntry title={`${row.studentName} · ${t("quickFollowup")}`} closeLabel={workspaceT("close")} onClose={() => closeFollowup(row.studentId)} autoFocus={active}>
+                <DashboardInlineEntry title={`${row.studentName} · ${t("quickFollowup")}`} closeLabel={workspaceT("close")} onClose={() => closeFollowup(row.studentId)} autoFocus={active} profileSubject={{ studentId: row.studentId }}>
                   <QuickFollowUpEntry studentId={row.studentId}
                     batch={followupBatch.entry(row.studentId)}
                     onSaved={entry => setSavedFollowUps(current => ({ ...current, [row.studentId]: entry }))}

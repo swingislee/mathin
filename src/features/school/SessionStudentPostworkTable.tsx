@@ -184,6 +184,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
           const detailsId = `postwork-${sessionId}-${key}`;
           const entry = entries[key];
           return <FollowupRecordRow key={key} rowKey={key} active={active === key} expanded={expanded === key}
+            profileSubject={row ? { studentId: row.studentId } : undefined}
             onActivate={() => setActive(key)} onExpandedChange={value => open(key, value)} onSave={communications.canWrite ? () => void autosave.flush(key) : undefined}
             detailsId={detailsId} title={title} colSpan={6} summary={<>
               <TableCell className="sticky left-0 z-10 bg-inherit"><div className="flex items-center gap-1"><DashboardRowDisclosure expanded={expanded === key} controls={detailsId} label={title} onToggle={() => open(key, expanded !== key)} />

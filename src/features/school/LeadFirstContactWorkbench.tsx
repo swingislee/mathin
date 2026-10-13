@@ -103,12 +103,14 @@ export function LeadContactEntryRow({
   statusRow,
   ownerControl,
   sourceInfo,
+  attention,
   inlineOutcomes = false,
 }: {
   lead: LeadPoolRow;
   statusRow?: StudentStageRow;
   ownerControl?: ReactNode;
   sourceInfo?: ReactNode;
+  attention?: ReactNode;
   inlineOutcomes?: boolean;
   formatAt: (value: string) => string;
   active: boolean;
@@ -342,7 +344,7 @@ export function LeadContactEntryRow({
     detailsId={detailsId} onExpandedChange={changeDetailsOpen} onActivate={() => onActivate(lead.id)}
     onOutcomeChange={canUseEntry ? chooseOutcome : undefined} onSave={canUseEntry ? () => saveEntry(false) : undefined}
     selection={leadingSelection} historicalSummary={historicalSummary} ownerControl={ownerControl}
-    sourceInfo={sourceInfo} inlineOutcomes={inlineOutcomes ? outcomeControl : undefined}
+    sourceInfo={sourceInfo} attention={attention} inlineOutcomes={inlineOutcomes ? outcomeControl : undefined}
     hideStatusLabel={inlineOutcomes && (!lead.lastContactOutcome || statusRow?.detail === 'unassigned')}
     identityHint={<PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />}
     defaultCells={layout === "default" ? <>

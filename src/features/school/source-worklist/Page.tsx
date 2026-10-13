@@ -54,8 +54,12 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
       listInvitationOptions(),
     ]);
     const sessionKey = 'leads-first-contact:' + JSON.stringify(query);
+    const currentLeads = leads.map(lead => {
+      const current = page.rows.find(row => row.leadId === lead.id);
+      return current ? { ...lead, provisionalStudentName: current.name, phone: current.phone, gradeHint: current.grade, gradeText: current.gradeText } : lead;
+    });
     firstContactContent = <CommunicationWorkSelectionProvider key={sessionKey}>
-      <InvitationCoordinationWorkbench firstContactOnly sessionKey={sessionKey} rows={[]} contactLeads={leads} leadDetails={leads}
+      <InvitationCoordinationWorkbench firstContactOnly sessionKey={sessionKey} rows={[]} contactLeads={currentLeads} leadDetails={currentLeads}
         firstContactRows={page.rows}
         sourceLayout={{ rows: page.rows, allMonths: showsMultiplePeriods(page.period), query, fieldView: page.fieldView }}
         historicalFirstContacts={page.rows.flatMap(row => !row.leadId && row.studentId ? [{ studentId: row.studentId, name: row.name, phone: row.phone, grade: row.grade, context: row.note }] : [])}

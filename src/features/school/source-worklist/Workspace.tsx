@@ -31,6 +31,8 @@ import { showsMultiplePeriods } from './period-selection';
 import { WORKLIST_COLUMNS, worklistFields } from './fields';
 import { useWorklistFields } from './useWorklistFields';
 import { useWorklistSelection } from './Selection';
+import { communicationNoteSummary, worklistGrade } from './summary';
+import { SourceInfo } from './SourceInfo';
 
 const Entry = dynamic(() => import('../StudentStageEntryLoader').then(m => m.StudentStageEntryLoader));
 const QUERY_KEYS = ['stage','scope','group','marker','periodField','period','page','pageSize','fields','batch','interest','channel'];
@@ -85,7 +87,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
       const fresh = new Map(data.rows.map(row => [row.key,row]));
       setRows(current => current.map(row => {
         const latest = fresh.get(row.key);
-        return latest ? { ...row, canWrite: latest.canWrite, canContact: latest.canContact, ownerId: latest.ownerId, ownerName: latest.ownerName }
+        return latest ? { ...row, name: latest.name, phone: latest.phone, grade: latest.grade, gradeText: latest.gradeText, canWrite: latest.canWrite, canContact: latest.canContact, ownerId: latest.ownerId, ownerName: latest.ownerName }
           : { ...row, canWrite: false, canContact: false };
       }));
     }
@@ -258,10 +260,12 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
               const placement = row.worklist, expanded = !hidden(row) && active?.id === placement.id;
               const nextAt = row.nextContactAt && Number.isFinite(Date.parse(row.nextContactAt)) ? row.nextContactAt : null;
               const communication = row.communication;
-              const recentNote = communication?.latestNote ?? row.note;
+              const originalNote = communication?.latestNote || row.note;
+              const recentNote = communicationNoteSummary(originalNote);
               const recentDate = communication?.latestAt && Number.isFinite(Date.parse(communication.latestAt))
                 ? date(communication.latestAt) : communication?.latestDateLabel;
               return <FollowupRecordRow key={placement.id} rowKey={placement.id} detailsId={`worklist-${placement.id}`} title={row.name} colSpan={columnCount}
+                profileSubject={row}
                 active={focused === placement.id && !hidden(row)} expanded={expanded} keepMounted={visited.has(placement.id)} pending={busy} focusOnActivate hideTitle
                 onActivate={() => focus(placement.id)} onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
                 onSave={row.canWrite ? () => entryRefs.current.get(placement.id)?.save() : undefined}
@@ -273,7 +277,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
                     onCheckedChange={checked => selection.toggle([selectionKey(row)],checked === true)} /></span> : null}
                     <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{row.name}</Student360Trigger>
                     {handled.has(placement.id) ? <Check aria-label={m.handled} className="size-3.5 text-leaf-deep" /> : null}</div>
-                    <span className="text-[11px] text-muted">{row.grade != null ? `${row.grade}${locale.startsWith('en') ? '' : ' 年级'}` : row.gradeText}</span></TableCell>
+                    <span className="text-[11px] text-muted">{worklistGrade(row, locale)}</span></TableCell>
                   <TableCell mobileLabel={m.phone}>{row.phone || '—'}</TableCell>
                   <TableCell mobileLabel={locale.startsWith('en') ? 'Learning support' : '学服'}>{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} context="lead"
                     onBusyChange={setBusy} onAssigned={result => { assigned(result); router.refresh(); }} /> : row.ownerName || stages.unassigned}</TableCell>
@@ -299,7 +303,8 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
                     ref={entry => { if (entry) entryRefs.current.set(placement.id,entry); else entryRefs.current.delete(placement.id); }}
                     outcomeRequest={outcome?.id === placement.id ? outcome : null} canAdvance={rows.slice(rows.indexOf(row)+1).some(r => !hidden(r))}
                     onBusyChange={setBusy} onSaved={(result,advance) => saved(row,result,advance)} /> : null}
-                  {placement.context.length ? <details className="text-xs"><summary className="cursor-pointer text-muted">{m.source}</summary><dl className="mt-2 grid gap-2 sm:grid-cols-2">{placement.context.map(c => <div key={c.label}><dt className="text-muted">{c.label}</dt><dd className="whitespace-pre-wrap leading-6">{c.value}</dd></div>)}</dl></details> : null}
+                  <SourceInfo placement={placement} locale={locale} />
+                  {originalNote ? <details className="text-xs"><summary className="cursor-pointer text-muted">{locale.startsWith('en') ? 'Original latest note' : '最近备注原文'}</summary><p className="mt-2 whitespace-pre-wrap break-words leading-5">{originalNote}</p></details> : null}
                 </div>}
               </FollowupRecordRow>;
             })}

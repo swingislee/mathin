@@ -155,6 +155,7 @@ export function StudentsTable({
               </TableCell>
             </TableRow>
             {active ? <FollowupInlineDetails
+              profileSubject={{ studentId: student.id }}
               open
               onOpenChange={(open) => { if (!open) setActiveId(null); }}
               title={`${student.name} · ${t("quickEntry")}`}

@@ -19,13 +19,16 @@ export function FollowupContactOutcome({ value, onChange, disabled, locale, comp
 }) {
   const t = useTranslations("school.leads");
   const entryT = useTranslations("school.followupEntry");
+  const shortLabels: Record<LeadContactOutcome, string> = locale.startsWith('en')
+    ? { unreachable: 'No answer', connected: 'Connected', declined: 'Later', invalid_number: 'Invalid' }
+    : { unreachable: '未接通', connected: '已沟通', declined: '暂缓', invalid_number: '无效' };
   return <div className="space-y-1.5">
     {!compact ? <p className="text-xs font-medium text-ink">{entryT("outcome")}</p> : null}
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className={compact ? "flex min-w-0 flex-nowrap items-center gap-1" : "flex min-w-0 flex-wrap items-center gap-2"}>
       <FollowupChoice presentation="buttons" label={entryT("outcome")} value={value} disabled={disabled}
-        className={compact ? "gap-1 [&>button]:min-h-7 [&>button]:gap-1 [&>button]:px-1.5 [&>button]:py-0.5 [&>button]:text-[11px] [&>button>span:first-child]:hidden" : undefined}
+        className={compact ? "flex-nowrap gap-1 [&>button]:min-h-7 [&>button]:gap-0 [&>button]:whitespace-nowrap [&>button]:px-1.5 [&>button]:py-0.5 [&>button]:text-[11px] [&>button>span:first-child]:hidden" : undefined}
         onValueChange={outcome => onChange(outcome as LeadContactOutcome)}
-        options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome }) => ({ value: outcome, label: `${t(`contactOutcome_${outcome}`)} · ${key}`, shortcut: key,
+        options={CONTACT_OUTCOME_SHORTCUTS.map(({ key, outcome }) => ({ value: outcome, label: compact ? shortLabels[outcome] : `${t(`contactOutcome_${outcome}`)} · ${key}`, shortcut: key,
           selectedClassName: selectedClasses[outcome] }))} />
       {!compact || value ? <Button type="button" size="sm" variant="ghost" className={compact ? "h-7 rounded-md px-1 text-[11px]" : "h-9 rounded-md px-2 text-xs"}
         disabled={disabled || !value} aria-keyshortcuts="0" onClick={() => onChange("")}>

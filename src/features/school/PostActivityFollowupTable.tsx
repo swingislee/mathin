@@ -59,7 +59,7 @@ export function PostActivityFollowupTable({ initialRows, query = "" }: { initial
           </TableCell>
           <TableCell mobileLabel={t("latestContact")} mobileEmpty={!row.contacts[0]?.note && !row.routeNote} className="max-w-80"><p className="truncate" title={row.contacts[0]?.note || row.routeNote}>{row.contacts[0]?.note || row.routeNote || "—"}</p></TableCell>
           <TableCell mobileLabel={t("action")} data-table-mobile-actions><PostActivityQuickContact row={row} onSaved={save} expanded={expandedId === row.registrationId} detailsId={`post-activity-details-${row.registrationId}`} onDetails={() => setExpandedId((current) => current === row.registrationId ? null : row.registrationId)} /></TableCell>
-        </TableRow><FollowupInlineDetails open={expandedId === row.registrationId} onOpenChange={(open) => setExpandedId(open ? row.registrationId : null)} title={row.name} colSpan={6} id={`post-activity-details-${row.registrationId}`}>
+        </TableRow><FollowupInlineDetails open={expandedId === row.registrationId} onOpenChange={(open) => setExpandedId(open ? row.registrationId : null)} title={row.name} colSpan={6} id={`post-activity-details-${row.registrationId}`} profileSubject={row}>
           <PostActivityHandoff source={{ registrationId: row.registrationId, invitationId: null }} initialContext={row} onSaved={save} />
         </FollowupInlineDetails></Fragment>)}
       {!table.visibleRows.length ? <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted">{t("noFollowups")}</TableCell></TableRow> : null}</TableBody>

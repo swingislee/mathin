@@ -9116,6 +9116,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           family_id: string | null
+          grade_basis_code: number | null
+          grade_basis_year: number | null
           grade_hint: number | null
           grade_text: string
           id: string
@@ -9142,6 +9144,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           family_id?: string | null
+          grade_basis_code?: number | null
+          grade_basis_year?: number | null
           grade_hint?: number | null
           grade_text?: string
           id?: string
@@ -9168,6 +9172,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           family_id?: string | null
+          grade_basis_code?: number | null
+          grade_basis_year?: number | null
           grade_hint?: number | null
           grade_text?: string
           id?: string
@@ -16807,6 +16813,8 @@ export type Database = {
           deleted_at: string | null
           follow_up_status: string
           gender: string
+          grade_basis_code: number | null
+          grade_basis_year: number | null
           grade: number | null
           id: string
           last_follow_up_at: string | null
@@ -16841,6 +16849,8 @@ export type Database = {
           deleted_at?: string | null
           follow_up_status?: string
           gender?: string
+          grade_basis_code?: number | null
+          grade_basis_year?: number | null
           grade?: number | null
           id?: string
           last_follow_up_at?: string | null
@@ -16875,6 +16885,8 @@ export type Database = {
           deleted_at?: string | null
           follow_up_status?: string
           gender?: string
+          grade_basis_code?: number | null
+          grade_basis_year?: number | null
           grade?: number | null
           id?: string
           last_follow_up_at?: string | null

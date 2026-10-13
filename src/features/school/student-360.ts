@@ -10,6 +10,8 @@ import { leadContactAllowsIdentity } from "./lead-identity-contract";
 import { readStudentLifecycle } from "./student-lifecycle-data";
 import { readLeadOrigins } from "./lead-origin-data";
 import {sourceCompletionSummary} from './source-completion-contract';
+import { supportProfileSchema } from './school-support-contract';
+import { currentGradeLabel } from './current-grade';
 import {hasSourceAssessmentConclusion,sourceStaffLabel} from './business-source-contract';
 import { loadStudentBusinessHistory } from "./student-business-history-data";
 import { studentBusinessHistoryEvents, mergeStudentBusinessEvents } from "./student-business-history-timeline";
@@ -785,6 +787,11 @@ export async function getStudent360Snapshot(
     ? await (supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: boolean | null; error: { message: string } | null }>)("can_edit_school_lead", { p_lead_id: primaryLead.id, p_uid: user.id })
     : { data: false, error: null };
   if (collaborationError) throw new Error(collaborationError.message);
+  const profileResult = permissions.has('followup.view') && (studentId || primaryLead?.id)
+    ? await (supabase.rpc as unknown as (name: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>)(
+      'read_school_support_profile', { p_student_id: studentId, p_lead_id: studentId ? null : primaryLead?.id ?? null }) : null;
+  const basicProfile = profileResult?.data && !profileResult.error ? supportProfileSchema.parse(profileResult.data) : null;
+  const currentGrade = basicProfile?.values.grade;
   const assignedId = student?.assigned_to ?? primaryLead?.owner_id ?? null;
   const cappedCollections = [
     linkedLeads,
@@ -835,8 +842,9 @@ export async function getStudent360Snapshot(
       identityState: student ? "student" : studentId ? "journey_only" : primaryLead ? "lead" : "journey_only",
       accessScope: student ? "full" : "journey",
       name: student?.name ?? primaryLead?.provisional_student_name ?? "",
-      grade: student?.grade ?? primaryLead?.grade_hint ?? null,
-      gradeText: primaryLead?.grade_text ?? "",
+      grade: currentGrade !== undefined ? currentGrade != null && currentGrade >= 1 && currentGrade <= 12 ? currentGrade : null : student?.grade ?? primaryLead?.grade_hint ?? null,
+      gradeText: currentGrade !== undefined ? currentGradeLabel(currentGrade, locale) : primaryLead?.grade_text ?? "",
+      canEditBasicInfo: basicProfile?.canEdit ?? false,
       phone: student?.phone || primaryLead?.phone || "",
       wechat: student?.wechat ?? "",
       school: student?.school ?? "",

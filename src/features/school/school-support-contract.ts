@@ -21,7 +21,7 @@ export const supportWorkSchema = z.object({
 }).strict();
 export type SupportWork = z.infer<typeof supportWorkSchema>;
 export const supportProfileValuesSchema = z.object({
-  name: z.string().max(100), grade: z.number().int().min(1).max(12).nullable(), phone: z.string().max(40),
+  name: z.string().max(100), grade: z.number().int().min(-3).max(13).nullable(), phone: z.string().max(40),
   parentPhone: z.string().max(40).optional(), parentName: z.string().max(100).optional(), school: z.string().max(100).optional(),
   wechat: z.string().max(80).optional(), remark: z.string().max(2000),
 }).strict();
@@ -90,7 +90,7 @@ export function supportMessages(locale: string) {
     searchFirst: en ? 'Check existing profiles first. Shared phone numbers may belong to different children.' : '先检索已有档案；同一电话可能对应不同孩子。',
     newPerson: en ? 'Register with available details' : '未找到合适档案，按现有资料登记',
     loading: en ? 'Loading…' : '正在读取…', retry: en ? 'Retry' : '重试', cancel: en ? '取消 / Cancel' : '取消',
-    save: en ? 'Save' : '保存', saved: en ? 'Saved' : '已保存', edit: en ? 'Profile & corrections' : '资料与修订',
+    save: en ? 'Save' : '保存', saved: en ? 'Saved' : '已保存', edit: en ? 'Edit basic information' : '修改基础信息',
     name: en ? 'Student name' : '学生姓名', phone: en ? 'Phone' : '联系电话', grade: en ? 'Grade' : '年级',
     parentPhone: en ? 'Parent phone' : '家长电话', parentName: en ? 'Parent name' : '家长姓名', school: en ? 'School' : '学校',
     wechat: en ? 'WeChat' : '微信', remark: en ? 'Profile notes' : '档案备注', unknown: en ? 'To confirm' : '待确认',

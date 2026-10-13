@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { inlineEntryCommand } from "./inline-entry-keyboard";
 import { DashboardInlineDetailBoundary } from "./DashboardInlineDetailBoundary";
+import { StudentBasicProfileBar, type StudentProfileSubject } from '../StudentBasicProfileBar';
 
 /** 表格内连续录入的共享展开容器；保留当前记录及周围行的位置。 */
 export function DashboardInlineEntry({
@@ -19,6 +20,7 @@ export function DashboardInlineEntry({
   flush = false,
   hideTitle = false,
   loadingLabel,
+  profileSubject,
 }: {
   children: ReactNode | (() => ReactNode);
   title?: string;
@@ -30,6 +32,7 @@ export function DashboardInlineEntry({
   flush?: boolean;
   hideTitle?: boolean;
   loadingLabel?: string;
+  profileSubject?: StudentProfileSubject;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -65,6 +68,7 @@ export function DashboardInlineEntry({
         {title && !hideTitle ? <h3 className="text-xs font-medium text-ink">{title}</h3> : null}
         {onClose ? <Button data-inline-entry-close type="button" size="sm" variant="ghost" className="size-7 p-0" disabled={pending} aria-label={closeLabel} onClick={onClose}><X className="size-3.5" /></Button> : null}
       </div> : null}
+      {profileSubject ? <StudentBasicProfileBar subject={profileSubject} disabled={pending} /> : null}
       <DashboardInlineDetailBoundary loadingLabel={loadingLabel}>{children}</DashboardInlineDetailBoundary>
     </div>
   );

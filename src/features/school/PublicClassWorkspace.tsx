@@ -848,7 +848,7 @@ function ParticipantRows({
       <TableCell mobileLabel={t("recordSummary")} mobileEmpty={!summary} className="truncate px-2 py-2 text-muted">{summary || t("recordEmpty")}</TableCell>
       <TableCell mobileSpan="secondary" className="px-2 py-2">{summary ? <Badge variant="secondary">{t("recorded")}</Badge> : <Badge variant="outline">{t("notRecorded")}</Badge>}</TableCell>
     </TableRow>
-    <FollowupInlineDetails open={expanded} onOpenChange={setExpanded} colSpan={4} title={participant.name} hideTitle pending={pending} onSubmit={canRecord ? save : undefined}>
+    <FollowupInlineDetails open={expanded} onOpenChange={setExpanded} colSpan={4} title={participant.name} hideTitle pending={pending} onSubmit={canRecord ? save : undefined} profileSubject={participant}>
         <div className="grid gap-3 @3xl/page:grid-cols-2">
           {segment.kind !== "parent_talk" ? <>
             <Label className="grid gap-1.5 text-xs text-muted">{t("learningObservation")}

@@ -109,7 +109,7 @@ function ParticipantRow({ participant, data, active, toggle, saved, refresh }: {
       <TableCell mobileLabel={t("family")} mobileEmpty={!summary.family} className="truncate px-2" title={summary.family}>{summary.family || "—"}</TableCell>
       <TableCell mobileLabel={t("recommendation")} mobileEmpty={!summary.recommendation} className="truncate px-2" title={summary.recommendation}>{summary.recommendation || "—"}</TableCell>
     </TableRow>
-    <FollowupInlineDetails open={active} onOpenChange={open => { if (open !== active) toggle(); }} colSpan={5} title={participant.name} hideTitle flush pending={pending} onSubmit={editable && changed.length ? save : undefined} closeLabel={t("close")}>
+    <FollowupInlineDetails open={active} onOpenChange={open => { if (open !== active) toggle(); }} colSpan={5} title={participant.name} hideTitle flush pending={pending} onSubmit={editable && changed.length ? save : undefined} closeLabel={t("close")} profileSubject={participant}>
       <div className="grid divide-line xl:grid-cols-3 xl:divide-x">{data.segments.map((segment) => {
         const draft = drafts.find((record) => record.segmentId === segment.id);
         if (!draft) return null;

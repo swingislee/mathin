@@ -49,6 +49,7 @@ const StudentMergePanel = dynamic(() => import("./StudentMergePanel").then(modul
 const SchoolSupportProfileButton = dynamic(() => import("./SchoolSupportProfile").then((module) => module.SchoolSupportProfileButton));
 const SchoolRecordSourceReview = dynamic(() => import("./SchoolRecordSourceReview").then(module => module.SchoolRecordSourceReview));
 const WechatFamilyDetails = dynamic(() => import("./promotions/WechatFamilyDetails").then(module => module.WechatFamilyDetails));
+const Student360ProfileField = dynamic(() => import('./Student360ProfileField').then(module => module.Student360ProfileField));
 
 const BUSINESS_PHASES = new Set<Student360Phase>([
   "source",
@@ -401,7 +402,10 @@ function Student360PanelBody({
   const name = identity?.name || fallback.name;
   const grade = identity?.grade ?? fallback.grade;
   const gradeLabel = identity?.gradeText || fallback.gradeText || (grade ? t("gradeValue", { grade }) : t("gradePending"));
-  const phone = identity?.phone || fallback.phone || "";
+  const phone = identity?.parentPhone || identity?.phone || fallback.phone || "";
+  const profileSubject = identity?.canEditBasicInfo ? { studentId: identity.studentId, leadId: identity.studentId ? null : identity.primaryLeadId } : null;
+  const editableField = (field: 'name' | 'grade' | 'phone' | 'parentPhone' | 'school' | 'remark', value: string) => profileSubject
+    ? <Student360ProfileField key={`${identity?.studentId ?? identity?.primaryLeadId}:${field}`} subject={profileSubject} field={field} value={value} onSaved={refresh} /> : value;
   const visibleEvents = useMemo(() => {
     if (!snapshot) return [];
     if (filter === "business") return snapshot.events.filter((event) => BUSINESS_PHASES.has(event.phase));
@@ -438,7 +442,7 @@ function Student360PanelBody({
           </Button>
           <div className="min-w-0 flex-1 text-left">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 id="student-360-heading" className="font-display text-xl text-ink">{name}</h2>
+              <h2 id="student-360-heading" className="font-display text-xl text-ink">{editableField('name', name)}</h2>
               {identity ? <Badge variant={identity.identityState === "student" ? "secondary" : "outline"}>
                 {t(snapshot?.identityCreation?.contactEstablished ? "identity_review" : `identity_${identity.identityState}`)}
               </Badge> : null}
@@ -448,7 +452,7 @@ function Student360PanelBody({
           <div className="flex shrink-0 items-center gap-1">
             {identity?.accessScope === "full" && identity.studentId ? <MiniappGuardianInvite key={`guardian:${identity.studentId}`} studentId={identity.studentId} compact /> : null}
             {identity?.accessScope === "full" && identity.studentId ? <StudentMergePanel key={identity.studentId} studentId={identity.studentId} name={name} phone={identity.phone ?? ""} compact onSaved={refresh} /> : null}
-            {identity?.accessScope === "full" ? <SchoolSupportProfileButton studentId={identity.studentId} leadId={identity.studentId ? null : identity.primaryLeadId} onSaved={refresh} /> : null}
+            {identity && (identity.accessScope === "full" || identity.canEditBasicInfo) ? <SchoolSupportProfileButton studentId={identity.studentId} leadId={identity.studentId ? null : identity.primaryLeadId} onSaved={refresh} label={locale.startsWith('en') ? 'Edit basic information' : '修改基础信息'} /> : null}
             <Button
               type="button"
               variant="ghost"
@@ -463,9 +467,9 @@ function Student360PanelBody({
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-          <span>{gradeLabel}</span>
-          {phone ? <a href={`tel:${phone}`} className="font-mono hover:text-ink hover:underline">{phone}</a> : null}
-          {identity?.school ? <span>{identity.school}</span> : null}
+          <span>{editableField('grade', gradeLabel)}</span>
+          {profileSubject ? <span className="font-mono">{editableField(identity?.parentPhone ? 'parentPhone' : 'phone', phone)}</span> : phone ? <a href={`tel:${phone}`} className="font-mono hover:text-ink hover:underline">{phone}</a> : null}
+          {identity?.studentId ? <span>{editableField('school', identity.school || (locale.startsWith('en') ? 'School to add' : '学校待补充'))}</span> : null}
           {identity?.assignedName ? <span>{t("ownerValue", { name: identity.assignedName })}</span> : null}
           {identity?.nextActionAt ? <span className="font-medium text-rose">{t("nextActionValue", { time: dateTime.format(new Date(identity.nextActionAt)) })}</span> : null}
         </div>
@@ -498,10 +502,10 @@ function Student360PanelBody({
               studentId={snapshot.identity.studentId} leadId={snapshot.identity.studentId ? null : snapshot.identity.primaryLeadId} />
           </section> : null}
 
-          {snapshot.identity.profileRemark ? (
+          {snapshot.identity.profileRemark || profileSubject ? (
             <section className="border-y border-line bg-moon/10 px-5 py-4 sm:px-7" aria-labelledby="student-360-profile-remark">
               <p id="student-360-profile-remark" className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">{t("profileRemark")}</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink">{snapshot.identity.profileRemark}</p>
+              <div className="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink">{editableField('remark', snapshot.identity.profileRemark)}</div>
             </section>
           ) : null}
 

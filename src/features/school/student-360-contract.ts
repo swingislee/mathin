@@ -146,6 +146,7 @@ export interface Student360Identity {
   linkedLeadIds: string[];
   identityState: "student" | "lead" | "journey_only";
   accessScope: "full" | "journey";
+  canEditBasicInfo?: boolean;
   name: string;
   grade: number | null;
   gradeText: string;

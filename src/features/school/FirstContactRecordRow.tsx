@@ -12,6 +12,7 @@ import { firstContactRowMessages } from "./first-contact-row-messages";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import { FollowupPersonCell } from "./dashboard-page/FollowupPersonCell";
 import { FollowupRecordRow } from "./dashboard-page/FollowupRecordRow";
+import { communicationNoteSummary } from './source-worklist/summary';
 
 export interface FirstContactRecord {
   key: string;
@@ -33,7 +34,7 @@ export function FirstContactRecordRow({
   record, locale, active, selected = false, expanded, onExpandedChange, onActivate,
   rowRef, tabIndex = 0, pending = false, layout = "communication", canAssign = false,
   detailsId, onKeyDown, onClick, selection, historicalSummary,
-  defaultCells, children, onOutcomeChange, onSave, identityHint, ownerControl, sourceInfo, inlineOutcomes, hideStatusLabel = false,
+  defaultCells, children, onOutcomeChange, onSave, identityHint, ownerControl, sourceInfo, attention, inlineOutcomes, hideStatusLabel = false,
 }: {
   record: FirstContactRecord;
   locale: string;
@@ -56,6 +57,7 @@ export function FirstContactRecordRow({
   identityHint?: ReactNode;
   ownerControl?: ReactNode;
   sourceInfo?: ReactNode;
+  attention?: ReactNode;
   inlineOutcomes?: ReactNode;
   hideStatusLabel?: boolean;
   children?: ReactNode | (() => ReactNode);
@@ -64,10 +66,12 @@ export function FirstContactRecordRow({
 }) {
   const m = businessRecordMessages(locale);
   const fields = firstContactRowMessages(locale);
+  const noteSummary = communicationNoteSummary(record.note);
   return <FollowupRecordRow rowKey={record.key} active={active} selected={selected} expanded={expanded} pending={pending}
+    profileSubject={record.person.subject}
     focusOnActivate={Boolean(rowRef)}
     rowRef={rowRef} onActivate={onActivate} onExpandedChange={onExpandedChange} onKeyDown={onKeyDown} onOutcomeChange={onOutcomeChange} onSave={onSave}
-    detailsId={detailsId} title={record.person.name} hideTitle colSpan={layout === "communication" ? sourceInfo !== undefined ? 8 : 7 : canAssign ? 6 : 5}
+    detailsId={detailsId} title={record.person.name} hideTitle colSpan={layout === "communication" ? 7 : canAssign ? 6 : 5}
     rowProps={{ tabIndex, onClick, "data-first-contact-record": record.key, "data-record-state": record.state ?? "current",
       "data-first-contact-missing": record.missingFirstContact ? record.person.subject.studentId : undefined,
       "data-communication-work-key": layout === "communication" ? record.key : undefined,
@@ -77,24 +81,28 @@ export function FirstContactRecordRow({
         <TableCell mobileSpan="primary" className="sticky left-0 z-10 border-r border-line bg-card px-2 py-1.5">
           <FollowupPersonCell {...record.person} nameOnly selection={selection} expanded={expanded} detailsId={detailsId} onToggle={() => onExpandedChange(!expanded)} />
           {identityHint}
+          {attention}
         </TableCell>
         <TableCell mobileLabel={fields.phone} className="px-2 py-1.5"><a className="block truncate font-mono text-[11px] hover:underline" href={`tel:${record.person.phone}`} title={record.person.phone}>{record.person.phone || "—"}</a></TableCell>
         <TableCell mobileLabel={fields.grade} className="px-2 py-1.5"><p className="truncate text-[11px] text-muted" title={record.person.grade}>{record.person.grade || "—"}</p></TableCell>
         <TableCell mobileLabel={fields.owner} className="px-2 py-1.5">{ownerControl ?? <p className="truncate text-xs" title={record.person.owner}>{record.person.owner || fields.unassigned}</p>}</TableCell>
-        {sourceInfo !== undefined ? <TableCell mobileLabel={locale.startsWith('en') ? 'Source / promoter' : '来源 / 推广兼职'} className="px-2 py-1.5">{sourceInfo}</TableCell> : null}
-        <TableCell mobileSpan="secondary" className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <>
+        <TableCell mobileSpan="secondary" className="px-2 py-1.5">{historicalSummary ? historicalSummary.state : <div className="flex items-center gap-1.5">
           {inlineOutcomes}
           <FirstContactStatusTags label={hideStatusLabel ? '' : record.status.label} tone={record.status.tone} facts={record.statusContent ? undefined : record.contactFacts} locale={locale} dirty={record.pendingChanges} />
           {record.statusContent}
           {record.state === "historical" ? <HistoricalRecordBadge locale={locale} /> : null}
-        </>}</TableCell>
-        <TableCell mobileLabel={fields.notes} mobileEmpty={!historicalSummary && (record.missingFirstContact || !record.note)} className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={record.missingFirstContact ? undefined : record.note}>
-          {record.missingFirstContact ? "—" : record.note || "—"}
+        </div>}</TableCell>
+        <TableCell mobileLabel={fields.notes} mobileEmpty={!historicalSummary && !noteSummary} className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={noteSummary}>
+          {noteSummary || "—"}
         </p>}</TableCell>
         <TableCell mobileLabel={fields.updated} className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <>
           <span className="block truncate" title={record.updated}>{record.updated}</span>{record.countLabel ? <p className="mt-0.5 truncate">{record.countLabel}</p> : null}
         </>}</TableCell>
       </> : defaultCells}>
-      {children ?? (() => record.missingFirstContact ? <p className="text-xs leading-6 text-muted">{m.firstContactHint}</p> : <FollowupEntryFields id={detailsId} readOnly note={record.note ?? ''} noteLabel={m.recordedOnly} />)}
+      {() => <>
+        {typeof children === 'function' ? children() : children ?? (record.missingFirstContact ? <p className="text-xs leading-6 text-muted">{m.firstContactHint}</p> : <FollowupEntryFields id={detailsId} readOnly note={record.note ?? ''} noteLabel={m.recordedOnly} />)}
+        {sourceInfo}
+        {record.note ? <details className="text-xs"><summary className="cursor-pointer text-muted">{locale.startsWith('en') ? 'Original latest note' : '最近备注原文'}</summary><p className="mt-2 whitespace-pre-wrap break-words leading-5">{record.note}</p></details> : null}
+      </>}
   </FollowupRecordRow>;
 }

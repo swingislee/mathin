@@ -113,7 +113,7 @@ export function LeadIntakeWorkbench({ leads, locale, canAssign = false, canManag
         <TableCell mobileLabel={t("intakeProgress")}><Badge variant="outline" className={cn("max-w-full truncate px-1.5 py-0 text-[11px] leading-5", followupToneClasses[toneOf(lead)])} title={[progressOf(lead), lead.activeInvitation ? invitationT(`kind_${lead.activeInvitation.kind}`) : "", lead.lastContactNote].filter(Boolean).join(" · ")}>{progressOf(lead)}</Badge></TableCell>
         <TableCell mobileLabel={t("actions")} data-table-mobile-actions><Link href={`/dashboard/communication?lead=${lead.id}`} className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "size-7 p-0")} title={communicationLabel} aria-label={`${communicationLabel} · ${lead.provisionalStudentName}`}><ArrowRight className="size-3.5" /></Link></TableCell>
       </TableRow>
-      <FollowupInlineDetails open={open} hideTitle pending={selection.assignmentPending} onOpenChange={(value) => changeDetails(lead.id, value)} title={`${lead.provisionalStudentName} · ${t("sourceDetails")}`} colSpan={colSpan} id={detailsId}>
+      <FollowupInlineDetails open={open} hideTitle pending={selection.assignmentPending} onOpenChange={(value) => changeDetails(lead.id, value)} title={`${lead.provisionalStudentName} · ${t("sourceDetails")}`} colSpan={colSpan} id={detailsId} profileSubject={{ studentId: lead.studentId, leadId: lead.id }}>
         {() => <FollowupEntryLayout data-lead-intake-details>
           <section data-followup-business className="min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">

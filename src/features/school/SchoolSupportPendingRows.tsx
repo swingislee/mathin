@@ -35,7 +35,7 @@ function PendingWorkEditor({item,onSaved,onBusyChange}:{item:SupportItem;onSaved
     catch{setError(supportError('',locale));}finally{setPending(false);}
   };
   return <div className="space-y-3 p-3">
-    <div className="flex flex-wrap items-center gap-2"><SchoolSupportProfileButton studentId={item.studentId} leadId={item.leadId} onSaved={onSaved}/>
+    <div className="flex flex-wrap items-center gap-2"><SchoolSupportProfileButton studentId={item.studentId} leadId={item.leadId} onSaved={onSaved} label={locale.startsWith('en') ? 'Edit basic information' : '修改基础信息'}/>
       {item.studentId&&item.canWrite?<Button type="button" variant="secondary" size="sm" disabled={pending} onClick={()=>void openEntry()}>{m.continue}</Button>:null}</div>
     {options?<SupportWorkFields workspace={item.workspace} work={work} onChange={setWork} options={options} locale={locale} disabled={pending||!item.canWrite} targetLocked={Boolean(item.opportunityId)}/>:!error?<p role="status">{m.loading}</p>:null}
     {item.canWrite?<div className="flex gap-2"><Button type="button" size="sm" disabled={pending||!options} onClick={()=>void save()}>{m.save}</Button>

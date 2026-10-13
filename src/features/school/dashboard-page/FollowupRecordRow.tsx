@@ -9,7 +9,7 @@ import { restoreCollapsedRow } from "./restore-collapsed-row";
 /** 名单与跟进共用摘要、详情及键盘作用域；业务页面只提供列和登记内容。 */
 export function FollowupRecordRow({
   rowKey, active, expanded, onExpandedChange, onActivate, pending = false, selected = false,
-  rowRef, rowProps, detailsId, title, colSpan, keepMounted, hideTitle, summary, children, onKeyDown, onOutcomeChange, onSave, focusOnActivate = false, renderDetails = true, loadingLabel, ignoreClickSelector,
+  rowRef, rowProps, detailsId, title, colSpan, keepMounted, hideTitle, summary, children, onKeyDown, onOutcomeChange, onSave, focusOnActivate = false, renderDetails = true, loadingLabel, ignoreClickSelector, profileSubject,
 }: {
   rowKey: string;
   active: boolean;
@@ -36,6 +36,7 @@ export function FollowupRecordRow({
   loadingLabel?: string;
   /** 名册拖拽格等自带点击行为的区域，由共用行统一避让。 */
   ignoreClickSelector?: string;
+  profileSubject?: ComponentProps<typeof FollowupInlineDetails>['profileSubject'];
 }) {
   const summaryRef = useRef<HTMLTableRowElement>(null);
   useImperativeHandle(rowRef, () => summaryRef.current!, []);
@@ -76,7 +77,7 @@ export function FollowupRecordRow({
       {summary}
     </TableRow>
     {renderDetails && <FollowupInlineDetails id={detailsId} open={expanded} onOpenChange={onExpandedChange} title={title} hideTitle={hideTitle}
-      active={active} colSpan={colSpan} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown} keepMounted={keepMounted} loadingLabel={loadingLabel}>
+      active={active} colSpan={colSpan} pending={pending} onActivate={onActivate} onKeyDown={handleKeyDown} keepMounted={keepMounted} loadingLabel={loadingLabel} profileSubject={profileSubject}>
       {children}
     </FollowupInlineDetails>}
   </>;

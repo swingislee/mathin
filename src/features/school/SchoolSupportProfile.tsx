@@ -13,8 +13,9 @@ import { readSupportProfileAction, resolveSupportIdentityAction, updateSupportPr
 import { SUPPORT_REFRESH_EVENT, supportError, supportMessages, type SupportCandidate, type SupportProfile } from './school-support-contract';
 import { SupportChoice, SupportSubjectSearch } from './SchoolSupportEntry';
 import { STUDENT_360_REFRESH_EVENT } from './student-360-contract';
+import { currentGradeLabel, currentGradeOptions } from './current-grade';
 
-export function SchoolSupportProfileButton({studentId,leadId,onSaved}:{studentId:string|null;leadId:string|null;onSaved?:()=>void}) {
+export function SchoolSupportProfileButton({studentId,leadId,onSaved,label,disabled=false}:{studentId:string|null;leadId:string|null;onSaved?:()=>void;label?:string;disabled?:boolean}) {
   const locale=useLocale(),m=supportMessages(locale),router=useRouter();
   const [open,setOpen]=useState(false),[profile,setProfile]=useState<SupportProfile|null>(null),[values,setValues]=useState<SupportProfile['values']|null>(null);
   const [error,setError]=useState(''),[pending,setPending]=useState(false),[revision,setRevision]=useState(0),[conflict,setConflict]=useState(false);
@@ -43,13 +44,13 @@ export function SchoolSupportProfileButton({studentId,leadId,onSaved}:{studentId
     catch{setError(supportError('',locale));}finally{setPending(false);}
   };
   const fields=(profile?.values.parentName!==undefined?['name','phone','parentPhone','parentName','school','wechat']:['name','phone']) as Array<'name'|'phone'|'parentPhone'|'parentName'|'school'|'wechat'>;
-  return <Dialog open={open} onOpenChange={value=>{if(!pending){setOpen(value);if(!value){setProfile(null);setValues(null);setConflict(false);}}}}><DialogTrigger asChild><Button variant="ghost" type="button" size="sm">{m.edit}</Button></DialogTrigger>
+  return <Dialog open={open} onOpenChange={value=>{if(!pending){setOpen(value);if(!value){setProfile(null);setValues(null);setConflict(false);}}}}><DialogTrigger asChild><Button variant="ghost" type="button" size="sm" disabled={disabled} className="h-7 px-2 text-xs" onClick={event=>event.stopPropagation()}>{label??m.edit}</Button></DialogTrigger>
     <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{m.edit}</DialogTitle><DialogDescription>{profile?.values.name||m.details}</DialogDescription></DialogHeader>
       {profile&&values?<div className="space-y-4">
         {reviewLatest?<div className="space-y-1 rounded-md border border-line bg-paper p-3 text-xs"><p>{locale==='en'?'Compare the latest profile with your retained draft before saving.':'已重新读取最新档案，请核对以下字段与保留的草稿后保存。'}</p>
           {(Object.keys(values) as Array<keyof SupportProfile['values']>).filter(key=>values[key]!==profile.values[key]).map(key=><p key={key}>{m[key]}: {String(profile.values[key]??'—')} → {String(values[key]??'—')}</p>)}</div>:null}
         <div className="grid gap-3 sm:grid-cols-2">{fields.map(field=><Label key={field} className="grid gap-1.5 text-xs">{m[field]}<Input value={values[field]??''} disabled={pending||!profile.canEdit} maxLength={field.toLowerCase().includes('phone')?40:field==='wechat'?80:100} onChange={e=>setValues({...values,[field]:e.target.value})}/></Label>)}
-          <SupportChoice label={m.grade} value={values.grade?.toString()??''} disabled={pending||!profile.canEdit} onChange={value=>setValues({...values,grade:value?Number(value):null})} options={[{value:'',label:m.unknown},...Array.from({length:12},(_,i)=>({value:String(i+1),label:String(i+1)}))]}/>
+          <SupportChoice label={locale.startsWith('en')?'Current grade':'当前年级'} value={values.grade?.toString()??''} disabled={pending||!profile.canEdit} onChange={value=>setValues({...values,grade:value?Number(value):null})} options={currentGradeOptions(locale)}/>
           <Label className="grid gap-1.5 text-xs sm:col-span-2">{m.remark}<Textarea value={values.remark} maxLength={2000} disabled={pending||!profile.canEdit} onChange={e=>setValues({...values,remark:e.target.value})}/></Label>
         </div>
         {profile.canEdit?<div className="flex justify-end"><Button type="button" disabled={pending||conflict} onClick={()=>void save()}>{pending?m.loading:m.save}</Button></div>:null}
@@ -61,7 +62,7 @@ export function SchoolSupportProfileButton({studentId,leadId,onSaved}:{studentId
         </div>:null}
         {profile.changes.length?<details className="border-t border-line pt-3 text-xs"><summary className="cursor-pointer">{m.history} ({profile.changes.length})</summary>
           <div className="mt-2 space-y-3">{profile.changes.map(change=><div key={change.id} className="space-y-1"><p className="text-muted">{change.recordedAt.slice(0,19).replace('T',' ')} · {change.recordedBy}</p>
-            {(Object.keys(change.after) as Array<keyof SupportProfile['values']>).filter(key=>change.before[key]!==change.after[key]).map(key=><p key={key}>{m[key]}: {String(change.before[key]??'—')} → {String(change.after[key]??'—')}</p>)}</div>)}</div>
+            {(Object.keys(change.after) as Array<keyof SupportProfile['values']>).filter(key=>change.before[key]!==change.after[key]).map(key=><p key={key}>{m[key]}: {key==='grade'?currentGradeLabel(change.before.grade,locale):String(change.before[key]??'—')} → {key==='grade'?currentGradeLabel(change.after.grade,locale):String(change.after[key]??'—')}</p>)}</div>)}</div>
         </details>:null}
       </div>:!error?<p role="status">{m.loading}</p>:null}
       {error?<div role="alert" className="space-y-2 text-sm text-rose"><p>{error}</p><Button variant="secondary" disabled={pending} onClick={()=>setRevision(value=>value+1)}>{m.retry}</Button></div>:null}
