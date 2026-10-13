@@ -3,6 +3,26 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WECHAT-DOMAIN-VERIFY-20261013",
+      "title": "生产微信业务域名校验文件",
+      "agent": "codex",
+      "threadId": "01a134ab-1bbf-7ce0-ac80-70ce81eb1625",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-DOMAIN-VERIFY-20261013.md",
+      "writePaths": [
+        "public/us6QJi226o.txt",
+        ".ai/tasks/WECHAT-DOMAIN-VERIFY-20261013.md",
+        ".tmp/wechat-domain-verify-20261013/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "生产精确校验地址已生效；HTTPS 200、32 字节原文一致、零跳转及 TLS 1.2 通过，现有服务保持。回微信平台对 mathin.club 点击校验。"
+    },
+    {
       "id": "LEAD-COMMUNICATION-REPAIR-20261013",
       "title": "地推线索可见性、负责人办理权限与全量表头筛选",
       "agent": "codex",
