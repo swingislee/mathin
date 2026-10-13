@@ -8,6 +8,7 @@ import { nativeScreens } from "../../../../contracts/participant-api/miniapp-nat
 /* eslint-disable @next/next/no-img-element -- Staff preview reads authenticated image responses. */
 import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { Link } from "@/i18n/navigation";
 import { WorkbenchContext } from "./WorkbenchContext";
 import { workbenchItems } from "./workbench-model";
 import { CapabilitiesView, DataDefinitionsView, ModulesView, StructureView } from "./WorkbenchViews";
@@ -92,6 +93,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
     <DashboardPage className={styles.page} title={en ? "Mini Program settings" : "小程序设置"} backHref="/dashboard/organization" backLabel={en ? "Organization" : "机构设置"} commandPanel={<DashboardCommandPanel><DashboardCommandActions>
       <span className="text-sm text-muted">{dirty ? (en ? "Unsaved changes" : "有未保存修改") : state.publishedAt ? `${en ? "Published" : "最近发布"} ${new Date(state.publishedAt).toLocaleString(locale)}` : (en ? "Not published" : "尚未发布")}</span>
       {conflict && <Button variant="secondary" disabled={busy} onClick={reload}>{en ? "Reload draft" : "重新载入草稿"}</Button>}
+      <Link href="/dashboard/miniapp-runtime" className="text-sm text-ink underline-offset-4 hover:underline">{en ? "Page workbench" : "页面操作台"}</Link>
       <Button disabled={busy || conflict} onClick={() => save(false)} variant="secondary">{en ? "Save draft" : "保存草稿"}</Button><Button disabled={busy || conflict} onClick={() => save(true)}>{en ? "Publish" : "发布"}</Button>
     </DashboardCommandActions></DashboardCommandPanel>}><div className={styles.workspace + " space-y-4"}>
     {activityLoadFailed && <p className="text-sm text-muted">{en ? "Activity choices could not be loaded. Reload to edit recommendations." : "活动选项暂未载入，编辑推荐活动前请刷新重试。"}</p>}

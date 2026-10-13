@@ -1,0 +1,20 @@
+# 小程序运行时 1.0 规划
+
+- 目标与当前范围：产品负责人要求一年内功能修改、权限变更与新增业务只在 Mathin 后台完成，不重新上传小程序；后台编辑参照课件/微课工作台。本任务审核现有配置化实现，并对照 `.ai/示例/` 的 109 张成熟产品截图形成运行时规划。只写规划，不改代码与数据。
+- 分支及负责文件：`main`；`apps/parent-wechat/docs/runtime-v1.md`、本任务卡。
+- 当前可使用的版本：规划草案见 [runtime-v1.md](../../apps/parent-wechat/docs/runtime-v1.md)。已确认：作业、课表、报告会进入小程序，请假可能进入；续费与支付一年内放网页；同一页面规范驱动家长网页与 iOS；操作台暂时只由负责人使用。
+- 实际检查：阅读近期小程序任务卡、合同、客户端与后台代码；截取开发端小程序设置三个标签和课件工作台（截图与脚本在 `.tmp/miniapp-console-review-20261013/`）。主要发现：业务能力仍在 27 个原生页面控制器中；客户端对整份配置一起校验，后台新增未知动作或图标会让旧客户端停止接收新配置；权限只有三档且在客户端判断；后台以数据结构表单为中心，预览不是真实渲染。
+- 2026-10-13 负责人确认五项决定（规划 10.1）：班级沟通暂用微信群、实时聊天以后再议；现阶段孩子用家长微信，以后学生可自有微信登录；预埋录音与后台播放；需要激励体系，抽取只用积分；业务域名暂用 `mathin.club`，以后可能更换。公众平台接口现状记录在 `.ai/微信小程序相关资料/2026-10-13_接口现状.txt`。
+- 同日补充：麦克风相关一年内不做，使用 Mathin 网页同类功能；后台播放继续预埋。业务域名与小程序接口都使用 `mathin.club`，暂不变动。
+- 同日核对：隐私保护指引已对照（`.ai/微信小程序相关资料/隐私协议.txt`），上传前补充剪切板、通讯地址、相册写入、选中的文件（如做文件提交），并修正“固定存储期限 0 天”；提审音频用录音本身为 CC0/公有领域的儿童英文歌或老师自录；积分抽取上线时再公示概率与保底。
+- 下一步：进入第 9 节的最小闭环实现。生产、上传和提审继续暂停。
+
+## 实现进度（2026-10-13）
+
+- 已完成：运行时协议 `contracts/participant-api/runtime.ts`（同步为小程序 `lib/runtime-contract.ts`）；服务端 `src/features/participant-portal/runtime/`（规范校验与逐项容错、由现有设置生成默认三页、数据源：活动目录/预约/任务/报告/本周日历、显示规则、`runtime/app|screen|block` 接口）；迁移 `20261013190000_miniapp_runtime_specs`（草稿/发布/历史/恢复、运行时图片公开范围），回滚检查 `supabase/tests/miniapp_runtime_specs.sql` 通过后仅应用本机隔离开发库；后台读写动作 `src/features/school/miniapp-runtime/actions.ts`（界面未做）。
+- 小程序：自定义底栏（5 个位置，后台决定显示哪几项）、通用页面宿主 `components/runtime-host`、块渲染 `runtime-blocks/list/calendar/participants`、`pages/screen`、`pages/tab-4|5`、统一登录页 `pages/login`；发现/日历/我的已改为运行时页面，原业务页通过 `route` 动作继续打开。
+- 实际检查：服务端与小程序类型检查、合同同步通过；匿名与固定测试家长 HTTP 读取三页正确；开发者工具三页截图与原外观一致、控制台无错误。WeChat 绑定弹层（旧“我的”页）未迁移；登录页与真机未验收。
+- 演练（本机开发库）：发布运行时规范第 1 版，新增仅登录可见的第 4 个“任务”标签（任务、学习报告列表）和仅访客可见的发现页提示；未改客户端代码，开发者工具刷新后标签与页面出现，接口核对访客看不到该标签。规范生成与发布脚本 `.tmp/miniapp-runtime-20261013/build-spec.mjs`、`publish.mjs`，`default-spec.json` 可发布回与现有设置一致的三页。
+- 画布操作台：`/zh/dashboard/miniapp-runtime`（`src/features/school/miniapp-runtime/`：RuntimeConsole 三栏、RuntimeRenderer 网页渲染器、Inspector、model），从小程序设置标题栏“页面操作台”进入。服务端预览 `previewRuntimeScreen`：访客用真实公开数据，已登录家长用示例记录，不读取家庭资料。浏览器实测：点选画布组件、插入文字、编辑、自动保存、切换访客预览（任务标签按规则隐藏、访客提示出现）、历史版本恢复为草稿；测试草稿已恢复为第 1 版。
+- 后续：画布操作台继续打磨（拖动排序、条目模板映射、更多数据源）；诊断预约改服务端流程；旧“我的”页的微信绑定弹层迁移。native-pages.md、runtime-v1.md 与 current.md 已更新。脚本在 `.tmp/miniapp-runtime-20261013/`（local-db.mjs、read-runtime.mjs、wechat.mjs、typecheck.mjs）。
+- 业务域名 `mathin.club`（web-view）已由负责人在公众平台配置完成。
