@@ -5,6 +5,7 @@ import { FirstContactRecordRow } from './FirstContactRecordRow';
 import { FirstContactStatusTags } from './FirstContactStatusTags';
 import { RecordStatusIcons } from './record-status/RecordStatusIcons';
 import { StudentStageOwnerControl } from './StudentStageAssignmentControl';
+import dynamic from 'next/dynamic';
 import { studentStageMessages } from './student-stage-messages';
 import { firstContactRowMessages } from './first-contact-row-messages';
 import { businessRecordMessages } from './business-record-state-contract';
@@ -42,7 +43,9 @@ import { useFirstContactFacets } from "./useFirstContactFacets";
 import { firstContactTableFields, FIRST_CONTACT_TABLE_COLUMNS } from "./first-contact-table-fields";
 import type { StudentStageAssignee, StudentStageRow } from "./student-stage-contract";
 import { SourceGroupedRows } from './source-worklist/SourceGroupedRows';
-import type { WorkRow } from './source-worklist/contract';
+import type { WorkRow, WorkQuery } from './source-worklist/contract';
+import { useWorklistFields } from './source-worklist/useWorklistFields';
+import { useWorklistSelection } from './source-worklist/Selection';
 import {
   clearInvitationDraftSession,
   InvitationDraftFields,
@@ -88,6 +91,7 @@ import { CommunicationDaySummary } from "./CommunicationDaySummary";
 import { useCommunicationWorkSelection } from "./CommunicationWorkSelection";
 import { communicationFactWithOverride, nextUnprocessedCommunicationKey, reconcileCommunicationWorkSession, type CommunicationWorkSession } from "./communication-work-session";
 
+const ProfileContactEntry = dynamic(() => import('./StudentStageEntryLoader').then(module => module.StudentStageEntryLoader));
 const CHANNELS = ["phone", "wechat", "in_person", "other"] as const;
 const EMPTY_ROWS: never[] = [];
 const EMPTY_CONTACT_LEADS: LeadPoolRow[] = [];
@@ -554,7 +558,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   historicalFirstContacts?:HistoricalFirstContactRow[];
   fieldView?: FollowupServerFields; timeZone?: string; now?: number;
   firstContactRows?: StudentStageRow[];
-  sourceLayout?: { rows: WorkRow[]; allMonths: boolean };
+  sourceLayout?: { rows: WorkRow[]; allMonths: boolean; query: WorkQuery; fieldView: FollowupServerFields };
   emptyMessage?: string; firstContactOnly?: boolean;
 }) {
   const t = useTranslations("school.invitations");
@@ -685,8 +689,12 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     return latest ? [latest.lastContactOutcome ? leadT(`contactOutcome_${latest.lastContactOutcome}`) : "", latest.lastContactNote].filter(Boolean).join(" · ") : row.value.summary;
   }, [laterContactFor, leadT, referenceRow]);
   const filtered = useMemo(() => combined.filter((row) => [nameOf(row), row.value.phone, ...(recordsMode ? dayEventsFor(row).flatMap((event) => [event.note, dayOutcomeLabel(event), t(`channel_${event.channel}`)]) : [arrangementOf(row), noteOf(row)])].join(" ").toLocaleLowerCase(locale).includes(searchQuery.toLocaleLowerCase(locale))), [arrangementOf, combined, dayEventsFor, dayOutcomeLabel, locale, nameOf, noteOf, recordsMode, searchQuery, t]);
-  const deferred = useFirstContactFacets(firstContactRows ? fieldView : undefined, locale, currentUserId);
-  const serverFields = useFollowupServerFields(firstContactRows ? deferred.fieldView : fieldView);
+  const sourceFields = useWorklistFields(sourceLayout?.fieldView, sourceLayout?.query, locale);
+  const sourceSelection = useWorklistSelection();
+  const assignmentKeys = sourceLayout && canAssign ? combined.map(communicationRowKey) : [];
+  const deferred = useFirstContactFacets(!sourceLayout && firstContactRows ? fieldView : undefined, locale, currentUserId);
+  const legacyServerFields = useFollowupServerFields(firstContactRows ? deferred.fieldView : fieldView);
+  const serverFields = sourceFields.server ?? legacyServerFields;
   const fields = useMemo(() => firstContactRows ? firstContactTableFields(locale, currentUserId, firstContactRows)
     : communicationTableFields({ locale, t, leadT, enrollmentT, tableT, workT, leads: leadById, workday, recordsMode }),
     [firstContactRows, currentUserId, locale, t, leadT, enrollmentT, tableT, workT, leadById, workday, recordsMode]);
@@ -697,7 +705,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const props = table.columnProps(column);
     return { ...props, ...(firstContactRows ? { disabled: savingIds.size > 0 || assigning } : {}),
       ...(firstContactRows && props.fields.some(field => field.kind === "enum" || field.kind === "date")
-        ? { onLoadFacets: deferred.onLoadFacets, facetsStatus: deferred.facetsStatus } : {}) };
+        ? { onLoadFacets: sourceLayout ? sourceFields.onLoadFacets : deferred.onLoadFacets, facetsStatus: sourceLayout ? sourceFields.facetsStatus : deferred.facetsStatus } : {}) };
   };
   const selectionSignature = JSON.stringify({ filters: table.filters, sort: table.sort });
   const currentSession = reconcileCommunicationWorkSession(workSession, { boundary: sessionKey, selection: selectionSignature,
@@ -706,7 +714,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const visibleRows = useMemo(() => currentSession.keys.flatMap((key) => { const row = currentSession.facts.get(key); return row ? [row] : []; }), [currentSession.facts, currentSession.keys]);
   const visibleKeysSignature = JSON.stringify(visibleRows.map(communicationRowKey));
   useEffect(() => { setVisibleKeys(JSON.parse(visibleKeysSignature) as string[]); }, [visibleKeysSignature, setVisibleKeys]);
-  const canOperateRow = useCallback((row: CommunicationRow) => row.source === 'profile' ? false : row.source === "contact" ? Boolean(canContact && row.value.ownerId && !row.value.activeInvitation && !["invalid", "converted"].includes(row.value.status))
+  const canOperateRow = useCallback((row: CommunicationRow) => row.source === 'profile' ? false : row.source === "contact" ? Boolean(canContact && row.value.canEdit && !row.value.activeInvitation && !["invalid", "converted"].includes(row.value.status))
     : row.source === "invitation" ? canManageInvitation && !["completed", "cancelled"].includes(row.value.state)
       : row.value.canContact && row.value.eligible && !row.value.enrollmentId && row.value.route !== "closed", [canContact, canManageInvitation]);
   const selectableKeys = useMemo(() => visibleRows.filter(canOperateRow).map(communicationRowKey), [canOperateRow, visibleRows]);
@@ -748,14 +756,16 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
   const leadingSelectionFor = useCallback((row: CommunicationRow) => {
     const key = communicationRowKey(row);
     const completed = completedFor(key);
-    return <>{selectionEnabled && canOperateRow(row) ? <Checkbox checked={workSelection.selectedKeys.has(key)} onCheckedChange={(checked) => workSelection.toggle(key, checked === true)}
+    return <>{sourceLayout && canAssign && sourceSelection ? <Checkbox checked={sourceSelection.keys.has(key)} disabled={sourceSelection.busy || savingIds.size > 0}
+      onCheckedChange={checked => sourceSelection.toggle([key], checked === true)} aria-label={workT('selectRow', { name: nameOf(row) })} onClick={event => event.stopPropagation()} /> : null}
+      {selectionEnabled && canOperateRow(row) ? <Checkbox checked={workSelection.selectedKeys.has(key)} onCheckedChange={(checked) => workSelection.toggle(key, checked === true)}
       aria-label={workT("selectRow", { name: nameOf(row) })} onClick={(event) => event.stopPropagation()} /> : null}
       {worklist ? <Button type="button" size="sm" variant="ghost" aria-pressed={completed} className={cn("size-5 shrink-0 p-0", completed ? "bg-blue/10 text-blue" : "text-muted")}
         disabled={!canContact || Boolean(worklist.closedAt) || completingKeys.has(key)} onClick={(event) => { event.stopPropagation(); void setCompletion(key, !completed); }}
         aria-label={workT(completed ? "markPending" : "markComplete")} title={workT(completed ? "completed" : "markComplete")}>
         {completingKeys.has(key) ? <LoaderCircle className="size-3 animate-spin" /> : <Check className="size-3" />}</Button>
         : completed ? <Check className="size-3.5 shrink-0 text-blue" aria-label={workT("completed")} /> : null}</>;
-  }, [canContact, canOperateRow, completedFor, completingKeys, nameOf, selectionEnabled, setCompletion, workSelection, workT, worklist]);
+  }, [canContact, canOperateRow, completedFor, completingKeys, nameOf, selectionEnabled, setCompletion, workSelection, workT, worklist, sourceLayout, canAssign, sourceSelection, savingIds.size]);
   const selectedVisible = selectableKeys.filter((key) => workSelection.selectedKeys.has(key)).length;
   const updateSessionFact = useCallback((row: CommunicationRow) => setWorkSession((current) => current
     ? { ...current, facts: new Map(current.facts).set(communicationRowKey(row), row) } : current), []);
@@ -834,9 +844,12 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
         subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },
       status: { label: firstContactOnly ? studentStageMessages(locale).details[statusRow?.detail ?? 'not_contacted'] ?? rowM.notContacted : stateOf(row), tone: 'neutral', context: '' },
       updated: recordM.unknown, note: row.value.context,
-    }} active={active} expanded={expanded} ownerControl={ownerControl}
+    }} active={active} expanded={expanded} ownerControl={ownerControl} selection={leadingSelectionFor(row)}
       rowRef={element => { if (element) rowRefs.current.set(canonicalKey, element); else rowRefs.current.delete(canonicalKey); }}
-      detailsId={`first-contact-details-${canonicalKey}`} onExpandedChange={open => changeDetails(canonicalKey, open)} />;
+      detailsId={`first-contact-details-${canonicalKey}`} onExpandedChange={open => changeDetails(canonicalKey, open)}>
+      {statusRow?.canWrite && canContact ? () => <ProfileContactEntry row={statusRow} requestedMode="contact" locale={locale} currentUserId={currentUserId}
+        canEnroll={false} contactContext="first_contact" canAdvance={false} outcomeRequest={null} onBusyChange={value => contactPending(row.id,value)} onSaved={() => router.refresh()} /> : undefined}
+    </FirstContactRecordRow>;
     if (row.source === "contact") {
       const previous = row.previousInvitation;
       return <LeadContactEntryRow key={canonicalKey} lead={row.value} formatAt={formatAt}
@@ -917,6 +930,8 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
       <colgroup><col style={{ width: "7rem" }} /><col style={{ width: "6rem" }} /><col style={{ width: "3.75rem" }} /><col style={{ width: firstContactOnly ? "7.5rem" : "6rem" }} /><col style={{ width: "12rem" }} /><col /><col style={{ width: "8rem" }} /></colgroup>
       <TableHeader><TableRow>
         <TableHead className="sticky left-0 top-0 z-30 h-9 border-r border-line bg-card px-2"><div className="flex min-w-0 items-center gap-1.5">
+          {sourceLayout && canAssign && sourceSelection ? <Checkbox checked={assignmentKeys.length > 0 && assignmentKeys.every(key => sourceSelection.keys.has(key)) ? true : assignmentKeys.some(key => sourceSelection.keys.has(key)) ? 'indeterminate' : false}
+            disabled={sourceSelection.busy || savingIds.size > 0 || !assignmentKeys.length} aria-label={workT('selectVisible')} onCheckedChange={checked => sourceSelection.toggle(assignmentKeys, checked === true)} /> : null}
           {selectionEnabled ? <Checkbox checked={selectableKeys.length > 0 && selectedVisible === selectableKeys.length ? true : selectedVisible ? "indeterminate" : false}
             disabled={!selectableKeys.length} aria-label={workT("selectVisible")} onCheckedChange={(checked) => workSelection.toggleMany(selectableKeys, checked === true)} /> : null}
           <DashboardTableColumnHeader label={rowM.name} {...columnProps("name")} /></div></TableHead>

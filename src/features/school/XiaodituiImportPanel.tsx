@@ -582,7 +582,7 @@ export function XiaodituiImportPanel({ recentBatches }: { recentBatches: LeadImp
           {batch.status === "completed" ? (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
               <p className="flex items-center gap-2 text-sm text-leaf-deep"><CheckCircle2 size={16} />{t("completed", { applied: batch.applied, created: batch.created, skipped: batch.skippedCount })}</p>
-              <Link href="/dashboard/leads" className={buttonVariants({ size: "sm" })}>{t("openLeadPool")}<ArrowRight size={15} /></Link>
+              <Link href={`/dashboard/leads?scope=all&period=all&group=all&batch=${batch.batchId}`} className={buttonVariants({ size: "sm" })}>{locale.startsWith('en') ? 'View and assign this batch' : '查看并分配本批线索'}<ArrowRight size={15} /></Link>
             </div>
           ) : null}
         </DashboardSection>

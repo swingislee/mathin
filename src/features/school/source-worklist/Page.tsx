@@ -1,5 +1,4 @@
 import { getNow, setRequestLocale } from 'next-intl/server';
-import { z } from 'zod';
 import { redirect } from '@/i18n/navigation';
 import { getMyPerms, requireAnyPerm } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
@@ -10,14 +9,10 @@ import { listLeadPool } from '../leads';
 import { listInvitationOptions } from '../invitations';
 import { InvitationCoordinationWorkbench } from '../InvitationCoordinationWorkbench';
 import { CommunicationWorkSelectionProvider } from '../CommunicationWorkSelection';
-import { markerSchema, placementSchema, parseWorkQuery, PERIOD_FIELDS, href } from './contract';
+import { parseWorkQuery, href } from './contract';
 import { Workspace } from './Workspace';
-
-const pageSchema = z.object({ rows: z.array(studentStageRowSchema.extend({ worklist: placementSchema })),
-  count: z.number(), page: z.number(), pageSize: z.union([z.literal(20),z.literal(50),z.literal(100)]), totalPages: z.number(),
-  periodField: z.union([z.enum(PERIOD_FIELDS),z.literal('')]), period: z.string(), group: z.string(), periods: z.array(z.object({ key: z.string(), count: z.number() })),
-  groups: z.array(z.object({ key: z.string(), count: z.number(), subgroups: z.array(z.object({ key: z.string(), count: z.number() })) })), markers: z.array(markerSchema.extend({ count: z.number() })),
-  counts: z.object({ awaiting_first_contact: z.number(), awaiting_assessment: z.number(), awaiting_enrollment: z.number(), awaiting_renewal: z.number(), former_student: z.number() }) });
+import { loadWorklistPage } from './data';
+import { WorklistSelectionProvider } from './Selection';
 
 export default async function SourceWorklistPage({ params, searchParams, firstContact = false }: {
   params: Promise<{ locale: string }>; searchParams: Promise<Record<string,string | string[] | undefined>>; firstContact?: boolean;
@@ -37,7 +32,7 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
     }
     if (firstContact !== (focused.stage === 'awaiting_first_contact')) redirect({ href: href(query, { stage: focused.stage, group: '', period: 'all', page: 1 }), locale });
     query.stage = focused.stage;
-    query.scope = 'all'; query.group = ''; query.period = 'all'; query.marker = ''; query.q = ''; query.page = 1;
+    query.scope = 'all'; query.group = 'all'; query.period = 'all'; query.marker = ''; query.q = ''; query.fields = ''; query.batch = ''; query.page = 1;
     subjects = [focused.key];
   } else if (!firstContact && (raw.stage === 'awaiting_first_contact' || raw.task === 'first_contact')) {
     redirect({ href: href(query, { stage: 'awaiting_first_contact' }), locale });
@@ -45,25 +40,22 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
     redirect({ href: '/dashboard/classes', locale });
   }
   const canAssign = permissions.has('student.assign');
-  const [data, timeZone, now, assignees] = await Promise.all([
-    studentStageRpc(client, 'school_communication_page', { p_stage: query.stage, p_scope: query.scope, p_search: query.q,
-      p_group: query.group, p_marker: query.marker, p_page: query.page, p_page_size: query.pageSize,
-      p_period_field: query.periodField, p_period: query.period, p_subjects: subjects }), getOrganizationTimezoneV2(), getNow(),
+  const [page, timeZone, now, assignees] = await Promise.all([
+    loadWorklistPage(client, query, locale, user.id, { subjects }), getOrganizationTimezoneV2(), getNow(),
     canAssign ? listSchoolSupportOwners() : Promise.resolve([]),
   ]);
-  const page = pageSchema.parse(data);
   let firstContactContent;
   if (firstContact) {
     const leadIds = page.rows.flatMap(row => row.leadId ? [row.leadId] : []);
     const [{ leads }, options] = await Promise.all([
-      leadIds.length ? listLeadPool(user.id, { scope: query.scope, page: 1, pageSize: query.pageSize }, leadIds) : Promise.resolve({ leads: [] }),
+      leadIds.length ? listLeadPool(user.id, { scope: 'all', page: 1, pageSize: query.pageSize }, leadIds) : Promise.resolve({ leads: [] }),
       listInvitationOptions(),
     ]);
     const sessionKey = 'leads-first-contact:' + JSON.stringify(query);
     firstContactContent = <CommunicationWorkSelectionProvider key={sessionKey}>
       <InvitationCoordinationWorkbench firstContactOnly sessionKey={sessionKey} rows={[]} contactLeads={leads} leadDetails={leads}
         firstContactRows={page.rows}
-        sourceLayout={{ rows: page.rows, allMonths: page.period === 'all' }}
+        sourceLayout={{ rows: page.rows, allMonths: page.period === 'all', query, fieldView: page.fieldView }}
         historicalFirstContacts={page.rows.flatMap(row => !row.leadId && row.studentId ? [{ studentId: row.studentId, name: row.name, phone: row.phone, grade: row.grade, context: row.note }] : [])}
         rowOrder={page.rows.map(row => row.leadId ? 'lead:' + row.leadId : 'student:' + row.studentId)}
         activities={options.activities} assessors={options.assessors} locale={locale} currentUserId={user.id}
@@ -72,9 +64,9 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
         canManageIdentity={permissions.has('followup.write') && permissions.has('student.edit')} timeZone={timeZone} now={now.getTime()} />
     </CommunicationWorkSelectionProvider>;
   }
-  return <Workspace key={JSON.stringify(query)} data={page} query={{ ...query, page: page.page, periodField: page.periodField, period: page.period, group: page.group }} locale={locale}
-    currentUserId={user.id} canEnroll={permissions.has('enrollment.manage')} canViewAll={permissions.has('student.view.all')}
+  return <WorklistSelectionProvider key={JSON.stringify(query)}><Workspace data={page} query={{ ...query, page: page.page, periodField: page.periodField, period: page.period, group: page.group }} locale={locale}
+    currentUserId={user.id} canEnroll={permissions.has('enrollment.manage')}
     canAssess={permissions.has('review.write')} firstContactContent={firstContactContent}
     canAssign={canAssign} canImport={permissions.has('student.import')} assignees={assignees}
-    timeZone={timeZone} now={now.getTime()} />;
+    timeZone={timeZone} now={now.getTime()} /></WorklistSelectionProvider>;
 }

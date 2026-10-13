@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { StudentStageRow } from '../student-stage-contract';
+import type { FollowupServerFields } from '../followup-table-page';
 
 export const COMMUNICATION_STAGES = ['awaiting_assessment','awaiting_enrollment','former_student'] as const;
 export type WorkTask = typeof COMMUNICATION_STAGES[number] | 'awaiting_first_contact';
@@ -18,14 +19,15 @@ export const sourceLayoutSchema = z.object({
   groups: z.array(z.object({ key: z.string(), count: z.number() })),
 });
 export type SourceLayout = z.infer<typeof sourceLayoutSchema>;
-export interface WorkQuery { stage: WorkTask; scope: 'all' | 'mine' | 'group' | 'unassigned'; q: string; group: string; marker: string; periodField: PeriodField; period: string; page: number; pageSize: 20 | 50 | 100; lead: string; students: string }
+export interface WorkQuery { stage: WorkTask; scope: 'all' | 'mine' | 'group' | 'unassigned'; q: string; group: string; marker: string; periodField: PeriodField; period: string; page: number; pageSize: 20 | 50 | 100; lead: string; students: string; fields?: string; batch?: string }
 export interface WorkPage { rows: WorkRow[]; count: number; page: number; pageSize: 20 | 50 | 100; totalPages: number;
   periodField: PeriodField; period: string; group: string; periods: Array<{ key: string; count: number }>;
   groups: Array<{ key: string; count: number; subgroups: Array<{ key: string; count: number }> }>; markers: Array<z.infer<typeof markerSchema> & { count: number }>;
-  counts: Record<WorkTask | 'awaiting_renewal', number> }
+  counts: Record<WorkTask | 'awaiting_renewal', number>; fieldView: FollowupServerFields;
+  batches: Array<{ id: string; label: string; createdAt: string }> }
 export const href = (query: WorkQuery, change: Partial<WorkQuery> = {}) => {
   const next = { ...query, ...change };
-  const params = new URLSearchParams(Object.entries(next).filter(([,v]) => v !== '').map(([k,v]) => [k,String(v)]));
+  const params = new URLSearchParams(Object.entries(next).filter(([,v]) => v !== '' && v !== undefined).map(([k,v]) => [k,String(v)]));
   return (next.stage === 'awaiting_first_contact' ? '/dashboard/leads' : '/dashboard/communication') + '?' + params;
 };
 export function parseWorkQuery(raw: Record<string, string | string[] | undefined>, canViewAll: boolean, firstContact = false): WorkQuery {
@@ -36,12 +38,13 @@ export function parseWorkQuery(raw: Record<string, string | string[] | undefined
   const scope = pick('scope');
   const periodField = taskPeriodFields(stage).includes(pick('periodField') as PeriodField) ? pick('periodField') as PeriodField : '';
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return { stage, scope: scope === 'mine' || scope === 'group' || scope === 'unassigned' ? scope : canViewAll ? 'all' : 'mine',
+  return { stage, scope: scope === 'all' || scope === 'mine' || scope === 'group' || scope === 'unassigned' ? scope : canViewAll ? 'all' : 'mine',
     q: pick('q').trim().slice(0,80), group: pick('group').replace(/^\d{1,2}月 \/ /, '').slice(0,320), marker: pick('marker').slice(0,80), periodField,
     period: /^(all|unknown|([1-9]|1[0-2])月)$/.test(pick('period')) ? pick('period') : '',
     page: Math.max(1,Math.min(1000000,Math.floor(Number(pick('page')) || 1))),
     pageSize: pick('pageSize') === '50' ? 50 : pick('pageSize') === '100' ? 100 : 20,
-    lead: uuid.test(pick('lead')) ? pick('lead') : '', students: pick('students').split(',').filter(id => uuid.test(id)).slice(0,200).join(',') };
+    lead: uuid.test(pick('lead')) ? pick('lead') : '', students: pick('students').split(',').filter(id => uuid.test(id)).slice(0,200).join(','),
+    batch: uuid.test(pick('batch')) ? pick('batch') : '', fields: pick('fields').length <= 16_384 ? pick('fields') : '' };
 }
 export function workMessages(locale: string) {
   return locale.startsWith('en') ? {

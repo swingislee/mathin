@@ -3,6 +3,35 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "LEAD-COMMUNICATION-REPAIR-20261013",
+      "title": "地推线索可见性、负责人办理权限与全量表头筛选",
+      "agent": "codex",
+      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/LEAD-COMMUNICATION-REPAIR-20261013.md",
+      "writePaths": [
+        ".ai/tasks/LEAD-COMMUNICATION-REPAIR-20261013.md",
+        "src/features/school/source-worklist/",
+        "src/features/school/InvitationCoordinationWorkbench.tsx",
+        "src/features/school/LeadFirstContactWorkbench.tsx",
+        "src/features/school/StudentStageAssignmentControl.tsx",
+        "src/features/school/XiaodituiImportPanel.tsx",
+        "src/app/[locale]/dashboard/communication/source-filter-options/route.ts",
+        "supabase/migrations/20261013140000_group_leader_subject_access.sql",
+        "supabase/tests/group_leader_subject_access.sql",
+        "supabase/migrations/20261013150000_source_worklist_filters_and_intake.sql",
+        "supabase/tests/source_worklist_filters_and_intake.sql",
+        ".tmp/lead-communication-repair-20261013/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发库已应用组长权限、地推来源与全量筛选；待开发端实际验收及生产部署授权。汪老师生产全部灰色未独立复现，部署后需按原账号确认。"
+    },
+    {
       "id": "MINI-ASSEMBLY-CONTENT-20261013",
       "title": "小程序页面装配与有内容流程验证",
       "agent": "codex",
