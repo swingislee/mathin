@@ -106,8 +106,8 @@
     {
       "id": "SUDOKU-COURSE-2026-20261013",
       "title": "数独教学2026版十二讲成品课程",
-      "agent": "codex",
-      "threadId": "01a1347c-317b-7b82-9220-097d29f20b10",
+      "agent": "claude",
+      "threadId": "033417f5-910d-4722-8959-2096c80c98f9",
       "status": "done",
       "checkout": "local",
       "branch": "main",
@@ -120,6 +120,7 @@
         ".tmp/sudoku-2026/",
         "src/features/games/sudoku/",
         "src/features/games/courseware/",
+        "src/features/courseware-doc/DocStage.tsx",
         "src/features/courseware-studio/formal-manual-page-contract.ts",
         "src/features/courseware-studio/formal-manual-page-actions.ts",
         "src/features/courseware-studio/FormalCubePageEditor.tsx",
@@ -148,8 +149,8 @@
         "messages/en.json",
         "messages/zh.json"
       ],
-      "checkpoint": "b6b5c193bc0c2b68380ec7c165b655541c6025fb",
-      "next": "开发端摩天楼两页已按楼高配色并补齐视图控制，四份草稿修订读回一致；全部182题、3083步理由及原生引擎复核通过，364个已保存题目实例与题库一致，待用户实际使用。"
+      "checkpoint": "0b70e02337010a6581ee7b00dfe7ea596e77f9ca",
+      "next": "按校准后的教学逻辑重做12讲：逐讲页面计划、按样式出题并证明、三层校验与逐步理由回放通过；开发端264页原位更新并读回一致，新增原生窗口数独，画布文字保留换行。待用户试课确认投屏与节奏。"
     },
     {
       "id": "WECHAT-DOMAIN-VERIFY-20261013",
