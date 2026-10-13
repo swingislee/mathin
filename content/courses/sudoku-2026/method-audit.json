@@ -1,7 +1,8 @@
 {
-  "version": 1,
+  "version": 2,
+  "checkedAt": "2026-10-13T11:51:37.232Z",
   "bankSha256": "13da29431f2ffc8eb121f11c68a41dda4ba35cc43ba9b601f958dd0de900a3e7",
-  "scope": "All authored puzzles: exact solution counts, forced cells, logical traces, method withdrawal and variant-rule withdrawal. Classroom timing and feel require teacher acceptance.",
+  "scope": "All authored puzzles: agreed curriculum policy, independently replayed method reasons and deduction order, exact solution counts, forced cells, method withdrawal and variant-rule withdrawal. Classroom timing and feel require teacher acceptance.",
   "counts": {
     "lessons": 12,
     "puzzles": 182,
@@ -30,6 +31,19 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -61,6 +75,19 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -92,6 +119,19 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -123,6 +163,19 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -154,6 +207,19 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -185,6 +251,19 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -216,6 +295,19 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 12,
@@ -243,6 +335,19 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 13,
@@ -268,6 +373,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 11,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -289,6 +406,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 12,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -310,6 +439,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 12,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -331,6 +472,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 11,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -352,6 +505,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 12,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -373,6 +538,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 11,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -394,6 +571,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 12,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -417,6 +606,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 12,
@@ -444,6 +647,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 0,
@@ -471,6 +688,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 9,
@@ -498,6 +729,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 10,
@@ -525,6 +770,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 6,
@@ -552,6 +811,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 15,
@@ -579,6 +852,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 12,
@@ -606,6 +893,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 15,
@@ -633,6 +934,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 13,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -657,6 +972,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 13,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -681,6 +1010,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 13,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -705,6 +1048,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 13,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -729,6 +1086,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 13,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -753,6 +1124,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 12,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -777,6 +1162,20 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 13,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -801,6 +1200,20 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 6,
@@ -828,6 +1241,20 @@
         "extra": 3
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 4,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 13,
@@ -855,6 +1282,20 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 4,
@@ -882,6 +1323,20 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 10,
@@ -909,6 +1364,20 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 5,
@@ -936,6 +1405,20 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 7,
@@ -963,6 +1446,20 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 12,
@@ -990,6 +1487,20 @@
         "extra": 3
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 4,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 2,
@@ -1017,6 +1528,20 @@
         "extra": 6
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 20,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1041,6 +1566,20 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 14,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1065,6 +1604,20 @@
         "extra": 5
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 20,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1089,6 +1642,20 @@
         "extra": 4
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 18,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1113,6 +1680,20 @@
         "extra": 6
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 21,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1137,6 +1718,20 @@
         "extra": 4
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 18,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1161,6 +1756,20 @@
         "extra": 5
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 20,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1184,6 +1793,19 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 11,
@@ -1210,6 +1832,19 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 15,
@@ -1236,6 +1871,19 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 0,
@@ -1262,6 +1910,19 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 1,
@@ -1288,6 +1949,19 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 13,
@@ -1314,6 +1988,19 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 11,
@@ -1340,6 +2027,19 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 15,
@@ -1366,6 +2066,19 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": {
         "index": 11,
@@ -1392,6 +2105,19 @@
         "extra": 5
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 21,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1415,6 +2141,19 @@
         "extra": 8
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 24,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1438,6 +2177,19 @@
         "extra": 3
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 19,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1461,6 +2213,19 @@
         "extra": 3
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 19,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1484,6 +2249,19 @@
         "extra": 3
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 19,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1507,6 +2285,19 @@
         "extra": 8
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 24,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1530,6 +2321,19 @@
         "extra": 6
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "naked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 22,
+        "methodReasons": true,
+        "boxDigitPriority": null,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -1554,6 +2358,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1585,6 +2401,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1616,6 +2444,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1647,6 +2487,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1678,6 +2530,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1709,6 +2573,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1740,6 +2616,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1771,6 +2659,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -1800,6 +2700,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -1821,6 +2733,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 25,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -1842,6 +2766,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 25,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -1863,6 +2799,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -1884,6 +2832,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -1905,6 +2865,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -1926,6 +2898,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 24,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -1950,6 +2934,20 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -1984,6 +2982,20 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -2018,6 +3030,20 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -2052,6 +3078,20 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -2086,6 +3126,20 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -2120,6 +3174,20 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -2155,6 +3223,20 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "earlierMethods": [
@@ -2191,6 +3273,20 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "earlierMethods": [
@@ -2227,6 +3323,25 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 18
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 18,
@@ -2294,6 +3409,25 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 16
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 27,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 16,
@@ -2361,6 +3495,25 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 25
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 27,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 25,
@@ -2428,6 +3581,25 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 20
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 27,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 20,
@@ -2495,6 +3667,25 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 20
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 20,
@@ -2562,6 +3753,25 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 21
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 25,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 21,
@@ -2629,6 +3839,25 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 24
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 24,
@@ -2697,6 +3926,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -2735,6 +3979,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 4,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -2773,6 +4032,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -2811,6 +4085,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -2849,6 +4138,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 4,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -2887,6 +4191,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -2925,6 +4244,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -2963,6 +4297,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -3001,6 +4350,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "locked": {
+            "necessary": true,
+            "remaining": 16
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 28,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 16,
@@ -3069,6 +4438,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "locked": {
+            "necessary": true,
+            "remaining": 25
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 28,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 25,
@@ -3137,6 +4526,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "locked": {
+            "necessary": true,
+            "remaining": 21
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 28,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 21,
@@ -3205,6 +4614,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "locked": {
+            "necessary": true,
+            "remaining": 22
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 31,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 22,
@@ -3273,6 +4702,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "locked": {
+            "necessary": true,
+            "remaining": 18
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 18,
@@ -3341,6 +4790,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "locked": {
+            "necessary": true,
+            "remaining": 17
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 27,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 17,
@@ -3409,6 +4878,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "locked": {
+            "necessary": true,
+            "remaining": 20
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 20,
@@ -3475,6 +4964,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 3,
@@ -3503,6 +5008,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 11,
@@ -3531,6 +5052,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 4,
@@ -3559,6 +5096,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 22,
@@ -3587,6 +5140,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 15,
@@ -3615,6 +5184,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 27,
@@ -3643,6 +5228,22 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 26,
@@ -3671,6 +5272,22 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 10,
@@ -3699,6 +5316,22 @@
         "extra": 3
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 4,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 23,
@@ -3728,6 +5361,22 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 30,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -3754,6 +5403,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 28,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -3780,6 +5445,22 @@
         "extra": 8
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 41,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -3806,6 +5487,22 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 34,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -3832,6 +5529,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 26,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -3858,6 +5571,22 @@
         "extra": 5
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 36,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -3884,6 +5613,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 29,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -3908,6 +5653,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -3939,6 +5696,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -3970,6 +5739,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -4001,6 +5782,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -4032,6 +5825,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -4063,6 +5868,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -4094,6 +5911,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -4125,6 +5954,18 @@
       "required": [
         "box"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {
         "box": {
           "earlierMethods": [],
@@ -4154,6 +5995,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 57,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -4175,6 +6028,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 55,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -4196,6 +6061,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 55,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -4217,6 +6094,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 54,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -4238,6 +6127,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 54,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -4259,6 +6160,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 54,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -4280,6 +6193,18 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 56,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": null
+      },
       "necessity": {},
       "target": null
     },
@@ -4304,6 +6229,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4338,6 +6276,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4372,6 +6323,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4406,6 +6370,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4440,6 +6417,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4474,6 +6464,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4508,6 +6511,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4542,6 +6558,19 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "earlierMethods": [
@@ -4576,6 +6605,24 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 39
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 56,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 39,
@@ -4687,6 +6734,24 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 48
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 57,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 48,
@@ -4798,6 +6863,24 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 26
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 56,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 26,
@@ -4909,6 +6992,24 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 23
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 57,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 23,
@@ -5020,6 +7121,24 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 52
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 55,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 52,
@@ -5131,6 +7250,24 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 51
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 53,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 51,
@@ -5242,6 +7379,24 @@
       "required": [
         "line"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line"
+        ],
+        "necessaryMethods": {
+          "line": {
+            "necessary": true,
+            "remaining": 48
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 56,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "line": {
           "remaining": 48,
@@ -5354,6 +7509,21 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "earlierMethods": [
@@ -5390,6 +7560,21 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "earlierMethods": [
@@ -5426,6 +7611,21 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "earlierMethods": [
@@ -5462,6 +7662,21 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "earlierMethods": [
@@ -5499,6 +7714,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -5537,6 +7767,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -5575,6 +7820,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -5613,6 +7873,21 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "earlierMethods": [
@@ -5652,6 +7927,26 @@
         "naked",
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "nakedOrLocked": {
+            "necessary": true,
+            "remaining": 38
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 60,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "remaining": 38,
@@ -5851,6 +8146,26 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "nakedOrLocked": {
+            "necessary": true,
+            "remaining": 52
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 57,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "remaining": 50,
@@ -5964,6 +8279,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "nakedOrLocked": {
+            "necessary": true,
+            "remaining": 53
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 65,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 53,
@@ -6078,6 +8413,26 @@
         "naked",
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "nakedOrLocked": {
+            "necessary": true,
+            "remaining": 55
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 62,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "remaining": 55,
@@ -6277,6 +8632,26 @@
       "required": [
         "naked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "nakedOrLocked": {
+            "necessary": true,
+            "remaining": 52
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 63,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "remaining": 52,
@@ -6390,6 +8765,26 @@
       "required": [
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "nakedOrLocked": {
+            "necessary": true,
+            "remaining": 47
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 65,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "locked": {
           "remaining": 44,
@@ -6504,6 +8899,26 @@
         "naked",
         "locked"
       ],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked"
+        ],
+        "necessaryMethods": {
+          "nakedOrLocked": {
+            "necessary": true,
+            "remaining": 43
+          }
+        }
+      },
+      "reasonReplay": {
+        "steps": 58,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {
         "naked": {
           "remaining": 34,
@@ -6701,6 +9116,22 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 70,
@@ -6729,6 +9160,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 66,
@@ -6757,6 +9204,22 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 20,
@@ -6785,6 +9248,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 73,
@@ -6813,6 +9292,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 50,
@@ -6841,6 +9336,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 1,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 18,
@@ -6869,6 +9380,22 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 37,
@@ -6897,6 +9424,22 @@
         "extra": 1
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 2,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 19,
@@ -6925,6 +9468,22 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 3,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": {
         "index": 33,
@@ -6954,6 +9513,22 @@
         "extra": 4
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 74,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -6980,6 +9555,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 57,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -7006,6 +9597,22 @@
         "extra": 10
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 82,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -7032,6 +9639,22 @@
         "extra": 4
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 66,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -7058,6 +9681,22 @@
         "extra": 0
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 56,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -7084,6 +9723,22 @@
         "extra": 15
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 89,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true
@@ -7110,6 +9765,22 @@
         "extra": 2
       },
       "required": [],
+      "curriculum": {
+        "lessonMethods": [
+          "box",
+          "line",
+          "naked",
+          "locked",
+          "extra"
+        ],
+        "necessaryMethods": {}
+      },
+      "reasonReplay": {
+        "steps": 68,
+        "methodReasons": true,
+        "boxDigitPriority": true,
+        "leastEmptyLinePriority": true
+      },
       "necessity": {},
       "target": null,
       "variantEssential": true

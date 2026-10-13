@@ -10,6 +10,8 @@ import { forcedSudokuCellValue } from "@/features/games/sudoku/logic";
 import { createCubeCoursewareTool } from "@/features/tools/courseware/cube-structures-content";
 import { cubeDraftSnapshot } from "@/features/tools/spatial-lab/cube-structures-draft";
 import { createCubeSession } from "@/features/tools/spatial-lab/cube-structures-session";
+import { CUBE_COLORS } from "@/features/tools/spatial-lab/cube-structures-contract";
+import { CUBE_TOOLBAR_GROUPS } from "@/features/tools/spatial-lab/cube-structures-toolbar";
 
 type Puzzle = { id:string; lessonId:string; role:"target"|"class"|"homework"; number:number; size:SudokuSize; puzzle:number[]; rules:SudokuVariantRules; targets?:Array<{index:number;value:number}>; method?:string; allowed:string[]; solution?:number[] };
 type Lesson = { id:string; level:string; n:SudokuSize; number:number; title:string; focus:string; families?:string[]; allowed:string[] };
@@ -74,9 +76,14 @@ function gamePage(title:string,payload:SudokuVariantPayload,prompt:string) {
 function towersPage(heights:number[]) {
   const doc=pageBase("先搭一排楼，再换边看看");
   const cubes=heights.flatMap((height,i)=>Array.from({length:height},(_,y)=>({x:i*2,y,z:0})));
-  const tool=createCubeCoursewareTool({name:`楼高 ${heights.join('、')}`,snapshot:cubeDraftSnapshot(createCubeSession(cubes),0)},"current",["orbit"]);
+  const session=createCubeSession(cubes);
+  const towerColors=[CUBE_COLORS[3],CUBE_COLORS[1],CUBE_COLORS[0],CUBE_COLORS[4]];
+  const initial={...session.work.initial,axesVisible:false,hiddenEdgesVisible:false,
+    cubes:session.work.initial.cubes.map(cube=>({...cube,color:towerColors[heights[cube.position.x/2]-1]}))};
+  const prepared={...session,work:{...session.work,initial}};
+  const tool=createCubeCoursewareTool({name:`楼高 ${heights.join('、')}`,snapshot:cubeDraftSnapshot(prepared,0)},"current",[...CUBE_TOOLBAR_GROUPS[0].tools,"undo","redo","reset"]);
   doc.layout.blocks.push({id:"towers",type:"tool",tool,placement:{column:0,row:1,columnSpan:9,rowSpan:8}});
-  addText(doc,"prompt",`楼高\n${heights.join('、')}\n\n先猜看到几栋。\n转到一端，降低视角；\n再换到另一端。\n\n数的是楼栋，\n不是积木块。`,9,1,3,8,23);
+  addText(doc,"prompt",`楼高\n${heights.join('、')}\n\n每栋楼一种颜色。\n先猜看到几栋。\n点左视、右视比较；\n再点立体看整体。\n\n数的是楼栋，\n不是积木块。`,9,1,3,8,23);
   return doc;
 }
 export function buildNativeCourse(previousAudit?:Array<{id:string;payloadHash:string}>):{title:string;lessons:NativeLesson[];nativeAudit:unknown[]} {

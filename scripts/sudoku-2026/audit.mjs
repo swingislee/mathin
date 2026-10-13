@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {specFrom} from './generate.mjs';
 import {makeSpec,solveExact,logicalSolve,forcedCells} from '../lib/sudoku-curriculum.mjs';
+import {checkCurriculum,checkTraceReasons} from './curriculum-check.mjs';
 
 const bank=JSON.parse(fs.readFileSync('content/courses/sudoku-2026/bank.json','utf8'));
 const results=[],seen=new Map();
@@ -10,12 +11,13 @@ for(const p of bank.puzzles) {
   const identity=JSON.stringify([p.size,p.puzzle,p.rules]);
   assert(!seen.has(identity),`${p.id} duplicates ${seen.get(identity)}`); seen.set(identity,p.id);
   const spec=specFrom(p.size,p.rules), allowed=p.equivalent?['naked']:p.allowed;
+  const curriculum=checkCurriculum(p,spec),reasonReplay=checkTraceReasons(p,spec);
   const solutions=solveExact(p.puzzle,spec,2),logical=logicalSolve(p.puzzle,spec,allowed);
   assert(solutions.length,`${p.id}: no solution`);
   assert.deepEqual(logical.steps,p.trace,`${p.id}: trace has changed`);
   assert(!logical.contradiction,`${p.id}: contradictory deduction`);
   const counts=Object.fromEntries(['box','line','naked','locked','extra'].map(m=>[m,p.trace.filter(s=>s.method===m).length]));
-  const audit={id:p.id,lessonId:p.lessonId,role:p.role,variant:p.rules.kind,givens:p.givens,solutionCountCappedAt2:solutions.length,allowed,counts,required:p.required,necessity:{},target:null};
+  const audit={id:p.id,lessonId:p.lessonId,role:p.role,variant:p.rules.kind,givens:p.givens,solutionCountCappedAt2:solutions.length,allowed,counts,required:p.required,curriculum,reasonReplay,necessity:{},target:null};
   if(p.role==='target') {
     assert.equal(solutions.length,2,`${p.id}: a teaching fragment must remain incomplete`);
     const forced=forcedCells(p.puzzle,spec);
@@ -62,8 +64,8 @@ for(const lesson of bank.lessons) {
   assert.equal(ps.filter(p=>p.role==='homework').length,4);
   assert(ps.filter(p=>p.role==='target').length>=8);
 }
-const report={version:1,bankSha256:createHash('sha256').update(fs.readFileSync('content/courses/sudoku-2026/bank.json')).digest('hex'),
-  scope:'All authored puzzles: exact solution counts, forced cells, logical traces, method withdrawal and variant-rule withdrawal. Classroom timing and feel require teacher acceptance.',
+const report={version:2,checkedAt:new Date().toISOString(),bankSha256:createHash('sha256').update(fs.readFileSync('content/courses/sudoku-2026/bank.json')).digest('hex'),
+  scope:'All authored puzzles: agreed curriculum policy, independently replayed method reasons and deduction order, exact solution counts, forced cells, method withdrawal and variant-rule withdrawal. Classroom timing and feel require teacher acceptance.',
   counts:{lessons:bank.lessons.length,puzzles:results.length,targets:results.filter(p=>p.role==='target').length,class:results.filter(p=>p.role==='class').length,homework:results.filter(p=>p.role==='homework').length},results};
 fs.writeFileSync('content/courses/sudoku-2026/method-audit.json',JSON.stringify(report,null,2)+'\n');
 console.log(JSON.stringify(report.counts));
