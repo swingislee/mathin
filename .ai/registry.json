@@ -27,7 +27,7 @@
       "title": "地推线索可见性、负责人办理权限与全量表头筛选",
       "agent": "codex",
       "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/LEAD-COMMUNICATION-REPAIR-20261013.md",
@@ -46,10 +46,11 @@
         ".tmp/lead-communication-repair-20261013/"
       ],
       "sharedPaths": [
-        ".ai/registry.json"
+        ".ai/registry.json",
+        "docs/current.md"
       ],
-      "checkpoint": null,
-      "next": "开发库已应用组长权限、地推来源与全量筛选；待开发端实际验收及生产部署授权。汪老师生产全部灰色未独立复现，部署后需按原账号确认。"
+      "checkpoint": "9e2b57ae",
+      "next": "已按独立发布授权部署 f2ad91e1 / 20261013-101229，两项生产函数迁移及健康检查通过；最新导入 22 条可见。汪老师原账号浏览器全灰、分配和筛选手感待实际验收。"
     },
     {
       "id": "MINI-ASSEMBLY-CONTENT-20261013",
