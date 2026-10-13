@@ -1,0 +1,114 @@
+{
+  "pages": 239,
+  "status": "editable-draft",
+  "courses": {
+    "中阶": "0abefa8c-dec2-4aa9-aa89-72608e875d47",
+    "初阶": "8d5b212d-7be5-447d-8a05-9b0b403dc7db",
+    "高阶": "6bf44e88-50d2-473c-bae3-433215f0e245"
+  },
+  "lessons": [
+    {
+      "id": "B1",
+      "pages": 20,
+      "title": "一个数字找到底",
+      "courseId": "8d5b212d-7be5-447d-8a05-9b0b403dc7db",
+      "lectureId": "0e50dc80-9dea-4529-b829-6d099fce708a",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/0e50dc80-9dea-4529-b829-6d099fce708a?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "B2",
+      "pages": 19,
+      "title": "斜线与会转弯的宫",
+      "courseId": "8d5b212d-7be5-447d-8a05-9b0b403dc7db",
+      "lectureId": "41acbb0c-d622-4799-bfff-e8537a8f71af",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/41acbb0c-d622-4799-bfff-e8537a8f71af?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "B3",
+      "pages": 19,
+      "title": "符号会告诉我们什么",
+      "courseId": "8d5b212d-7be5-447d-8a05-9b0b403dc7db",
+      "lectureId": "7c864df4-58c4-4a73-9f68-4bfe9350ddd7",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/7c864df4-58c4-4a73-9f68-4bfe9350ddd7?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "B4",
+      "pages": 21,
+      "title": "站在街边看高楼",
+      "courseId": "8d5b212d-7be5-447d-8a05-9b0b403dc7db",
+      "lectureId": "5e8cca90-8d10-4bec-8b9a-c652c92a1a56",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/5e8cca90-8d10-4bec-8b9a-c652c92a1a56?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "M1",
+      "pages": 20,
+      "title": "六宫里的数字侦探",
+      "courseId": "0abefa8c-dec2-4aa9-aa89-72608e875d47",
+      "lectureId": "f046840c-82c6-4942-b3ce-49c57fbd5f42",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/f046840c-82c6-4942-b3ce-49c57fbd5f42?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "M2",
+      "pages": 20,
+      "title": "宫里停住，看看行列",
+      "courseId": "0abefa8c-dec2-4aa9-aa89-72608e875d47",
+      "lectureId": "29ad48b7-6ac5-44b2-8b8e-6f4185300e5e",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/29ad48b7-6ac5-44b2-8b8e-6f4185300e5e?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "M3",
+      "pages": 20,
+      "title": "两格未定，也能排除",
+      "courseId": "0abefa8c-dec2-4aa9-aa89-72608e875d47",
+      "lectureId": "2a0db9e4-7158-40e8-87c9-fd42a3368b7f",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/2a0db9e4-7158-40e8-87c9-fd42a3368b7f?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "M4",
+      "pages": 20,
+      "title": "给六宫加一条规则",
+      "courseId": "0abefa8c-dec2-4aa9-aa89-72608e875d47",
+      "lectureId": "e942a204-4b1f-407c-a46e-896b5570e1a5",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/e942a204-4b1f-407c-a46e-896b5570e1a5?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "H1",
+      "pages": 20,
+      "title": "九宫也能有序寻找",
+      "courseId": "6bf44e88-50d2-473c-bae3-433215f0e245",
+      "lectureId": "cd05cf97-1f62-4754-83fb-537ae0ccc628",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/cd05cf97-1f62-4754-83fb-537ae0ccc628?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "H2",
+      "pages": 20,
+      "title": "从空格少的行列突破",
+      "courseId": "6bf44e88-50d2-473c-bae3-433215f0e245",
+      "lectureId": "4b532f43-c08e-4998-99fa-fe95df44f440",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/4b532f43-c08e-4998-99fa-fe95df44f440?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "H3",
+      "pages": 20,
+      "title": "一个格子与一组位置",
+      "courseId": "6bf44e88-50d2-473c-bae3-433215f0e245",
+      "lectureId": "1835d279-4532-43fc-93f3-f7fb3c34c11c",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/1835d279-4532-43fc-93f3-f7fb3c34c11c?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    },
+    {
+      "id": "H4",
+      "pages": 20,
+      "title": "九宫规则实验室",
+      "courseId": "6bf44e88-50d2-473c-bae3-433215f0e245",
+      "lectureId": "8ed65bcf-dffb-4b07-b423-b6f8cad772f3",
+      "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courseware/lectures/8ed65bcf-dffb-4b07-b423-b6f8cad772f3?workspace=courseware&canvas=adapted-4x3&track=adapted-4x3"
+    }
+  ],
+  "familyId": "179de530-52cb-47d3-ab0e-8d9104c6b0b7",
+  "catalogVersionId": "c71ca1db-08b2-4acb-baeb-834f82dbfdc5",
+  "developmentUrl": "http://192.168.5.213:3130/zh/dashboard/courses/179de530-52cb-47d3-ab0e-8d9104c6b0b7",
+  "packageSha256": "9c4d2a4271769601af422863cfbbbe93468d87375109b90e088b4c3823e76f66",
+  "importedAt": "2026-10-13T10:26:37.337Z",
+  "courseSeason": null,
+  "yearRound": true
+}
