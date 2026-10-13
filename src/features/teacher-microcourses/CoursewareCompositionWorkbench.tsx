@@ -606,7 +606,7 @@ function GameComponentDialog({ microcourseId, createGame, disabled = false, icon
 }) {
   const t = useTranslations("teacherMicrocourses");
   const tGames = useTranslations("games");
-  const contracts = gameCoursewareContractsForSurface("microcourse");
+  const contracts = gameCoursewareContractsForSurface("microcourse").filter((contract, index, all) => all.findIndex((item) => item.gameId === contract.gameId) === index);
   const [open, setOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState(contracts[0] ? `${contracts[0].gameId}:${contracts[0].contentVersion}` : "");
   const [message, setMessage] = useState("");

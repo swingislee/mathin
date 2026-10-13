@@ -7,7 +7,10 @@ import type {
   SudokuActivityPayload,
   SudokuAuthoredPayload,
   SudokuCoursewarePayload,
+  SudokuVariantPayload,
 } from "./courseware-contract";
+import { sudokuPayloadVariant } from "./courseware-contract";
+import { sudokuRulesValid } from "./rules";
 
 export interface SudokuTeachingTargetAnalysis {
   kind: "cell-value";
@@ -45,8 +48,13 @@ function analyzeLegacy(payload: SudokuAuthoredPayload): SudokuCoursewareActivity
   };
 }
 
-function analyzeActivity(payload: SudokuActivityPayload): SudokuCoursewareActivityAnalysis {
-  const puzzle = analyzeSudokuPuzzle(payload.puzzle, payload.variantId);
+function analyzeActivity(payload: SudokuActivityPayload | SudokuVariantPayload): SudokuCoursewareActivityAnalysis {
+  const variant = sudokuPayloadVariant(payload);
+  if (!sudokuRulesValid(variant)) return {
+    puzzle: { status: "conflict", solutionCount: 0, solution: null }, goalKind: payload.goal.kind,
+    targets: [], ready: false, code: "invalid-rules", answerValues: sparseValues(payload.puzzle.length), completionTargets: sparseValues(payload.puzzle.length),
+  };
+  const puzzle = analyzeSudokuPuzzle(payload.puzzle, variant);
   const answers = sparseValues(payload.puzzle.length);
   const completionTargets = sparseValues(payload.puzzle.length);
 
@@ -78,7 +86,7 @@ function analyzeActivity(payload: SudokuActivityPayload): SudokuCoursewareActivi
 
   const targets = payload.goal.targets.map((target): SudokuTeachingTargetAnalysis => {
     const forcedValue = puzzle.status === "unique" || puzzle.status === "multiple"
-      ? forcedSudokuCellValue(payload.puzzle, target.index, payload.variantId)
+      ? forcedSudokuCellValue(payload.puzzle, target.index, variant)
       : null;
     const forced = forcedValue === target.value;
     if (forced) {

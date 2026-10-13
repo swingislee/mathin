@@ -71,7 +71,7 @@ describe("Sudoku size seed protocol", () => {
 describe("Sudoku variant extension registry", () => {
   it("keeps metadata valid and every runtime explicitly registered", () => {
     expect(sudokuVariantRegistryIssues()).toEqual([]);
-    expect(SUDOKU_VARIANTS.map((variant) => variant.id)).toEqual([
+    expect(SUDOKU_VARIANTS.filter((v) => v.family === "classic").map((variant) => variant.id)).toEqual([
       "classic-4x4",
       "classic-6x6",
       "classic-9x9",
@@ -82,16 +82,17 @@ describe("Sudoku variant extension registry", () => {
   });
 
   it("keeps ranking and surface policy in variant metadata", () => {
-    expect(SUDOKU_VARIANTS.map(({ id, ranked }) => ({ id, ranked }))).toEqual([
+    expect(SUDOKU_VARIANTS.filter((v) => v.family === "classic").map(({ id, ranked }) => ({ id, ranked }))).toEqual([
       { id: "classic-4x4", ranked: false },
       { id: "classic-6x6", ranked: false },
       { id: "classic-9x9", ranked: true },
     ]);
-    expect(SUDOKU_VARIANTS.every((variant) => (
+    expect(SUDOKU_VARIANTS.filter((v) => v.family === "classic").every((variant) => (
       variant.selectableIn.includes("public")
       && variant.selectableIn.includes("courseware")
       && variant.selectableIn.includes("courseware-authored")
     ))).toBe(true);
+    expect(SUDOKU_VARIANTS.filter((v) => v.family !== "classic").every((variant) => !variant.ranked && variant.selectableIn.join() === "courseware-authored")).toBe(true);
   });
 });
 

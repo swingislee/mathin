@@ -29,7 +29,7 @@ export function SudokuVariantSelector({
   return (
     <div
       aria-label={t("sudokuVariantLabel")}
-      className={cn("flex items-center gap-1 rounded-full border border-line/80 bg-card/70 p-1", className)}
+      className={cn("flex flex-wrap items-center gap-1 rounded-xl border border-line/80 bg-card/70 p-1", className)}
       role="radiogroup"
     >
       {variants.map((variant) => (

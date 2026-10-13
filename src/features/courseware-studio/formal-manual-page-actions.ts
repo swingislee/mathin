@@ -8,6 +8,10 @@ import { authorizedClient } from "@/features/school/actions/guards";
 import { COMMON_CODES, intInRange, parse, requiredText, text, uuid } from "@/features/school/actions/schemas";
 import { COURSEWARE_TRACKS } from "./data";
 import { formalManualPageSchema } from "./formal-manual-page-contract";
+import { gamePageDocSchema, type GamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import { createDefaultGameCoursewarePayload } from "@/features/games/courseware/contracts";
+import { gameCoursewareContractsForSurface } from "@/features/games/courseware/registry";
+import { validateGameCoursewareContent } from "@/features/games/courseware/server";
 
 const createSchema = z.object({ lectureId: uuid, afterPageDocId: uuid.nullable(), title: requiredText(500) }).strict();
 const saveSchema = z.object({ pageDocId: uuid, track: z.enum(COURSEWARE_TRACKS), doc: formalManualPageSchema,
@@ -34,11 +38,38 @@ export async function saveFormalManualPageAction(input: z.input<typeof saveSchem
   try {
     const value = parse(saveSchema, input);
     const { supabase } = await authorizedClient("courseware.page.edit");
+    // A client validation receipt is display state. Recompute from the payload
+    // before saving, as the shared microcourse authoring path does.
+    const doc = structuredClone(value.doc);
+    doc.layout.blocks = doc.layout.blocks.map((block) => {
+      if (block.type !== "game") return block;
+      const trusted = validateGameCoursewareContent(block.game.gameId, block.game.contentVersion, block.game.payload);
+      return { ...block, game: { ...block.game, ...trusted } };
+    });
     const { data, error } = await supabase.rpc("save_cw_manual_composition_page", {
-      p_page_doc_id: value.pageDocId, p_track: value.track, p_doc: value.doc as unknown as Json,
+      p_page_doc_id: value.pageDocId, p_track: value.track, p_doc: doc as unknown as Json,
       p_base_revision_no: value.baseRevisionNo, p_note: value.note,
     });
     if (error || !data?.[0]) throw new Error(error?.message ?? "SAVE_FAILED");
     return { ok: true, data: { revisionNo: data[0].revision_no } };
   } catch (error) { return actionError(error, codes); }
+}
+
+/** The same authored Sudoku component, with the formal course editor's permission. */
+export async function createFormalGameComponentAction(input: {
+  gameId: string; contentVersion: string;
+}): Promise<ActionResult<{ game: GamePageDoc }>> {
+  try {
+    const value = parse(z.object({ gameId: requiredText(80), contentVersion: requiredText(100) }).strict(), input);
+    await authorizedClient("courseware.page.edit");
+    if (!gameCoursewareContractsForSurface("microcourse").some((contract) =>
+      contract.gameId === value.gameId && contract.contentVersion === value.contentVersion)) {
+      throw new Error("UNKNOWN_GAME_COURSEWARE_CONTRACT");
+    }
+    const trusted = validateGameCoursewareContent(value.gameId, value.contentVersion,
+      createDefaultGameCoursewarePayload(value.gameId, value.contentVersion));
+    const game = gamePageDocSchema.parse({ docVersion: "game-page-v1",
+      canvas: { width: 960, height: 720, backgroundColor: "#ffffff" }, ...value, ...trusted });
+    return { ok: true, data: { game } };
+  } catch (error) { return actionError(error, ["UNKNOWN_GAME_COURSEWARE_CONTRACT", ...codes]); }
 }

@@ -6,6 +6,7 @@ import { analyzeSudokuCoursewareActivity } from "./activity";
 import {
   sudokuActivityPayloadSchema,
   sudokuAuthoredPayloadSchema,
+  sudokuVariantPayloadSchema,
   type SudokuCoursewarePayload,
 } from "./courseware-contract";
 import { SudokuBoard } from "./SudokuBoard";
@@ -23,7 +24,9 @@ export function SudokuGamePageStage({
   onMirror?: (state: GameMirrorState) => void;
   compact?: boolean;
 }) {
-  const payload: SudokuCoursewarePayload = doc.contentVersion === "sudoku-authored-v2"
+  const payload: SudokuCoursewarePayload = doc.contentVersion === "sudoku-authored-v3"
+    ? sudokuVariantPayloadSchema.parse(doc.payload)
+    : doc.contentVersion === "sudoku-authored-v2"
     ? sudokuActivityPayloadSchema.parse(doc.payload)
     : sudokuAuthoredPayloadSchema.parse(doc.payload);
   const activity = analyzeSudokuCoursewareActivity(payload);
@@ -35,6 +38,7 @@ export function SudokuGamePageStage({
         difficulty="medium"
         puzzle={payload.puzzle}
         variantId={payload.variantId}
+        variantRules={payload.kind === "authored-variant" ? payload.rules : undefined}
         showCoordinates={payload.display.showCoordinates}
         allowCandidates={payload.display.allowCandidates}
         allowAnswerReveal={payload.display.allowAnswerReveal && hasAnswers}

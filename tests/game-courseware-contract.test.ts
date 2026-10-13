@@ -58,9 +58,10 @@ const legacyEditCompatibilityMigration = readFileSync(
 describe("registry-backed game courseware contract", () => {
   it("exposes authoring through the manifest instead of microcourse conditionals", () => {
     expect(gameCoursewareContractsForSurface("microcourse")).toEqual([
+      expect.objectContaining({ contentVersion: "sudoku-authored-v3" }),
       expect.objectContaining({ contentVersion: "sudoku-authored-v2" }),
     ]);
-    expect(GAME_COURSEWARE_CONTRACTS).toHaveLength(2);
+    expect(GAME_COURSEWARE_CONTRACTS).toHaveLength(3);
     expect(getGameCoursewareContract("sudoku", "sudoku-authored-v1")).toMatchObject({
       validatorVersion: "sudoku-authored-v1@1",
       copyable: true,

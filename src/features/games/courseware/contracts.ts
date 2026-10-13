@@ -5,10 +5,13 @@ import {
   sudokuAuthoredPayloadSchema,
   type SudokuActivityPayload,
   type SudokuAuthoredPayload,
+  type SudokuVariantPayload,
+  createDefaultSudokuVariantPayload,
+  sudokuVariantPayloadSchema,
 } from "../sudoku/courseware-contract";
 import { getGameCoursewareContract } from "./registry";
 
-export type GameCoursewarePayload = SudokuAuthoredPayload | SudokuActivityPayload;
+export type GameCoursewarePayload = SudokuAuthoredPayload | SudokuActivityPayload | SudokuVariantPayload;
 
 export function parseGameCoursewarePayload(
   gameId: string,
@@ -18,6 +21,8 @@ export function parseGameCoursewarePayload(
   const contract = getGameCoursewareContract(gameId, contentVersion);
   if (!contract) throw new Error("UNKNOWN_GAME_COURSEWARE_CONTRACT");
   switch (`${contract.gameId}:${contract.contentVersion}`) {
+    case "sudoku:sudoku-authored-v3":
+      return sudokuVariantPayloadSchema.parse(payload);
     case "sudoku:sudoku-authored-v1":
       return sudokuAuthoredPayloadSchema.parse(payload);
     case "sudoku:sudoku-authored-v2":
@@ -34,6 +39,8 @@ export function createDefaultGameCoursewarePayload(
   const contract = getGameCoursewareContract(gameId, contentVersion);
   if (!contract) throw new Error("UNKNOWN_GAME_COURSEWARE_CONTRACT");
   switch (`${contract.gameId}:${contract.contentVersion}`) {
+    case "sudoku:sudoku-authored-v3":
+      return createDefaultSudokuVariantPayload();
     case "sudoku:sudoku-authored-v1":
       return createDefaultSudokuAuthoredPayload();
     case "sudoku:sudoku-authored-v2":

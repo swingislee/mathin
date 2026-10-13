@@ -23,7 +23,7 @@ const blankPageCreate = vi.hoisted(() => vi.fn());
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/i18n/navigation", () => ({ Link: (props: { children?: ReactNode; href: string }) => createElement("a", props), useRouter: () => router }));
 vi.mock("next/dynamic", () => ({ default: () => () => null }));
-vi.mock("@/features/courseware-studio/formal-manual-page-actions", () => ({ createBlankCoursewarePageAction: blankPageCreate, saveFormalManualPageAction: vi.fn() }));
+vi.mock("@/features/courseware-studio/formal-manual-page-actions", () => ({ createBlankCoursewarePageAction: blankPageCreate, saveFormalManualPageAction: vi.fn(), createFormalGameComponentAction: vi.fn() }));
 vi.mock("@/features/courseware-studio/formal-cube-page-actions", () => ({ saveFormalCubePageAction: vi.fn() }));
 vi.mock("@/features/courseware-studio/actions", () => ({ createCoursewarePageH5Action: vi.fn(), uploadCoursewarePageImageAction: vi.fn() }));
 vi.mock("@/features/teacher-microcourses/actions", () => ({
@@ -161,7 +161,7 @@ describe("formal cube editor persistence adapter", () => {
     await act(async () => (host.querySelector(`button[aria-label="${en.teacherMicrocourses.componentGame}"]`) as HTMLButtonElement).click());
     const insert = [...document.querySelectorAll("button")].find(button => button.textContent === en.teacherMicrocourses.insertComponent)!;
     await act(async () => insert.click());
-    expect(createGame).toHaveBeenCalledWith({ gameId: "sudoku", contentVersion: "sudoku-authored-v2" });
+    expect(createGame).toHaveBeenCalledWith({ gameId: "sudoku", contentVersion: "sudoku-authored-v3" });
     expect(onDraftChange).toHaveBeenCalledWith(expect.objectContaining({ layout: expect.objectContaining({ blocks: [expect.objectContaining({ type: "game" })] }) }));
     expect(save).not.toHaveBeenCalled();
     await act(async () => vi.advanceTimersByTimeAsync(800));

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { defaultSudokuRules, sudokuVariantRulesSchema } from "./rules";
 import {
   DEFAULT_SUDOKU_VARIANT_ID,
   getSudokuVariant,
@@ -8,8 +9,9 @@ import {
 
 export const SUDOKU_AUTHORED_CONTENT_VERSION = "sudoku-authored-v1" as const;
 export const SUDOKU_ACTIVITY_CONTENT_VERSION = "sudoku-authored-v2" as const;
+export const SUDOKU_VARIANT_CONTENT_VERSION = "sudoku-authored-v3" as const;
 
-const sudokuVariantIds = SUDOKU_VARIANTS.map((variant) => variant.id) as [
+const sudokuVariantIds = SUDOKU_VARIANTS.filter((variant) => variant.family === "classic").map((variant) => variant.id) as [
   SudokuVariantId,
   ...SudokuVariantId[],
 ];
@@ -141,7 +143,34 @@ export const sudokuActivityPayloadSchema = z.object({
 
 export type SudokuAuthoredPayload = z.infer<typeof sudokuAuthoredPayloadSchema>;
 export type SudokuActivityPayload = z.infer<typeof sudokuActivityPayloadSchema>;
-export type SudokuCoursewarePayload = SudokuAuthoredPayload | SudokuActivityPayload;
+export const sudokuVariantPayloadSchema = z.object({
+  kind: z.literal("authored-variant"),
+  variantId: z.enum(SUDOKU_VARIANTS.map((v) => v.id) as [SudokuVariantId, ...SudokuVariantId[]]),
+  puzzle: z.array(z.number().int()),
+  rules: sudokuVariantRulesSchema,
+  goal: sudokuActivityGoalSchema,
+  display: sudokuAuthoredDisplaySchema,
+}).strict().superRefine((payload, context) => {
+  const variant = getSudokuVariant(payload.variantId)!;
+  const checked = sudokuActivityPayloadSchema.safeParse({
+    kind: "authored-activity", variantId: `classic-${variant.size}x${variant.size}`,
+    puzzle: payload.puzzle, goal: payload.goal, display: payload.display,
+  });
+  if (!checked.success) for (const issue of checked.error.issues) context.addIssue({ code: "custom", path: issue.path, message: issue.message });
+  if (payload.rules.kind !== variant.family) context.addIssue({ code: "custom", path: ["rules"], message: "Rules must match the registered variant" });
+});
+export type SudokuVariantPayload = z.infer<typeof sudokuVariantPayloadSchema>;
+export type SudokuCoursewarePayload = SudokuAuthoredPayload | SudokuActivityPayload | SudokuVariantPayload;
+
+export function sudokuPayloadVariant(payload: SudokuCoursewarePayload) {
+  const variant = getSudokuVariant(payload.variantId)!;
+  return payload.kind === "authored-variant" ? { ...variant, rules: payload.rules } : variant;
+}
+
+export function createDefaultSudokuVariantPayload(variantId: SudokuVariantId = DEFAULT_SUDOKU_VARIANT_ID): SudokuVariantPayload {
+  const variant = getSudokuVariant(variantId)!;
+  return { ...createDefaultSudokuActivityPayload(variantId), kind: "authored-variant", rules: defaultSudokuRules(variant) };
+}
 export type SudokuActivityGoal = z.infer<typeof sudokuActivityGoalSchema>;
 export type SudokuAuthoredDisplay = z.infer<typeof sudokuAuthoredDisplaySchema>;
 

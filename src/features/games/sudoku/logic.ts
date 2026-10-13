@@ -1,5 +1,6 @@
 import { createRng, shuffle } from "../rng";
 import type { Difficulty } from "../types";
+import { VARIANT_LATIN_RUNTIME } from "./variant-logic";
 import { sudokuPresetPuzzle } from "./presets";
 import {
   parseSudokuVariantSeed,
@@ -74,33 +75,58 @@ function classicIsValidPartial(values: SudokuGrid, variant: SudokuVariantDefinit
   return true;
 }
 
-/** 使用最少候选优先的回溯，返回与当前局面相容的一份确定性终盘。 */
+function classicSearchUnits(variant: SudokuVariantDefinition): number[][] {
+  const n = variant.size;
+  const units: number[][] = [];
+  for (let k = 0; k < n; k++) {
+    units.push(Array.from({ length: n }, (_, j) => k * n + j));
+    units.push(Array.from({ length: n }, (_, j) => j * n + k));
+    const r = Math.floor(k / (n / variant.boxColumns)) * variant.boxRows;
+    const c = (k % (n / variant.boxColumns)) * variant.boxColumns;
+    units.push(Array.from({ length: n }, (_, j) =>
+      (r + Math.floor(j / variant.boxColumns)) * n + c + j % variant.boxColumns));
+  }
+  return units;
+}
+
+/** Branch on the smallest cell OR house-digit constraint. Sparse teaching
+ * boards otherwise explore huge dead subtrees when a required digit has no
+ * place in a house, although every individual cell still has candidates. */
+function classicSearchChoices(grid: SudokuGrid, variant: SudokuVariantDefinition, units: number[][]):
+  Array<{ pos: number; digit: number }> | null {
+  const candidates = grid.map((value, pos) => value ? [] : Array.from({ length: variant.size }, (_, i) => i + 1)
+    .filter((digit) => classicCanPlace(grid, pos, digit, variant)));
+  let choices: Array<{ pos: number; digit: number }> | undefined;
+  for (let pos = 0; pos < grid.length; pos++) {
+    if (grid[pos]) continue;
+    if (!candidates[pos].length) return null;
+    if (!choices || candidates[pos].length < choices.length) choices = candidates[pos].map((digit) => ({ pos, digit }));
+  }
+  if (!choices) return [];
+  for (const unit of units) for (let digit = 1; digit <= variant.size; digit++) {
+    if (unit.some((pos) => grid[pos] === digit)) continue;
+    const places = unit.filter((pos) => candidates[pos].includes(digit));
+    if (!places.length) return null;
+    if (places.length < choices.length) choices = places.map((pos) => ({ pos, digit }));
+  }
+  return choices;
+}
+
+/** 使用最少候选约束优先的回溯，返回与当前局面相容的一份确定性终盘。 */
 function classicSolve(values: SudokuGrid, variant: SudokuVariantDefinition): SudokuGrid | null {
   const grid = [...values];
   if (!classicIsValidPartial(grid, variant)) return null;
+  const units = classicSearchUnits(variant);
 
   function search(): boolean {
-    let target = -1;
-    let targetCandidates: number[] = [];
-
-    for (let pos = 0; pos < grid.length; pos++) {
-      if (grid[pos] !== 0) continue;
-      const candidates = Array.from({ length: variant.size }, (_, index) => index + 1)
-        .filter((digit) => classicCanPlace(grid, pos, digit, variant));
-      if (candidates.length === 0) return false;
-      if (target === -1 || candidates.length < targetCandidates.length) {
-        target = pos;
-        targetCandidates = candidates;
-        if (candidates.length === 1) break;
-      }
-    }
-
-    if (target === -1) return true;
-    for (const digit of targetCandidates) {
-      grid[target] = digit;
+    const choices = classicSearchChoices(grid, variant, units);
+    if (choices === null) return false;
+    if (!choices.length) return true;
+    for (const { pos, digit } of choices) {
+      grid[pos] = digit;
       if (search()) return true;
+      grid[pos] = 0;
     }
-    grid[target] = 0;
     return false;
   }
 
@@ -116,34 +142,22 @@ function classicCountSolutions(
   const grid = [...values];
   if (!classicIsValidPartial(grid, variant)) return 0;
   let count = 0;
+  const units = classicSearchUnits(variant);
 
   function search(): void {
     if (count >= limit) return;
-    let target = -1;
-    let targetCandidates: number[] = [];
-
-    for (let pos = 0; pos < grid.length; pos++) {
-      if (grid[pos] !== 0) continue;
-      const candidates = Array.from({ length: variant.size }, (_, index) => index + 1)
-        .filter((digit) => classicCanPlace(grid, pos, digit, variant));
-      if (candidates.length === 0) return;
-      if (target === -1 || candidates.length < targetCandidates.length) {
-        target = pos;
-        targetCandidates = candidates;
-        if (candidates.length === 1) break;
-      }
-    }
-
-    if (target === -1) {
+    const choices = classicSearchChoices(grid, variant, units);
+    if (choices === null) return;
+    if (!choices.length) {
       count += 1;
       return;
     }
-    for (const digit of targetCandidates) {
-      grid[target] = digit;
+    for (const { pos, digit } of choices) {
+      grid[pos] = digit;
       search();
+      grid[pos] = 0;
       if (count >= limit) break;
     }
-    grid[target] = 0;
   }
 
   search();
@@ -251,6 +265,7 @@ const CLASSIC_LATIN_RUNTIME: SudokuVariantRuntime = {
  */
 export const SUDOKU_RUNTIME_REGISTRY = {
   "classic-latin-v1": CLASSIC_LATIN_RUNTIME,
+  "variant-latin-v1": VARIANT_LATIN_RUNTIME,
 } as const satisfies Readonly<Record<SudokuRuntimeId, SudokuVariantRuntime>>;
 
 export function getSudokuVariantRuntime(

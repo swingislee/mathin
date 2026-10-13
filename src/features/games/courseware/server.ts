@@ -7,6 +7,7 @@ import { analyzeSudokuPuzzle } from "../sudoku/logic";
 import type {
   SudokuActivityPayload,
   SudokuAuthoredPayload,
+  SudokuVariantPayload,
 } from "../sudoku/courseware-contract";
 import { parseGameCoursewarePayload } from "./contracts";
 import { getGameCoursewareContract } from "./registry";
@@ -41,8 +42,9 @@ export function validateGameCoursewareContent(
         },
       };
     }
-    case "sudoku:sudoku-authored-v2": {
-      const sudoku = normalized as SudokuActivityPayload;
+    case "sudoku:sudoku-authored-v2":
+    case "sudoku:sudoku-authored-v3": {
+      const sudoku = normalized as SudokuActivityPayload | SudokuVariantPayload;
       const analysis = analyzeSudokuCoursewareActivity(sudoku);
       return {
         payload: sudoku,

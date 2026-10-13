@@ -16,9 +16,14 @@ import {
   type SudokuCoursewarePayload,
   createDefaultSudokuActivityPayload,
   createDefaultSudokuAuthoredPayload,
+  createDefaultSudokuVariantPayload,
+  sudokuPayloadVariant,
 } from "./courseware-contract";
+import { SudokuRuleEditor } from "./SudokuRuleEditor";
+import { SudokuRuleMarks } from "./SudokuRuleMarks";
+import { sudokuRegionAt } from "./rules";
 import { SudokuVariantSelector } from "./SudokuVariantSelector";
-import { resolveSudokuVariant, type SudokuVariantId } from "./variant";
+import { type SudokuVariantId } from "./variant";
 
 export interface SudokuPuzzleEditorProps {
   payload: SudokuCoursewarePayload;
@@ -27,18 +32,18 @@ export interface SudokuPuzzleEditorProps {
 
 export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProps) {
   const t = useTranslations("teacherMicrocourses");
-  const variant = resolveSudokuVariant(payload.variantId);
+  const variant = sudokuPayloadVariant(payload);
   const [pendingVariantId, setPendingVariantId] = useState<SudokuVariantId | null>(null);
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const puzzleAnalysis = useMemo(
-    () => analyzeSudokuPuzzle(payload.puzzle, payload.variantId),
-    [payload.puzzle, payload.variantId],
+    () => analyzeSudokuPuzzle(payload.puzzle, sudokuPayloadVariant(payload)),
+    [payload],
   );
   const activityAnalysis = useMemo(
     () => analyzeSudokuCoursewareActivity(payload),
     [payload],
   );
-  const activity = payload.kind === "authored-activity" ? payload : null;
+  const activity = payload.kind !== "authored" ? payload : null;
   const targetIndexes = new Set(
     activity?.goal.kind === "teaching-target"
       ? activity.goal.targets.map((target) => target.index)
@@ -46,7 +51,9 @@ export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProp
   );
 
   const applyVariant = (variantId: SudokuVariantId) => {
-    onChange(payload.kind === "authored-activity"
+    onChange(payload.kind === "authored-variant" || !variantId.startsWith("classic-")
+      ? createDefaultSudokuVariantPayload(variantId)
+      : payload.kind === "authored-activity"
       ? createDefaultSudokuActivityPayload(variantId)
       : createDefaultSudokuAuthoredPayload(variantId));
     setSelectedCell(null);
@@ -68,7 +75,7 @@ export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProp
     const puzzle = payload.puzzle.map((value, currentIndex) => (
       currentIndex === index ? digit : value
     ));
-    onChange(payload.kind === "authored-activity" && payload.goal.kind === "teaching-target"
+    onChange(payload.kind !== "authored" && payload.goal.kind === "teaching-target"
       ? {
           ...payload,
           puzzle,
@@ -113,7 +120,7 @@ export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProp
       return;
     }
     if (activity.puzzle[selectedCell] !== 0) return;
-    const value = solveSudokuGrid(activity.puzzle, activity.variantId)?.[selectedCell] ?? 0;
+    const value = solveSudokuGrid(activity.puzzle, sudokuPayloadVariant(activity))?.[selectedCell] ?? 0;
     if (!value) return;
     onChange({
       ...activity,
@@ -166,7 +173,7 @@ export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProp
         />
       </div>
       <div
-        className="grid overflow-hidden rounded-lg border-2 border-ink/50"
+        className="relative grid rounded-lg border-2 border-ink/50"
         style={{ gridTemplateColumns: `repeat(${variant.size}, minmax(0, 1fr))` }}
         data-testid="sudoku-authoring-grid"
         data-sudoku-variant={payload.variantId}
@@ -174,8 +181,9 @@ export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProp
         {payload.puzzle.map((digit, index) => {
           const row = Math.floor(index / variant.size);
           const column = index % variant.size;
-          const strongRight = (column + 1) % variant.boxColumns === 0 && column < variant.size - 1;
-          const strongBottom = (row + 1) % variant.boxRows === 0 && row < variant.size - 1;
+          const region = sudokuRegionAt(variant, index);
+          const strongRight = region !== sudokuRegionAt(variant, index + 1) && column < variant.size - 1;
+          const strongBottom = region !== sudokuRegionAt(variant, index + variant.size) && row < variant.size - 1;
           return (
             <Input
               key={index}
@@ -183,6 +191,7 @@ export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProp
               inputMode="numeric"
               maxLength={1}
               value={digit || ""}
+              style={variant.family === "irregular" ? { backgroundColor: ["#eef1cd", "#d9eef4", "#fce2cd", "#e6dced", "#dcf0df", "#f8e9b6", "#e4e7fc", "#f5dbe8", "#d7efec"][region] } : undefined}
               onFocus={() => setSelectedCell(index)}
               onChange={(event) => setDigit(index, event.target.value)}
               className={cn(
@@ -197,7 +206,9 @@ export function SudokuPuzzleEditor({ payload, onChange }: SudokuPuzzleEditorProp
             />
           );
         })}
+        <SudokuRuleMarks variant={variant} />
       </div>
+      {payload.kind === "authored-variant" && <SudokuRuleEditor payload={payload} selected={selectedCell} onChange={onChange} />}
       {activity?.goal.kind === "teaching-target" ? (
         <div className="rounded-xl border border-line bg-paper/60 p-3">
           <p className="text-xs text-muted">{t("sudokuTeachingTargetHint")}</p>

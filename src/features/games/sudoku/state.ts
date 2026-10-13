@@ -6,6 +6,7 @@ import type {
   SudokuTeachingHighlights,
 } from "../types";
 import { isSudokuValuePossible, solveSudokuGrid } from "./logic";
+import { sudokuRegionAt, type SudokuVariantRules } from "./rules";
 import {
   getSudokuVariant,
   resolveSudokuVariant,
@@ -22,6 +23,7 @@ export type SudokuEntryMode = "candidate" | "value";
 export interface SudokuBoardState {
   /** 题型由 seed/课件页决定，不进入课堂镜像；本地状态必须保留其稳定 ID。 */
   variantId: SudokuVariantId;
+  variantRules?: SudokuVariantRules;
   values: number[];
   /** 每格用 bit 1–N 表示候选数；比嵌套数组更适合课堂实时镜像。 */
   candidates: number[];
@@ -60,7 +62,8 @@ export const SUDOKU_HIGHLIGHT_TOOLS = [
 ] as const satisfies readonly SudokuHighlightTool[];
 
 function specForState(state: SudokuBoardState): SudokuSpec {
-  return getSudokuVariant(state.variantId) ?? sudokuSpecForSize(9);
+  const variant = getSudokuVariant(state.variantId) ?? sudokuSpecForSize(9);
+  return state.variantRules ? { ...variant, rules: state.variantRules } : variant;
 }
 
 function candidateMask(spec: SudokuSpec): number {
@@ -173,6 +176,7 @@ export function createSudokuBoardState(
 
   return {
     variantId: spec.id,
+    ...(spec.rules ? { variantRules: spec.rules } : {}),
     values,
     candidates,
     selected: highlightTool === null && validCellIndex(mirror?.selected, spec) ? mirror.selected : null,
@@ -333,8 +337,7 @@ export function toggleSudokuHighlightTarget(state: SudokuBoardState, index: numb
   if (!state.highlightTool || !validCellIndex(index, spec)) return state;
   const row = Math.floor(index / spec.size);
   const column = index % spec.size;
-  const boxesPerRow = spec.size / spec.boxColumns;
-  const box = Math.floor(row / spec.boxRows) * boxesPerRow + Math.floor(column / spec.boxColumns);
+  const box = sudokuRegionAt(spec, index);
 
   if (state.highlightTool === "digit") {
     const digit = state.values[index];
@@ -354,6 +357,7 @@ export function toggleSudokuHighlightTarget(state: SudokuBoardState, index: numb
   let value: number;
   switch (state.highlightTool) {
     case "box":
+      if (box < 0) return state;
       field = "boxes";
       value = box;
       break;
@@ -430,10 +434,10 @@ export function sudokuCellHighlightCount(
   row: number,
   column: number,
   size: SudokuSize = 9,
+  reference?: SudokuVariantReference,
 ): number {
-  const spec = sudokuSpecForSize(size);
-  const boxesPerRow = spec.size / spec.boxColumns;
-  const box = Math.floor(row / spec.boxRows) * boxesPerRow + Math.floor(column / spec.boxColumns);
+  const spec = reference ? resolveSudokuVariant(reference) : sudokuSpecForSize(size);
+  const box = sudokuRegionAt(spec, row * size + column);
   return Number(highlights.boxes.includes(box))
     + Number(highlights.rows.includes(row))
     + Number(highlights.columns.includes(column))
@@ -449,8 +453,9 @@ export function sudokuCellHighlightCount(
 export function sudokuHighlightRegions(
   highlights: SudokuTeachingHighlights,
   size: SudokuSize = 9,
+  reference?: SudokuVariantReference,
 ): SudokuHighlightRegion[] {
-  const spec = sudokuSpecForSize(size);
+  const spec = reference ? resolveSudokuVariant(reference) : sudokuSpecForSize(size);
   const boxesPerRow = spec.size / spec.boxColumns;
   const boxOrigin = (box: number) => ({
     rowStart: Math.floor(box / boxesPerRow) * spec.boxRows + 1,
@@ -458,14 +463,18 @@ export function sudokuHighlightRegions(
   });
 
   return [
-    ...highlights.boxes.map((box) => ({
+    ...highlights.boxes.flatMap((box) => spec.family === "skyscraper" ? [] : spec.family === "irregular"
+      ? Array.from({ length: size * size }, (_, i) => i).filter((i) => sudokuRegionAt(spec, i) === box).map((i) => ({
+        key: `box-${box}-${i}`, kind: "box" as const, target: box,
+        rowStart: Math.floor(i / size) + 1, columnStart: i % size + 1, rowSpan: 1, columnSpan: 1,
+      })) : [{
       key: `box-${box}`,
       kind: "box" as const,
       target: box,
       ...boxOrigin(box),
       rowSpan: spec.boxRows,
       columnSpan: spec.boxColumns,
-    })),
+    }]),
     ...highlights.rows.map((row) => ({
       key: `row-${row}`,
       kind: "row" as const,

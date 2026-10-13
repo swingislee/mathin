@@ -24,6 +24,8 @@ import {
   type SudokuGrid,
 } from "./logic";
 import styles from "./SudokuBoard.module.css";
+import { sudokuRegionAt, sudokuRules, type SudokuVariantRules } from "./rules";
+import { SudokuRuleMarks } from "./SudokuRuleMarks";
 import {
   clearSudokuTeachingHighlights,
   chooseSudokuDigit,
@@ -84,6 +86,7 @@ function CandidateNotesIcon({ className }: { className?: string }) {
 /** variant.ts 出现新的 rendererId 时，typecheck 会要求在这里登记真实渲染实现。 */
 export const SUDOKU_RENDERER_REGISTRY = {
   "classic-grid-v1": true,
+  "variant-grid-v1": true,
 } as const satisfies Readonly<Record<SudokuRendererId, true>>;
 const HIGHLIGHT_TOOL_DEFS = [
   { tool: "cell", label: "highlightCells", Icon: Scan },
@@ -108,6 +111,7 @@ export interface SudokuBoardProps extends GameBoardProps {
   puzzle?: SudokuGrid;
   /** 自定义题面必须显式携带题型；省略时只按格数兼容推断 classic。 */
   variantId?: SudokuVariantId;
+  variantRules?: SudokuVariantRules;
   showCoordinates?: boolean;
   allowCandidates?: boolean;
   allowAnswerReveal?: boolean;
@@ -130,6 +134,7 @@ export function SudokuBoard({
   readOnly,
   puzzle: authoredPuzzle,
   variantId,
+  variantRules,
   showCoordinates = true,
   allowCandidates = true,
   allowAnswerReveal = true,
@@ -144,14 +149,18 @@ export function SudokuBoard({
     () => authoredPuzzle ? [...authoredPuzzle] : sudokuPuzzle(seed, difficulty),
     [authoredPuzzle, difficulty, seed],
   );
-  const spec = (variantId ? getSudokuVariant(variantId) : null)
+  const baseSpec = (variantId ? getSudokuVariant(variantId) : null)
     ?? (authoredPuzzle ? sudokuSpecForGrid(puzzle) : sudokuVariantFromSeed(seed))
     ?? sudokuSpecForSize(9);
+  const spec = variantRules ? { ...baseSpec, rules: variantRules } : baseSpec;
+  const rules = sudokuRules(spec);
+  const sky = rules.kind === "skyscraper" ? rules : null;
+  const coordinates = showCoordinates && !sky;
   if (!(spec.rendererId in SUDOKU_RENDERER_REGISTRY)) {
     throw new Error(`Unsupported Sudoku renderer: ${spec.rendererId}`);
   }
   const puzzleKey = authoredPuzzleKey
-    ? `authored:${spec.id}:${authoredPuzzleKey}`
+    ? `authored:${spec.id}:${authoredPuzzleKey}:${JSON.stringify(variantRules)}`
     : `${spec.id}:${seed}:${difficulty}`;
   const rowLabels = SUDOKU_ROW_LABELS.slice(0, spec.size);
   const columnLabels = SUDOKU_COLUMN_LABELS.slice(0, spec.size);
@@ -251,7 +260,7 @@ export function SudokuBoard({
     || Boolean(puzzle[state.selected])
     || Boolean(state.values[state.selected])
     || Boolean(answerValues && !answerValues[state.selected]);
-  const highlightRegions = sudokuHighlightRegions(state.highlights, spec.size);
+  const highlightRegions = sudokuHighlightRegions(state.highlights, spec.size, spec);
   const dragRegion = dragSelection
     ? createSudokuCellHighlightRegion(dragSelection.startIndex, dragSelection.endIndex, spec.size)
     : null;
@@ -580,12 +589,13 @@ export function SudokuBoard({
           <div className={cn(
             styles.boardFrame,
             "grid aspect-square max-h-full max-w-full",
-            showCoordinates
+            sky ? "grid-cols-[1.75rem_minmax(0,1fr)_1.75rem] grid-rows-[1.75rem_minmax(0,1fr)_1.75rem]" : coordinates
               ? "grid-cols-[1.125rem_minmax(0,1fr)] grid-rows-[1.125rem_minmax(0,1fr)]"
               : "grid-cols-1 grid-rows-1",
           )}>
-            {showCoordinates && <span aria-hidden />}
-            {showCoordinates && <div
+            {sky && <><span /><div className="grid grid-cols-4 text-center font-bold text-amber-900">{sky.top.map((v, i) => <span key={i}>{v || ""}</span>)}</div><span /></>}
+            {coordinates && <span aria-hidden />}
+            {coordinates && <div
               aria-hidden
               className={cn(styles.coordinate, "grid text-xs font-medium sm:text-sm")}
               style={{ gridTemplateColumns: `repeat(${spec.size}, minmax(0, 1fr))` }}
@@ -594,7 +604,7 @@ export function SudokuBoard({
                 <span key={label} className="grid place-items-center tabular-nums">{label}</span>
               ))}
             </div>}
-            {showCoordinates && <div
+            {coordinates && <div
               aria-hidden
               className={cn(styles.coordinate, "grid text-xs font-medium sm:text-sm")}
               style={{ gridTemplateRows: `repeat(${spec.size}, minmax(0, 1fr))` }}
@@ -603,12 +613,13 @@ export function SudokuBoard({
                 <span key={label} className="grid place-items-center">{label}</span>
               ))}
             </div>}
+            {sky && <div className="grid grid-rows-4 items-center text-center font-bold text-amber-900">{sky.left.map((v, i) => <span key={i}>{v || ""}</span>)}</div>}
             <div
               ref={boardGridRef}
               className={cn(
                 styles.boardGrid,
                 state.highlightTool === "cell" && styles.regionDragActive,
-                "grid overflow-hidden rounded-xl border-2",
+                "relative grid rounded-xl border-2",
               )}
               style={{ gridTemplateColumns: `repeat(${spec.size}, minmax(0, 1fr))` }}
               data-has-structural-highlights={hasStructuralHighlights || undefined}
@@ -620,9 +631,7 @@ export function SudokuBoard({
                 const given = puzzle[index] !== 0;
                 const column = index % spec.size;
                 const row = Math.floor(index / spec.size);
-                const boxesPerRow = spec.size / spec.boxColumns;
-                const box = Math.floor(row / spec.boxRows) * boxesPerRow
-                  + Math.floor(column / spec.boxColumns);
+                const box = sudokuRegionAt(spec, index);
                 const coordinate = `${SUDOKU_ROW_LABELS[row]}${SUDOKU_COLUMN_LABELS[column]}`;
                 const candidateDigits = sudokuCandidateDigits(state.candidates[index], spec.size);
                 const structuralHighlightCount = sudokuCellHighlightCount(
@@ -630,6 +639,7 @@ export function SudokuBoard({
                   row,
                   column,
                   spec.size,
+                  spec,
                 );
                 const inDragRegion = Boolean(
                   dragRegion
@@ -650,7 +660,7 @@ export function SudokuBoard({
                       ? t("candidateCell", { coordinate, values: candidateDigits.join(" ") })
                       : t("emptyCell", { coordinate });
                 const label = teachingHighlighted ? `${baseLabel}${t("highlightedSuffix")}` : baseLabel;
-                const greenBox = (Math.floor(row / spec.boxRows) + Math.floor(column / spec.boxColumns)) % 2 === 0;
+                const greenBox = sky ? true : spec.family === "irregular" ? box % 2 === 0 : (Math.floor(row / spec.boxRows) + Math.floor(column / spec.boxColumns)) % 2 === 0;
 
                 return (
                   <button
@@ -678,9 +688,9 @@ export function SudokuBoard({
                       "relative flex aspect-square items-center justify-center tabular-nums outline-none transition-[background-color,box-shadow] duration-100 disabled:cursor-default disabled:opacity-100",
                       greenBox ? styles.greenCell : styles.blueCell,
                       column < spec.size - 1
-                        && ((column + 1) % spec.boxColumns === 0 ? styles.majorRight : styles.minorRight),
+                        && (box !== sudokuRegionAt(spec, index + 1) ? styles.majorRight : styles.minorRight),
                       row < spec.size - 1
-                        && ((row + 1) % spec.boxRows === 0 ? styles.majorBottom : styles.minorBottom),
+                        && (box !== sudokuRegionAt(spec, index + spec.size) ? styles.majorBottom : styles.minorBottom),
                       hasStructuralHighlights && !structurallyHighlighted && styles.dimmedCell,
                       !inputDisabled && !state.highlightTool && "hover:brightness-[0.97]",
                       state.highlightTool && !inputDisabled && "cursor-crosshair",
@@ -731,6 +741,7 @@ export function SudokuBoard({
                   </button>
                 );
               })}
+              <SudokuRuleMarks variant={spec} />
               <div
                 aria-hidden
                 className={styles.highlightLayer}
@@ -763,6 +774,7 @@ export function SudokuBoard({
                 ) : null}
               </div>
             </div>
+            {sky && <><div className="grid grid-rows-4 items-center text-center font-bold text-amber-900">{sky.right.map((v, i) => <span key={i}>{v || ""}</span>)}</div><span /><div className="grid grid-cols-4 text-center font-bold text-amber-900">{sky.bottom.map((v, i) => <span key={i}>{v || ""}</span>)}</div><span /></>}
           </div>
         </div>
 
@@ -771,7 +783,7 @@ export function SudokuBoard({
           className={cn(styles.toolBar, "flex items-center gap-1 rounded-xl border p-1")}
           role="toolbar"
         >
-          {showTeachingTools && HIGHLIGHT_TOOL_DEFS.map(({ tool, label, Icon }) => (
+          {showTeachingTools && HIGHLIGHT_TOOL_DEFS.filter(({ tool }) => !sky || tool !== "box").map(({ tool, label, Icon }) => (
             <button
               key={tool}
               type="button"

@@ -10,7 +10,7 @@ import type { CompositionPagePersistence } from "@/features/teacher-microcourses
 import type { CoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import type { CoursewareTrack } from "./data";
 import { saveFormalCubePageAction } from "./formal-cube-page-actions";
-import { createBlankCoursewarePageAction, saveFormalManualPageAction } from "./formal-manual-page-actions";
+import { createBlankCoursewarePageAction, createFormalGameComponentAction, saveFormalManualPageAction } from "./formal-manual-page-actions";
 import { createCoursewarePageH5Action, uploadCoursewarePageImageAction } from "./actions";
 
 const CoursewareCompositionWorkbench = dynamic(() => import("@/features/teacher-microcourses/CoursewareCompositionWorkbench").then((module) => module.CoursewareCompositionWorkbench), { loading: () => <Skeleton className="size-full" /> });
@@ -30,6 +30,7 @@ export function FormalCubePageEditor({ page }: { page: FormalCubePageEditorData 
   }, ...(page.manual ? {
     uploadImage: (file: File) => uploadCoursewarePageImageAction({ pageDocId: page.pageDocId, track: page.track, file }),
     createH5: (html: string) => createCoursewarePageH5Action({ pageDocId: page.pageDocId, track: page.track, html }),
+    createGame: createFormalGameComponentAction,
   } : {}) }), [page.track, page.pageDocId, page.manual]);
   const onPersisted = useCallback(() => {}, []);
   const [status, setStatus] = useState("");

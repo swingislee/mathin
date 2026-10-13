@@ -196,6 +196,7 @@ export function GamePageEditor({
   switch (`${doc.gameId}:${doc.contentVersion}`) {
     case "sudoku:sudoku-authored-v1":
     case "sudoku:sudoku-authored-v2":
+    case "sudoku:sudoku-authored-v3":
       return embedded
         ? <SudokuGamePageEditor doc={doc} onChange={onChange} />
         : <div className="space-y-5">{layoutControls}<Separator /><SudokuGamePageEditor doc={doc} onChange={onChange} /></div>;

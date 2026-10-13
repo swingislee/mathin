@@ -17,6 +17,14 @@ export type GameCoursewareAuthoringSurface = "microcourse";
 export const GAME_COURSEWARE_CONTRACTS = [
   {
     gameId: "sudoku",
+    contentVersion: "sudoku-authored-v3",
+    validatorVersion: "sudoku-authored-v3@1",
+    authoringSurfaces: ["microcourse"] as const,
+    copyable: true,
+    classroomSync: CLASSROOM_GAME_MIRROR_SYNC_V1,
+  },
+  {
+    gameId: "sudoku",
     contentVersion: "sudoku-authored-v1",
     validatorVersion: "sudoku-authored-v1@1",
     authoringSurfaces: [] as const,

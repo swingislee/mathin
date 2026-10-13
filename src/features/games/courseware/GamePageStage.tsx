@@ -86,6 +86,7 @@ export default function GamePageStage({
               {doc.gameId === "sudoku" && (
                 doc.contentVersion === "sudoku-authored-v1"
                 || doc.contentVersion === "sudoku-authored-v2"
+                || doc.contentVersion === "sudoku-authored-v3"
               ) ? (
                 <SudokuGamePageStage
                   doc={doc}

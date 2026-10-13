@@ -6,6 +6,7 @@ import { analyzeSudokuPuzzle } from "./logic";
 import {
   sudokuActivityPayloadSchema,
   sudokuAuthoredPayloadSchema,
+  sudokuVariantPayloadSchema,
   type SudokuCoursewarePayload,
 } from "./courseware-contract";
 import { SudokuPuzzleEditor } from "./SudokuPuzzleEditor";
@@ -17,7 +18,9 @@ export function SudokuGamePageEditor({
   doc: GamePageDoc;
   onChange: (doc: GamePageDoc) => void;
 }) {
-  const payload: SudokuCoursewarePayload = doc.contentVersion === "sudoku-authored-v2"
+  const payload: SudokuCoursewarePayload = doc.contentVersion === "sudoku-authored-v3"
+    ? sudokuVariantPayloadSchema.parse(doc.payload)
+    : doc.contentVersion === "sudoku-authored-v2"
     ? sudokuActivityPayloadSchema.parse(doc.payload)
     : sudokuAuthoredPayloadSchema.parse(doc.payload);
   return (
@@ -30,6 +33,7 @@ export function SudokuGamePageEditor({
           : null;
         onChange({
           ...doc,
+          contentVersion: nextPayload.kind === "authored-variant" ? "sudoku-authored-v3" : doc.contentVersion,
           payload: nextPayload,
           validation: {
             ...doc.validation,

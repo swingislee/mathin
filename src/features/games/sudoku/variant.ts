@@ -1,4 +1,5 @@
 import type { Difficulty } from "../types";
+import type { SudokuVariantRules } from "./rules";
 
 /**
  * 数独题型的唯一注册入口。新增题型前必须先阅读同目录 `AGENTS.md`。
@@ -33,7 +34,23 @@ export interface SudokuVariantDefinitionShape {
   selectableIn: readonly SudokuVariantSurface[];
   ranked: boolean;
   givens: Readonly<Record<Difficulty, number>>;
+  rules?: SudokuVariantRules;
 }
+
+const AUTHORED_VARIANTS = (["diagonal", "irregular", "inequality", "parity"] as const).flatMap((family) =>
+  SUDOKU_SIZES.map((size) => ({
+    id: `${family}-${size}x${size}` as const,
+    family, size,
+    boxRows: size === 9 ? 3 : 2,
+    boxColumns: size === 4 ? 2 : 3,
+    runtimeId: "variant-latin-v1" as const,
+    rendererId: "variant-grid-v1" as const,
+    seedEncoding: "variant-v2" as const,
+    messageKey: `sudokuVariants.${family}-${size}x${size}`,
+    selectableIn: ["courseware-authored"] as const,
+    ranked: false,
+    givens: size === 4 ? { easy: 10, medium: 8, hard: 6 } : size === 6 ? { easy: 24, medium: 20, hard: 16 } : { easy: 40, medium: 32, hard: 26 },
+  })));
 
 export const SUDOKU_VARIANTS = [
   {
@@ -79,6 +96,14 @@ export const SUDOKU_VARIANTS = [
     selectableIn: ["public", "courseware", "courseware-authored"],
     ranked: true,
     givens: { easy: 40, medium: 32, hard: 26 },
+  },
+  ...AUTHORED_VARIANTS,
+  {
+    id: "skyscraper-4x4", family: "skyscraper", size: 4,
+    boxRows: 2, boxColumns: 2,
+    runtimeId: "variant-latin-v1", rendererId: "variant-grid-v1", seedEncoding: "variant-v2",
+    messageKey: "sudokuVariants.skyscraper-4x4", selectableIn: ["courseware-authored"],
+    ranked: false, givens: { easy: 10, medium: 8, hard: 6 },
   },
 ] as const satisfies readonly SudokuVariantDefinitionShape[];
 
