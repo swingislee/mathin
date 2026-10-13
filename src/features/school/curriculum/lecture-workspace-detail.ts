@@ -90,7 +90,7 @@ const detailSchema = z.object({
     id: uuidSchema,
     title: z.string(),
     grade: z.number().int().min(1).max(9),
-    courseSeason: courseSeasonSchema,
+    courseSeason: courseSeasonSchema.nullable(),
     classType: z.string(),
   }),
   tracks: z.array(trackStateSchema),

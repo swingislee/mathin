@@ -274,7 +274,7 @@ async function CourseFamilyProductPage({
         就绪度、在用班级、责任分配都是做这件事时要参考的稳定信息，进侧栏。 */}
     <DashboardContentGrid>
       <DashboardMainColumn>
-        <TeachingPlan baseHref={baseHref} teachingPlan={detail.teachingPlan} canManage={canManage} />
+        <TeachingPlan baseHref={baseHref} teachingPlan={detail.teachingPlan} canManage={canManage} canEditCourseware={capabilities.canOpenCoursewareWorkbench} />
       </DashboardMainColumn>
 
       <DashboardAside>

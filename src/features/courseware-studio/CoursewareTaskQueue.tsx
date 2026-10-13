@@ -1,47 +1,33 @@
-import { Clock3, ExternalLink } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DashboardCommandFilters,
   DashboardCommandPanel,
   DashboardCommandState,
   DashboardCommandTabs,
   DashboardEmptyCard,
-  DashboardTableShell,
 } from "@/features/school/dashboard-page";
 import { FilterBar, FilterBarSubmit, FilterSearchInput } from "@/features/school/FilterBar";
-import { withReturnTo } from "@/features/school/object-workspace/return-target";
 import {
   COURSEWARE_TASK_TABS,
   type CoursewareTaskItem,
   type CoursewareTaskTab,
-} from "@/features/courseware-studio/data";
-import { Link } from "@/i18n/navigation";
-import { cn } from "@/lib/utils";
+} from "./data";
+import { CoursewareTaskGroups } from "./CoursewareTaskGroups";
+import { groupCoursewareTasks } from "./task-groups";
 
 type Props = {
   locale: string;
   tab: CoursewareTaskTab;
   query: string;
   tasks: CoursewareTaskItem[];
+  canEditCourseware: boolean;
 };
 
 export function hrefFor(tab: CoursewareTaskTab, query: string) {
   const search = new URLSearchParams({ tab });
   if (query) search.set("q", query);
   return `/dashboard/courseware?${search.toString()}`;
-}
-
-/** 有已发布 release 的讲次可以"预览"（走查询参数弹窗，见 courseware/page.tsx）；
- * 还没发布的讲次没有可预览的课件,直接整页跳讲次工作区（不是弹窗）。 */
-function rowHref(item: CoursewareTaskItem, baseHref: string) {
-  return item.releaseNo !== null
-    ? `${baseHref}&lecture=${item.lectureId}&track=${item.track}`
-    // doc23 §18：从研发任务队列进入讲次，改完要能回到队列继续下一条。
-    : withReturnTo(`/dashboard/courseware/lectures/${item.lectureId}?track=${item.track}`, baseHref);
 }
 
 async function taskTabLabels() {
@@ -54,7 +40,6 @@ async function taskTabLabels() {
   return labels;
 }
 
-/** 讲次任务队列的命令面板：待完善/最近/待发布切换 + 任务搜索（历史设计：archive/2026-10-04/docs/plan/21-dashboard-unified-canvas-command-panel-refactor.md §14）。 */
 export async function CoursewareTaskCommandPanel({ tab, query }: { tab: CoursewareTaskTab; query: string }) {
   const [t, tabLabels] = await Promise.all([getTranslations("coursewareStudio"), taskTabLabels()]);
   return (
@@ -69,12 +54,7 @@ export async function CoursewareTaskCommandPanel({ tab, query }: { tab: Coursewa
       <DashboardCommandFilters>
         <FilterBar aria-label={t("taskSearch")}>
           <Input type="hidden" name="tab" value={tab} readOnly />
-          <FilterSearchInput
-            defaultValue={query}
-            name="q"
-            placeholder={t("taskSearchPlaceholder")}
-            aria-label={t("taskSearch")}
-          />
+          <FilterSearchInput defaultValue={query} name="q" placeholder={t("taskSearchPlaceholder")} aria-label={t("taskSearch")} />
           <FilterBarSubmit>{t("taskSearch")}</FilterBarSubmit>
         </FilterBar>
       </DashboardCommandFilters>
@@ -82,84 +62,12 @@ export async function CoursewareTaskCommandPanel({ tab, query }: { tab: Coursewa
   );
 }
 
-export async function CoursewareTaskQueue({ locale, tab, query, tasks }: Props) {
-  const [t, tCourses] = await Promise.all([
-    getTranslations("coursewareStudio"),
-    getTranslations("school.courses"),
-  ]);
-  const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
-  const baseHref = hrefFor(tab, query);
-  const rowLabel = (item: CoursewareTaskItem) => item.releaseNo !== null ? tCourses("preview") : t("openWorkbench");
-
-  return (
-    <section>
-      {tasks.length === 0 ? (
-        <DashboardEmptyCard>{t("taskQueueEmpty")}</DashboardEmptyCard>
-      ) : (
-        <>
-          <DashboardTableShell className="hidden md:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t("taskFamilyVariant")}</TableHead>
-                  <TableHead>{t("taskLecture")}</TableHead>
-                  <TableHead>{t("taskTrack")}</TableHead>
-                  <TableHead>{t("taskState")}</TableHead>
-                  <TableHead>{t("taskLastEdited")}</TableHead>
-                  <TableHead><span className="sr-only">{t("openWorkbench")}</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tasks.map((item) => (
-                  <TaskRow key={`${item.lectureId}:${item.track}`} item={item} t={t} dateTime={dateTime} baseHref={baseHref} label={rowLabel(item)} />
-                ))}
-              </TableBody>
-            </Table>
-          </DashboardTableShell>
-          <div className="grid gap-3 md:hidden">
-            {tasks.map((item) => (
-              <article key={`${item.lectureId}:${item.track}`} className="rounded-2xl border border-line bg-card p-4">
-                <p className="text-xs text-muted">{item.familyTitle}</p>
-                <p className="mt-1 font-medium text-ink">{item.courseTitle} · {item.productCode ?? "—"}</p>
-                <p className="mt-3 text-sm text-ink">{t("lectureTitle", { no: item.lectureNo, name: item.lectureName })}</p>
-                <div className="mt-3 flex flex-wrap gap-2"><StateBadges item={item} t={t} /></div>
-                <p className="mt-3 flex items-center gap-1.5 text-xs text-muted"><Clock3 className="size-3.5" />{lastEditedLabel(item, t, dateTime)}</p>
-                <Link href={rowHref(item, baseHref)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4 w-full")}>
-                  {rowLabel(item)}<ExternalLink className="size-4" />
-                </Link>
-              </article>
-            ))}
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
-
-function TaskRow({ item, t, dateTime, baseHref, label }: { item: CoursewareTaskItem; t: Awaited<ReturnType<typeof getTranslations>>; dateTime: Intl.DateTimeFormat; baseHref: string; label: string }) {
-  return <TableRow>
-    <TableCell>
-      <p className="font-medium text-ink">{item.familyTitle}</p>
-      <p className="mt-1 text-xs text-muted">{item.courseTitle} · {item.productCode ?? "—"}</p>
-    </TableCell>
-    <TableCell>{t("lectureTitle", { no: item.lectureNo, name: item.lectureName })}</TableCell>
-    <TableCell><Badge variant="outline">{item.track === "adapted-4x3" ? t("trackAdapted") : t("trackNative")}</Badge></TableCell>
-    <TableCell><StateBadges item={item} t={t} /></TableCell>
-    <TableCell className="text-xs text-muted">{lastEditedLabel(item, t, dateTime)}</TableCell>
-    <TableCell className="text-right"><Link href={rowHref(item, baseHref)} className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}>{label}</Link></TableCell>
-  </TableRow>;
-}
-
-function StateBadges({ item, t }: { item: CoursewareTaskItem; t: Awaited<ReturnType<typeof getTranslations>> }) {
-  return <span className="flex flex-wrap gap-1.5">
-    <Badge variant="outline">{t("pagesCount", { count: item.pageCount })}</Badge>
-    {item.hasDraft && <Badge variant="secondary">{t("draftState")}</Badge>}
-    {item.releaseNo === null ? <Badge variant="outline">{t("notReleased")}</Badge> : <Badge variant="secondary">{t("releaseNo", { no: item.releaseNo })}</Badge>}
-  </span>;
-}
-
-function lastEditedLabel(item: CoursewareTaskItem, t: Awaited<ReturnType<typeof getTranslations>>, dateTime: Intl.DateTimeFormat) {
-  if (!item.lastEditedAt) return t("notYetEdited");
-  const when = dateTime.format(new Date(item.lastEditedAt));
-  return item.lastEditorName ? t("editedByAt", { name: item.lastEditorName, time: when }) : when;
+export async function CoursewareTaskQueue({ locale, tab, query, tasks, canEditCourseware }: Props) {
+  const t = await getTranslations("coursewareStudio");
+  if (tasks.length === 0) return <DashboardEmptyCard>{t("taskQueueEmpty")}</DashboardEmptyCard>;
+  return <section>
+    <CoursewareTaskGroups key={`${tab}:${query}`} groups={groupCoursewareTasks(tasks, tab)} locale={locale}
+      baseHref={hrefFor(tab, query)} canEditCourseware={canEditCourseware} expandAll={Boolean(query)} />
+    {tasks.length >= 60 && <p className="mt-3 text-xs text-muted">{t("taskQueueLimitHint")}</p>}
+  </section>;
 }

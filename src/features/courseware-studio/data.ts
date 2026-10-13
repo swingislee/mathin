@@ -80,6 +80,12 @@ export interface CoursewareTaskItem {
   courseId: string;
   courseTitle: string;
   productCode: string | null;
+  catalogVersionId: string | null;
+  catalogVersionTitle: string | null;
+  catalogVersionCurrent: boolean;
+  grade: number | null;
+  courseSeason: number | null;
+  classType: string;
   lectureNo: number;
   lectureName: string;
   track: CoursewareTrack;
@@ -99,6 +105,18 @@ export async function loadCoursewareTaskQueue(tab: CoursewareTaskTab, query: str
     p_limit: 60,
   });
   if (error) throw new Error(error.message);
+  const courseIds = [...new Set((data ?? []).map(item => item.course_id))];
+  const courses = await collectPostgrestRowsInBatches<string, {
+    id: string;
+    grade: number;
+    term: number | null;
+    class_type: string;
+    catalog_version_id: string;
+    course_catalog_versions: { title: string; is_current: boolean } | null;
+  }>(courseIds, batch => supabase.from("courses")
+    .select("id,grade,term,class_type,catalog_version_id,course_catalog_versions(title,is_current)")
+    .in("id", batch));
+  const courseById = new Map(courses.map(course => [course.id, course]));
   return (data ?? []).map((item) => ({
     lectureId: item.lecture_id,
     familyId: item.family_id,
@@ -106,6 +124,12 @@ export async function loadCoursewareTaskQueue(tab: CoursewareTaskTab, query: str
     courseId: item.course_id,
     courseTitle: item.course_title,
     productCode: item.product_code,
+    catalogVersionId: courseById.get(item.course_id)?.catalog_version_id ?? null,
+    catalogVersionTitle: courseById.get(item.course_id)?.course_catalog_versions?.title ?? null,
+    catalogVersionCurrent: courseById.get(item.course_id)?.course_catalog_versions?.is_current ?? false,
+    grade: courseById.get(item.course_id)?.grade ?? null,
+    courseSeason: courseById.get(item.course_id)?.term ?? null,
+    classType: courseById.get(item.course_id)?.class_type ?? "",
     lectureNo: item.lecture_no,
     lectureName: item.lecture_name,
     track: item.track as CoursewareTrack,

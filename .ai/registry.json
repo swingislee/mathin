@@ -3,6 +3,37 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "COURSEWARE-ENTRY-GROUPS-20261013",
+      "title": "课程草稿入口与研发任务分组",
+      "agent": "codex",
+      "threadId": "01a1347c-317b-7b82-9220-097d29f20b10",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COURSEWARE-ENTRY-GROUPS-20261013.md",
+      "writePaths": [
+        ".ai/tasks/COURSEWARE-ENTRY-GROUPS-20261013.md",
+        ".tmp/courseware-entry-fix/",
+        "src/app/[locale]/dashboard/courses/[courseFamilyId]/page.tsx",
+        "src/app/[locale]/dashboard/courseware/page.tsx",
+        "src/features/school/teaching-operations/TeachingPlan.tsx",
+        "src/features/school/curriculum/lecture-workspace-detail.ts",
+        "src/features/school/curriculum/types.ts",
+        "src/features/courseware-studio/CoursewareTaskQueue.tsx",
+        "src/features/courseware-studio/CoursewareTaskGroups.tsx",
+        "src/features/courseware-studio/task-groups.ts",
+        "src/features/courseware-studio/data.ts",
+        "tests/p4h-courseware-workbench.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端可验收：全年数独12讲解析通过；课程页直达草稿，研发任务按课程/版本/班型分组；相关TypeScript检查通过，待用户实际使用。"
+    },
+    {
       "id": "SUDOKU-COURSE-2026-20261013",
       "title": "数独教学2026版十二讲成品课程",
       "agent": "codex",

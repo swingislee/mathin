@@ -71,7 +71,7 @@ export interface LectureWorkspaceDetail {
     pageCount: number;
   };
   family: { id: string; title: string };
-  variant: { id: string; title: string; grade: number; courseSeason: CourseSeason; classType: string };
+  variant: { id: string; title: string; grade: number; courseSeason: CourseSeason | null; classType: string };
   tracks: CoursewareTrackState[];
   assignments: CourseAssignment[];
   effectiveAssignments: EffectiveAssignment[];

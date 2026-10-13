@@ -9,7 +9,7 @@ describe("P4H/P4I-12 courseware workbench contract", () => {
   it("uses a bounded lecture-task RPC instead of the retired course directory query", () => {
     const migration = read("supabase", "migrations", "20260720000600_p4h_courseware_task_queue.sql");
     const data = read("src", "features", "courseware-studio", "data.ts");
-    const queue = read("src", "features", "courseware-studio", "CoursewareTaskQueue.tsx");
+    const queue = read("src", "features", "courseware-studio", "CoursewareTaskGroups.tsx");
 
     expect(migration).toContain("create function public.list_courseware_tasks");
     expect(migration).toContain("normalized_tab not in ('incomplete', 'recent', 'publish')");

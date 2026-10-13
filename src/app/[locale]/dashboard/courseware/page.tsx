@@ -107,6 +107,7 @@ async function CoursewareTasksContent({
       tab={tab}
       query={taskQuery}
       tasks={tasks}
+      canEditCourseware={perms.has("course.view") && perms.has("courseware.page.edit")}
     />
     {preview && (
       <LecturePreviewDialog title={tCourses("lecturePreviewTitle", { no: preview.lecture.no, name: preview.lecture.name })} closeHref={baseHref}>
