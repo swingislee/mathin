@@ -1,1 +1,1 @@
-{ "usingComponents": { "experience-form": "/components/experience-form/index" } }
+{ "navigationStyle": "custom", "usingComponents": { "experience-form": "/components/experience-form/index" } }

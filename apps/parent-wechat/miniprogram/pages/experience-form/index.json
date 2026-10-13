@@ -1,1 +1,1 @@
-{ "usingComponents": { "experience-form": "/components/experience-form/index", "content-document": "/components/content-document/index" } }
+{ "navigationStyle": "custom", "usingComponents": { "experience-form": "/components/experience-form/index", "content-document": "/components/content-document/index" } }

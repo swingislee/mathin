@@ -1,1 +1,1 @@
-{ "usingComponents": { "content-document": "/components/content-document/index" } }
+{ "navigationStyle": "custom", "usingComponents": { "content-document": "/components/content-document/index" } }

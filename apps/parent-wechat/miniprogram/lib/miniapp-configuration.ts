@@ -21,8 +21,8 @@ export function configuration(): MiniappSettings {
 }
 export async function refreshConfiguration(force = false): Promise<MiniappSettings> {
   configuration();
-  if (!force && Date.now() - Math.max(saved!.checkedAt, lastAttempt) < 60_000) return saved!.config;
   if (pending) return pending;
+  if (!force && Date.now() - Math.max(saved!.checkedAt, lastAttempt) < 60_000) return saved!.config;
   lastAttempt = Date.now();
   pending = miniappSettings(saved!.revision < 0 ? undefined : saved!.revision).then(result => {
     if (!Number.isInteger(result.revision) || result.revision < 0 || (result.config && !isMiniappSettings(result.config))) throw new Error("INVALID_SETTINGS");

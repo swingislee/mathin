@@ -51,7 +51,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
     run(async () => {
       const r = await saveMiniappSettings(config, state.revision, publish);
       if (!r.ok) { setNotice(failure(r.code)); setConflict(r.code === "FORM_CHANGED"); return; }
-      accept(r.data); setNotice(publish ? (en ? "Published. The Mini Program refreshes its configuration within a minute." : "已发布，小程序将在一分钟内刷新展示配置。") : (en ? "Draft saved." : "草稿已保存。"));
+      accept(r.data); setNotice(publish ? (en ? "Published. The Mini Program checks for updates when a page is reopened; configuration is cached for up to one minute." : "已发布。小程序重新进入页面时检查更新，展示配置最多缓存一分钟。") : (en ? "Draft saved." : "草稿已保存。"));
     });
   }
   function reload() { run(async () => { const r = await loadMiniappSettings(); if (r.ok) { accept(r.data); setNotice(""); } else setNotice(failure(r.code)); }); }

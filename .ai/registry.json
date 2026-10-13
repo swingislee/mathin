@@ -3,6 +3,32 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "MINI-RUNTIME-VERIFY-20261013",
+      "title": "微信开发者工具实际验证与运行修复",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-RUNTIME-VERIFY-20261013.md",
+      "writePaths": [
+        ".ai/tasks/MINI-RUNTIME-VERIFY-20261013.md",
+        "apps/parent-wechat/miniprogram/",
+        "apps/parent-wechat/docs/native-pages.md",
+        "src/features/school/miniapp-settings/",
+        "contracts/participant-api/",
+        ".tmp/mini-runtime-verify-20261013/",
+        "tests/miniapp-configuration-refresh.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "scripts/sync-participant-contract.mjs"
+      ],
+      "checkpoint": "93b03655",
+      "next": "开发者工具中的发现配置、服务目录、共用组件和预约链路验证完成；编译、导航、样式及并发刷新问题已修复。临时配置已恢复，两笔测试预约已取消并保留，真机弹窗与手感待验收；生产、上传和提审暂停。"
+    },
+    {
       "id": "MINI-NATIVE-MODULES-20261013",
       "title": "小程序逐页结构与组件复用落地",
       "agent": "codex",
