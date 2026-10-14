@@ -893,6 +893,7 @@ export function LiveShell({
     inputPortRef: mainInputPortRef,
     enabled: inputV2Enabled
       && editable
+      && effectivePhase === "live"
       && rendererProfile.audited
       && effectiveRoutingMode === "smart"
       && mainTool === "pen",

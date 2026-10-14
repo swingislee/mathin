@@ -132,6 +132,17 @@ describe("Smart classroom pointer capture", () => {
     expect(h.port.finish).toHaveBeenLastCalledWith(8, [[0.4, 0.2, expect.any(Object)]]);
   });
 
+  it.each(["click", "ink", "drag", "native"] as const)("prevents browser touch scrolling only while Smart owns %s input", (capability) => {
+    const h = harness(capability);
+    const ownsTouch = capability === "click" || capability === "ink";
+    h.pointer("pointerdown", 100);
+    expect(h.dispatch("touchmove", h.child, {}).defaultPrevented).toBe(ownsTouch);
+    h.pointer("pointermove", 140);
+    expect(h.dispatch("touchmove", h.child, {}).defaultPrevented).toBe(ownsTouch);
+    h.pointer("pointerup", 180);
+    expect(h.dispatch("touchmove", h.child, {}).defaultPrevented).toBe(false);
+  });
+
   it("still cancels ink when palm or viewport handling cancels the original touch", () => {
     const h = harness();
     h.pointer("pointerdown", 100);

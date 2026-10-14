@@ -288,6 +288,12 @@ export function useClassroomPointerRouter({
     };
 
     const preventTextSelection = (event: Event) => event.preventDefault();
+    const preventInkTouchScroll = (event: TouchEvent) => {
+      // 内层可滚动课件会截断外层 touch-action 的作用范围；保留 Smart
+      // 已接管的触摸序列，避免浏览器滚动在起笔后发出 pointercancel。
+      // 原生拖动、滚动等透传手势继续由课件处理。
+      if (state.kind === "pending-click" || state.kind === "inking") event.preventDefault();
+    };
 
     const resizeObserver = new ResizeObserver(cancelLifecycle);
     resizeObserver.observe(stage);
@@ -298,6 +304,7 @@ export function useClassroomPointerRouter({
     stage.addEventListener("lostpointercapture", lostPointerCapture, true);
     stage.addEventListener("click", clickCapture, true);
     stage.addEventListener("selectstart", preventTextSelection, true);
+    stage.addEventListener("touchmove", preventInkTouchScroll, { passive: false });
     window.addEventListener("pointerup", windowPointerEnd);
     window.addEventListener("pointercancel", pointerCancel);
     window.addEventListener("blur", cancelLifecycle);
@@ -322,6 +329,7 @@ export function useClassroomPointerRouter({
       stage.removeEventListener("lostpointercapture", lostPointerCapture, true);
       stage.removeEventListener("click", clickCapture, true);
       stage.removeEventListener("selectstart", preventTextSelection, true);
+      stage.removeEventListener("touchmove", preventInkTouchScroll);
       window.removeEventListener("pointerup", windowPointerEnd);
       window.removeEventListener("pointercancel", pointerCancel);
       window.removeEventListener("blur", cancelLifecycle);
