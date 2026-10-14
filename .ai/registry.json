@@ -3,6 +3,26 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WORKLIST-FACETS-PG-20261014",
+      "title": "沟通表头筛选 PostgreSQL 超时修复",
+      "agent": "codex",
+      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WORKLIST-FACETS-PG-20261014.md",
+      "writePaths": [
+        ".ai/tasks/WORKLIST-FACETS-PG-20261014.md",
+        "supabase/migrations/20261014010000_worklist_field_read_performance.sql",
+        ".tmp/worklist-facets-pg-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "PG 沟通摘要改为一次汇总，开发库已应用；2569 条摘要和三组完整查询结果一致，原超时 RPC 3.36 秒成功、开发筛选接口 200。待实际使用确认，生产未部署。"
+    },
+    {
       "id": "NESTED-ROW-LATENCY-20261014",
       "title": "嵌套行展开变慢定位",
       "agent": "codex",
