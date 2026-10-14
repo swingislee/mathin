@@ -187,7 +187,7 @@ function svg(p) {
   const n = p.size, c = n === 9 ? 30 : n === 6 ? 40 : 52, pad = 26, size = n * c + 2 * pad, spec = specFrom(n, p.rules), at = k => pad + (k + 0.5) * c;
   const line = (x1, y1, x2, y2, w, extra = '') => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#293b37" stroke-width="${w}" ${extra}/>`;
   const txt = (x, y, s, fs, extra = '') => `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-family="Arial,sans-serif" ${extra}>${esc(s)}</text>`;
-  let out = `<svg viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(p.id)}"><rect width="${size}" height="${size}" fill="white"/>`;
+  let out = `<svg class="board" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(p.id)}"><rect width="${size}" height="${size}" fill="white"/>`;
   if (p.family === 'window') for (const [r, k] of [[1, 1], [1, 5], [5, 1], [5, 5]]) out += `<rect x="${pad + k * c}" y="${pad + r * c}" width="${3 * c}" height="${3 * c}" fill="#f2e3c6"/>`;
   if (p.family === 'diagonal') out += line(pad, pad, pad + n * c, pad + n * c, 2, 'stroke-dasharray="6 5" opacity=".5"') + line(pad + n * c, pad, pad, pad + n * c, 2, 'stroke-dasharray="6 5" opacity=".5"');
   const region = spec.regions;
@@ -249,23 +249,29 @@ header{border-bottom:2px solid #243d38;padding-bottom:3mm;margin-bottom:4mm}h1{f
 .full9{display:grid;grid-template-columns:125mm 1fr;gap:5mm;align-items:start}
 .box{border:1.5px solid #a35a31;border-radius:3mm;padding:3mm 4mm;break-inside:avoid;align-self:start}.box h2{font-size:15px;color:#a35a31;margin:0 0 1.5mm}.box p{margin:1mm 0;font-size:13px;line-height:1.6}.box .tip{font-size:11px;color:#5f6f6a}
 .write{display:flex;gap:2mm;align-items:flex-end;font-size:11px;margin:2mm 0 0}.write span{flex:1;border-bottom:1px solid #999;height:6mm}
-.tag{font-size:10px;color:#a35a31;font-weight:700}nav{padding:16px;text-align:center}button{padding:8px 16px;margin:2px}
+.tag{font-size:10px;color:#a35a31;font-weight:700}
+/* Beginner and intermediate handouts: two boards a row, larger type, taller answer lines, cards on their own row. */
+.roomy .flow{gap:9mm 8mm}.roomy .item h2{font-size:16px;margin:0 0 1.5mm}.roomy .item .ask{font-size:13.5px;margin:0 0 3mm;line-height:1.55}.roomy .tag{font-size:12px}
+.roomy .write{font-size:13px;margin:3mm 0 0}.roomy .write span{height:7mm}.roomy .box{padding:4mm 6mm}.roomy .box h2{font-size:17px}.roomy .box p{font-size:15px}.roomy .box .tip{font-size:12.5px}
+.small-grid svg.board{max-width:66mm;margin-left:auto;margin-right:auto}.mid-grid svg.board{max-width:76mm;margin-left:auto;margin-right:auto}nav{padding:16px;text-align:center}button{padding:8px 16px;margin:2px}
 @page{size:A4;margin:0}@media print{body{background:white}.lesson{margin:0}nav,.print{display:none}.skip{display:none}}</style>
 <script>function only(id){document.querySelectorAll('.lesson').forEach(s=>s.classList.toggle('skip',s.dataset.lesson!==id));window.print();document.querySelectorAll('.lesson').forEach(s=>s.classList.remove('skip'));}</script>
 <nav><button onclick="window.print()">打印全部 12 讲</button><p>上课发给学生，和课件同页同题、不含答案。每讲开头有“只打印本讲”。</p></nav><main>`;
 for (const lesson of LESSONS) {
   const young = lesson.level === '初阶', opening = lesson.pages.find(p => p.kind === 'opening');
-  handout += `<section class="lesson" data-lesson="${lesson.id}"><header><h1>${lesson.level}第 ${lesson.number} 讲 · ${esc(lesson.title)} <button class="print" onclick="only('${lesson.id}')">只打印本讲</button></h1><p>数独教学 2026版 · 学生讲义 · ${lesson.grades} 年级 · ${lesson.n}×${lesson.n}　　姓名：____________　日期：____________</p><p class="goal">${esc(opening.goal)}</p></header><div class="flow">`;
-  // A 6-column grid: method boards take a third (nine-grid boards half), six-grid challenges half,
-  // nine-grid challenges a full row; cards fill whatever is left of the current row.
+  const roomy = lesson.n !== 9;
+  handout += `<section class="lesson${roomy ? ' roomy' : ''}${lesson.n === 4 ? ' small-grid' : lesson.n === 6 ? ' mid-grid' : ''}" data-lesson="${lesson.id}"><header><h1>${lesson.level}第 ${lesson.number} 讲 · ${esc(lesson.title)} <button class="print" onclick="only('${lesson.id}')">只打印本讲</button></h1><p>数独教学 2026版 · 学生讲义 · ${lesson.grades} 年级 · ${lesson.n}×${lesson.n}　　姓名：____________　日期：____________</p><p class="goal">${esc(opening.goal)}</p></header><div class="flow">`;
+  // A 6-column grid. Beginner and intermediate handouts put two boards in a row and give every card
+  // its own row; advanced handouts pack cards beside boards and give nine-grid challenges a full row.
   let column = 0;
   const place = (span, html) => {
     if (column + span > 6) column = 0;
     column = (column + span) % 6;
     return html.replace('<div class="', `<div style="grid-column:span ${span}" class="`);
   };
-  const rest = () => { const span = column ? 6 - column : 6; column = 0; return span; };
-  const methodSpan = lesson.n === 9 ? 3 : 2;
+  // place() closes the row: a card either fills what is left of it or starts a full row.
+  const rest = () => !column ? 6 : roomy && column !== 3 ? 6 : 6 - column;
+  const methodSpan = 3;
   for (const page of lesson.pages) {
     // Opening, break, “一起说” (same board again) and homework stay off the handout.
     if (['opening', 'break', 'recap'].includes(page.kind) || page.role === 'homework') continue;
@@ -281,7 +287,7 @@ for (const lesson of LESSONS) {
       const notes = `${line('用时：____ 分钟')}${young ? '' : line('我的一次突破：')}`;
       handout += lesson.n === 9
         ? place(6, `<div class="item full9"><div>${svg(p)}</div><div><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${notes}</div></div>`)
-        : place(lesson.n === 6 ? 3 : 2, `<div class="item"><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${svg(p)}${notes}</div>`);
+        : place(3, `<div class="item"><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${svg(p)}${notes}</div>`);
     } else if (page.kind === 'summary') handout += place(rest(), `<div class="box"><h2>今天学会了</h2>${page.body.split('\n').map(l => `<p>${esc(l)}</p>`).join('')}${line(young ? '我最得意的一步：' : '我的一句话总结：', true)}</div>`);
   }
   handout += `</div></section>`;
