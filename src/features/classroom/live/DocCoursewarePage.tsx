@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
+import { isAixuexiPageDoc } from "@/features/courseware-doc/page-kind";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { DocVideoCtl } from "@/features/courseware-doc/DocStage";
 import type { H5PointerBridgeHost } from "@/features/courseware-doc/h5-pointer-protocol";

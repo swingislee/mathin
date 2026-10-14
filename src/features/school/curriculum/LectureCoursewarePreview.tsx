@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CoursewareWorkbench } from "@/features/courseware-doc/CoursewareEditorWorkbench";
 import { fetchCoursewarePreviewPage, reuseCoursewareObjectUrls } from "@/features/courseware-preview/client";
 import { warmCoursewarePreviewPage } from "@/features/courseware-preview/preload";
-import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
+import { isSourceRuntimePageDoc } from "@/features/courseware-doc/page-kind";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import { StagePreview } from "@/features/courseware-studio/StagePreview";
 import type {

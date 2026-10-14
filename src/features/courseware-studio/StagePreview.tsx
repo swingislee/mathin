@@ -2,19 +2,21 @@
 
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
+import {
+  isAixuexiPageDoc,
+  isCoursewareCompositionPage,
+  isGamePageDoc,
+  isMicrocoursePageDoc,
+  isSourceRuntimePageDoc,
+} from "@/features/courseware-doc/page-kind";
 import type { AixuexiStageProps } from "@/features/courseware-doc/AixuexiStage";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
-import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import type { CoursewareCompositionStageProps } from "@/features/courseware-doc/CoursewareCompositionStage";
 import type { DocStageProps } from "@/features/courseware-doc/DocStage";
-import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
 import type { GamePageStageProps } from "@/features/games/courseware/GamePageStage";
-import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import type { MicrocourseStageProps } from "@/features/courseware-doc/MicrocourseStage";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
 import type { SpatialCoursewareStageProps } from "@/features/courseware-doc/SpatialCoursewareStage";
-import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { SourceRuntimeStageProps } from "@/features/courseware-doc/SourceRuntimeStage";
 import type { GameMirrorState } from "@/features/games/types";
 import type { ClassroomToolRuntime } from "@/features/tools/courseware/tool-classroom";

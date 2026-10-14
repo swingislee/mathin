@@ -13,8 +13,10 @@ import {
 import { pageDocSchema, type PageDoc } from "./schema";
 import { isCubeCoursewareTool, CUBE_COURSEWARE_PAGE_MAX_BYTES, cubeCoursewareV1ToolSchema } from "@/features/tools/courseware/cube-structures-content";
 import { toolSceneSchema } from "@/features/tools/scenes/contract";
+import { COURSEWARE_COMPOSITION_DOC_VERSION, isCoursewareCompositionPage } from "./page-kind";
 
-export const COURSEWARE_COMPOSITION_DOC_VERSION = "courseware-composition-v1" as const;
+export { COURSEWARE_COMPOSITION_DOC_VERSION, isCoursewareCompositionPage };
+
 export const COURSEWARE_COMPOSITION_LAYOUT_VERSION = "courseware-composition-grid-v1" as const;
 /** The grid itself is the limit: at most one 1x1 tile can occupy each cell. */
 export const COURSEWARE_COMPOSITION_MAX_BLOCKS = COURSEWARE_SNAP_GRID_COLUMNS * COURSEWARE_SNAP_GRID_ROWS;
@@ -191,12 +193,6 @@ export function createEmptyCoursewareCompositionPage(
       blocks: [],
     },
   };
-}
-
-export function isCoursewareCompositionPage(
-  doc: { readonly docVersion: string },
-): doc is CoursewareCompositionPage {
-  return doc.docVersion === COURSEWARE_COMPOSITION_DOC_VERSION;
 }
 
 export type EmbeddedCompositionGame = GamePageDoc;

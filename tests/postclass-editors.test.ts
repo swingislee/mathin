@@ -24,6 +24,16 @@ const click = async (element: HTMLElement) => { expect(element).toBeTruthy(); aw
 async function fill(element: HTMLInputElement | HTMLTextAreaElement, text: string) {
   await act(async () => { Object.getOwnPropertyDescriptor(element instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, "value")!.set!.call(element, text); element.dispatchEvent(new Event("input", { bubbles: true })); });
 }
+/** 作业编辑区在首次打开时按需加载；等到目标元素出现再继续。 */
+async function until<T>(read: () => T | null | undefined, timeout = 5000): Promise<T> {
+  const started = Date.now();
+  for (;;) {
+    const value = read();
+    if (value) return value;
+    if (Date.now() - started > timeout) throw new Error("WAIT_TIMEOUT");
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)); });
+  }
+}
 async function render(child: ComponentProps<typeof NextIntlClientProvider>["children"]) {
   await act(async () => root.render(h(NextIntlClientProvider, { locale: "zh", messages: zh, timeZone: "Asia/Shanghai", children: child })));
 }
@@ -69,7 +79,7 @@ describe("作业题库与模板", () => {
   it("编辑已发布作业主题成功后更新回显；保存失败保留输入", async () => {
     deps.saveHomework.mockResolvedValueOnce({ ok: false, code: "CONFLICT" }).mockResolvedValueOnce({ ok: true, data: { ...doc(), document: { ...doc().document, topic: "新主题" } } });
     const onSaved = vi.fn(); await render(h(HomeworkDocumentEditor, { scope: "assignment", targetId: id, onSaved })); await click(button("编辑作业与课后主题"));
-    const input = document.querySelector<HTMLInputElement>('input[value="旧主题"]')!;
+    const input = await until(() => document.querySelector<HTMLInputElement>('input[value="旧主题"]'));
     await fill(input, "新主题"); await click(button("保存")); expect(input.value).toBe("新主题"); expect(onSaved).not.toHaveBeenCalled();
     await click(button("保存")); expect(onSaved).toHaveBeenCalledOnce();
     expect(deps.saveHomework).toHaveBeenLastCalledWith(expect.objectContaining({ revision: "saved-version", document: expect.objectContaining({ topic: "新主题" }) }));
@@ -77,6 +87,7 @@ describe("作业题库与模板", () => {
   it("题干和答案分列连续录入，新增分组可独立保存", async () => {
     deps.saveHomework.mockResolvedValue({ ok: false, code: "CONFLICT" });
     await render(h(HomeworkDocumentEditor, { scope: "lecture", targetId: id })); await click(button("本讲作业与标准教案"));
+    await until(() => document.querySelector("th"));
     const headers = [...document.querySelectorAll("th")].map(row => row.textContent);
     expect(headers.slice(0, 3)).toEqual(["题号", "题目／题干", "答案／解析"]);
     await fill(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="题目／题干"]')!, "连续录入题目");

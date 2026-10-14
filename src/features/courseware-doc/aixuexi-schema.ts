@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { AIXUEXI_PAGE_DOC_VERSION, isAixuexiPageDoc } from "./page-kind";
+
+export { AIXUEXI_PAGE_DOC_VERSION, isAixuexiPageDoc };
 
 /**
  * 爱学习离线成品页的 Mathin 适配文档。
@@ -6,7 +9,6 @@ import { z } from "zod";
  * 它只把镜像侧 resourceRefId 改成跨库稳定 bindingKey，并冻结 projection v31
  * 的源舞台、运行时、动画与互动语义；不会把爱学习节点伪装成 E 系列 page-doc-v1。
  */
-export const AIXUEXI_PAGE_DOC_VERSION = "aixuexi-page-doc-v1";
 export const AIXUEXI_PAGE_ADAPTER = "aixuexi-page-v1";
 
 export function aixuexiPackageLevel(packageKey: string): "G+" | "X+" | "A+" | null {
@@ -346,6 +348,3 @@ export function collectAixuexiBindingKeys(doc: AixuexiPageDoc): Set<string> {
   return keys;
 }
 
-export function isAixuexiPageDoc(doc: { docVersion?: string }): doc is AixuexiPageDoc {
-  return doc.docVersion === AIXUEXI_PAGE_DOC_VERSION;
-}

@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { SOURCE_RUNTIME_PAGE_DOC_VERSION, isSourceRuntimePageDoc } from "./page-kind";
+
+export { SOURCE_RUNTIME_PAGE_DOC_VERSION, isSourceRuntimePageDoc };
 
 /**
  * Portable source-owned renderer contract.
@@ -7,7 +10,6 @@ import { z } from "zod";
  * package. Mathin only resolves content-addressed bindings and hosts the
  * renderer through the narrow postMessage/H5 pointer protocols.
  */
-export const SOURCE_RUNTIME_PAGE_DOC_VERSION = "source-runtime-page-v1";
 export const SOURCE_RUNTIME_PROTOCOL = "mathin-source-runtime-v1";
 export const SOURCE_RUNTIME_NESTED_H5_PARAM = "mathin_source_runtime";
 export const SOURCE_RUNTIME_EDITOR_PARAM = "mathin_source_editor";
@@ -108,8 +110,3 @@ export function scopeSourceRuntimeBindings<T extends { bindingKey: string }>(
   return scoped;
 }
 
-export function isSourceRuntimePageDoc(
-  doc: { readonly docVersion: string },
-): doc is SourceRuntimePageDoc {
-  return doc.docVersion === SOURCE_RUNTIME_PAGE_DOC_VERSION;
-}

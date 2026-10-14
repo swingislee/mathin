@@ -10,8 +10,10 @@ import {
   spatialPageDocSchema,
   type SpatialPageDoc,
 } from "@/features/spatial-math/domain/page-schema";
+import { MICROCOURSE_PAGE_DOC_VERSION, isMicrocoursePageDoc } from "./page-kind";
 
-export const MICROCOURSE_PAGE_DOC_VERSION = "microcourse-page-v1" as const;
+export { MICROCOURSE_PAGE_DOC_VERSION, isMicrocoursePageDoc };
+
 export const MICROCOURSE_H5_MAX_BYTES = 5 * 1_024 * 1_024;
 
 const sha256HexSchema = z.string().regex(/^[0-9a-f]{64}$/);
@@ -95,8 +97,3 @@ export type MicrocourseSourceDoc = PageDoc | AixuexiPageDoc | SpatialPageDoc | G
 export type MicrocourseSourceSnapshot = z.infer<typeof microcourseSourceSnapshotSchema>;
 export type MicrocoursePageDoc = z.infer<typeof microcoursePageDocSchema>;
 
-export function isMicrocoursePageDoc(
-  doc: { readonly docVersion: string },
-): doc is MicrocoursePageDoc {
-  return doc.docVersion === MICROCOURSE_PAGE_DOC_VERSION;
-}
