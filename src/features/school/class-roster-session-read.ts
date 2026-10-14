@@ -62,5 +62,6 @@ export async function getClassSessionDetail(sessionId: string, classroomId: stri
   if (permission.error || heads.error || session.error || !session.data) throw new Error("CLASS_SESSION_DETAIL_UNAVAILABLE");
   const statuses = new Set((heads.data ?? []).map(row => row.status));
   const resultStatus = ["revised", "withdrawn", "published", "review"].find(status => statuses.has(status)) ?? "draft";
-  return classSessionDetailSchema.parse({ records, canWriteReview: permission.data === true && !session.data.cancelled_by, resultStatus });
+  return classSessionDetailSchema.parse({ records, canEnterLive: quick.capabilities.canEnterLive,
+    canWriteReview: permission.data === true && !session.data.cancelled_by, resultStatus });
 }

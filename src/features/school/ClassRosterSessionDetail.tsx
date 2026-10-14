@@ -68,6 +68,9 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
   </DashboardCommandPanel>{materials}</div>;
   const work = classSessionStudentWork(data.records);
   return <div className="space-y-3">
+    {data.canEnterLive && <DashboardCommandPanel><DashboardCommandActions>
+      <Link className={buttonVariants({ size: "sm" })} href={`/classroom/${classroomId}/session/${sessionId}/live`}>{m.resume}</Link>
+    </DashboardCommandActions></DashboardCommandPanel>}
     {materials}
     {failed && <p role="alert" className="text-xs text-rose">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></p>}
     <TeachingSessionRecords data={contacts ? { ...data.records, contacts: contacts.contacts, contactPage: contacts.contactPage, contactTotal: contacts.contactTotal } : data.records} locale={locale} timeZone={timeZone} returnTo="" currentHref="" pageSize={pageSize}

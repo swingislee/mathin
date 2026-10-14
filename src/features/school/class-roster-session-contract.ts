@@ -11,6 +11,7 @@ export const classSessionDetailSchema = z.union([z.object({
   canPrepare: z.boolean(), canEnterLive: z.boolean(), canMarkAttendance: z.boolean(),
 }), z.object({
   records: teachingRecordsSchema,
+  canEnterLive: z.boolean().default(false),
   canWriteReview: z.boolean(),
   resultStatus: z.enum(["draft", "review", "published", "withdrawn", "revised"]),
 })]);
@@ -52,14 +53,14 @@ export function classSessionMessages(locale: string) {
     open: "View / record", attendance: "Attendance", reviews: "Reviews", noDate: "Unscheduled", untitled: "Untitled lesson",
     loading: "Loading lesson…", failed: "Lesson could not be loaded.", retry: "Retry", draft: "Entries are still syncing. Resolve any row errors before switching lessons.",
     workspace: "Lesson workspace", back: "Back to classes", preparation: "Before class", prepare: "Prepare lesson", enter: "Enter classroom", viewPreparation: "View lesson preparation",
-    noAccess: "No accessible lesson is available for this link.",
+    resume: "Re-enter classroom", noAccess: "No accessible lesson is available for this link.",
     observationsLoading: "Loading responses…", observationsFailed: "Responses unavailable",
   } : {
     session: "课次", noSessions: "尚未安排课次",
     open: "查看 / 登记", attendance: "考勤", reviews: "课评", noDate: "待排时间", untitled: "未命名课次",
     loading: "正在读取课次…", failed: "课次读取失败。", retry: "重试", draft: "记录正在同步，请处理行内提示后再切换课次。",
     workspace: "课次工作区", back: "返回班级", preparation: "课前准备", prepare: "备课", enter: "进入课堂", viewPreparation: "查看备课",
-    noAccess: "此链接暂无可查看的课次。",
+    resume: "重新进入课堂", noAccess: "此链接暂无可查看的课次。",
     observationsLoading: "正在读取答题记录…", observationsFailed: "答题记录未读到",
   };
 }
