@@ -28,10 +28,11 @@
       "sharedPaths": [
         ".ai/registry.json",
         "messages/zh.json",
-        "messages/en.json"
+        "messages/en.json",
+        "docs/current.md"
       ],
-      "checkpoint": "04785856",
-      "next": "开发端已修复 Smart 手指断笔、试讲重复候课、课次简报读取和错误页恢复入口。定向检查通过，待真实触屏验收；生产仅只读诊断，部署待本次授权。"
+      "checkpoint": "ba0441d84eaeb59b1d2dd3680de696ed14e6cddc",
+      "next": "本次生产授权已执行：14:54 独立发布课堂两项修复，current 20261014-065106、previous 20261014-031204。Linux 构建与类型、实际课次只读查询、公网健康通过；待真实触屏书写与试讲往返验收。"
     },
     {
       "id": "SUDOKU-PRODUCTION-RESUME-20261014",
