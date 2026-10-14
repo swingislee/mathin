@@ -8,6 +8,7 @@ node scripts/sudoku-2026/audit.mjs             # 数学、进度、教学设计�
 node scripts/sudoku-2026/build.cjs             # 应用校验器与原生求解器复核，组成课件包
 node scripts/sudoku-2026/materials.mjs         # 教师用书、教师答案、学生讲义、课后练习、校验报告
 node scripts/sudoku-2026/update-local.mjs      # 预览开发库改动；加 --apply 写入
+node scripts/sudoku-2026/export-pdf.cjs <目录>  # 全部纸质材料导出 A4 PDF：每讲教案、学生讲义、课后练习、答案，另含合订本
 ```
 
 - `generators.mjs`：按样式出题。宫内排除 E0–E6、行列 L1–L3、唯一余数、区块 K1–K4、变形探索页、按提示数与卡点分档的整题。

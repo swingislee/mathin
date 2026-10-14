@@ -50,7 +50,7 @@ function describe(p, step, explained) {
   }
   if (step.method === 'locked') {
     const from = unitName(spec, step.unit, step.unitIndex, p.rules), to = unitName(spec, step.targetUnit, step.targetUnitIndex, p.rules);
-    return `【区块·${step.rule === 'pointing' ? '宫 → 线' : '线 → 宫'}】${from}里的 ${step.value} 只在 ${step.cells.map(at).join('、')}，都在${to}；所以 ${step.removals.map(r => at(r.index)).join('、')} 不能放 ${step.value}。`;
+    return `【区块·${step.rule === 'pointing' ? '宫 → 线' : '线 → 宫'}】${from}里的 ${step.value} 只在 ${step.cells.map(at).join('、')}，都在${/^[A-Z]/.test(to) ? ' ' : ''}${to}；所以 ${step.removals.map(r => at(r.index)).join('、')} 不能放 ${step.value}。`;
   }
   const removed = () => step.removals.map(r => `${at(r.index)} 去掉 ${r.digits.join('、')}`).join('；');
   if (step.rule === 'parity') return `【单双数】${at(step.cells[0])} 是${step.parity === 1 ? '圆圈（单数）' : '方框（双数）'}：${removed()}。`;
@@ -70,6 +70,9 @@ function keySteps(p) {
   p.trace.forEach((s, i) => {
     if (!s.removals) placement++;
     const narrow = !s.removals && p.profile.available[placement] <= 1;
+    // A row or box whose other cells are all filled is a fill-in, not a breakthrough.
+    const fillIn = !s.removals && ['box', 'line'].includes(s.method) && p.explained[i].reasons.every(r => r.kind === 'occupied');
+    if (fillIn) return;
     const lessonMethod = focus.includes(s.method) && !(['B1', 'M1', 'H1'].includes(p.lessonId)) || p.explained[i].variantUse;
     if (lessonMethod || (['B1', 'M1', 'H1', 'B2'].includes(p.lessonId) && narrow)) list.push(i);
   });
@@ -214,7 +217,7 @@ let html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>数�
 *{box-sizing:border-box}body{font-family:"Microsoft YaHei",sans-serif;color:#243d38;margin:0;background:#eee}main{max-width:210mm;margin:auto}.sheet{width:210mm;min-height:297mm;padding:10mm 12mm;background:white;margin:12px 0;break-after:page}h1{font-size:20px;margin:0 0 5px}header p{font-size:12px;margin:5px 0}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8mm 7mm;margin-top:6mm}.card{break-inside:avoid}.card h2{font-size:13px;margin:0}.card p{font-size:10px;min-height:8mm;margin:4px 0;line-height:1.45}.card svg{display:block;width:100%;height:80mm}.reason{border-bottom:1px solid #aaa;height:11mm;font-size:10px;padding-top:3mm}.footer{font-size:10px;margin-top:7mm}nav{padding:16px;text-align:center}button{padding:10px 20px}@page{size:A4;margin:0}@media print{body{background:white}.sheet{margin:0}nav{display:none}}</style><nav><button onclick="window.print()">打印 12 讲课后练习（A4）</button><p>每讲四题，答案见教师答案.md。</p></nav><main>`;
 for (const lesson of LESSONS) {
   const young = lesson.level === '初阶';
-  html += `<section class="sheet"><header><h1>${lesson.level}第 ${lesson.number} 讲 · ${esc(lesson.title)}</h1><p>数独教学 2026版 · ${lesson.grades} 年级 · ${lesson.n}×${lesson.n}　姓名：____________　日期：____________</p><p>${young ? '独立完成。做完说给家长听：最难的一步是怎么想的。' : '独立完成。每题圈出一次本课方法，写一句“因为……所以……”。'}</p></header><div class="grid">`;
+  html += `<section class="sheet" data-lesson="${lesson.id}"><header><h1>${lesson.level}第 ${lesson.number} 讲 · ${esc(lesson.title)}</h1><p>数独教学 2026版 · ${lesson.grades} 年级 · ${lesson.n}×${lesson.n}　姓名：____________　日期：____________</p><p>${young ? '独立完成。做完说给家长听：最难的一步是怎么想的。' : '独立完成。每题圈出一次本课方法，写一句“因为……所以……”。'}</p></header><div class="grid">`;
   for (const page of lesson.pages.filter(p => p.kind === 'full' && p.role === 'homework')) {
     const p = byId.get(`${lesson.id}-${page.key}`);
     html += `<article class="card"><h2>${esc(page.title)} · ${FAMILY[p.family]}</h2><p>${esc(RULE_LINE[p.family](p.size))}</p>${svg(p)}${young ? '' : '<div class="reason">我的一次突破：_________________________</div>'}</article>`;
@@ -227,7 +230,7 @@ fs.writeFileSync(`${dir}/课后练习.html`, `${html}</main></html>`);
 /** Static row of buildings for the skyline warm-up; heights 1–4 use the classroom colours. */
 function towers(heights) {
   const colors = ['#4f7fc4', '#d0574f', '#4fa26b', '#8a63c2'], w = 46, unit = 26, base = 140, width = heights.length * (w + 18) + 120;
-  let out = `<svg viewBox="0 0 ${width} 170" role="img" aria-label="楼高 ${heights.join('、')}"><rect width="${width}" height="170" fill="white"/>`;
+  let out = `<svg viewBox="0 0 ${width} 170" style="width:105mm;margin:0 auto" role="img" aria-label="楼高 ${heights.join('、')}"><rect width="${width}" height="170" fill="white"/>`;
   heights.forEach((h, i) => {
     const x = 60 + i * (w + 18);
     for (let k = 0; k < h; k++) out += `<rect x="${x}" y="${base - (k + 1) * unit}" width="${w}" height="${unit - 2}" rx="3" fill="${colors[h - 1]}"/>`;
@@ -241,10 +244,10 @@ let handout = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>�
 *{box-sizing:border-box}body{font-family:"Microsoft YaHei",sans-serif;color:#243d38;margin:0;background:#eee}main{max-width:210mm;margin:auto}
 .lesson{width:210mm;min-height:297mm;padding:10mm 12mm 12mm;background:white;margin:12px 0;break-before:page}
 header{border-bottom:2px solid #243d38;padding-bottom:3mm;margin-bottom:4mm}h1{font-size:21px;margin:0}header p{font-size:12px;margin:3px 0}.goal{font-size:15px;font-weight:700;color:#a35a31}
-.flow{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:5mm 5mm}.item{break-inside:avoid;display:flex;flex-direction:column}
+.flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5mm 5mm}.item{break-inside:avoid;display:flex;flex-direction:column}
 .item h2{font-size:13px;margin:0 0 1mm}.item .ask{font-size:11px;margin:0 0 1.5mm;line-height:1.45;color:#3d524d}.item svg{display:block;width:100%;height:auto}.item>svg{margin-bottom:auto}
-.wide{grid-column:1/-1}.full9{grid-column:1/-1;display:grid;grid-template-columns:125mm 1fr;gap:5mm;align-items:start}
-.box{grid-column:1/-1;border:1.5px solid #a35a31;border-radius:3mm;padding:3mm 4mm;break-inside:avoid}.box h2{font-size:15px;color:#a35a31;margin:0 0 1.5mm}.box p{margin:1mm 0;font-size:13px;line-height:1.6}.box .tip{font-size:11px;color:#5f6f6a}
+.full9{display:grid;grid-template-columns:125mm 1fr;gap:5mm;align-items:start}
+.box{border:1.5px solid #a35a31;border-radius:3mm;padding:3mm 4mm;break-inside:avoid;align-self:start}.box h2{font-size:15px;color:#a35a31;margin:0 0 1.5mm}.box p{margin:1mm 0;font-size:13px;line-height:1.6}.box .tip{font-size:11px;color:#5f6f6a}
 .write{display:flex;gap:2mm;align-items:flex-end;font-size:11px;margin:2mm 0 0}.write span{flex:1;border-bottom:1px solid #999;height:6mm}
 .tag{font-size:10px;color:#a35a31;font-weight:700}nav{padding:16px;text-align:center}button{padding:8px 16px;margin:2px}
 @page{size:A4;margin:0}@media print{body{background:white}.lesson{margin:0}nav,.print{display:none}.skip{display:none}}</style>
@@ -252,24 +255,34 @@ header{border-bottom:2px solid #243d38;padding-bottom:3mm;margin-bottom:4mm}h1{f
 <nav><button onclick="window.print()">打印全部 12 讲</button><p>上课发给学生，和课件同页同题、不含答案。每讲开头有“只打印本讲”。</p></nav><main>`;
 for (const lesson of LESSONS) {
   const young = lesson.level === '初阶', opening = lesson.pages.find(p => p.kind === 'opening');
-  handout += `<section class="lesson" data-lesson="${lesson.id}" style="--cols:${lesson.n === 4 ? 3 : 2}"><header><h1>${lesson.level}第 ${lesson.number} 讲 · ${esc(lesson.title)} <button class="print" onclick="only('${lesson.id}')">只打印本讲</button></h1><p>数独教学 2026版 · 学生讲义 · ${lesson.grades} 年级 · ${lesson.n}×${lesson.n}　　姓名：____________　日期：____________</p><p class="goal">${esc(opening.goal)}</p></header><div class="flow">`;
+  handout += `<section class="lesson" data-lesson="${lesson.id}"><header><h1>${lesson.level}第 ${lesson.number} 讲 · ${esc(lesson.title)} <button class="print" onclick="only('${lesson.id}')">只打印本讲</button></h1><p>数独教学 2026版 · 学生讲义 · ${lesson.grades} 年级 · ${lesson.n}×${lesson.n}　　姓名：____________　日期：____________</p><p class="goal">${esc(opening.goal)}</p></header><div class="flow">`;
+  // A 6-column grid: method boards take a third (nine-grid boards half), six-grid challenges half,
+  // nine-grid challenges a full row; cards fill whatever is left of the current row.
+  let column = 0;
+  const place = (span, html) => {
+    if (column + span > 6) column = 0;
+    column = (column + span) % 6;
+    return html.replace('<div class="', `<div style="grid-column:span ${span}" class="`);
+  };
+  const rest = () => { const span = column ? 6 - column : 6; column = 0; return span; };
+  const methodSpan = lesson.n === 9 ? 3 : 2;
   for (const page of lesson.pages) {
     // Opening, break, “一起说” (same board again) and homework stay off the handout.
     if (['opening', 'break', 'recap'].includes(page.kind) || page.role === 'homework') continue;
     const p = page.puzzle ? byId.get(`${lesson.id}-${page.key}`) : null, words = p?.words ?? {};
     const head = text => esc(fill(text, words)), ask = page.prompt ? `<p class="ask">${head(page.prompt).replaceAll('\n', ' ')}</p>` : '';
-    if (page.kind === 'card') handout += `<div class="box"><h2>${esc(page.heading === '方法卡' ? `方法卡 · ${page.name}` : page.heading === '一起归纳' ? page.name : `${page.heading} · ${page.name}`)}</h2>${page.body.split('\n').map(l => `<p>${esc(l)}</p>`).join('')}${page.tip ? `<p class="tip">${esc(page.tip)}</p>` : ''}</div>`;
-    else if (page.kind === 'tool') handout += `<div class="item wide"><h2>搭楼：楼高 ${page.heights.join('、')}</h2>${towers(page.heights)}${line('从左边看到 ____ 栋；从右边看到 ____ 栋。被挡住的楼：')}</div>`;
-    else if (page.kind === 'discover') handout += `<div class="item"><h2>${head(page.heading)}</h2>${ask}${svg(p)}${line('我发现：')}</div>`;
+    if (page.kind === 'card') handout += place(rest(), `<div class="box"><h2>${esc(page.heading === '方法卡' ? `方法卡 · ${page.name}` : page.heading === '一起归纳' ? page.name : `${page.heading} · ${page.name}`)}</h2>${page.body.split('\n').map(l => `<p>${esc(l)}</p>`).join('')}${page.tip ? `<p class="tip">${esc(page.tip)}</p>` : ''}</div>`);
+    else if (page.kind === 'tool') { column = 0; handout += place(6, `<div class="item"><h2>搭楼：楼高 ${page.heights.join('、')}</h2>${towers(page.heights)}${line('从左边看到 ____ 栋；从右边看到 ____ 栋。被挡住的楼：')}</div>`); }
+    else if (page.kind === 'discover') handout += place(methodSpan, `<div class="item"><h2>${head(page.heading)}</h2>${ask}${svg(p)}${line('我发现：')}</div>`);
     else if (page.kind === 'target') {
       const answer = p.targets.length === 1 ? '答：____ 格填 ____' : '答：';
-      handout += `<div class="item"><span class="tag">${esc(page.stage)}</span><h2>${head(page.heading)}</h2>${ask}${svg(p)}${line(answer)}${young ? '' : line('理由：')}</div>`;
+      handout += place(methodSpan, `<div class="item"><span class="tag">${esc(page.stage)}</span><h2>${head(page.heading)}</h2>${ask}${svg(p)}${line(answer)}${young ? '' : line('理由：')}</div>`);
     } else if (page.kind === 'full' && page.role === 'class') {
       const notes = `${line('用时：____ 分钟')}${young ? '' : line('我的一次突破：')}`;
       handout += lesson.n === 9
-        ? `<div class="item full9"><div>${svg(p)}</div><div><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${notes}</div></div>`
-        : `<div class="item"><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${svg(p)}${notes}</div>`;
-    } else if (page.kind === 'summary') handout += `<div class="box"><h2>今天学会了</h2>${page.body.split('\n').map(l => `<p>${esc(l)}</p>`).join('')}${line(young ? '我最得意的一步：' : '我的一句话总结：', true)}</div>`;
+        ? place(6, `<div class="item full9"><div>${svg(p)}</div><div><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${notes}</div></div>`)
+        : place(lesson.n === 6 ? 3 : 2, `<div class="item"><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${svg(p)}${notes}</div>`);
+    } else if (page.kind === 'summary') handout += place(rest(), `<div class="box"><h2>今天学会了</h2>${page.body.split('\n').map(l => `<p>${esc(l)}</p>`).join('')}${line(young ? '我最得意的一步：' : '我的一句话总结：', true)}</div>`);
   }
   handout += `</div></section>`;
 }
