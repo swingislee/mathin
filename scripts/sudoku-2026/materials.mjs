@@ -90,6 +90,8 @@ let guide = `# 数独教学 · 2026版 · 教师用书
 
 - 每讲按“发现规则 → 探索 → 一起说 → 方法卡 → 练一练 → 策略页 → 完整挑战 → 小结”推进。探索页先让学生独立找，再两人交换理由；**一起说**页和**方法卡**分开，先让学生说，再翻出方法卡。
 - 方法页只要求找到页面问的格子，其他空格可以留白。棋盘上有行、列、宫高亮和答案揭示；揭示前先留出探索时间。
+- 每讲配一份学生讲义（学生讲义.html）：和课件同页同题、不含答案，留有作答和写理由的位置；初阶只写答案，理由靠口头说。
+- 盘面统一用深色粗线分宫（课件保留彩色宫底），和纸面题目、比赛用纸一致。
 - 学生页只有短提问。提问链、预期回答、常见错误都在本手册的逐页说明里；答案和每一步理由在“教师答案.md”。
 - 解题顺序贯穿全课：**同一个数字逐宫找到底 → 换下一个数字 → 全停住，看空格少的行列 → 看邻居多的格子 → 区块 → 每填一个数回到宫内排除**。每讲只用到已经学过的部分。
 - 完整挑战按由易到难排列；时间是按本级学生估的，第一次试课请记下实际完成时间，再调整题量。
@@ -221,9 +223,62 @@ for (const lesson of LESSONS) {
 }
 fs.writeFileSync(`${dir}/课后练习.html`, `${html}</main></html>`);
 
+// ---------- 学生讲义（A4，上课用） ----------
+/** Static row of buildings for the skyline warm-up; heights 1–4 use the classroom colours. */
+function towers(heights) {
+  const colors = ['#4f7fc4', '#d0574f', '#4fa26b', '#8a63c2'], w = 46, unit = 26, base = 140, width = heights.length * (w + 18) + 120;
+  let out = `<svg viewBox="0 0 ${width} 170" role="img" aria-label="楼高 ${heights.join('、')}"><rect width="${width}" height="170" fill="white"/>`;
+  heights.forEach((h, i) => {
+    const x = 60 + i * (w + 18);
+    for (let k = 0; k < h; k++) out += `<rect x="${x}" y="${base - (k + 1) * unit}" width="${w}" height="${unit - 2}" rx="3" fill="${colors[h - 1]}"/>`;
+    out += `<text x="${x + w / 2}" y="${base + 18}" text-anchor="middle" font-size="16" font-family="Arial,sans-serif">${h}</text>`;
+  });
+  out += `<text x="24" y="${base - 10}" text-anchor="middle" font-size="13" font-family="Microsoft YaHei,sans-serif">左边看</text><text x="${width - 24}" y="${base - 10}" text-anchor="middle" font-size="13" font-family="Microsoft YaHei,sans-serif">右边看</text>`;
+  return `${out}<line x1="40" y1="${base}" x2="${width - 40}" y2="${base}" stroke="#293b37" stroke-width="2"/></svg>`;
+}
+const line = (label, wide = false) => `<p class="write${wide ? ' wide' : ''}">${label}<span></span></p>`;
+let handout = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>数独教学 2026版 · 学生讲义</title><style>
+*{box-sizing:border-box}body{font-family:"Microsoft YaHei",sans-serif;color:#243d38;margin:0;background:#eee}main{max-width:210mm;margin:auto}
+.lesson{width:210mm;min-height:297mm;padding:10mm 12mm 12mm;background:white;margin:12px 0;break-before:page}
+header{border-bottom:2px solid #243d38;padding-bottom:3mm;margin-bottom:4mm}h1{font-size:21px;margin:0}header p{font-size:12px;margin:3px 0}.goal{font-size:15px;font-weight:700;color:#a35a31}
+.flow{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));gap:5mm 5mm}.item{break-inside:avoid;display:flex;flex-direction:column}
+.item h2{font-size:13px;margin:0 0 1mm}.item .ask{font-size:11px;margin:0 0 1.5mm;line-height:1.45;color:#3d524d}.item svg{display:block;width:100%;height:auto}.item>svg{margin-bottom:auto}
+.wide{grid-column:1/-1}.full9{grid-column:1/-1;display:grid;grid-template-columns:125mm 1fr;gap:5mm;align-items:start}
+.box{grid-column:1/-1;border:1.5px solid #a35a31;border-radius:3mm;padding:3mm 4mm;break-inside:avoid}.box h2{font-size:15px;color:#a35a31;margin:0 0 1.5mm}.box p{margin:1mm 0;font-size:13px;line-height:1.6}.box .tip{font-size:11px;color:#5f6f6a}
+.write{display:flex;gap:2mm;align-items:flex-end;font-size:11px;margin:2mm 0 0}.write span{flex:1;border-bottom:1px solid #999;height:6mm}
+.tag{font-size:10px;color:#a35a31;font-weight:700}nav{padding:16px;text-align:center}button{padding:8px 16px;margin:2px}
+@page{size:A4;margin:0}@media print{body{background:white}.lesson{margin:0}nav,.print{display:none}.skip{display:none}}</style>
+<script>function only(id){document.querySelectorAll('.lesson').forEach(s=>s.classList.toggle('skip',s.dataset.lesson!==id));window.print();document.querySelectorAll('.lesson').forEach(s=>s.classList.remove('skip'));}</script>
+<nav><button onclick="window.print()">打印全部 12 讲</button><p>上课发给学生，和课件同页同题、不含答案。每讲开头有“只打印本讲”。</p></nav><main>`;
+for (const lesson of LESSONS) {
+  const young = lesson.level === '初阶', opening = lesson.pages.find(p => p.kind === 'opening');
+  handout += `<section class="lesson" data-lesson="${lesson.id}" style="--cols:${lesson.n === 4 ? 3 : 2}"><header><h1>${lesson.level}第 ${lesson.number} 讲 · ${esc(lesson.title)} <button class="print" onclick="only('${lesson.id}')">只打印本讲</button></h1><p>数独教学 2026版 · 学生讲义 · ${lesson.grades} 年级 · ${lesson.n}×${lesson.n}　　姓名：____________　日期：____________</p><p class="goal">${esc(opening.goal)}</p></header><div class="flow">`;
+  for (const page of lesson.pages) {
+    // Opening, break, “一起说” (same board again) and homework stay off the handout.
+    if (['opening', 'break', 'recap'].includes(page.kind) || page.role === 'homework') continue;
+    const p = page.puzzle ? byId.get(`${lesson.id}-${page.key}`) : null, words = p?.words ?? {};
+    const head = text => esc(fill(text, words)), ask = page.prompt ? `<p class="ask">${head(page.prompt).replaceAll('\n', ' ')}</p>` : '';
+    if (page.kind === 'card') handout += `<div class="box"><h2>${esc(page.heading === '方法卡' ? `方法卡 · ${page.name}` : page.heading === '一起归纳' ? page.name : `${page.heading} · ${page.name}`)}</h2>${page.body.split('\n').map(l => `<p>${esc(l)}</p>`).join('')}${page.tip ? `<p class="tip">${esc(page.tip)}</p>` : ''}</div>`;
+    else if (page.kind === 'tool') handout += `<div class="item wide"><h2>搭楼：楼高 ${page.heights.join('、')}</h2>${towers(page.heights)}${line('从左边看到 ____ 栋；从右边看到 ____ 栋。被挡住的楼：')}</div>`;
+    else if (page.kind === 'discover') handout += `<div class="item"><h2>${head(page.heading)}</h2>${ask}${svg(p)}${line('我发现：')}</div>`;
+    else if (page.kind === 'target') {
+      const answer = p.targets.length === 1 ? '答：____ 格填 ____' : '答：';
+      handout += `<div class="item"><span class="tag">${esc(page.stage)}</span><h2>${head(page.heading)}</h2>${ask}${svg(p)}${line(answer)}${young ? '' : line('理由：')}</div>`;
+    } else if (page.kind === 'full' && page.role === 'class') {
+      const notes = `${line('用时：____ 分钟')}${young ? '' : line('我的一次突破：')}`;
+      handout += lesson.n === 9
+        ? `<div class="item full9"><div>${svg(p)}</div><div><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${notes}</div></div>`
+        : `<div class="item"><span class="tag">${esc(page.tag)}</span><h2>${esc(page.title)}</h2>${ask}${svg(p)}${notes}</div>`;
+    } else if (page.kind === 'summary') handout += `<div class="box"><h2>今天学会了</h2>${page.body.split('\n').map(l => `<p>${esc(l)}</p>`).join('')}${line(young ? '我最得意的一步：' : '我的一句话总结：', true)}</div>`;
+  }
+  handout += `</div></section>`;
+}
+fs.writeFileSync(`${dir}/学生讲义.html`, `${handout}</main></html>`);
+
 // ---------- 开始使用 与 逐题校验结果 ----------
 const link = id => receipt?.lessons.find(l => l.id === id)?.developmentUrl;
-let start = `# 数独教学 · 2026版\n\n${receipt ? `[打开开发端课程](${receipt.developmentUrl})\n\n` : ''}初阶四宫（1–2 年级）、中阶六宫（3–4 年级）、高阶九宫（5–6 年级），每阶 4 讲，每讲 90 分钟。适用时段：全年。课程为可编辑草稿，尚未冻结发布版本。\n\n- 教师用书.md：每讲时间表、逐页提问链、预期回答和常见错误。\n- 教师答案.md：全部题目答案与每一步“被谁挡住”的理由。\n- 课后练习.html：浏览器打开后打印 A4，每讲四题。\n- 教学逻辑校准.md：这一版的设计依据。\n- bank.json、method-audit.json、native-audit.json：题库与逐题校验证据。\n\n| 讲次 | 主题 | 页数 | 入口 |\n| --- | --- | --- | --- |\n`;
+let start = `# 数独教学 · 2026版\n\n${receipt ? `[打开开发端课程](${receipt.developmentUrl})\n\n` : ''}初阶四宫（1–2 年级）、中阶六宫（3–4 年级）、高阶九宫（5–6 年级），每阶 4 讲，每讲 90 分钟。适用时段：全年。课程为可编辑草稿，尚未冻结发布版本。\n\n- 教师用书.md：每讲时间表、逐页提问链、预期回答和常见错误。\n- 教师答案.md：全部题目答案与每一步“被谁挡住”的理由。\n- 学生讲义.html：上课发给学生，和课件同页同题、不含答案；可打印全部或只打印一讲。
+- 课后练习.html：浏览器打开后打印 A4，每讲四题。\n- 教学逻辑校准.md：这一版的设计依据。\n- bank.json、method-audit.json、native-audit.json：题库与逐题校验证据。\n\n| 讲次 | 主题 | 页数 | 入口 |\n| --- | --- | --- | --- |\n`;
 for (const l of pkg.lessons) start += `| ${l.id} | ${l.title} | ${l.pages.length} | ${link(l.id) ? `[打开本讲](${link(l.id)})` : '—'} |\n`;
 fs.writeFileSync(`${dir}/开始使用.md`, start);
 

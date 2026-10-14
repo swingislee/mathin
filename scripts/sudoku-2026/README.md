@@ -6,7 +6,7 @@
 node scripts/sudoku-2026/generate.mjs          # 按 lessons.mjs 生成题库 bank.json（可加讲次 B1 M2… 只生成部分）
 node scripts/sudoku-2026/audit.mjs             # 数学、进度、教学设计三层校验 + 逐步理由回放
 node scripts/sudoku-2026/build.cjs             # 应用校验器与原生求解器复核，组成课件包
-node scripts/sudoku-2026/materials.mjs         # 教师用书、教师答案、课后练习、校验报告
+node scripts/sudoku-2026/materials.mjs         # 教师用书、教师答案、学生讲义、课后练习、校验报告
 node scripts/sudoku-2026/update-local.mjs      # 预览开发库改动；加 --apply 写入
 ```
 
