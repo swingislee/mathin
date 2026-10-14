@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * 页面中单独加载的区域：写明正在等待的内容，配不确定进度条。
- * 页面其他部分先可用；减少动态时进度条保持静止（全局规则）。
+ * 页面其他部分先可用；进度条在减少动态时放慢但继续移动（globals.css）。
  */
 export function SectionLoading({ label, hint, className }: { label: string; hint?: string; className?: string }) {
   return (

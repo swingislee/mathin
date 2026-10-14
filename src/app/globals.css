@@ -513,7 +513,8 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   50% { opacity: 0.55; }
 }
 
-/* 分区加载的不确定进度条（SectionLoading；reduced-motion 由下方全局规则关停） */
+/* 分区加载的不确定进度条（SectionLoading）。它表示“仍在等待”，属于必要动态：
+   减少动态时同样移动，只放慢节奏，避免静止的进度条被误读为卡住。 */
 @keyframes section-loading {
   from { transform: translateX(-100%); }
   to { transform: translateX(300%); }
@@ -528,6 +529,7 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; }
+  .section-loading-bar { animation: section-loading 2.4s ease-in-out infinite !important; }
 }
 /* Global typography: WenKai for Chinese; a related bookish serif voice elsewhere. */
 :root {
