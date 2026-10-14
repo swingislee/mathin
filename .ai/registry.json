@@ -3,6 +3,26 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ASSESSMENT-INITIAL-LOAD-20261014",
+      "title": "测评页首次进入加载优化",
+      "agent": "codex",
+      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ASSESSMENT-INITIAL-LOAD-20261014.md",
+      "writePaths": [
+        ".ai/tasks/ASSESSMENT-INITIAL-LOAD-20261014.md",
+        ".tmp/assessment-initial-load-20261014/",
+        "supabase/migrations/20261014012000_assessment_initial_load.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "90994908",
+      "next": "测评专用 RPC 来源关联和重复聚合已优化并应用开发库；941 条记录及多月份小组、筛选分页结果一致。RPC 2.98→1.23 秒，页面完整响应 3.17→2.30 秒，待实际首访确认，生产未部署。"
+    },
+    {
       "id": "WORKLIST-FACETS-PG-20261014",
       "title": "沟通表头筛选 PostgreSQL 超时修复",
       "agent": "codex",
