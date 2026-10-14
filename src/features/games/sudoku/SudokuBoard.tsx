@@ -619,7 +619,7 @@ export function SudokuBoard({
               className={cn(
                 styles.boardGrid,
                 state.highlightTool === "cell" && styles.regionDragActive,
-                "relative grid rounded-xl border-2",
+                "relative grid rounded-md border-[3px]",
               )}
               style={{ gridTemplateColumns: `repeat(${spec.size}, minmax(0, 1fr))` }}
               data-has-structural-highlights={hasStructuralHighlights || undefined}

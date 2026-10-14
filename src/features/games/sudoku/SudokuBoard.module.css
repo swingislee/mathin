@@ -7,15 +7,16 @@
   --sudoku-muted: #58716c;
   --sudoku-green: #badbc4;
   --sudoku-blue: #b9d1d8;
-  --sudoku-grid-soft: rgb(255 255 255 / 28%);
-  --sudoku-grid-strong: rgb(255 255 255 / 88%);
+  /* Keep the coloured boxes, but draw lines the conventional way: thin cell lines and dark, thick region lines. */
+  --sudoku-grid-soft: rgb(31 45 42 / 26%);
+  --sudoku-grid-strong: #1f2d2a;
   --sudoku-accent: #467772;
   --sudoku-accent-deep: #376965;
   --sudoku-accent-soft: #e4f1ed;
   --sudoku-number: #2f7698;
   --sudoku-number-deep: #205875;
-  --sudoku-region-outline: #51526d;
-  --sudoku-region-wash: rgb(81 82 109 / 3%);
+  --sudoku-region-outline: #d9822b;
+  --sudoku-region-wash: rgb(255 196 92 / 16%);
   --sudoku-dim-overlay: rgb(246 249 248 / 42%);
   --sudoku-selection: #159b31;
   --sudoku-digit-highlight: #e7506d;
@@ -322,7 +323,7 @@
 }
 
 .majorRight {
-  border-right: 2px solid var(--sudoku-grid-strong);
+  border-right: 3px solid var(--sudoku-grid-strong);
 }
 
 .minorBottom {
@@ -330,7 +331,7 @@
 }
 
 .majorBottom {
-  border-bottom: 2px solid var(--sudoku-grid-strong);
+  border-bottom: 3px solid var(--sudoku-grid-strong);
 }
 
 .selectedCell {
@@ -360,8 +361,8 @@
 }
 
 .highlightPreview {
-  background: rgb(81 82 109 / 8%);
-  outline: 2px dashed rgb(255 255 255 / 82%);
+  background: rgb(255 196 92 / 14%);
+  outline: 2px dashed var(--sudoku-region-outline);
   outline-offset: -5px;
 }
 
