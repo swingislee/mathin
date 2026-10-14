@@ -3,6 +3,24 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "NESTED-ROW-LATENCY-20261014",
+      "title": "嵌套行展开变慢定位",
+      "agent": "codex",
+      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/NESTED-ROW-LATENCY-20261014.md",
+      "writePaths": [
+        ".ai/tasks/NESTED-ROW-LATENCY-20261014.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "50f614481535e1e302129f921ce9cf6a64ab99e2",
+      "next": "诊断完成：基础信息懒加载越过行内边界，隔离复现触发整页等待；年级计算单人约143–182ms并处理4925条来源。建议先让基础信息编辑器点击时独立加载，再收窄单人年级查询。尚未修改产品代码或数据库。"
+    },
+    {
       "id": "COMMUNICATION-ROW-LAYOUT-20261014",
       "title": "待测评列表选择列与学生信息对齐",
       "agent": "codex",
