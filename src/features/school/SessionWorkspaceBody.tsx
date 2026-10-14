@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
+import { SectionLoading } from "@/components/section-loading";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import type { SessionWorkspaceDetail } from "./classes";
@@ -226,16 +228,19 @@ export async function SessionWorkspaceBody({
             contentClassName={stage === "pre" ? "h-full min-h-0 !py-3" : undefined}
           >
             <NotificationFocus target={focusTarget} />
-            {stage === "pre" && (
-              <SessionPrepPanel
-                detail={detail}
-                canAuthorMicrocourseProposal={canAuthorMicrocourse}
-                initialStep={initialPrepStep}
-                initialPageId={initialPrepPageId}
-              />
-            )}
-            {stage === "live" && <SessionLivePanel detail={detail} />}
-            {stage === "post" && <SessionPostworkPanel detail={detail} />}
+            {/* 标题栏与候课、试讲等操作先可用；面板数据单独加载，并写明正在等待的内容。 */}
+            <Suspense key={stage} fallback={<SectionLoading label={t(`panelLoading_${stage}`)} hint={detail.capabilities.canEnterLive || detail.capabilities.canPrepare ? t("panelLoadingHint") : undefined} className="min-h-64 flex-1" />}>
+              {stage === "pre" && (
+                <SessionPrepPanel
+                  detail={detail}
+                  canAuthorMicrocourseProposal={canAuthorMicrocourse}
+                  initialStep={initialPrepStep}
+                  initialPageId={initialPrepPageId}
+                />
+              )}
+              {stage === "live" && <SessionLivePanel detail={detail} />}
+              {stage === "post" && <SessionPostworkPanel detail={detail} />}
+            </Suspense>
           </WorkspaceMain>
         }
       />

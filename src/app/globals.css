@@ -513,6 +513,13 @@ body:has([data-dashboard-canvas], [data-followup-workbench])::after { display: n
   50% { opacity: 0.55; }
 }
 
+/* 分区加载的不确定进度条（SectionLoading；reduced-motion 由下方全局规则关停） */
+@keyframes section-loading {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+.section-loading-bar { animation: section-loading 1.4s ease-in-out infinite; }
+
 /* 课堂加星落到名字上的轻量弹跳（08-§3.5；reduced-motion 由下方全局规则关停） */
 @keyframes star-pop {
   from { transform: scale(1.9); }

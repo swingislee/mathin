@@ -1,7 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslations } from "next-intl";
+import { SectionLoading } from "@/components/section-loading";
 import {
   isAixuexiPageDoc,
   isCoursewareCompositionPage,
@@ -21,25 +22,31 @@ import type { SourceRuntimeStageProps } from "@/features/courseware-doc/SourceRu
 import type { GameMirrorState } from "@/features/games/types";
 import type { ClassroomToolRuntime } from "@/features/tools/courseware/tool-classroom";
 
+/** 舞台代码按需下载期间占住画幅，并写明正在加载课件页面。 */
+function StageLoading({ ratio }: { ratio: "aspect-video" | "aspect-[4/3]" }) {
+  const t = useTranslations("common");
+  return <div className={`${ratio} w-full rounded-xl bg-line/10`}><SectionLoading label={t("loadingCourseware")} className="h-full py-0" /></div>;
+}
+
 /**
  * DocStage 的懒加载 client 叶子(games/boards.tsx 模式):渲染器只在预览页
  * 按需下发,不进其他 dashboard 路由的首屏 JS。
  */
 const DocStage = dynamic<DocStageProps>(() => import("@/features/courseware-doc/DocStage"), {
   ssr: false,
-  loading: () => <Skeleton className="aspect-video w-full rounded-xl" />,
+  loading: () => <StageLoading ratio="aspect-video" />,
 });
 
 const AixuexiStage = dynamic<AixuexiStageProps>(() => import("@/features/courseware-doc/AixuexiStage"), {
   ssr: false,
-  loading: () => <Skeleton className="aspect-video w-full rounded-xl" />,
+  loading: () => <StageLoading ratio="aspect-video" />,
 });
 
 const SourceRuntimeStage = dynamic<SourceRuntimeStageProps>(
   () => import("@/features/courseware-doc/SourceRuntimeStage"),
   {
     ssr: false,
-    loading: () => <Skeleton className="aspect-video w-full rounded-xl" />,
+    loading: () => <StageLoading ratio="aspect-video" />,
   },
 );
 
@@ -47,7 +54,7 @@ const SpatialCoursewareStage = dynamic<SpatialCoursewareStageProps>(
   () => import("@/features/courseware-doc/SpatialCoursewareStage"),
   {
     ssr: false,
-    loading: () => <Skeleton className="aspect-[4/3] w-full rounded-xl" />,
+    loading: () => <StageLoading ratio="aspect-[4/3]" />,
   },
 );
 
@@ -55,7 +62,7 @@ const MicrocourseStage = dynamic<MicrocourseStageProps>(
   () => import("@/features/courseware-doc/MicrocourseStage"),
   {
     ssr: false,
-    loading: () => <Skeleton className="aspect-[4/3] w-full rounded-xl" />,
+    loading: () => <StageLoading ratio="aspect-[4/3]" />,
   },
 );
 
@@ -63,7 +70,7 @@ const CoursewareCompositionStage = dynamic<CoursewareCompositionStageProps>(
   () => import("@/features/courseware-doc/CoursewareCompositionStage"),
   {
     ssr: false,
-    loading: () => <Skeleton className="aspect-[4/3] w-full rounded-xl" />,
+    loading: () => <StageLoading ratio="aspect-[4/3]" />,
   },
 );
 
@@ -71,7 +78,7 @@ const GamePageStage = dynamic<GamePageStageProps>(
   () => import("@/features/games/courseware/GamePageStage"),
   {
     ssr: false,
-    loading: () => <Skeleton className="aspect-[4/3] w-full rounded-xl" />,
+    loading: () => <StageLoading ratio="aspect-[4/3]" />,
   },
 );
 
