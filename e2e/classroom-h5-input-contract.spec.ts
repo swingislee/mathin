@@ -1,10 +1,17 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   FIXED_ACCOUNT_SKIP_REASON,
   loadFixedAccountForMode,
 } from "./support/fixed-accounts";
 import { setupClassroomContractFixture } from "./support/classroom-contract-fixture";
 import { loginWithFixedAccount } from "./support/login";
+
+/** 夹具课次排在非上课时间；正式开课前确认提前开课。 */
+async function startFormalClass(page: Page) {
+  await page.getByRole("button", { name: "开始正式上课", exact: true }).click();
+  const offSchedule = page.getByRole("button", { name: "仍然正式开课", exact: true });
+  if (await offSchedule.waitFor({ state: "visible", timeout: 3000 }).then(() => true, () => false)) await offSchedule.click();
+}
 
 const FIXTURE_FLAG_REASON = "set R1_DEV_TEST_FIXTURES=1 and use the local classroom contract runner";
 
@@ -22,13 +29,15 @@ test("one H5 capability contract covers mixed Mofaxiao and embedded Aixuexi page
     // The ordinary formal route must expose the current Stage B layout. Rehearsal
     // fixtures remain useful for H5 simulation, but may not be the only path that
     // proves the development classroom baseline.
-    await page.getByRole("button", { name: "开始上课", exact: true }).click();
+    await startFormalClass(page);
     await expect(page.locator('[data-classroom-control-surface="flat-rail"]')).toBeVisible();
-    await expect(page.locator("[data-classroom-course-info]")).toBeVisible();
+    await expect(page.locator("[data-classroom-course-info]").filter({ visible: true }).first()).toBeVisible();
     await expect(page.getByRole("switch", { name: "关闭 Smart", exact: true }))
       .toHaveAttribute("data-classroom-smart-input", "on");
 
     await page.goto(`${fixture.classroomPath}?mode=rehearsal&acceptance=m3b`);
+    // 试讲先进入候课检查，再开始试讲。
+    await page.getByRole("button", { name: "开始试讲", exact: true }).click();
 
     const dock = page.locator("[data-development-acceptance-dock]");
     const stage = page.locator("[data-classroom-stage]");
@@ -110,7 +119,7 @@ test("authored Sudoku fill and teaching highlights synchronize to the classroom 
   try {
     await loginWithFixedAccount(page, teacher, fixture.classroomPath);
     await page.goto(`${fixture.classroomPath}?${fixtureQuery}`);
-    await page.getByRole("button", { name: "开始上课", exact: true }).click();
+    await startFormalClass(page);
 
     const controllerStage = page.locator('[data-classroom-sync-protocol="game-mirror-v1"]');
     await expect(controllerStage).toHaveAttribute("data-classroom-sync-status", "synchronized");
