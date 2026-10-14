@@ -14,7 +14,8 @@ import { classroomWorkSessionHref } from "./classroom-workbench-contract";
 import { TeachingCoverage, TeachingPerformance } from "./teaching-workbench/TeachingObservationCells";
 import type { TeachingObservations } from "./teaching-workbench/teaching-learning-summary";
 
-const ClassRosterSessionDetail = dynamic(() => import("./ClassRosterSessionDetail").then(module => module.ClassRosterSessionDetail));
+const loadSessionDetail = () => import("./ClassRosterSessionDetail");
+const ClassRosterSessionDetail = dynamic(() => loadSessionDetail().then(module => module.ClassRosterSessionDetail));
 
 /** 复用教学记录的两层展开：班级名册主行 → 课次行 → 该课连续登记。 */
 export function ClassRosterSessionRow({ classroomId, classroomName, sessions, locale, timeZone, now, requestedId, expanded, canChange, onExpandedChange, onDirtyChange, rowProps, children, recordKey, activeKey, onActivate, inlineDetails }: {
@@ -34,6 +35,8 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
   const observationCache = useRef<typeof observations>({});
   const [attempt, setAttempt] = useState(0);
   const sessionIds = sessions.filter(hasClassSessionStarted).map(session => session.id).join(",");
+  // 展开班级时预取单课详情代码，点开某一课时只等待该课数据。
+  useEffect(() => { if (expanded && sessions.length) void loadSessionDetail().catch(() => undefined); }, [expanded, sessions.length]);
   useEffect(() => {
     if (!expanded || inlineDetails) return;
     const ids = sessionIds.split(",").filter(id => id && !Object.hasOwn(observationCache.current, id));
