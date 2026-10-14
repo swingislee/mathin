@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { headers } from "next/headers";
 import { z } from "zod";
 import type { ActionResult } from "@/lib/action-result";
@@ -99,7 +100,7 @@ async function callRpc(
 
 async function authenticatedClient() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   return supabase;
 }

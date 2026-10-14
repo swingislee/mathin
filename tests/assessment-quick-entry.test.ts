@@ -7,7 +7,7 @@ const fixture = vi.hoisted(() => ({
   permissions: new Set(["followup.write"]), rpc: vi.fn(),
 }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/auth", () => ({ getMyPerms: async () => fixture.permissions }));
+vi.mock("@/lib/auth", () => ({ getMyPerms: async () => fixture.permissions, getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: fixture.user } }) }, rpc: fixture.rpc,
 }) }));

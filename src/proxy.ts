@@ -25,9 +25,10 @@ export async function proxy(request: NextRequest) {
       },
     },
   });
-  const { data: { user } } = await supabase.auth.getUser();
+  // 每个页面、预取和 Server Action 都经过这里：续期过期会话，再用缓存的 JWKS 本机验签，不往返 GoTrue。
+  const { data } = await supabase.auth.getClaims();
   const match = request.nextUrl.pathname.match(protectedPattern);
-  if (!user && match) {
+  if (!data?.claims?.sub && match) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = `/${match[1]}/login`;
     loginUrl.search = "";

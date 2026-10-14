@@ -5,14 +5,16 @@ import { AccountSecurityPanel } from "@/features/account/AccountSecurityPanel";
 import { getAccountCenterSnapshot } from "@/features/account/account-security";
 import { DashboardPage } from "@/features/school/dashboard-page";
 import { DashboardListSkeleton } from "@/features/school/list-skeleton";
-import { getProfile, requireUser } from "@/lib/auth";
+import { getProfile, getVerifiedUser, requireUser } from "@/lib/auth";
 import { wechatError } from "@/features/wechat/contract";
 
 type AccountRequirement = "password" | "mfa" | "consent" | null;
 
 async function AccountSecurityBody({ locale, required, identities }: { locale: string; required: AccountRequirement; identities: boolean }) {
-  const user = await requireUser(locale, { allowAccountRecovery: true });
-  const profile = await getProfile(user.id);
+  const { id } = await requireUser(locale, { allowAccountRecovery: true });
+  // 账号中心展示邮箱/手机确认与已绑定身份，读取 GoTrue 的完整账号。
+  const [user, profile] = await Promise.all([getVerifiedUser(), getProfile(id)]);
+  if (!user) throw new Error("UNAUTHENTICATED");
   if (!profile) throw new Error("PROFILE_NOT_FOUND");
   const snapshot = await getAccountCenterSnapshot(user, profile);
   return <AccountSecurityPanel

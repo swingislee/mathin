@@ -1,13 +1,13 @@
 import "server-only";
 
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PermissionKey } from "../permissions";
 
 /** 校验闸：登录 + 功能权限键（两道闸的第二道，第一道靠 requirePerm 挡在页面级；RLS 第三道兜底）。 */
 export async function authorizedClient(key: PermissionKey) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const perms = await getMyPerms(user.id);
   if (!perms.has(key)) throw new Error("FORBIDDEN");
@@ -17,7 +17,7 @@ export async function authorizedClient(key: PermissionKey) {
 /** 任一财务功能键即放行（与 authorizedClient 的单键模式不同，财务多个 tab 各管各的键）。 */
 export async function financeClient(keys: PermissionKey[]) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const perms = await getMyPerms(user.id);
   if (!keys.some((key) => perms.has(key))) throw new Error("FORBIDDEN");
@@ -28,7 +28,7 @@ export async function financeClient(keys: PermissionKey[]) {
  * 门禁本来就是 RPC 自身的 `is_staff(uid)`——这里只做「已登录」，不臆造一个权限键。 */
 export async function staffRpcClient() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   return { supabase, user };
 }

@@ -4,6 +4,7 @@ import { businessRevisionChanges, revisionFieldValue, type BusinessRecordRevisio
 
 const db = vi.hoisted(()=>({ rpc:vi.fn(), user:true }));
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:db.user?{id:'actor'}:null}})},rpc:db.rpc})}));
+vi.mock("@/lib/auth", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/auth")>()), getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user) }));
 const recordId='10000000-0000-4000-8000-000000000001', version='a'.repeat(32);
 const assessment = { kind:'assessment' as const,recordId,expectedVersion:version,reason:'更正日期',values:{assessment_results:{assessed_on:'2024-02-29',assessment_band:'a_plus',score:null,strengths:'修订反馈'}} };
 

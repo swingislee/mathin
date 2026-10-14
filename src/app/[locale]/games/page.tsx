@@ -1,3 +1,4 @@
+import { getAuthUser } from "@/lib/auth";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SiteHeader } from "@/components/site-header";
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 /** 按游戏与难度取当前玩家的最佳用时；未登录返回空战绩。 */
 async function fetchRecords() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   const bests: Record<string, Partial<Record<Difficulty, number>>> = {};
   if (!user) return { signedIn: false, bests };
   const { data } = await supabase

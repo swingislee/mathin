@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }));
-vi.mock("@/lib/auth", () => ({ getMyPerms: mocks.permissions }));
+vi.mock("@/lib/auth", () => ({ getMyPerms: mocks.permissions, getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user) }));
 vi.mock("@/features/school/actions/schedule", () => ({ getWeekSchedule: mocks.schedule }));
 vi.mock("@/features/school/organization-locations", () => ({ getOrganizationTimezoneV2: async () => "Asia/Shanghai" }));
 vi.mock("@/features/school/organization-settings", () => ({ isFeatureEnabled: async () => false }));

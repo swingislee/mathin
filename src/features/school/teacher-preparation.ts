@@ -1,3 +1,4 @@
+import { getAuthUser } from "@/lib/auth";
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
@@ -69,7 +70,7 @@ export interface TeacherPreparationWorkspaceData {
 
 export async function getTeacherPreparationWorkspace(sessionId: string): Promise<TeacherPreparationWorkspaceData> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
 
   const { data: planRow, error: planError } = await supabase

@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
@@ -19,7 +20,7 @@ export async function recordSolutionRecordExportDownloadAction(
   try {
     const value = parse(solutionExportSchema, input);
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const { data, error } = await supabase.rpc("record_solution_record_export_download", {
       p_solution_record_id: value.solutionRecordId,

@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isAlignedStrokeSamples } from "./ink-samples";
@@ -51,7 +52,7 @@ interface WhiteboardRow {
 
 async function authenticatedClient() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   return { supabase, user };
 }

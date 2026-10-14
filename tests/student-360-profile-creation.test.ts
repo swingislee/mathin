@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({ permissions: new Set<string>(), tables: {} as 
 vi.mock("server-only", () => ({}));
 vi.mock("next-intl/server",()=>({getLocale:async()=>"zh"}));
 vi.mock("@/features/school/student-business-history-data",()=>({loadStudentBusinessHistory:async()=>null}));
-vi.mock("@/lib/auth", () => ({ getMyPerms: async () => state.permissions }));
+vi.mock("@/lib/auth", () => ({ getMyPerms: async () => state.permissions, getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user) }));
 vi.mock("@/features/school/student-lifecycle-data", () => ({ readStudentLifecycle: async () => "awaiting_assessment" }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: { id: "owner" } } }) },

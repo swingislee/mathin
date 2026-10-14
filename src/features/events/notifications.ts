@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import type { Json } from "@/lib/database.types";
-import { getActiveEnvironment } from "@/lib/auth";
+import { getActiveEnvironment, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { currentWorkEntryHref } from "@/features/school/work-entry-contract";
 
@@ -77,7 +77,7 @@ function objectPayload(payload: Json): Record<string, unknown> {
 
 export async function getInitialChangeFeed(): Promise<ChangeEvent[]> {
   const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
+  const authData = { user: await getAuthUser() };
   if (!authData.user) return [];
   const environment = await getActiveEnvironment(authData.user.id);
   const { data, error } = await supabase
@@ -115,7 +115,7 @@ export async function markChangeFeedItemRead(notificationId: string): Promise<vo
   const parsed = notificationIdSchema.safeParse(notificationId);
   if (!parsed.success) throw new Error("VALIDATION");
   const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
+  const authData = { user: await getAuthUser() };
   if (!authData.user) throw new Error("UNAUTHENTICATED");
   const { error } = await supabase.rpc("mark_notification_read", { p_notification_id: parsed.data });
   if (error) throw new Error(error.message);
@@ -125,7 +125,7 @@ export async function markChangeFeedRead(latestVisibleNotificationId: string): P
   const parsed = notificationIdSchema.safeParse(latestVisibleNotificationId);
   if (!parsed.success) throw new Error("VALIDATION");
   const supabase = await createClient();
-  const { data: authData } = await supabase.auth.getUser();
+  const authData = { user: await getAuthUser() };
   if (!authData.user) throw new Error("UNAUTHENTICATED");
   const { error } = await supabase.rpc("mark_notifications_read_through", { p_notification_id: parsed.data });
   if (error) throw new Error(error.message);

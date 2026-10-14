@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { actionError, type ActionResult } from "@/lib/action-result";
@@ -11,7 +12,7 @@ const schema = z.object({ subject: schoolRecordSubjectSchema, page: z.number().i
 export async function getSchoolRecordContextAction(input: z.input<typeof schema>): Promise<ActionResult<SchoolRecordContext>> {
   try {
     const value = parse(schema, input), client = await createClient();
-    const { data: { user } } = await client.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const data = schoolRecordContextSchema.parse(await studentStageRpc(client, "read_school_record_source_context", {
       p_student_id: value.subject.studentId, p_lead_id: value.subject.leadId, p_page: value.page,

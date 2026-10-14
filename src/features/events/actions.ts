@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,7 +23,7 @@ export interface ChangeEvent {
 
 export async function getInitialChangeFeed(): Promise<ChangeEvent[]> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return [];
   const [{ data: events }, { data: cursor }, { data: profile }] = await Promise.all([
     supabase.from("domain_events").select("id,event_type,entity_type,entity_id,occurred_at,event_link,actor_id,target_user_id")
@@ -51,7 +52,7 @@ const eventIdSchema = z.string().uuid();
 
 export async function markChangeFeedRead(latestVisibleEventId: string): Promise<void> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const parsed = eventIdSchema.safeParse(latestVisibleEventId);
   if (!parsed.success) throw new Error("VALIDATION");

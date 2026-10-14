@@ -1,14 +1,13 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { actionError, type ActionResult } from "@/lib/action-result";
 
 async function authenticatedClient() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   return { supabase, user };
 }

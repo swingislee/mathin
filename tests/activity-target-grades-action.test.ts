@@ -3,7 +3,7 @@ import { setActivityTargetGradesAction } from "@/features/school/activity-action
 
 const mocks = vi.hoisted(() => ({ getUser: vi.fn(), getMyPerms: vi.fn(), rpc: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { getUser: mocks.getUser }, rpc: mocks.rpc }) }));
-vi.mock("@/lib/auth", () => ({ getMyPerms: mocks.getMyPerms }));
+vi.mock("@/lib/auth", () => ({ getMyPerms: mocks.getMyPerms, getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user) }));
 const id = "00000000-0000-4000-8000-000000000001";
 
 describe("activity target-grade configuration action", () => {

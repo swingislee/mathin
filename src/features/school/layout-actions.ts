@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/database.types";
 import { GRID_COLS, MAX_Y, nearestSize, normalizePlacements, sizeToWH, type TilePlacement } from "./tile-layout";
@@ -41,9 +42,7 @@ export async function saveDashboardLayout(tiles: TilePlacement[]): Promise<void>
   const normalized = normalizePlacements(accepted);
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
 
   // childCard 动态键校验查 student_guardians（§10：别只校验 uuid 形状）。
@@ -66,9 +65,7 @@ export async function saveDashboardLayout(tiles: TilePlacement[]): Promise<void>
 
 export async function resetDashboardLayout(): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const { error } = await supabase.from("dashboard_layouts").delete().eq("user_id", user.id);
   if (error) throw new Error(error.message);

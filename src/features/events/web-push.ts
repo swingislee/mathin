@@ -1,3 +1,4 @@
+import { getAuthUser } from "@/lib/auth";
 import "server-only";
 
 import { z } from "zod";
@@ -21,7 +22,7 @@ export async function resolveMyWebPushDelivery(deliveryId: string): Promise<stri
   const parsed = z.uuid().safeParse(deliveryId);
   if (!parsed.success) return null;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
   const { data, error } = await (supabase.rpc as unknown as UntypedRpc)(
     "resolve_my_web_push_delivery",

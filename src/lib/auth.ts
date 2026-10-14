@@ -1,11 +1,63 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import type { User } from "@supabase/supabase-js";
 import { PERMISSION_KEYS, type PermissionKey } from "@/features/school/permissions";
 import { pickActiveEnvironment, resolveAvailableEnvironments, type UserEnvironment } from "@/lib/environment";
 import { hasLocalDevelopmentMfaExemption } from "@/lib/local-development-security";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileRole = "student" | "parent" | "staff" | "admin";
+
+/** 服务端请求中的登录身份，字段来自已验签的 access token。 */
+export interface AuthUser {
+  id: string;
+  email: string | undefined;
+  phone: string | undefined;
+  app_metadata: Record<string, unknown>;
+  aal: string | undefined;
+}
+
+/**
+ * 本次服务端请求的登录身份。Supabase 以 ES256 签发 access token，getClaims 用进程级缓存的
+ * JWKS 在本机验签，布局、页面和读取函数不再各自往返 GoTrue；过期会话先用 refresh token 续期。
+ * 账号停用与资料由 requireUser 读取 profiles 把关；绑定、改密等需要完整身份资料时用 getVerifiedUser。
+ */
+export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) return null;
+  return {
+    id: claims.sub,
+    email: claims.email || undefined,
+    phone: claims.phone || undefined,
+    app_metadata: (claims.app_metadata ?? {}) as Record<string, unknown>,
+    aal: claims.aal,
+  };
+});
+
+/** 向 GoTrue 读取完整账号（identities、确认时间等），用于账号安全与身份绑定。 */
+export const getVerifiedUser = cache(async (): Promise<User | null> => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+});
+
+/** 布局与页面共用的账号状态；同一请求只读取一次。 */
+const readAccountGate = cache(async (userId: string) => {
+  const supabase = await createClient();
+  const [{ data: account, error: accountError }, { data: consentReady, error: consentError }] = await Promise.all([
+    supabase.from("profiles").select("role,account_status,password_change_required").eq("id", userId).maybeSingle<{
+      role: ProfileRole;
+      account_status: "active" | "locked";
+      password_change_required: boolean;
+    }>(),
+    supabase.rpc("has_current_required_consents", { p_user_id: userId }),
+  ]);
+  if (accountError) throw new Error(accountError.message);
+  if (consentError) throw new Error(consentError.message);
+  return { account, consentReady };
+});
 
 export interface Profile {
   id: string;
@@ -17,21 +69,14 @@ export interface Profile {
   passwordChangeRequired: boolean;
 }
 
-export async function requireUser(locale: string, options: { allowAccountRecovery?: boolean } = {}) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+export async function requireUser(locale: string, options: { allowAccountRecovery?: boolean } = {}): Promise<AuthUser> {
+  const user = await getAuthUser();
   if (!user) redirect(`/${locale}/login`);
-  const [{ data: account, error: accountError }, { data: consentReady, error: consentError }] = await Promise.all([
-    supabase.from("profiles").select("role,account_status,password_change_required").eq("id", user.id).maybeSingle<{
-      role: ProfileRole;
-      account_status: "active" | "locked";
-      password_change_required: boolean;
-    }>(),
-    supabase.rpc("has_current_required_consents", { p_user_id: user.id }),
-  ]);
-  if (accountError) throw new Error(accountError.message);
-  if (consentError) throw new Error(consentError.message);
+  const { account, consentReady } = await readAccountGate(user.id);
+  // 本地验签不感知已删除账号；缺少资料时再向 GoTrue 确认账号仍然存在。
+  if (!account && !(await getVerifiedUser())) redirect(`/${locale}/login`);
   if (account?.account_status === "locked") {
+    const supabase = await createClient();
     await supabase.auth.signOut({ scope: "local" });
     redirect(`/${locale}/login?error=locked`);
   }
@@ -45,12 +90,18 @@ export async function requireUser(locale: string, options: { allowAccountRecover
     nodeEnv: process.env.NODE_ENV,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   });
-  if (!options.allowAccountRecovery && account?.role === "admin" && !localDevelopmentMfaExempt) {
-    const { data: assurance } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (assurance?.currentLevel !== "aal2") {
-      redirect(`/${locale}/dashboard/account-security?required=mfa`);
-    }
+  // 当前保障等级即已验签 token 的 aal，与 mfa.getAuthenticatorAssuranceLevel 的 currentLevel 同源。
+  if (!options.allowAccountRecovery && account?.role === "admin" && !localDevelopmentMfaExempt && user.aal !== "aal2") {
+    redirect(`/${locale}/dashboard/account-security?required=mfa`);
   }
+  return user;
+}
+
+/** 身份绑定等操作：通过 requireUser 的账号闸门后，向 GoTrue 读取完整账号（identities、确认状态）。 */
+export async function requireVerifiedUser(locale: string, options: { allowAccountRecovery?: boolean } = {}): Promise<User> {
+  await requireUser(locale, options);
+  const user = await getVerifiedUser();
+  if (!user) redirect(`/${locale}/login`);
   return user;
 }
 
@@ -101,11 +152,16 @@ export const getMyPerms = cache(async (userId: string): Promise<Set<PermissionKe
   return perms;
 });
 
-/** 当前账号实际处在的使用环境（staff / family / learning），按关系集合 + 偏好推导。 */
-export const getActiveEnvironment = cache(async (userId: string): Promise<UserEnvironment | null> => {
+/** 账号可用的使用环境；页头切换与环境闸门共用同一次读取。 */
+export const getAvailableEnvironments = cache(async (userId: string): Promise<UserEnvironment[]> => {
   const profile = await getProfile(userId);
   const supabase = await createClient();
-  const available = await resolveAvailableEnvironments(supabase, userId, profile?.role);
+  return resolveAvailableEnvironments(supabase, userId, profile?.role);
+});
+
+/** 当前账号实际处在的使用环境（staff / family / learning），按关系集合 + 偏好推导。 */
+export const getActiveEnvironment = cache(async (userId: string): Promise<UserEnvironment | null> => {
+  const [profile, available] = await Promise.all([getProfile(userId), getAvailableEnvironments(userId)]);
   return pickActiveEnvironment(profile?.lastActiveEnvironment, available);
 });
 

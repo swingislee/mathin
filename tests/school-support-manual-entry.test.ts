@@ -4,7 +4,7 @@ import { supportEntryHref, supportEntrySchema, supportProfileValuesSchema, type 
 const fixture=vi.hoisted(()=>({rpc:vi.fn(),revalidate:vi.fn(),permissions:new Set(['followup.view','followup.write','student.edit'])}));
 vi.mock('server-only',()=>({}));
 vi.mock('next/cache',()=>({revalidatePath:fixture.revalidate}));
-vi.mock('@/lib/auth',()=>({getMyPerms:async()=>fixture.permissions}));
+vi.mock('@/lib/auth',()=>({getMyPerms:async()=>fixture.permissions,getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user)}));
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'actor'}}})},rpc:fixture.rpc})}));
 import { addSupportWorkAction, updateSupportProfileAction, searchSupportSubjectsAction, readSupportFamilyAction } from '@/features/school/school-support-actions';
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
@@ -15,7 +16,7 @@ export async function replayDeadJobAction(input: unknown): Promise<ActionResult<
   if (!parsed.success) return { ok: false, code: "VALIDATION" };
   try {
     const supabase = await createClient();
-    const { data: authData } = await supabase.auth.getUser();
+    const authData = { user: await getAuthUser() };
     if (!authData.user) throw new Error("UNAUTHENTICATED");
     const { data, error } = await supabase.rpc("replay_dead_job", {
       p_job_id: parsed.data.jobId,

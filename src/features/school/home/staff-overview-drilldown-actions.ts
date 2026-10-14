@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { getActiveEnvironment } from "@/lib/auth";
+import { getActiveEnvironment, getAuthUser } from "@/lib/auth";
 import { getStaffOverviewData } from "./staff-overview-data";
 import { getStaffOverviewAcquisitionDetail } from "./staff-overview-acquisition-detail";
 import { filterOverviewDetailRecords, OVERVIEW_DETAIL_SORTS, type OverviewDetailResult } from "./staff-overview-drilldown-contract";
@@ -24,7 +24,7 @@ const inputSchema = z.object({
 export async function readOverviewDetail(input: unknown): Promise<OverviewDetailResult> {
   const args = inputSchema.parse(input);
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user || await getActiveEnvironment(user.id) !== "staff") throw new Error("Overview access required");
   const read = args.query.metric === "leads" && ["business", "support"].includes(args.query.kind)
     ? getStaffOverviewAcquisitionDetail : getStaffOverviewData;

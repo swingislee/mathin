@@ -15,14 +15,13 @@ import {
 } from "@/features/school/tiles";
 import type { TileGridItem } from "@/features/school/TileWorkspace";
 import { Link } from "@/i18n/navigation";
-import type { getProfile } from "@/lib/auth";
+import type { AuthUser, getProfile } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import type { User } from "@supabase/supabase-js";
 
 /** 三个角色首屏组件共用的 props：locale + 已鉴权 user + 已取的 profile。 */
 export interface HomeProps {
   locale: string;
-  user: User;
+  user: AuthUser;
   profile: Awaited<ReturnType<typeof getProfile>>;
 }
 

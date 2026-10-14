@@ -1,7 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { Badge } from "@/components/ui/badge";
 import { getSessionReport, listSubmissions } from "@/features/classroom/actions";
-import { getProfile } from "@/lib/auth";
+import { getProfile, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { SessionWorkspaceDetail } from "./classes";
 import { getReviewDrawerData } from "./review-actions";
@@ -22,8 +22,7 @@ import { VideoReviewPanel } from "./VideoReviewPanel";
 import { listSessionVideos } from "./videos";
 
 async function currentProfile() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   return user ? getProfile(user.id) : null;
 }
 
@@ -35,7 +34,7 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
   const completedRequired = requiredTotal - pendingRequired;
   const videoReviewTask = detail.completionTasks.find((task) => task.kind === "video_review") ?? null;
   const homeworkClient = await createClient();
-  const { data: { user } } = await homeworkClient.auth.getUser();
+  const user = await getAuthUser();
   const homeworkPermission = user ? await homeworkClient.rpc("can_review_session", { cid: detail.classroomId, uid: user.id }) : null;
   const canPublishHomework = homeworkPermission?.data === true;
 

@@ -2,7 +2,7 @@ import "server-only";
 import { getLocale } from "next-intl/server";
 
 import type { Database } from "@/lib/database.types";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { PermissionKey } from "./permissions";
 import type { LeadStatus } from "./lead-contract";
@@ -200,7 +200,7 @@ export async function getStudent360Snapshot(
   subject: Student360SubjectRef,
 ): Promise<Student360Snapshot> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const permissions = await getMyPerms(user.id);
   if (!VIEW_PERMISSIONS.some((permission) => permissions.has(permission))) {

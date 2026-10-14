@@ -4,7 +4,7 @@ import { SectionShell } from "@/components/section-shell";
 import { PostCard } from "@/features/notebook/post/PostCard";
 import type { PublicPost } from "@/features/notebook/post/types";
 import { Link } from "@/i18n/navigation";
-import { getProfile } from "@/lib/auth";
+import { getProfile, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 interface PostRow {
@@ -29,7 +29,7 @@ export default async function NotebookPage({ params, searchParams }: { params: P
   const sort = query.sort === "hot" ? "hot" : "latest";
   const page = Math.max(1, Number.parseInt(query.page ?? "1", 10) || 1);
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   const profile = user ? await getProfile(user.id) : null;
   let reviewQueue: ReviewRow[] = [];
   if (profile?.role === "admin") {

@@ -7,7 +7,7 @@ import { SectionShell } from "@/components/section-shell";
 import { LikeButton } from "@/features/notebook/post/LikeButton";
 import { ModerationPanel } from "@/features/notebook/post/ModerationPanel";
 import { sanitizeNotebookHtml } from "@/features/notebook/html";
-import { getProfile } from "@/lib/auth";
+import { getProfile, getAuthUser } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -50,7 +50,7 @@ export default async function NotebookPostPage({ params }: { params: Promise<{ l
   const t = await getTranslations("notebook.public");
   const { supabase, post } = await loadPost(postId);
   if (!post) notFound();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   let liked = false;
   const profile = user ? await getProfile(user.id) : null;
   if (user) {

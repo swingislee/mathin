@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { ACTIVITY_ROUTES, STORED_ASSESSMENT_BANDS } from "./activity-workflow-contract";
 import { intInRange, parse, text, uuid } from "./actions/schemas";
@@ -45,7 +45,7 @@ export async function saveAssessmentQuickEntryAction(input: {
   try {
     const value = parse(inputSchema, input);
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const perms = await getMyPerms(user.id);
     if (!perms.has("review.write") && !perms.has("followup.write")) throw new Error("FORBIDDEN");

@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { defaultTaskSubmissionRules, type TaskSubmissionRules } from "../../../contracts/participant-api/task-submission";
 import { taskSubmissionRulesSchema } from "@/features/parent-portal/task-submission";
@@ -36,7 +37,7 @@ import type {
 
 async function authenticatedClient() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   return { supabase, user };
 }

@@ -2,7 +2,7 @@ import "server-only";
 
 import { getLectureWorkspaceDetail } from "./curriculum/lecture-workspace-detail";
 import type { CoursewareTemplatePage, OverlaySlot } from "./courseware-overlay";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { resolveClassroomCapabilities, resolveSessionCapabilities } from "./teaching-operations/capabilities";
 import {
@@ -224,7 +224,7 @@ function buildSessionRow(row: SessionQueryRow, input: BuildSessionRowInput): Ses
 /** 班级详情：把权限、责任关系和课次生命周期一次折叠成 capabilities，UI 不再自行猜角色。 */
 export async function getClassroomDetailForScope(id: string): Promise<ClassroomDetail | null> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
   const { data: classroom, error } = await supabase
@@ -386,7 +386,7 @@ export interface SessionQuickRow extends SessionRow {
  * 拉整班学生/花名册/全部课次。 */
 export async function getSessionQuickRow(sessionId: string): Promise<SessionQuickRow | null> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
   const { data: row, error } = await supabase
@@ -606,7 +606,7 @@ interface SessionWorkspaceQueryRow {
 /** 单课次版的 `getClassroomDetailForScope`；RLS（sessions_select_*）已把无关用户挡在结果之外。 */
 export async function getSessionWorkspaceDetail(sessionId: string): Promise<SessionWorkspaceDetail | null> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
 
   const { data: session, error } = await supabase

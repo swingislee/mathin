@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
-import { getProfile } from "@/lib/auth";
+import { getProfile, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { ScheduleEntry } from "../schedule";
 import { datetime, parse, uuid } from "./schemas";
@@ -48,7 +48,7 @@ export async function getWeekSchedule(
 ): Promise<ScheduleEntry[]> {
   const range = parse(rangeSchema, { fromIso, toIso, campusId, roomId });
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const profile = await getProfile(user.id);
   if (!profile) return [];

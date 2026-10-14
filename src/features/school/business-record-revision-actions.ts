@@ -1,5 +1,6 @@
 'use server';
 
+import { getAuthUser } from '@/lib/auth';
 import { z } from 'zod';
 import { actionError, type ActionResult } from '@/lib/action-result';
 import { createClient } from '@/lib/supabase/server';
@@ -27,8 +28,7 @@ const revisionSchema = targetSchema.extend({
 const codes = [...COMMON_CODES,'NOT_FOUND','REVISION_CONFLICT','NO_CHANGES','MULTIPLE_ASSIGNMENTS'];
 async function revisionClient() {
   const client = await createClient();
-  const {data:{user}} = await client.auth.getUser();
-  if(!user) throw new Error('UNAUTHENTICATED');
+  if(!(await getAuthUser())) throw new Error('UNAUTHENTICATED');
   return client;
 }
 export async function getBusinessRecordRevisionAction(input: BusinessRecordRevisionTarget): Promise<ActionResult<BusinessRecordRevisionContext>> {

@@ -5,6 +5,7 @@
 // RPC 内部完成，无法用 authorizedClient 的单一权限键表达，这里只做登录闸+入参校验。
 // ---------------------------------------------------------------------------
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +21,7 @@ export async function completeSupportTaskAction(taskId: string, status: "done" |
   try {
     const value = parse(completeSchema, { taskId, status, note });
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const { error } = await supabase.rpc("complete_support_task", {
       p_task_id: value.taskId,

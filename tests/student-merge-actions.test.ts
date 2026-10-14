@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const calls=vi.hoisted(()=>({rpc:vi.fn(),revalidate:vi.fn(),permissions:new Set(['student.edit'])}));
 vi.mock('server-only',()=>({}));
 vi.mock('next/cache',()=>({revalidatePath:calls.revalidate}));
-vi.mock('@/lib/auth',()=>({getMyPerms:async()=>calls.permissions}));
+vi.mock('@/lib/auth',()=>({getMyPerms:async()=>calls.permissions,getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user)}));
 vi.mock('@/lib/supabase/server',()=>({createClient:async()=>({auth:{getUser:async()=>({data:{user:{id:'actor'}}})},rpc:calls.rpc})}));
 import { confirmStudentMergeAction, previewStudentMergeAction, searchStudentMergeCandidatesAction } from '@/features/school/student-merge-actions';
 const kept='10000000-0000-4000-8000-000000000001',merged='10000000-0000-4000-8000-000000000002',mergeId='10000000-0000-4000-8000-000000000003';

@@ -1,8 +1,8 @@
 "use server";
+import { getAuthUser } from "@/lib/auth";
 import { randomUUID } from "node:crypto";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 import { getGame } from "./registry";
 import type { Difficulty } from "./types";
 import { getVerifier } from "./verify";
@@ -18,8 +18,7 @@ export type StartGameResult =
 export async function startGame(gameId: string, difficulty: Difficulty): Promise<StartGameResult> {
   const game = getGame(gameId);
   if (!game || !game.difficulties.includes(difficulty)) return { ok: false, error: "invalid" };
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { ok: false, error: "unauthenticated" };
 
   const seed = randomUUID().replaceAll("-", "");
@@ -42,8 +41,7 @@ export type SubmitScoreResult =
  * 校验客户端用时与服务端流逝时间一致（容差 10s）→ 落库并核销对局。
  */
 export async function submitScore(sessionId: string, durationMs: number, proof: unknown): Promise<SubmitScoreResult> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return { ok: false, error: "unauthenticated" };
   if (!Number.isInteger(durationMs) || durationMs <= 3000) return { ok: false, error: "invalid" };
 

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { authorizedClient } from "./actions/guards";
 import { COMMON_CODES, intInRange, parse, text, uuid } from "./actions/schemas";
-import { getProfile } from "@/lib/auth";
+import { getProfile, getAuthUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,7 +17,7 @@ const reviewVideoSchema = z.object({
 export async function getVideoSignedUrl(videoId: string) {
   const id = parse(uuid, videoId);
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
 
   const admin = createAdminClient();
@@ -96,7 +96,7 @@ export async function deleteSessionVideoAction(videoId: string): Promise<ActionR
   try {
     const id = parse(uuid, videoId);
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const { error } = await supabase.rpc("delete_session_video", { p_video_id: id });
     if (error) throw new Error(error.message);

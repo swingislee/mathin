@@ -1,3 +1,4 @@
+import { getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/database.types";
 import type { OrderStatus } from "./finance";
@@ -35,9 +36,7 @@ export interface MyGuardianRelationship {
 
 export async function getMyGuardianRelationship(studentId: string): Promise<MyGuardianRelationship | null> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return null;
   const { data, error } = await supabase
     .from("student_guardians")

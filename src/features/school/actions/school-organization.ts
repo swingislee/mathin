@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -19,7 +20,7 @@ const schema = z.object({
 export async function saveSchoolOrganizationAction(input: z.infer<typeof schema>): Promise<ActionResult<{ settings: SchoolCollaborationSettings }>> {
   try {
     const value = parse(schema, input), client = await createClient();
-    const { data: { user } } = await client.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const settings = schoolCollaborationSchema.parse(await studentStageRpc(client, "save_school_organization", { p_changes: value }));
     for (const page of ["staff", "leads", "communication", "students", "students/[studentId]", "assessments/availability"]) {

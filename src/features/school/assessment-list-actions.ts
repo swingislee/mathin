@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { databaseUuid } from "@/lib/database-uuid";
 import { parse } from "./actions/schemas";
 import { listAssessmentWorkbenchRows } from "./assessment-workbench-data";
@@ -21,7 +21,7 @@ export async function getAssessmentListDetailAction(input: string): Promise<Acti
   try {
     const key = parse(rowKeySchema, input);
     const client = await createClient();
-    const { data: { user } } = await client.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const perms = await getMyPerms(user.id);
     if (!perms.has("review.write") && !perms.has("followup.view")) throw new Error("FORBIDDEN");

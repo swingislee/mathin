@@ -8,7 +8,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { hasLocalDevelopmentMfaExemption } from "@/lib/local-development-security";
-import { getProfile } from "@/lib/auth";
+import { getProfile, getAuthUser } from "@/lib/auth";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -114,7 +114,7 @@ export async function promoteToStaffAction(target: string): Promise<ActionResult
   try {
     const targetId = parse(uuid, target);
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const profile = await getProfile(user.id);
     if (profile?.role !== "admin") return { ok: false, code: "FORBIDDEN" };

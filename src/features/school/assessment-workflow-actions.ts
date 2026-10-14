@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parse, text, uuid } from "./actions/schemas";
 import { ASSESSMENT_PARENT_CLASSIFICATIONS, ASSESSMENT_PARENT_REASONS, ASSESSMENT_STAGES,
@@ -25,7 +25,7 @@ const ERRORS = ["ASSESSMENT_WORKFLOW_CONFLICT", "ASSESSMENT_WORKFLOW_FINALIZED",
 
 async function authorizedClient(write = false) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const perms = await getMyPerms(user.id);
   if (!perms.has("review.write") && !perms.has(write ? "followup.write" : "followup.view")) throw new Error("FORBIDDEN");

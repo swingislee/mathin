@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { requireVerifiedUser } from "@/lib/auth";
 import { resolveSafeReturnTo } from "@/lib/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 import { requireWechatConfig } from "./config";
@@ -40,7 +40,7 @@ export async function bindWechat(formData: FormData) {
   if (!parsed.success) redirect("/zh/dashboard/account-security?section=identities&wechatError=credentials");
   const { locale, password } = parsed.data;
   const next = `/${locale}/dashboard/account-security?section=identities`;
-  const user = await requireUser(locale);
+  const user = await requireVerifiedUser(locale);
   let destination: string;
   try {
     const config = requireWechatConfig();
@@ -64,7 +64,7 @@ export async function unlinkWechat(formData: FormData) {
   if (!parsed.success) redirect("/zh/dashboard/account-security?section=identities&wechatError=credentials");
   const { locale, password } = parsed.data;
   const next = `/${locale}/dashboard/account-security?section=identities`;
-  const user = await requireUser(locale);
+  const user = await requireVerifiedUser(locale);
   try {
     const identifier = user.email ? { email: user.email } : user.phone ? { phone: user.phone } : null;
     const identity = user.identities?.find((item) => item.provider === WECHAT_PROVIDER);

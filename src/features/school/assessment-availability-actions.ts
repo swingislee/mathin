@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { parse, uuid } from "./actions/schemas";
 import { calendarRecurrenceSchema, calendarRecurrenceWithinRange } from "./calendar-recurrence-schema";
@@ -45,7 +45,7 @@ const saveSchema = z.object({
 
 async function authorizedClient() {
   const client = await createClient();
-  const { data: { user } } = await client.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const permissions = await getMyPerms(user.id);
   if (!permissions.has("review.write") && !permissions.has("followup.write") && !permissions.has("schedule.manage")) throw new Error("FORBIDDEN");

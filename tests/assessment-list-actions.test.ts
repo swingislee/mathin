@@ -4,7 +4,7 @@ import { getAssessmentListDetailAction } from "@/features/school/assessment-list
 const state = vi.hoisted(() => ({ user: { id: "actor" } as { id: string } | null, perms: new Set<string>(), record: null as unknown,
   read: vi.fn(), from: vi.fn(), queries: [] as string[] }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/auth", () => ({ getMyPerms: async () => state.perms }));
+vi.mock("@/lib/auth", () => ({ getMyPerms: async () => state.perms, getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user) }));
 vi.mock("@/features/school/assessment-workbench-data", () => ({ listAssessmentWorkbenchRows: state.read }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { getUser: async () => ({ data: { user: state.user } }) }, from: state.from }) }));
 const id = "12345678-1234-4123-8123-123456789012", key = `registration:${id}`;

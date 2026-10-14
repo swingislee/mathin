@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { parse, uuid } from "./actions/schemas";
 import type { AssessmentRulesWorkspace, SaveAssessmentRuleInput, AssessmentTopicDefinition, AssessmentCalendarSlot } from "./assessment-rules-contract";
 
@@ -33,7 +33,7 @@ const workspaceSchema = z.object({
 
 async function authorizedClient() {
   const client = await createClient();
-  const { data: { user } } = await client.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   const perms = await getMyPerms(user.id);
   if (!perms.has("review.write") && !perms.has("followup.write") && !perms.has("schedule.manage")) throw new Error("FORBIDDEN");

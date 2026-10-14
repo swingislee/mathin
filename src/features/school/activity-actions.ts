@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
-import { getMyPerms } from "@/lib/auth";
+import { getMyPerms, getAuthUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
   ACTIVITY_ROUTES,
@@ -87,7 +87,7 @@ function rpc(supabase: { rpc: unknown }): UntypedRpc {
 
 async function authorizedActivityClient(key: PermissionKey) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   if (!(await getMyPerms(user.id)).has(key)) throw new Error("FORBIDDEN");
   return supabase;

@@ -12,7 +12,7 @@ import { AssessmentReportView } from "@/features/school/AssessmentReportView";
 const fixture = vi.hoisted(() => ({ user: { id: "00000000-0000-4000-8000-000000000001" } as { id: string } | null,
   permissions: new Set(["followup.write"]), rpc: vi.fn(), state: null as unknown, events: [] as unknown[] }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/auth", () => ({ getMyPerms: async () => fixture.permissions }));
+vi.mock("@/lib/auth", () => ({ getMyPerms: async () => fixture.permissions, getAuthUser: async () => (await (await import("@/lib/supabase/server")).createClient()).auth.getUser().then((result: { data: { user: { id: string } | null } }) => result.data.user) }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({
   auth: { getUser: async () => ({ data: { user: fixture.user } }) }, rpc: fixture.rpc,
   from: () => { const query = { select: () => query, eq: () => query, order: () => query,

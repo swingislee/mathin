@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
@@ -53,7 +54,7 @@ const saveSchema = z.object({
 
 async function authenticatedClient() {
   const client = await createClient();
-  const { data: { user } } = await client.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
   return client;
 }

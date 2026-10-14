@@ -5,6 +5,7 @@
 // 跨表事实一律走 RPC，Server Action 只做「入参校验 + 权限双闸 + 透传」。
 // ---------------------------------------------------------------------------
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { defaultTaskSubmissionRules, type TaskSubmissionRules } from "../../../../contracts/participant-api/task-submission";
 import { taskSubmissionRulesSchema } from "@/features/parent-portal/task-submission";
@@ -1103,7 +1104,7 @@ export async function completeSessionTaskAction(taskId: string, status: "done" |
   try {
     const value = parse(completeTaskSchema, { taskId, status, note });
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const { error } = await supabase.rpc("complete_session_task", {
       p_task_id: value.taskId,
@@ -1155,7 +1156,7 @@ export async function decideSessionLeaveRequestAction(requestId: string, approve
   try {
     const value = parse(decideLeaveRequestSchema, { requestId, approve });
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const { error } = await supabase.rpc("decide_session_leave_request", { p_request_id: value.requestId, p_approve: value.approve });
     if (error) throw new Error(error.message);
@@ -1175,7 +1176,7 @@ export async function updateSupportTaskRecipientAction(recipientId: string, stat
   try {
     const value = parse(updateRecipientSchema, { recipientId, status, note });
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const { error } = await supabase.rpc("update_support_task_recipient", {
       p_recipient_id: value.recipientId,
@@ -1318,7 +1319,7 @@ export async function reviewSessionPreparationArtifactAction(input: {
   try {
     const value = parse(preparationReviewSchema, input);
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     const { error } = await supabase.rpc("review_session_preparation_artifact", {
       p_session_id: value.sessionId,

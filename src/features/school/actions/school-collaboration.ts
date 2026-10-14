@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -22,7 +23,7 @@ type Result = { settings: SchoolCollaborationSettings; subject?: StudentStageRow
 export async function saveSchoolCollaborationAction(input: Input): Promise<ActionResult<Result>> {
   try {
     const value = parse(schema, input), client = await createClient();
-    const { data: { user } } = await client.auth.getUser();
+    const user = await getAuthUser();
     if (!user) throw new Error("UNAUTHENTICATED");
     if (value.kind === "group") await studentStageRpc(client, "save_school_business_group", { p_id: value.id, p_name: value.name });
     else if (value.kind === "member") await studentStageRpc(client, "set_school_business_group_member", { p_group_id: value.groupId, p_user_id: value.userId, p_active: value.active });

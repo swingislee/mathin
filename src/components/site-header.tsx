@@ -3,27 +3,23 @@ import { GlobalFloatingControls } from "@/components/global-floating-controls";
 import { ChangeBell } from "@/features/events/ChangeBell";
 import { getInitialChangeFeed, type ChangeEvent } from "@/features/events/notifications";
 import { Link } from "@/i18n/navigation";
-import { getProfile } from "@/lib/auth";
-import { pickActiveEnvironment, resolveAvailableEnvironments } from "@/lib/environment";
-import { createClient } from "@/lib/supabase/server";
+import { getActiveEnvironment, getAuthUser, getAvailableEnvironments, getProfile } from "@/lib/auth";
+import type { UserEnvironment } from "@/lib/environment";
 import { getThemePreference } from "@/lib/theme";
 import { UtilitySheet } from "./utility-sheet";
 
 export async function SiteHeader({ workspace = false }: { workspace?: boolean } = {}) {
-  const locale = await getLocale();
-  const theme = await getThemePreference();
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [locale, theme, user] = await Promise.all([getLocale(), getThemePreference(), getAuthUser()]);
   let changes: ChangeEvent[] = [];
 
-  let environments: Awaited<ReturnType<typeof resolveAvailableEnvironments>> = [];
-  let activeEnvironment: ReturnType<typeof pickActiveEnvironment> = null;
+  let environments: UserEnvironment[] = [];
+  let activeEnvironment: UserEnvironment | null = null;
   let profile: Awaited<ReturnType<typeof getProfile>> = null;
   if (user) {
-    profile = await getProfile(user.id);
-    environments = await resolveAvailableEnvironments(supabase, user.id, profile?.role);
-    activeEnvironment = pickActiveEnvironment(profile?.lastActiveEnvironment, environments);
-    changes = await getInitialChangeFeed();
+    // 与布局共用本次请求已读取的资料和环境。
+    [profile, environments, activeEnvironment, changes] = await Promise.all([
+      getProfile(user.id), getAvailableEnvironments(user.id), getActiveEnvironment(user.id), getInitialChangeFeed(),
+    ]);
   }
 
   return (

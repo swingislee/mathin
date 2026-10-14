@@ -1,5 +1,6 @@
 "use server";
 
+import { getAuthUser } from "@/lib/auth";
 import { z } from "zod";
 import { buildH5EntryUrl, type ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { parseCoursewareDoc, type CoursewareDoc } from "@/features/courseware-doc/document";
@@ -82,7 +83,7 @@ export async function getSessionPageDocs(sessionId: string): Promise<SessionPage
   if (!parsed.success) throw new Error("VALIDATION");
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
 
   const { data, error } = await supabase
@@ -109,7 +110,7 @@ export async function getSessionAssetUrls(sessionId: string): Promise<SessionAss
   if (!parsed.success) throw new Error("VALIDATION");
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) throw new Error("UNAUTHENTICATED");
 
   const { data: assets, error: assetsError } = await supabase
