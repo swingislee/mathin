@@ -2,7 +2,7 @@
 
 import { BookOpen, GraduationCap, Home as HomeIcon, LayoutDashboard, Lightbulb, LogIn, LogOut, type LucideIcon, Menu, NotebookPen, PenLine, Presentation, Puzzle, ShieldCheck, Sprout, Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { logout } from "@/app/[locale]/(auth)/actions";
+import { LogoutForm } from "@/components/auth/LogoutForm";
 import { Input } from "@/components/ui/input";
 import { LoginLink } from "@/components/auth/LoginLink";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,7 +75,7 @@ export function UtilitySheet({
             </SheetClose>
           )}
           {isLoggedIn && (
-            <form action={logout} className="ml-auto shrink-0">
+            <LogoutForm className="ml-auto shrink-0">
               <Input type="hidden" name="locale" value={locale} />
               <button
                 type="submit"
@@ -84,7 +84,7 @@ export function UtilitySheet({
               >
                 <LogOut size={18} strokeWidth={1.75} />
               </button>
-            </form>
+            </LogoutForm>
           )}
         </div>
 

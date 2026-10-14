@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { logout } from "@/app/[locale]/(auth)/actions";
+import { LogoutForm } from "@/components/auth/LogoutForm";
 import { getProfile, requireDashboardEnvironment } from "@/lib/auth";
 import { resolveAvailableEnvironments } from "@/lib/environment";
 import { createClient } from "@/lib/supabase/server";
@@ -34,6 +34,6 @@ export default async function FamilyAccountPage({ params }: { params: Promise<{ 
       {finance.status === "fulfilled" && finance.value && <Link href="/dashboard/finance">{en ? "Payments and balance" : "费用与余额"}<ChevronRight size={18} aria-hidden /></Link>}
     </section>
     {environments.status === "fulfilled" && environments.value.filter(env => env !== "family").map(env => <form key={env} action={setActiveEnvironmentAction}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="env" value={env} /><button className={styles.secondary}>{env === "staff" ? en ? "Switch to staff workspace" : "进入员工工作台" : en ? "Switch to learning" : "进入学习空间"}</button></form>)}
-    <form action={logout}><input type="hidden" name="locale" value={locale} /><input type="hidden" name="returnTo" value={`/${locale}/family`} /><button className={styles.link}>{en ? "Sign out" : "退出登录"}</button></form>
+    <LogoutForm><input type="hidden" name="locale" value={locale} /><input type="hidden" name="returnTo" value={`/${locale}/family`} /><button className={styles.link}>{en ? "Sign out" : "退出登录"}</button></LogoutForm>
   </div>;
 }

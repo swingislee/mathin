@@ -31,8 +31,11 @@ describe("R1-3 account security contracts", () => {
     const layout = read("src/app/[locale]/dashboard/layout.tsx");
     expect(auth).toContain('account_status === "locked"');
     expect(auth).toContain('rpc("has_current_required_consents"');
-    expect(auth).toContain('getAuthenticatorAssuranceLevel()');
-    expect(auth).toContain('currentLevel !== "aal2"');
+    // 保障等级取自本机验签的 access token（与 getAuthenticatorAssuranceLevel 的 currentLevel 同源），
+    // 且每次请求确认会话仍在，注销即时生效。
+    expect(auth).toContain('auth.getClaims()');
+    expect(auth).toContain('user.aal !== "aal2"');
+    expect(auth).toContain('rpc("current_auth_session_active")');
     expect(auth).toContain("hasLocalDevelopmentMfaExemption");
     expect(layout).toContain("allowAccountRecovery: true");
     const securityPage = read("src/app/[locale]/dashboard/account-security/page.tsx");

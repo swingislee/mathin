@@ -19,6 +19,7 @@ vi.mock("@/features/school/organization-settings", () => ({ isFeatureEnabled: as
 vi.mock("@/features/school/courses", () => ({ getSessionCoursewareTemplate: vi.fn() }));
 vi.mock("@/features/courseware-studio/data", () => ({ materializeSessionResolved: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`REDIRECT:${url}`); } }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ delete: vi.fn(), get: () => undefined, getAll: () => [], set: vi.fn() }) }));
 
 const SESSION_ID = "00000000-0000-4000-8000-000000000001";
 const STUDENT_ID = "00000000-0000-4000-8000-000000000002";
@@ -85,36 +86,14 @@ function logoutForm(locale: string) {
   return form;
 }
 
-describe("退出登录的通知清理与会话退出", () => {
-  it.each(["zh", "en"])("%s 撤销通知后执行退出并返回首页", async (locale) => {
-    const { requests, signOut, transport } = setupClient();
+describe("退出登录只结束当前设备", () => {
+  it.each(["zh", "en"])("%s 只退出当前设备并返回首页", async (locale) => {
+    const { requests, signOut } = setupClient();
     await expect(logout(logoutForm(locale))).rejects.toThrow(`REDIRECT:/${locale}`);
-    expect(requests).toEqual([{ path: "/rest/v1/rpc/revoke_all_my_web_push_subscriptions", body: {} }]);
     expect(signOut).toHaveBeenCalledOnce();
-    expect(transport.mock.invocationCallOrder[0]).toBeLessThan(signOut.mock.invocationCallOrder[0]);
-  });
-
-  it("通知服务返回错误时仍完成退出", async () => {
-    const { signOut, transport } = setupClient();
-    transport.mockResolvedValueOnce(Response.json({ message: "notification unavailable", code: "503" }, { status: 503 }));
-    await expect(logout(logoutForm("zh"))).rejects.toThrow("REDIRECT:/zh");
-    expect(signOut).toHaveBeenCalledOnce();
-  });
-
-  it("通知调用同步异常时仍完成退出", async () => {
-    const { client, signOut } = setupClient();
-    vi.spyOn(client, "rpc").mockImplementationOnce(() => { throw new Error("notification unavailable"); });
-    await expect(logout(logoutForm("zh"))).rejects.toThrow("REDIRECT:/zh");
-    expect(signOut).toHaveBeenCalledOnce();
-  });
-
-  it("通知请求拒绝时仍完成退出", async () => {
-    const { client, signOut, transport } = setupClient();
-    const failingRequest = client.rpc("revoke_all_my_web_push_subscriptions").throwOnError();
-    mocks.createClient.mockResolvedValueOnce({ rpc: () => failingRequest, auth: client.auth });
-    transport.mockRejectedValueOnce(new Error("notification unavailable"));
-    await expect(logout(logoutForm("zh"))).rejects.toThrow("REDIRECT:/zh");
-    expect(signOut).toHaveBeenCalledOnce();
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+    // 同一账号在其他设备上的通知订阅保持；本浏览器的订阅由 LogoutForm 在提交前撤销。
+    expect(requests).toEqual([]);
   });
 
   it("会话退出本身抛错时保留错误结果", async () => {

@@ -20,6 +20,7 @@ export interface AuthUser {
 /**
  * 本次服务端请求的登录身份。Supabase 以 ES256 签发 access token，getClaims 用进程级缓存的
  * JWKS 在本机验签，布局、页面和读取函数不再各自往返 GoTrue；过期会话先用 refresh token 续期。
+ * 随后按会话主键确认会话仍在：已退出、被其他设备注销或到期的会话立即失效。
  * 账号停用与资料由 requireUser 读取 profiles 把关；绑定、改密等需要完整身份资料时用 getVerifiedUser。
  */
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
@@ -27,6 +28,9 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const { data, error } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (error || !claims?.sub) return null;
+  const { data: active, error: sessionError } = await supabase.rpc("current_auth_session_active");
+  // 会话检查不可用时回到 GoTrue 校验，保持注销即时生效。
+  if (sessionError ? !(await getVerifiedUser()) : active !== true) return null;
   return {
     id: claims.sub,
     email: claims.email || undefined,

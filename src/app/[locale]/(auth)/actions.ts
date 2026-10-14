@@ -148,12 +148,9 @@ export async function signup(formData: FormData) {
 export async function logout(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const supabase = await createClient();
-  try {
-    await supabase.rpc("revoke_all_my_web_push_subscriptions");
-  } catch {
-    // 通知撤销为尽力清理；调用异常时继续执行会话退出。
-  }
-  await supabase.auth.signOut();
+  // 只退出当前设备：教室平板等共用设备上退出，不影响同一账号在其他设备上的登录与通知。
+  // 本浏览器的通知订阅由 LogoutForm 先行撤销；注销全部设备在账号安全中单独操作。
+  await supabase.auth.signOut({ scope: "local" });
   const cookieStore = await cookies();
   cookieStore.delete(WECHAT_FLOW_COOKIE);
   cookieStore.delete(WECHAT_GUEST_COOKIE);
