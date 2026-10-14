@@ -26,7 +26,7 @@ export function WechatIdentitySettings({ state }: { state: WechatAccountState })
       {state.avatarUrl ? <Image src={state.avatarUrl} width={40} height={40} alt="" className="rounded-full" referrerPolicy="no-referrer" /> : <MessageCircle className="size-5 text-crater" aria-hidden />}
       <div><p className="text-sm font-medium">{t("title")}</p><p className="text-xs text-muted">{state.linked ? `${t("linked")} · ${state.nickname || t("title")}` : t("unbound")}</p></div>
     </div>
-    <p className="mt-3 text-sm text-muted">{state.linked ? t("linkedNotice") : state.pendingNickname ? t("pendingNotice", { name: state.pendingNickname }) : t("bindNotice")}</p>
+    <p className="mt-3 text-sm text-muted">{state.linked ? t("linkedNotice") : t("bindNotice")}</p>
     <p className="mt-2 text-xs text-muted">{t("phoneNotice")}</p>
     {available ? <form action={state.linked ? unlinkWechat : bindWechat} className="mt-4 max-w-md space-y-3">
       <Input type="hidden" name="locale" value={locale} />

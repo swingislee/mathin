@@ -220,11 +220,31 @@ describe("WeChat authorization channel binding", () => {
     expect(h.exchange).not.toHaveBeenCalled();
   });
 
-  it("reuses an already proven guest identity for explicit linking without new authorization", async () => {
+  it.each(["website", "officialAccount"] as const)("requires new %s authorization even with an earlier guest proof", async (channel) => {
+    h.channel = channel;
+    h.guest = profile;
+    h.cookies.set("mathin_wechat_guest", "b".repeat(64));
+    const result = await authorize("link");
+    const destination = new URL(result.headers.get("location")!);
+    expect(destination.origin).toBe("https://open.weixin.qq.com");
+    expect(destination.pathname).toBe(channel === "website" ? "/connect/qrconnect" : "/connect/oauth2/authorize");
+    expect(h.cookies.get("mathin_wechat_guest")).toBe("");
+    expect([...h.tickets.values()].map((ticket) => ticket.kind)).toEqual(["state"]);
+    expect(h.exchange).not.toHaveBeenCalled();
+
+    const currentIdentity = { ...profile, subject: "mathin:new-union", unionid: "new-union", openid: "new-openid" };
+    h.exchange.mockResolvedValue(currentIdentity);
+    const completed = await callback(destination.searchParams.get("state")!);
+    expect(new URL(completed.headers.get("location")!).origin).toBe("https://auth.example.com");
+    const grant = [...h.tickets.values()].find((ticket) => ticket.kind === "grant");
+    expect(grant?.payload).toMatchObject({ userId, identity: currentIdentity });
+  });
+
+  it("does not use an earlier guest proof to bypass unavailable authorization", async () => {
     config.officialAccount = undefined; h.guest = profile;
     const result = await authorize("link", {}, { "user-agent": "MicroMessenger/8.0.63" });
-    expect(new URL(result.headers.get("location")!).origin).toBe("https://auth.example.com");
+    expect(result.headers.get("location")).toContain("wechatError=officialAccountUnavailable");
     expect(h.exchange).not.toHaveBeenCalled();
-    expect([...h.tickets.values()].map((ticket) => ticket.kind).sort()).toEqual(["completion", "grant"]);
+    expect(h.tickets.size).toBe(0);
   });
 });

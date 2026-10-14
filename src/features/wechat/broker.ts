@@ -11,7 +11,7 @@ import { WECHAT_FLOW_COOKIE, WECHAT_GUEST_COOKIE, WECHAT_PROVIDER, opaqueTokenSc
 import { assertWechatFlowSession, setWechatCookie } from "./session";
 import {
   assertAccountActive, brokerRequestSchema, completionSchema, findWechatUser, flowSchema, grantSchema,
-  issueTicket, readGuest, readTicket, recordWechatConflict, stateSchema,
+  issueTicket, readTicket, recordWechatConflict, stateSchema,
 } from "./store";
 import { equalSecret, exchangeWechatCode, randomToken, tokenHash, verifyPkce, wechatAuthorizationChannel, wechatAuthorizationUrl, wechatClaims } from "./provider";
 
@@ -70,12 +70,8 @@ export async function authorizeWechat(request: Request) {
     locale = flow.locale;
     mode = flow.mode;
     await assertWechatFlowSession(flow);
-    // 在原账号里明确确认绑定后，复用同一浏览器刚才的微信证明。
-    const guest = flow.mode === "link" ? await readGuest(true) : null;
-    if (guest) {
-      await setWechatCookie(WECHAT_GUEST_COOKIE, "", 0);
-      return await finishWechatAuthorization({ flow, broker }, guest, browser);
-    }
+    // 绑定使用本次新授权；游客扫码只用于游客页，不能代替当前绑定的微信确认。
+    if (flow.mode === "link") await setWechatCookie(WECHAT_GUEST_COOKIE, "", 0);
     const channel = wechatAuthorizationChannel(request.headers.get("user-agent"));
     const state = randomToken();
     const destination = wechatAuthorizationUrl(config, state, flow.locale, channel);

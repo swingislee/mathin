@@ -7,7 +7,7 @@ import { X } from "lucide-react";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { dialogReturnTo, dialogRouterHref } from "./login-contract";
+import { dialogReturnTo, dialogRouterHref, type LoginMethod } from "./login-contract";
 
 function LoginLoading() {
   const t = useTranslations("auth");
@@ -15,7 +15,7 @@ function LoginLoading() {
 }
 
 const LazyLoginCard = dynamic(() => import("./LoginCard").then((module) => module.LoginCard), { ssr: false, loading: LoginLoading });
-type OpenLogin = (next: string | undefined, trigger: HTMLElement) => void;
+type OpenLogin = (next: string | undefined, trigger: HTMLElement, method?: LoginMethod) => void;
 const LoginDialogContext = createContext<OpenLogin | null>(null);
 export const useLoginDialog = () => useContext(LoginDialogContext);
 
@@ -24,14 +24,14 @@ export function LoginDialogProvider({ children, wechatAvailable }: { children: R
   const t = useTranslations("auth");
   const router = useRouter();
   const pathname = usePathname();
-  const [request, setRequest] = useState<{ next: string; pathname: string } | null>(null);
+  const [request, setRequest] = useState<{ next: string; pathname: string; method?: LoginMethod } | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const close = useCallback(() => setRequest(null), []);
-  const open = useCallback<OpenLogin>((next, trigger) => {
+  const open = useCallback<OpenLogin>((next, trigger, method) => {
     triggerRef.current = trigger;
     const destination = dialogReturnTo(next, `${window.location.pathname}${window.location.search}${window.location.hash}`, locale);
     // 菜单里的登录入口先完成 Sheet 关闭与焦点恢复，再把焦点交给登录 Dialog。
-    requestAnimationFrame(() => setRequest({ next: destination, pathname }));
+    requestAnimationFrame(() => setRequest({ next: destination, pathname, method }));
   }, [locale, pathname]);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function LoginDialogProvider({ children, wechatAvailable }: { children: R
       }}>
         <DialogTitle className="sr-only">{t("loginTitle")}</DialogTitle>
         <DialogDescription className="sr-only">{t("welcomeBack")}</DialogDescription>
-        {request ? <LazyLoginCard locale={locale} wechatAvailable={wechatAvailable} next={request.next} dialog onSuccess={onSuccess} onNavigate={close} /> : null}
+        {request ? <LazyLoginCard key={request.method ?? "default"} locale={locale} wechatAvailable={wechatAvailable} next={request.next} initialMethod={request.method} dialog onSuccess={onSuccess} onNavigate={close} /> : null}
         <DialogClose asChild><Button type="button" variant="ghost" className="absolute right-3 top-3 size-8 p-0 text-muted" aria-label={t("closeLogin")}><X className="size-4" aria-hidden /></Button></DialogClose>
       </DialogContent>
     </Dialog>

@@ -1,6 +1,7 @@
 import { resolveSafeReturnTo } from "@/lib/safe-redirect";
 
 export type LoginState = { ok: false; code?: "credentials" | "unavailable" } | { ok: true };
+export type LoginMethod = "wechat" | "password";
 
 /** 主动登录返回当前页面；显式目标与完整登录页共用同一站内校验。 */
 export function dialogReturnTo(next: string | undefined, currentPath: string, locale: string) {

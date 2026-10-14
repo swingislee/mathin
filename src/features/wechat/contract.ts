@@ -23,7 +23,6 @@ export type WechatAccountState = {
   linked: boolean;
   nickname: string | null;
   avatarUrl: string | null;
-  pendingNickname: string | null;
 };
 
 export function wechatError(value: unknown): WechatError {

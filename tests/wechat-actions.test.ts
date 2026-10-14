@@ -7,7 +7,7 @@ const h = vi.hoisted(() => ({
 }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(`redirect:${url}`); } }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ delete: vi.fn() }) }));
-vi.mock("@/lib/auth", () => ({ requireUser: async () => { h.requireUser(); if (h.authFailure) throw new Error("auth-required"); return h.user; } }));
+vi.mock("@/lib/auth", () => ({ requireVerifiedUser: async () => { h.requireUser(); if (h.authFailure) throw new Error("auth-required"); return h.user; } }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ auth: { unlinkIdentity: h.unlink, signOut: vi.fn() } }) }));
 vi.mock("@/features/wechat/config", () => ({ requireWechatConfig: () => ({ phoneLinking: h.phoneLinking }) }));
 vi.mock("@/features/wechat/session", () => ({
@@ -52,6 +52,14 @@ describe("WeChat account ownership", () => {
     h.phoneLinking = true;
     await expect(bindWechat(input())).rejects.toThrow("redirect:https://app.example.com/authorize");
     expect(h.password).toHaveBeenCalledWith(h.user.id, { phone: h.user.phone }, "test-only-capability");
+  });
+  it("requires the phone account password before starting any WeChat binding", async () => {
+    h.user.email = ""; h.user.phone = "+8613800000000"; h.user.identities = [{ provider: "phone" }];
+    h.phoneLinking = true;
+    h.password.mockRejectedValue(new Error("credentials"));
+    await expect(bindWechat(input())).rejects.toThrow("wechatError=credentials");
+    expect(h.password).toHaveBeenCalledWith(h.user.id, { phone: h.user.phone }, "test-only-capability");
+    expect(h.begin).not.toHaveBeenCalled();
   });
   it("keeps the last identity and requires a usable password method before unlinking", async () => {
     h.user.email = ""; h.user.identities = [{ provider: "custom:wechat" }];

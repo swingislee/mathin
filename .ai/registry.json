@@ -3,6 +3,40 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WECHAT-LOGIN-LOOP-20261014",
+      "title": "网站微信首次绑定与登录循环修复",
+      "agent": "codex",
+      "threadId": "01a13961-433c-79b0-834c-6168d597889a",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-LOGIN-LOOP-20261014.md",
+      "writePaths": [
+        ".ai/tasks/WECHAT-LOGIN-LOOP-20261014.md",
+        "src/components/auth/",
+        "src/components/auth-form.tsx",
+        "src/app/[locale]/(auth)/login/page.tsx",
+        "src/app/[locale]/auth/wechat/guest/page.tsx",
+        "src/features/wechat/broker.ts",
+        "src/features/wechat/account.ts",
+        "src/features/wechat/contract.ts",
+        "src/features/wechat/WechatIdentitySettings.tsx",
+        "src/features/account/AccountSecurityPanel.tsx",
+        "tests/wechat-broker.test.ts",
+        "tests/wechat-actions.test.ts",
+        "tests/wechat-login-entry.test.ts",
+        ".tmp/wechat-login-loop-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json",
+        "docs/ops/wechat-oauth.md"
+      ],
+      "checkpoint": null,
+      "next": "开发端已修复：已有账号直接密码登录，绑定须重新微信授权。定向身份安全用例、修改文件静态检查和中英文匿名浏览器入口通过；生产待授权发布，真实扫码及本人使用待验收。"
+    },
+    {
       "id": "CLASSROOM-SMART-ENTRY-20261014",
       "title": "Smart 手指书写与课堂返回修复",
       "agent": "codex",
