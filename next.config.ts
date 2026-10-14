@@ -92,6 +92,8 @@ const nextConfig: NextConfig = {
   // 默认 .next；bundle 量化时 NEXT_DIST_DIR=.next-bundle 构建到独立目录，
   // 不与正在运行的 dev server 争用 .next（见 scripts/bundle-report.mjs）。
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  // 体积归因时以 MATHIN_BUNDLE_SOURCEMAPS=1 构建到独立目录，按 sourcemap 把 chunk 字节对应到源码模块。
+  productionBrowserSourceMaps: process.env.MATHIN_BUNDLE_SOURCEMAPS === "1",
   allowedDevOrigins: ["192.168.5.213", "127.0.0.1", "localhost"],
   serverExternalPackages: ["@blocknote/server-util"],
   images: { remotePatterns: [
