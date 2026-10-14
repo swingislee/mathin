@@ -3,6 +3,28 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "COMMUNICATION-FILTER-PG-20261014",
+      "title": "沟通全量筛选 PostgreSQL 继续提速",
+      "agent": "codex",
+      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-FILTER-PG-20261014.md",
+      "writePaths": [
+        ".ai/tasks/COMMUNICATION-FILTER-PG-20261014.md",
+        "supabase/migrations/20261014014000_communication_filter_read_model.sql",
+        "supabase/tests/communication_filter_read_model.sql",
+        "src/lib/database.types.ts",
+        ".tmp/communication-filter-pg-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "db4f7d1d7598f20ad42e2481fd6ada5fdbc24901",
+      "next": "开发库已应用 PG 生成列与查询优化：沟通全量 RPC 2.40→1.02 秒，完整筛选接口 3.17→1.46 秒；完整结果、来源自动更新与权限合同一致。待实际使用验收，生产未部署。后续从任务卡接续剩余执行计划。"
+    },
+    {
       "id": "FULL-RANGE-FILTER-PERFORMANCE-20261014",
       "title": "全量筛选与共享读取性能优化",
       "agent": "codex",

@@ -7577,6 +7577,9 @@ export type Database = {
             | null
           payload_sha256: string
           record_data: Json
+          school_filter_values:
+            | Database["public"]["CompositeTypes"]["school_source_filter_values"]
+            | null
           search_text: string
           source_data: Json
           source_format: string | null
@@ -7602,6 +7605,7 @@ export type Database = {
             | null
           payload_sha256: string
           record_data: Json
+          school_filter_values?: never
           search_text: string
           source_data: Json
           source_format?: string | null
@@ -7627,6 +7631,7 @@ export type Database = {
             | null
           payload_sha256?: string
           record_data?: Json
+          school_filter_values?: never
           search_text?: string
           source_data?: Json
           source_format?: string | null
@@ -29174,6 +29179,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      project_school_source_filter_values: {
+        Args: { p_record: Json }
+        Returns: Database["public"]["CompositeTypes"]["school_source_filter_values"]
+        SetofOptions: {
+          from: "*"
+          to: "school_source_filter_values"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       project_staff_overview_acquisition_cells: {
         Args: { p_record_data: Json }
         Returns: Json
@@ -32635,6 +32650,14 @@ export type Database = {
         month_state: number | null
         reporting_month: string | null
         staff_label: string | null
+      }
+      school_source_filter_values: {
+        grade_text: string | null
+        grade_code: number | null
+        acquired_on: string | null
+        grade_year: number | null
+        support_name: string | null
+        has_owner_fields: boolean | null
       }
     }
   }
