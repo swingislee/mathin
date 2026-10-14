@@ -3,6 +3,26 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "SUDOKU-PRODUCTION-RESUME-20261014",
+      "title": "接续数独课程生产上线与排期名单",
+      "agent": "codex",
+      "threadId": "01a1386f-ed5c-7ca0-be3d-69c488c97512",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/SUDOKU-PRODUCTION-RESUME-20261014.md",
+      "writePaths": [
+        ".ai/tasks/SUDOKU-PRODUCTION-RESUME-20261014.md",
+        ".tmp/sudoku-production-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md"
+      ],
+      "checkpoint": "e042992b0c479e3b7da4f8e17dace23b887ff1b1",
+      "next": "生产已完成：12讲264页、24版本、22课次绑定、42位学生43人次入班；排期与4处小程序说明同步。任课老师完整课件读取与公网目录通过，待实际教学使用验收。"
+    },
+    {
       "id": "COMMUNICATION-FILTER-PG-20261014",
       "title": "沟通全量筛选 PostgreSQL 继续提速",
       "agent": "codex",
