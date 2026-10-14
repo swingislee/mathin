@@ -19,9 +19,9 @@ export function isOutsideClassroomSchedule(windows: readonly ClassroomScheduleWi
   });
 }
 
-export function classroomRehearsalHref(pathname: string, search: string, kind: "session" | "activity") {
+export function classroomRehearsalHref(pathname: string, search: string, kind: "session" | "activity", entry: "prep" | "live" = "prep") {
   const query = new URLSearchParams(search);
-  query.set("entry", "prep");
+  query.set("entry", entry);
   query.delete("role");
   if (kind === "activity") {
     query.set("rehearsal", "1");

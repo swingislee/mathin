@@ -222,6 +222,9 @@ export function LiveShell({
   const tPrep = useTranslations("classroom.prep");
   const tPreparation = useTranslations("classroom.preparation");
   const isController = role === "control" && myRole === "teacher";
+  const sessionBackHref = myRole === "teacher"
+    ? `/dashboard/sessions/${session.id}?stage=pre`
+    : `/classroom/${classId}/session/${session.id}`;
   const runMode: ClassroomRunMode = rehearsal ? "rehearsal" : offlineDrill ? "offline-drill" : "formal";
   const m4aFixtures = useMemo(() => buildM4aRosterFixtures({
     claimed: t("m4FixtureClaimed"),
@@ -1252,7 +1255,7 @@ export function LiveShell({
         <div className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col px-6 py-8">
           <div className="flex items-center gap-3">
             <Link
-              href={`/classroom/${classId}/session/${session.id}`}
+              href={sessionBackHref}
               aria-label={t("exit")}
               className="rounded-full p-2 text-muted transition-colors hover:bg-moon/30 hover:text-ink"
             >
@@ -1272,7 +1275,7 @@ export function LiveShell({
             error={startError ? tPrep("startFailed") : null}
             onEnter={() => void startClass()}
             schedule={[session]}
-            onRehearse={() => router.push(classroomRehearsalHref(`/classroom/${classId}/session/${session.id}/live`, window.location.search, "session"))}
+            onRehearse={() => router.replace(classroomRehearsalHref(`/classroom/${classId}/session/${session.id}/live`, window.location.search, "session", "live"))}
             beforeChecks={attendanceSuggested && !state.started && !state.ended ? (
               <section className="mt-5 flex flex-wrap items-center gap-3 border-b border-line pb-4">
                 <div className="min-w-0 flex-1">
@@ -1317,7 +1320,7 @@ export function LiveShell({
       <ClassroomStartConfirmation open={reopenWarningOpen} onOpenChange={setReopenWarningOpen}
         schedule={[session]} disabled={!isController || !log}
         onConfirm={() => reopenClass(true)}
-        onRehearse={() => router.push(classroomRehearsalHref(`/classroom/${classId}/session/${session.id}/live`, window.location.search, "session"))} />
+        onRehearse={() => router.replace(classroomRehearsalHref(`/classroom/${classId}/session/${session.id}/live`, window.location.search, "session", "live"))} />
       {(preparation.stageMounted || stageVisible) && <div ref={classroomRootRef} className={cn(
       !stageVisible && "invisible pointer-events-none",
       "relative isolate flex h-dvh select-none flex-col overflow-hidden px-3 [-webkit-touch-callout:none] [-webkit-user-select:none]",
@@ -1329,7 +1332,7 @@ export function LiveShell({
       {teacherLayoutV2 && !focusMode && (
         <div className="shrink-0 xl:hidden" data-classroom-narrow-course-info>
           <ClassroomCourseInfoBar
-            backHref={`/classroom/${classId}/session/${session.id}`}
+            backHref={sessionBackHref}
             exitLabel={t("exit")}
             title={displayedSessionTitle}
             statusLabel={courseStatusLabel}
@@ -1792,7 +1795,7 @@ export function LiveShell({
           {teacherLayoutV2 && (
             <div className="hidden xl:block" data-classroom-wide-course-info>
               <ClassroomCourseInfoBar
-                backHref={`/classroom/${classId}/session/${session.id}`}
+                backHref={sessionBackHref}
                 exitLabel={t("exit")}
                 title={displayedSessionTitle}
                 statusLabel={courseStatusLabel}

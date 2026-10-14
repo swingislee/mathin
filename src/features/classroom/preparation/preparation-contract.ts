@@ -15,7 +15,8 @@ export function initialClassroomView({
   runState: ClassroomRunState;
   entry: ClassroomEntry;
 }): "prep" | "live" {
-  if (entry === "prep" || mode === "rehearsal") return "prep";
+  if (entry === "prep") return "prep";
+  if (mode === "rehearsal") return entry === "live" ? "live" : "prep";
   return runState === "scheduled" ? "prep" : "live";
 }
 

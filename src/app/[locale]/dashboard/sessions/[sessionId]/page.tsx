@@ -5,6 +5,7 @@ import { getSessionWorkspaceDetail } from "@/features/school/classes";
 import { parseReturnTo } from "@/features/school/object-workspace";
 import { parseSessionStage, SessionWorkspaceBody } from "@/features/school/SessionWorkspaceBody";
 import { requireDashboardEnvironment } from "@/lib/auth";
+import SessionLoading from "./loading";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -31,7 +32,7 @@ export default async function SessionWorkspacePage({
   setRequestLocale(locale);
   return (
     <div className="flex w-full min-w-0 flex-1 flex-col panel-canvas">
-      <Suspense fallback={<div className="mt-6 h-96 animate-pulse rounded-2xl border border-line bg-card" />}>
+      <Suspense fallback={<SessionLoading />}>
         <SessionWorkspaceContent locale={locale} params={params} searchParams={searchParams} />
       </Suspense>
     </div>

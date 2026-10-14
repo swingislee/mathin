@@ -3,6 +3,37 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "CLASSROOM-SMART-ENTRY-20261014",
+      "title": "Smart 手指书写与课堂返回修复",
+      "agent": "codex",
+      "threadId": "01a138fb-194e-71b1-a8bb-5d1b5961b97d",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/CLASSROOM-SMART-ENTRY-20261014.md",
+      "writePaths": [
+        ".ai/tasks/CLASSROOM-SMART-ENTRY-20261014.md",
+        "src/features/classroom/input/useClassroomPointerRouter.ts",
+        "src/features/classroom/live/LiveShell.tsx",
+        "src/features/classroom/preparation/",
+        "src/features/school/classes.ts",
+        "src/components/RouteErrorState.tsx",
+        "src/app/[locale]/error.tsx",
+        "src/app/[locale]/dashboard/sessions/[sessionId]/",
+        "tests/classroom-pointer-router.test.ts",
+        "tests/classroom-preparation.test.ts",
+        "tests/classroom-schedule.test.ts",
+        ".tmp/classroom-smart-entry-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": "04785856",
+      "next": "开发端已修复 Smart 手指断笔、试讲重复候课、课次简报读取和错误页恢复入口。定向检查通过，待真实触屏验收；生产仅只读诊断，部署待本次授权。"
+    },
+    {
       "id": "SUDOKU-PRODUCTION-RESUME-20261014",
       "title": "接续数独课程生产上线与排期名单",
       "agent": "codex",

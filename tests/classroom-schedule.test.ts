@@ -35,4 +35,11 @@ describe("classroom start-time reminder", () => {
     expect(query.get("mode")).toBe(kind === "activity" ? "host" : "rehearsal");
     if (kind === "activity") expect(query.get("rehearsal")).toBe("1");
   });
+  it("carries the completed preparation step into an isolated session rehearsal", () => {
+    const href = classroomRehearsalHref("/class/live", "?role=display&entry=prep&mode=offline-drill", "session", "live");
+    const query = new URL(href, "https://example.test").searchParams;
+    expect(query.get("entry")).toBe("live");
+    expect(query.get("mode")).toBe("rehearsal");
+    expect(query.has("role")).toBe(false);
+  });
 });

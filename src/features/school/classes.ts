@@ -766,20 +766,22 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   if (publicationError) throw new Error(publicationError.message);
   if (videoTaskError) throw new Error(videoTaskError.message);
 
-  const { data: knowledgeSourceRows, error: knowledgeSourceError } = await supabase
-    .from("session_family_briefs")
-    .select("session_id,lesson_title,document,template_version,class_sessions!inner(title,scheduled_at,classroom_id)")
-    .eq("class_sessions.classroom_id", session.classroom_id)
-    .neq("session_id", sessionId)
-    .order("updated_at", { ascending: false })
-    .limit(8)
-    .returns<Array<{
-      session_id: string;
-      lesson_title: string;
-      document: unknown;
-      template_version: string;
-      class_sessions: { title: string; scheduled_at: string | null; classroom_id: string } | null;
-    }>>();
+  // 先限定当前班级的课次，再读取简报，避免从全部简报关联课次时反复执行 RLS。
+  const { data: siblingSessions, error: siblingError } = await supabase
+    .from("class_sessions")
+    .select("id,title,scheduled_at")
+    .eq("classroom_id", session.classroom_id)
+    .neq("id", sessionId);
+  if (siblingError) throw new Error(siblingError.message);
+  const siblingById = new Map((siblingSessions ?? []).map((row) => [row.id, row]));
+  const { data: knowledgeSourceRows, error: knowledgeSourceError } = siblingById.size
+    ? await supabase
+      .from("session_family_briefs")
+      .select("session_id,lesson_title,document,template_version")
+      .in("session_id", [...siblingById.keys()])
+      .order("updated_at", { ascending: false })
+      .limit(8)
+    : { data: [], error: null };
   if (knowledgeSourceError) throw new Error(knowledgeSourceError.message);
 
   const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
@@ -910,8 +912,8 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       .filter((row) => Array.isArray(row.document) && row.document.length > 0)
       .map((row) => ({
         sessionId: row.session_id,
-        sessionTitle: row.class_sessions?.title ?? "-",
-        scheduledAt: row.class_sessions?.scheduled_at ?? null,
+        sessionTitle: siblingById.get(row.session_id)?.title ?? "-",
+        scheduledAt: siblingById.get(row.session_id)?.scheduled_at ?? null,
         lessonTitle: row.lesson_title,
         document: row.document as unknown[],
         templateVersion: row.template_version,

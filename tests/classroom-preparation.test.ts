@@ -37,6 +37,14 @@ describe("shared classroom preparation entry", () => {
     expect(enterStage).not.toHaveBeenCalled();
   });
 
+  it("enters rehearsal directly after choosing it in preparation, without bypassing a formal start", () => {
+    for (const runState of states) {
+      expect(initialClassroomView({ mode: "rehearsal", runState, entry: "live" })).toBe("live");
+      expect(initialClassroomView({ mode: "rehearsal", runState, entry: "prep" })).toBe("prep");
+    }
+    expect(initialClassroomView({ mode: "formal", runState: "scheduled", entry: "live" })).toBe("prep");
+  });
+
   it.each(["rehearsal", "offline-drill"] as ClassroomRunMode[])("never starts formal teaching when entering %s, including ended classes", async (mode) => {
     const startFormal = vi.fn(async () => undefined);
     const enterStage = vi.fn();
