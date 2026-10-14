@@ -143,7 +143,7 @@ import { buildM4aRosterFixtures, M4A_STAR_STUDENT_ID } from "./m4-roster-fixture
 import { buildM4bRosterFixtures, buildM4bStarFixtureEvents } from "./m4-layout-fixtures";
 import { buildRehearsalLearningSetup } from "./rehearsal-learning";
 import { OPTION_LABELS, reduceEvent, type LiveState, type Phase, type Role } from "./liveState";
-import { createClassroomToolState } from "@/features/tools/courseware/tool-classroom";
+import { createVerifiedClassroomToolState } from "@/features/tools/courseware/tool-classroom-runtime";
 import {
   INTERACTION_SYNC_FIXTURE_DOC,
   INTERACTION_SYNC_FIXTURE_PAGE,
@@ -1703,7 +1703,7 @@ export function LiveShell({
                   docId: renderPage.docId,
                   states: state.tools?.[renderPage.id] ?? {},
                   onChange: editable && log ? async (instanceId, originHash, snapshot) => {
-                    const payload = createClassroomToolState(renderPage.id, renderPage.docId, instanceId, snapshot, originHash);
+                    const payload = await createVerifiedClassroomToolState(renderPage.id, renderPage.docId, instanceId, snapshot, originHash);
                     await log.append("tool_state", payload);
                     if (!rehearsal) {
                       // outbox 已落盘才更新舞台；立即尝试入库，让晚加入端尽早读取当前模型。

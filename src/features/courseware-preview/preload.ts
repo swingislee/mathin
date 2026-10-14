@@ -1,7 +1,7 @@
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
 import { collectBindingKeys, PAGE_DOC_VERSION } from "@/features/courseware-doc/schema";
-import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
+import { isSourceRuntimePageDoc } from "@/features/courseware-doc/page-kind";
 
 export interface CoursewarePreviewWarmTarget {
   kind: "image" | "h5";

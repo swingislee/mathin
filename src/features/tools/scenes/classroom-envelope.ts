@@ -16,6 +16,18 @@ export function toolClassroomEventSchema<I extends string, V extends string, S e
   }).strict();
 }
 
+/**
+ * 课堂按外壳路由、去重与重放工具状态；state 交给对应工具合同严格校验后才进入工具。
+ * 外壳字段与 toolClassroomEventSchema 一致，课堂页无需为此加载全部工具合同。
+ */
+export const toolClassroomEnvelopeSchema = z.object({
+  schema: z.literal("mathin-classroom-tool-state"), version: z.literal(1),
+  pageId: identifier, docId: identifier, instanceId: identifier,
+  originHash: z.string().regex(/^[a-f0-9]{64}$/),
+  toolId: identifier, contentVersion: identifier, state: z.unknown(),
+}).strict();
+export type ToolClassroomEnvelope = z.infer<typeof toolClassroomEnvelopeSchema>;
+
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value)

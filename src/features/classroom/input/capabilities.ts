@@ -1,14 +1,10 @@
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
-import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import { PAGE_DOC_VERSION, type DocNode, type PageDoc } from "@/features/courseware-doc/schema";
 import { getGame } from "@/features/games/registry";
 import { getTool } from "@/features/tools/registry";
 import type { H5PointerBridgeStatus } from "@/features/courseware-doc/h5-pointer-protocol";
-import { isMicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
-import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
-import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
+import { isAixuexiPageDoc, isCoursewareCompositionPage, isGamePageDoc, isMicrocoursePageDoc, isSourceRuntimePageDoc } from "@/features/courseware-doc/page-kind";
 import { getToolCoursewareContract } from "@/features/tools/scenes/registry";
-import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import type { CoursewarePage } from "../types";
 import type { ClassroomInputCapability } from "./router";
 import {

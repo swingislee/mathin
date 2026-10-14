@@ -1,15 +1,11 @@
-import { isAixuexiPageDoc } from "@/features/courseware-doc/aixuexi-schema";
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
 import type { StrokeItem } from "@/features/whiteboard/types";
 import { CHECKPOINT_CHUNK_HARD_BYTES, CHECKPOINT_MAX_CHUNKS } from "../checkpoint/limits";
-import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
-import { isGamePageDoc } from "@/features/courseware-doc/game-page-schema";
+import type { MicrocoursePageDoc } from "@/features/courseware-doc/microcourse-schema";
 import {
-  isMicrocoursePageDoc,
-  type MicrocoursePageDoc,
-} from "@/features/courseware-doc/microcourse-schema";
+  isAixuexiPageDoc, isCoursewareCompositionPage, isGamePageDoc, isMicrocoursePageDoc, isSourceRuntimePageDoc,
+} from "@/features/courseware-doc/page-kind";
 import { isSpatialPageDoc } from "@/features/courseware-doc/spatial";
-import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
 import {
   GAME_COURSEWARE_CONTRACTS,
   getGameCoursewareContract,

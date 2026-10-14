@@ -3,7 +3,7 @@ import type { SessionEvent, SessionEventType } from "../types";
 import { STORE_META, STORE_OUTBOX, idbGet, idbListByIndex, idbPut } from "./idb";
 import type { FxMessage, Transport } from "./transports";
 import { compareViewport, viewportEvent } from "../live/classroom-viewport";
-import { classroomToolInstanceKey, parseClassroomToolState } from "@/features/tools/courseware/tool-classroom";
+import { acceptClassroomToolState, classroomToolInstanceKey } from "@/features/tools/courseware/tool-classroom-runtime";
 
 // 课堂事件流（08-§3.4）：一切操作先写本地（内存 + outbox），UI 零等待网络；
 // 幂等靠客户端 uuid 主键 + (deviceId, seq)，排序靠单写者天然有序。
@@ -34,7 +34,7 @@ function rehearsalSnapshotKey(event: SessionEvent): string | null {
   if (event.type === "board_snapshot") return `board:${event.payload.pageKey}`;
   if (event.type === "game_state") return `game:${event.payload.pageId}`;
   if (event.type === "tool_state") {
-    const payload = parseClassroomToolState(event.payload);
+    const payload = acceptClassroomToolState(event.payload);
     return payload ? `tool:${payload.pageId}:${classroomToolInstanceKey(payload.docId, payload.instanceId, payload.originHash)}` : null;
   }
   return null;
@@ -84,7 +84,7 @@ export class SessionEventLog {
   rememberToolStates(events: readonly SessionEvent[]): void {
     for (const event of events) {
       if (event.type !== "tool_state" || event.sessionId !== this.sessionId || !event.deviceId || !Number.isSafeInteger(event.seq) || event.seq < 1) continue;
-      const payload = parseClassroomToolState(event.payload);
+      const payload = acceptClassroomToolState(event.payload);
       if (!payload) continue;
       const key = `${payload.pageId}:${classroomToolInstanceKey(payload.docId, payload.instanceId, payload.originHash)}`;
       const previous = this.toolReplay.get(key);

@@ -6,6 +6,7 @@
 
 - 平面入口在 `planar-kit/catalog.ts` 登记，以领域描述符接入 `PlanarWorkbench`；数学状态、保存和课堂通过同一描述符连接。细节见 [平面工作台](planar-kit/README.md)。
 - 工具内容版本在 `courseware/registry.ts` 登记，参数、固定备课内容与恢复起点使用 `scenes/`。新增持久化版本同步服务端与数据库校验，历史冻结内容按原合同可读。
+- 课堂同步合同按工具族放在 `courseware/classroom-schemas/`，由 `tool-classroom.ts` 汇总；课堂页只引用 `tool-classroom-runtime.ts`，按课件实际用到的工具族加载合同，状态严格校验后才交给工具。新增课堂版本同时登记两处，`tests/classroom-tool-runtime.test.ts` 核对一致。
 - 共用空间操作见 [spatial-interaction](spatial-interaction/README.md)。相机、手柄、图标、精确步进、对象旁动作与表现层从已有入口扩展；领域提供几何约束、合法落点、计数和序列化。
 
 ## 保持操作意图

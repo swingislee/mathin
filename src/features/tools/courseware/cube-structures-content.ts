@@ -59,9 +59,7 @@ export function createCubeCoursewareTool(input: { name: string; snapshot: CubeDr
   });
 }
 
-export function isCubeCoursewareTool(tool: { contentVersion: string }): tool is CubeCoursewareTool {
-  return tool.contentVersion === CUBE_COURSEWARE_CONTENT_VERSION || tool.contentVersion === CUBE_COURSEWARE_LEGACY_VERSION || tool.contentVersion === CUBE_ROTATION_COURSEWARE_VERSION;
-}
+export { isCubeCoursewareTool } from "./cube-courseware-kind";
 
 /** 只在编辑器明确应用时升级；旧发布内容保持原样。 */
 export function configureCubeCoursewareToolbar(tool: CubeCoursewareTool, toolbar: readonly CubeToolbarId[]) {

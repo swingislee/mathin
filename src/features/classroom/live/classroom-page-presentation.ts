@@ -1,7 +1,6 @@
 import type { CoursewareDoc } from "@/features/courseware-doc/document";
-import { isCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import type { ResolvedBindingUrls } from "@/features/courseware-doc/resolve";
-import { isSourceRuntimePageDoc } from "@/features/courseware-doc/source-runtime-schema";
+import { isCoursewareCompositionPage, isSourceRuntimePageDoc } from "@/features/courseware-doc/page-kind";
 import { collectCoursewarePreviewWarmTargets } from "@/features/courseware-preview/preload";
 import type { SessionPageDoc } from "../courseware/session-assets";
 import type { CoursewarePage } from "../types";

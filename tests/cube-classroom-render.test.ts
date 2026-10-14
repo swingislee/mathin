@@ -15,6 +15,7 @@ import CoursewareCompositionStage from "@/features/courseware-doc/CoursewareComp
 import { createEmptyCoursewareCompositionPage } from "@/features/courseware-doc/composition-page-schema";
 import { addCoursewareCompositionTool } from "@/features/courseware-doc/composition-page-layout";
 import type { CoursewareToolRuntime } from "@/features/tools/courseware/tool-classroom";
+import { loadClassroomToolContract } from "@/features/tools/courseware/tool-classroom-runtime";
 import { buildNet, diceTool, netTool } from "./fixtures/spatial-teaching-content";
 
 type ViewportProps = ComponentProps<typeof CubeStructuresViewport>;
@@ -24,6 +25,7 @@ vi.mock("@/features/tools/components", () => ({ CoursewareToolView: ({ tool, cla
   renderedTools.set(tool.payload.title, classroom); return null;
 } }));
 vi.mock("@/features/courseware-doc/DocStage", () => ({ default: () => null }));
+vi.mock("@/i18n/navigation", () => ({ Link: () => null, useRouter: () => ({ push: () => {}, replace: () => {}, refresh: () => {} }), usePathname: () => "/" }));
 vi.mock("@/features/games/courseware/GamePageStage", () => ({ default: () => null }));
 vi.mock("@/features/courseware-doc/MicrocourseStage", () => ({ MicrocourseSourceStage: () => null, MicrocourseH5ArtifactFrame: () => null }));
 vi.mock("@/features/tools/spatial-lab/CubeStructuresViewport", () => ({ CubeStructuresViewport: () => null }));
@@ -78,6 +80,8 @@ describe("cube classroom React adapter", () => {
     const doc = addCoursewareCompositionTool(addCoursewareCompositionTool(createEmptyCoursewareCompositionPage(), dice), net);
     const change = vi.fn().mockResolvedValue(undefined);
     const classroomTools = { pageId: "page-new", docId: "doc-new", states: {}, onChange: change };
+    // 课堂先按需加载工具族合同，再交给工具；这里预先加载，覆盖合同就绪后的渲染。
+    expect(await Promise.all([dice, net].map(loadClassroomToolContract))).toEqual([true, true]);
     await act(async () => root.render(createElement(CoursewareCompositionStage, { doc, interactive: true, bindingUrls: {}, classroomTools })));
     expect(host.querySelectorAll('[data-classroom-tool="synchronized"]')).toHaveLength(2);
     expect(renderedTools.get(dice.payload.title)?.onChange).toBeDefined();
@@ -96,6 +100,7 @@ describe("cube classroom React adapter", () => {
     const payload = createClassroomToolState("page-1", "doc-1", firstId, snapshot, hash);
     const change = vi.fn().mockResolvedValue(undefined);
     const classroomTools = { pageId: "page-1", docId: "doc-1", states: { [classroomToolInstanceKey("doc-1", firstId, hash)]: { payload, sequences: { writer: 1 } } }, onChange: change };
+    expect(await loadClassroomToolContract(tool)).toBe(true);
     await act(async () => root.render(createElement(CoursewareCompositionStage, { doc, interactive: true, bindingUrls: {}, classroomTools })));
     expect(renderedTools.get(tool.payload.title)?.state).toEqual(payload);
     expect(renderedTools.get(second.payload.title)?.state).toBeUndefined();
@@ -109,6 +114,20 @@ describe("cube classroom React adapter", () => {
     await act(async () => root.render(createElement(CoursewareCompositionStage, { doc: updated, interactive: false, bindingUrls: {}, classroomTools })));
     expect(renderedTools.get(tool.payload.title)?.state).toBeUndefined();
     expect(renderedTools.get(tool.payload.title)?.onChange).toBeUndefined();
+  });
+
+  it("passes only strictly validated live state to a tool", async () => {
+    const doc = addCoursewareCompositionTool(createEmptyCoursewareCompositionPage(), tool);
+    const id = doc.layout.blocks[0].id, hash = cubeCoursewareOriginHash(tool.payload);
+    const valid = createClassroomToolState("page-1", "doc-1", id, { session: base, view: null, cameraRevision: 0 }, hash);
+    const invalid = { ...valid, state: { ...valid.state, cameraRevision: -1 } };
+    expect(await loadClassroomToolContract(tool)).toBe(true);
+    const render = (payload: typeof valid) => act(async () => root.render(createElement(CoursewareCompositionStage, { doc, interactive: true, bindingUrls: {},
+      classroomTools: { pageId: "page-1", docId: "doc-1", states: { [classroomToolInstanceKey("doc-1", id, hash)]: { payload, sequences: { writer: 1 } } } } })));
+    await render(invalid);
+    expect(renderedTools.get(tool.payload.title)?.state).toBeUndefined();
+    await render(valid);
+    expect(renderedTools.get(tool.payload.title)?.state).toEqual(valid);
   });
 
   it("publishes once per semantic action under StrictMode and waits for durable acceptance before changing the model", async () => {

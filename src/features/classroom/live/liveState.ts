@@ -1,6 +1,6 @@
 import type { InteractionTrigger } from "@/features/courseware-doc/interactions";
 import type { GameMirrorState } from "@/features/games/types";
-import { classroomToolInstanceKey, parseClassroomToolState, type ClassroomToolStates } from "@/features/tools/courseware/tool-classroom";
+import { acceptClassroomToolState, classroomToolInstanceKey, type ClassroomToolStates } from "@/features/tools/courseware/tool-classroom-runtime";
 import type { BoardItem } from "@/features/whiteboard/types";
 import { reduceStarLedger, type StarLedger } from "../stars";
 import type { CoursewarePage, SessionEvent } from "../types";
@@ -98,7 +98,7 @@ export function reduceEvent(state: LiveState, ev: SessionEvent): LiveState {
       return { ...state, games: { ...state.games, [pageId]: mirror } };
     }
     case "tool_state": {
-      const payload = parseClassroomToolState(ev.payload);
+      const payload = acceptClassroomToolState(ev.payload);
       if (!payload || !ev.deviceId || !Number.isSafeInteger(ev.seq) || ev.seq < 1
         || !state.pages.some((page) => page.id === payload.pageId && page.type === "doc" && page.docId === payload.docId)) return state;
       const instances = state.tools?.[payload.pageId] ?? {};

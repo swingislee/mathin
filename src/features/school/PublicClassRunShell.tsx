@@ -30,7 +30,7 @@ import { useClassroomPaging } from "@/features/classroom/live/useClassroomPaging
 import { useRehearsalRoom } from "@/features/classroom/live/useRehearsalRoom";
 import { DocCoursewarePage } from "@/features/classroom/live/DocCoursewarePage";
 import { RehearsalDevices } from "@/features/classroom/preparation/RehearsalDevices";
-import { createClassroomToolState } from "@/features/tools/courseware/tool-classroom";
+import { createVerifiedClassroomToolState } from "@/features/tools/courseware/tool-classroom-runtime";
 import { enterFromPreparation, initialClassroomView, type ClassroomEntry, type ClassroomRunMode, type ClassroomRunState } from "@/features/classroom/preparation/preparation-contract";
 import {
   endPublicClassRunAction,
@@ -389,7 +389,7 @@ function HostRunSurface({
           states: rehearsalRoom.state.tools?.[selectedPage.pageDocId] ?? {},
           onChange: canTeach && rehearsalRoom.log ? async (instanceId, originHash, snapshot) => {
             if (!rehearsalRoom.log) throw new Error("CLASSROOM_SYNC_NOT_READY");
-            await rehearsalRoom.log.append("tool_state", createClassroomToolState(selectedPage.pageDocId, selectedPage.pageDocId, instanceId, snapshot, originHash));
+            await rehearsalRoom.log.append("tool_state", await createVerifiedClassroomToolState(selectedPage.pageDocId, selectedPage.pageDocId, instanceId, snapshot, originHash));
           } : undefined,
         }}
       /> : <StagePreview doc={selectedPage.doc} bindingUrls={selectedPage.bindingUrls} stageMode={selectedPage.aspect === "4:3" ? "board43" : "natural"} className="size-full" /> : <div className="grid size-full place-items-center text-sm text-muted">{t("candidateNoPreview")}</div>}

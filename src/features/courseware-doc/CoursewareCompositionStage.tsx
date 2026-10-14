@@ -1,12 +1,17 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 import GamePageStage from "@/features/games/courseware/GamePageStage";
 import type { GameMirrorState } from "@/features/games/types";
 import { CoursewareToolView } from "@/features/tools/components";
 import { getToolCoursewareContract } from "@/features/tools/courseware/registry";
-import { classroomToolInstanceKey, coursewareToolOriginHash, hasClassroomToolAdapter, type ClassroomToolRuntime } from "@/features/tools/courseware/tool-classroom";
+import type { ClassroomToolRuntime, CoursewareToolRuntime } from "@/features/tools/courseware/tool-classroom";
+import {
+  classroomToolInstanceKey, coursewareToolOriginHash, hasClassroomToolAdapter, isClassroomToolContractLoaded,
+  loadClassroomToolContract, verifyClassroomToolState, type ClassroomToolEnvelope,
+} from "@/features/tools/courseware/tool-classroom-runtime";
 import type { CoursewareCompositionPage } from "./composition-page-schema";
 import { coursewareCanvasStyle } from "./courseware-surface";
 import DocStage, { type DocStageProps } from "./DocStage";
@@ -33,6 +38,29 @@ function placementStyle(placement: CoursewareCompositionPage["layout"]["blocks"]
     width: `${(placement.columnSpan / 12) * 100}%`,
     height: `${(placement.rowSpan / 9) * 100}%`,
   };
+}
+
+type ToolBlock = Extract<CoursewareCompositionPage["layout"]["blocks"][number], { type: "tool" }>;
+
+/**
+ * 课堂同步的工具：先加载该工具族的状态合同，课堂状态经严格校验后才交给工具。
+ * 合同与工具代码并行按需加载，课件中没有的工具不下载。
+ */
+function SynchronizedCoursewareTool({ tool, entry, matches, onChange }: {
+  tool: ToolBlock["tool"]; entry: ClassroomToolEnvelope | undefined; matches: (entry: ClassroomToolEnvelope) => boolean;
+  onChange: CoursewareToolRuntime["onChange"];
+}) {
+  const [loaded, setLoaded] = useState(() => isClassroomToolContractLoaded(tool));
+  useEffect(() => {
+    if (loaded) return;
+    let active = true;
+    const done = () => { if (active) setLoaded(true); };
+    void loadClassroomToolContract(tool).then(done, done);
+    return () => { active = false; };
+  }, [loaded, tool]);
+  if (!loaded) return <Skeleton className="h-64 w-full" />;
+  const verified = entry && matches(entry) ? verifyClassroomToolState(entry) ?? undefined : undefined;
+  return <CoursewareToolView tool={tool} classroom={{ state: verified, onChange }} />;
 }
 
 /** Shared renderer for Studio, preparation and live classroom composition pages. */
@@ -115,15 +143,18 @@ export default function CoursewareCompositionStage(props: CoursewareCompositionS
                 data-classroom-tool={toolSynced ? "synchronized" : "read-only"}
                 style={{ pointerEvents: toolEditable ? "auto" : "none" }}
               >
-                <CoursewareToolView key={toolSynced ? `${props.classroomTools!.pageId}:${classroomToolInstanceKey(props.classroomTools!.docId, block.id, originHash)}` : block.id} tool={block.tool} classroom={toolSynced ? {
-                  state: toolEntry && toolEntry.pageId === props.classroomTools?.pageId && toolEntry.docId === props.classroomTools.docId
-                    && toolEntry.instanceId === block.id && toolEntry.originHash === originHash
-                    && toolEntry.toolId === block.tool.toolId && toolEntry.contentVersion === block.tool.contentVersion ? toolEntry : undefined,
-                  onChange: toolEditable ? (update) => {
+                {toolSynced ? <SynchronizedCoursewareTool
+                  key={`${props.classroomTools!.pageId}:${classroomToolInstanceKey(props.classroomTools!.docId, block.id, originHash)}`}
+                  tool={block.tool}
+                  entry={toolEntry}
+                  matches={(entry) => entry.pageId === props.classroomTools?.pageId && entry.docId === props.classroomTools.docId
+                    && entry.instanceId === block.id && entry.originHash === originHash
+                    && entry.toolId === block.tool.toolId && entry.contentVersion === block.tool.contentVersion}
+                  onChange={toolEditable ? (update) => {
                     if (update.toolId !== block.tool.toolId || update.contentVersion !== block.tool.contentVersion) return Promise.reject(new Error("CLASSROOM_TOOL_VERSION_MISMATCH"));
                     return props.classroomTools!.onChange!(block.id, originHash, update);
-                  } : undefined,
-                } : undefined} />
+                  } : undefined}
+                /> : <CoursewareToolView key={block.id} tool={block.tool} />}
               </div>
             )}
           </div>

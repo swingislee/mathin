@@ -2,9 +2,9 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ToolComponentProps } from "./types";
 import type { CoursewareCompositionTool } from "@/features/courseware-doc/composition-page-schema";
-import { isCubeCoursewareTool } from "./courseware/cube-structures-content";
+import { isCubeCoursewareTool } from "./courseware/cube-courseware-kind";
 import type { CoursewareToolRuntime } from "./courseware/tool-classroom";
-import { isToolScene } from "./scenes/contract";
+import { isToolSceneVersion } from "./courseware/tool-classroom-runtime";
 import type { ToolScenePageHeader } from "./scenes/ToolSceneLibrary";
 import { ALL_PLANAR_TOOLS } from "./planar-kit/catalog";
 
@@ -34,7 +34,7 @@ const PreparedToolWorkbench = dynamic(() => import("./scenes/PreparedToolWorkben
 
 /** 固定课件内容不打开个人工作台，也不读取账号草稿或页面 URL。 */
 export function CoursewareToolView({ tool, classroom }: { tool: CoursewareCompositionTool; classroom?: CoursewareToolRuntime }) {
-  if (isToolScene(tool)) return <ToolScenePresentation scene={tool} classroom={classroom} />;
+  if (isToolSceneVersion(tool)) return <ToolScenePresentation scene={tool} classroom={classroom} />;
   return isCubeCoursewareTool(tool)
     ? <CubeCoursewarePreview payload={tool.payload} />
     : <ToolView id={tool.toolId} embedded />;
