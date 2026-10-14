@@ -42,18 +42,23 @@ export async function loadStudentBusinessHistory(locale: string, options: {stude
   const activitiesQuery = supabase.from('business_activity_registrations' as 'activity_registrations').select('*,activities!inner(id,title,kind,occurred_on)').not('source_record_id','is',null).neq('activities.kind','assessment_1v1').order('registered_on', {ascending:false, nullsFirst:false}).order('id');
   const assessmentsQuery = supabase.from('business_assessment_results' as 'assessment_results').select('*,activity_registrations!inner(activities!inner(deleted_at))').is('activity_registrations.activities.deleted_at',null).not('source_record_id','is',null).order('assessed_on', {ascending:false, nullsFirst:false}).order('id');
   const enrollmentsQuery = supabase.from('business_course_enrollments' as 'course_enrollments').select('*,course_enrollment_assignments(*)').not('source_record_id','is',null).order('registered_on', {ascending:false, nullsFirst:false}).order('id');
+  // 分班工作台只显示来源班级、学生与备注；来源字段清单和报名指标事实留给档案读取。
+  const workbenchEnrollmentsQuery = supabase.from('business_course_enrollments' as 'course_enrollments')
+    .select('id,student_id,source_record_id,record_state,registered_on,period_label,amount,amount_original,note,course_enrollment_assignments(source_record_id,class_label,teacher_label,room_label,schedule_label,note)')
+    .not('source_record_id','is',null).order('registered_on', {ascending:false, nullsFirst:false}).order('id');
   const communicationQuery = supabase.from('business_student_follow_ups' as 'student_follow_ups').select('*').not('source_record_id','is',null).order('occurred_on', {ascending:false, nullsFirst:false}).order('id');
   const none = {data:[],error:null};
   const responses = await Promise.all([
     include('renewal') ? historyPages(studentId ? renewalsQuery.eq('student_id',studentId) : renewalsQuery) : none,
     include('activity') ? historyPages(studentId ? activitiesQuery.eq('student_id',studentId) : activitiesQuery) : none,
     include('assessment') || (fullContext && kind==='communication') ? historyPages(studentId ? assessmentsQuery.eq('student_id',studentId) : assessmentsQuery) : none,
-    include('enrollment') ? historyPages(studentId ? enrollmentsQuery.eq('student_id',studentId) : enrollmentsQuery) : none,
+    include('enrollment') ? fullContext ? historyPages(studentId ? enrollmentsQuery.eq('student_id',studentId) : enrollmentsQuery)
+      : historyPages(studentId ? workbenchEnrollmentsQuery.eq('student_id',studentId) : workbenchEnrollmentsQuery) : none,
     include('communication') || (fullContext && (kind==='renewal' || kind==='activity')) ? historyPages(studentId ? communicationQuery.eq('student_id',studentId) : communicationQuery) : none,
   ]);
-  const source = (row: {id:string;student_id:string|null;lead_id?:string|null;source_record_id:string|null;source_field_ids:string[];record_state?:string}) => {
+  const source = (row: {id:string;student_id:string|null;lead_id?:string|null;source_record_id:string|null;source_field_ids?:string[];record_state?:string}) => {
     if(!row.source_record_id) throw new Error('BUSINESS_HISTORY_SOURCE_REQUIRED');
-    return {id:row.id,student_id:row.student_id,lead_id:row.lead_id??null,source_record_id:row.source_record_id,source_field_ids:row.source_field_ids,record_state:row.record_state==='current'?'current' as const:'historical' as const};
+    return {id:row.id,student_id:row.student_id,lead_id:row.lead_id??null,source_record_id:row.source_record_id,source_field_ids:row.source_field_ids??[],record_state:row.record_state==='current'?'current' as const:'historical' as const};
   };
   const bands: Record<string,string> = {a_plus:'A+',a:'A',s:'S',c:'C',g_plus:'G+',x_plus:'X+'};
   const data: StudentBusinessHistory = {

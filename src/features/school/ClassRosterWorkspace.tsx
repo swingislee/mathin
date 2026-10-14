@@ -24,12 +24,14 @@ export function ClassRosterWorkspace({ view, query, canTeach, disabled = false, 
     if (!table) return;
     const cells = [...table.querySelectorAll<HTMLTableCellElement>(":scope > thead > tr > [data-class-sticky]")];
     // 读取实际表头宽度，跟随语言、筛选和窗口变化，保持四列紧邻。
+    // 先一次读完全部宽度再写偏移：边写边读会让整张名册表逐列重新排版。
     const sync = () => {
+      const widths = cells.map(cell => cell.getBoundingClientRect().width);
       let left = 0;
-      for (const cell of cells) {
+      cells.forEach((cell, index) => {
         table.style.setProperty(`--class-column-${cell.dataset.classSticky}-left`, `${left}px`);
-        left += cell.getBoundingClientRect().width;
-      }
+        left += widths[index];
+      });
     };
     sync();
     if (typeof ResizeObserver === "undefined") {
