@@ -110,11 +110,14 @@ function Block({ block, strings, index, inCard, ...select }: Select & { block: R
   }
 }
 
-export function RuntimePhone({ title, brand, blocks, tabs, activeScreen, strings, selected, onSelect, onTab }: Select & {
+export function RuntimePhone({ title, brand, blocks, tabs, activeScreen, strings, selected, onSelect, onTab, onTitle }: Select & {
   title: string; brand: boolean; blocks: RuntimeBlockView[]; tabs: RuntimeTab[]; activeScreen: string; strings: Record<string, string>; onTab?: (screen: string) => void;
+  /** Clicking the brand name opens its settings. */
+  onTitle?: () => void;
 }) {
   return <div className="mx-auto flex h-full max-h-[760px] w-[375px] max-w-full flex-col overflow-hidden rounded-[36px] border border-[#d9d4c6] bg-gradient-to-br from-[#e7ecd9] via-[#f4f2e7] to-[#f6efdc] text-[#29251f] shadow-sm">
-    <div className={cn("flex h-14 shrink-0 items-end px-4 pb-2 text-base font-semibold", brand ? "justify-start" : "justify-center")}>{title}</div>
+    <div className={cn("flex h-14 shrink-0 items-end px-4 pb-2 text-base font-semibold", brand ? "justify-start" : "justify-center")}>
+      {brand && onTitle ? <button type="button" onClick={onTitle} title={strings.brandSettings} className="-mx-1 rounded-md px-1 hover:bg-[#6f8b48]/10 hover:text-[#6f8b48]">{title}</button> : title}</div>
     <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4" onClick={() => onSelect?.("")}>
       <Blocks blocks={blocks} strings={strings} selected={selected} onSelect={onSelect} />
     </div>

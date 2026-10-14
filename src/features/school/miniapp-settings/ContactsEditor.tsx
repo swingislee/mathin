@@ -14,7 +14,7 @@ export function ContactsEditor({ value, legacy, campuses, stages, locale, onChan
   const patch = (id: string, changes: Partial<MiniappContact>) => onChange(rows.map(c => c.id === id ? { ...c, ...changes } : c));
   const image = (path: string) => path.includes("/") ? `/api/v1/parent/advisors/qr?preview=1&path=${encodeURIComponent(path)}` : `/api/v1/participant/settings/image?preview=1&path=${encodeURIComponent(path)}`;
   return <div className="max-w-4xl space-y-5">
-    <p className="text-sm text-muted">{en ? "Choose stages and a campus for each contact. With no stage selected, the contact is the fallback for that campus. Save a draft and publish with the controls above." : "为联系人选择适用阶段和校区。不选阶段时，作为该校区的默认联系人。使用上方按钮保存草稿并发布。"}</p>
+    <p className="text-sm text-muted">{en ? "Choose stages and a campus for each contact. With no stage selected, the contact is the fallback for that campus. Changes are saved as a draft and take effect after publishing." : "为联系人选择适用阶段和校区。不选阶段时，作为该校区的默认联系人。修改会自动保存为草稿，发布后生效。"}</p>
     {value === undefined && <p className="text-sm text-muted">{en ? "Showing existing grade contacts. Changes below become a draft; existing public details remain until publication." : "当前沿用原有学服配置。修改后进入草稿，发布时更新公开联系方式。"}</p>}
     {rows.map((c, i) => <section key={c.id} className="space-y-4 border-b border-line pb-6">
       <MoveControls en={en} index={i} length={rows.length} move={offset => onChange(moveItem(rows, i, offset))} remove={() => onChange(rows.filter(r => r.id !== c.id))}>

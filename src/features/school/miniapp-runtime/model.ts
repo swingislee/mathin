@@ -1,7 +1,8 @@
 import { newId } from "@/lib/uuid";
 import {
-  runtimeText as t, type RuntimeAction, type RuntimeBlockSpec, type RuntimeBlockType, type RuntimeRule, type RuntimeScreenSpec, type RuntimeSpec, type RuntimeTabSpec,
+  runtimeText as t, type RuntimeAction, type RuntimeBlockSpec, type RuntimeBlockType, type RuntimeRoute, type RuntimeRule, type RuntimeScreenSpec, type RuntimeSpec, type RuntimeTabSpec,
 } from "../../../../contracts/participant-api/runtime";
+import type { MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
 
 export type Locale = "zh" | "en";
 export const blockNames: Record<RuntimeBlockType, { zh: string; en: string }> = {
@@ -144,4 +145,63 @@ export function changes(live: RuntimeSpec, draft: RuntimeSpec, locale: Locale): 
   const rest = (tabs: RuntimeTabSpec[]) => JSON.stringify(tabs.map(row => ({ ...row, hidden: undefined })));
   if (rest(live.tabs) !== rest(draft.tabs)) rows.push(zh ? "底部导航有调整" : "Tab bar changed");
   return rows;
+}
+
+/** Settings that pages use. The canvas opens them one level deeper; they are saved with the Mini Program settings draft. */
+export type LibraryKind = "brand" | "stages" | "contacts" | "booking" | "pages" | "forms" | "reports";
+export type LibraryTarget = { kind: LibraryKind; id?: string };
+export const libraryNames: Record<LibraryKind, { zh: string; en: string }> = {
+  brand: { zh: "名称与主题", en: "Name & theme" }, stages: { zh: "学习阶段", en: "Learning stages" }, contacts: { zh: "联系方式", en: "Contacts" },
+  booking: { zh: "诊断预约规则", en: "Assessment booking rules" }, pages: { zh: "图文页", en: "Content pages" }, forms: { zh: "表单", en: "Forms" }, reports: { zh: "报告版式", en: "Report layouts" },
+};
+/** Objects listed under a library entry, or null when the entry is a single settings object. */
+export function libraryItems(settings: MiniappSettings, kind: LibraryKind): { id: string; title: { zh: string; en: string }; enabled: boolean }[] | null {
+  const x = settings.experience;
+  if (kind === "pages" || kind === "reports") return (x?.pages ?? []).filter(page => (page.purpose === "report") === (kind === "reports"));
+  if (kind === "forms") return x?.forms ?? [];
+  return null;
+}
+/** Settings not yet moved into the workbench; they open in the original settings page. */
+export const moreSettings: { tab: string; zh: string; en: string; href?: string }[] = [
+  { tab: "native-pages", zh: "功能页说明与附加内容", en: "Feature page content" }, { tab: "offerings", zh: "服务目录", en: "Services" },
+  { tab: "flows", zh: "服务预约流程", en: "Booking flows" }, { tab: "policies", zh: "服务预约规则", en: "Service policies" },
+  { tab: "requests", zh: "服务申请受理", en: "Service requests" }, { tab: "notifications", zh: "通知与事件", en: "Notifications" },
+  { tab: "resources", zh: "人员与资源", en: "Resources" }, { tab: "dictionaries", zh: "分类与人群", en: "Categories" },
+  { tab: "websites", zh: "外部网页", en: "Websites" }, { tab: "connections", zh: "业务连接", en: "Connections" },
+  { tab: "documents", zh: "帮助与协议文档", en: "Help & agreements", href: "/dashboard/miniapp-settings/documents" },
+];
+/** Where the settings behind an existing feature live, shown as "去设置" on blocks that open it. */
+export function routeSettings(route: RuntimeRoute): { library: LibraryTarget } | { href: string; zh: string; en: string } | null {
+  switch (route) {
+    case "assessment": return { library: { kind: "booking" } };
+    case "service": return { library: { kind: "contacts" } };
+    case "reflections": return { library: { kind: "reports" } };
+    case "experience-form": return { library: { kind: "forms" } };
+    case "activity-catalog": case "activity-detail": case "activity-requests": case "records": return { href: "/dashboard/activities", zh: "活动", en: "Activities" };
+    case "document": return { href: "/dashboard/miniapp-settings/documents", zh: "帮助与协议文档", en: "Help & agreements" };
+    case "service-catalog": case "service-detail": return { href: "/dashboard/miniapp-settings?tab=offerings", zh: "服务目录", en: "Services" };
+    case "experience-requests": case "provider-bookings": return { href: "/dashboard/miniapp-settings?tab=requests", zh: "服务申请受理", en: "Service requests" };
+    case "experience-notifications": return { href: "/dashboard/miniapp-settings?tab=notifications", zh: "通知与事件", en: "Notifications" };
+    case "web": return { href: "/dashboard/miniapp-settings?tab=websites", zh: "外部网页", en: "Websites" };
+    default: return null;
+  }
+}
+
+/** JSON with sorted keys, so drafts compare equal regardless of key order. */
+function stable(value: unknown): string {
+  return JSON.stringify(value, (_key, row: unknown) => row && typeof row === "object" && !Array.isArray(row)
+    ? Object.fromEntries(Object.entries(row as Record<string, unknown>).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : row);
+}
+/** Plain-language list of library objects that differ from the published settings. */
+export function settingsChanges(live: MiniappSettings, draft: MiniappSettings, locale: Locale): string[] {
+  const pages = (value: MiniappSettings, report: boolean) => (value.experience?.pages ?? []).filter(page => (page.purpose === "report") === report);
+  const sections: [string, (value: MiniappSettings) => unknown][] = [
+    [libraryNames.brand[locale], value => value.brand], [libraryNames.stages[locale], value => value.stages],
+    [libraryNames.contacts[locale], value => value.contacts ?? null], [libraryNames.booking[locale], value => value.booking ?? null],
+    [libraryNames.pages[locale], value => pages(value, false)], [libraryNames.forms[locale], value => value.experience?.forms ?? []],
+    [libraryNames.reports[locale], value => [pages(value, true), value.experience?.reportBindings ?? [], value.reports ?? null]],
+    [locale === "zh" ? "更多设置" : "More settings", value => ({ ...value, brand: null, stages: null, contacts: null, booking: null, reports: null,
+      experience: value.experience ? { ...value.experience, pages: null, forms: null, reportBindings: null } : null })],
+  ];
+  return sections.filter(([, read]) => stable(read(live)) !== stable(read(draft))).map(([name]) => (locale === "zh" ? "修改资料：" : "Changed settings: ") + name);
 }

@@ -1,6 +1,7 @@
 "use client";
-import { useRef, useState, type ReactNode } from "react";
-import { ArrowDown, ArrowUp, Plus, Trash2, Upload } from "lucide-react";
+import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ChevronRight, Plus, Trash2, Upload } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -12,12 +13,27 @@ import {
   runtimeIcons, runtimeRoutes, runtimeSources, runtimeTabSlots,
   type RuntimeAction, type RuntimeBlockSpec, type RuntimeEntrySpec, type RuntimeLinkSpec, type RuntimeRule, type RuntimeScreenSpec, type RuntimeTabSpec, type RuntimeText,
 } from "../../../../contracts/participant-api/runtime";
-import { blockNames, canHideTab, defaultAction, presetRule, rulePreset, withHidden, type ActionKind, type Locale, type RulePreset } from "./model";
+import { blockNames, canHideTab, defaultAction, libraryNames, presetRule, routeSettings, rulePreset, withHidden, type ActionKind, type LibraryTarget, type Locale, type RulePreset } from "./model";
 import { RuntimeIcon } from "./RuntimeRenderer";
 
 export type InspectorMeta = { contentPages: { id: string; title: string }[]; stages: { stageNumber: number; label: string; group: string }[] };
 const select = "h-9 w-full rounded-md border border-line bg-paper px-2 text-sm";
 const L = (locale: Locale, zh: string, en: string) => locale === "zh" ? zh : en;
+
+/** Opens a library object one level below the canvas. */
+export const OpenLibrary = createContext<(target: LibraryTarget) => void>(() => {});
+const deeper = "flex w-full items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-left text-xs text-muted hover:border-crater hover:text-ink";
+/** A link from a canvas property to the deeper settings it depends on. */
+export function SettingsLink({ label, target, href, locale }: { label: string; target?: LibraryTarget; href?: string; locale: Locale }) {
+  const open = useContext(OpenLibrary);
+  const content = <><span className="min-w-0 flex-1 truncate">{L(locale, "去设置：", "Settings: ")}{label}</span><ChevronRight className="size-3.5 shrink-0" /></>;
+  return href ? <Link href={href} className={deeper}>{content}</Link> : <button type="button" className={deeper} onClick={() => target && open(target)}>{content}</button>;
+}
+function RouteSettings({ route, locale }: { route: RuntimeAction & { type: "route" }; locale: Locale }) {
+  const where = routeSettings(route.route);
+  if (!where) return null;
+  return "library" in where ? <SettingsLink label={libraryNames[where.library.kind][locale]} target={where.library} locale={locale} /> : <SettingsLink label={where[locale]} href={where.href} locale={locale} />;
+}
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return <label className="block space-y-1.5"><span className="text-xs font-medium text-muted">{label}</span>{children}{hint && <span className="block text-[11px] text-muted">{hint}</span>}</label>;
@@ -54,6 +70,7 @@ export function ActionField({ label, value, screens, locale, onChange, allowNone
       {["document", "experience", "service-detail", "experience-form", "web", "activity-detail", "service-catalog"].includes(value.route) &&
         <Input placeholder={L(locale, "对象标识，例如 privacy", "Target id, e.g. privacy")} value={value.query?.id ?? value.query?.category ?? ""}
           onChange={event => onChange({ ...value, query: event.target.value ? { [value.route === "service-catalog" ? "category" : "id"]: event.target.value } : undefined })} />}
+      <RouteSettings route={value} locale={locale} />
     </>}
     {value?.type === "phone" && <Input value={value.number} onChange={event => onChange({ type: "phone", number: event.target.value })} />}
     {value?.type === "copy" && <Input value={value.text} onChange={event => onChange({ type: "copy", text: event.target.value })} />}
@@ -194,12 +211,15 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
         <TextField key="action" label={L(locale, "条目按钮文字", "Item button")} value={block.actionLabel} locale={locale} onChange={actionLabel => set({ actionLabel })} />,
         <TextField key="empty" label={L(locale, "没有内容时", "When empty")} value={block.empty} locale={locale} onChange={empty => set({ empty })} />,
         <LinkField key="more" label={L(locale, "标题右侧链接", "Heading link")} value={block.more} screens={screens} locale={locale} onChange={value => optional("more", value)} />);
+      if (block.source === "activities.catalog") fields.push(<SettingsLink key="activities" label={L(locale, "发布和整理活动", "Publish activities")} href="/dashboard/activities" locale={locale} />,
+        ...(block.facets.includes("stage") ? [<SettingsLink key="stages" label={L(locale, "阶段名称（学习阶段）", "Stage labels")} target={{ kind: "stages" }} locale={locale} />] : []));
       break;
     case "participants":
       fields.push(<Field key="style" label={L(locale, "样式", "Style")}><select className={select} value={block.style ?? "chips"} onChange={event => set({ style: event.target.value as "chips" | "picker" | "tile" })}>
           <option value="picker">{L(locale, "下拉选择行", "Picker row")}</option><option value="tile">{L(locale, "头像磁贴", "Avatar tile")}</option><option value="chips">{L(locale, "横向标签", "Chips")}</option></select></Field>,
         <TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
-        <TextField key="empty" label={L(locale, "没有关联孩子时", "When none linked")} value={block.empty} locale={locale} onChange={empty => set({ empty })} />);
+        <TextField key="empty" label={L(locale, "没有关联孩子时", "When none linked")} value={block.empty} locale={locale} onChange={empty => set({ empty })} />,
+        <SettingsLink key="stages" label={L(locale, "阶段名称（学习阶段）", "Stage labels")} target={{ kind: "stages" }} locale={locale} />);
       break;
     case "calendar":
       fields.push(<TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
@@ -212,10 +232,11 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
       fields.push(<LinkField key="trailing" label={L(locale, "右侧按钮", "Trailing button")} value={block.trailing} screens={screens} locale={locale} onChange={value => optional("trailing", value)} />);
       break;
     case "content":
-      fields.push(<Field key="page" label={L(locale, "图文页", "Content page")} hint={L(locale, "图文页正文在“小程序设置 · 内容”中编写。", "Write content pages in Mini Program settings.")}>
+      fields.push(<Field key="page" label={L(locale, "图文页", "Content page")}>
         <select className={select} value={block.pageId} onChange={event => set({ pageId: event.target.value })}>
           {!meta.contentPages.some(page => page.id === block.pageId) && <option value={block.pageId}>{block.pageId}</option>}
-          {meta.contentPages.map(page => <option key={page.id} value={page.id}>{page.title}</option>)}</select></Field>);
+          {meta.contentPages.map(page => <option key={page.id} value={page.id}>{page.title}</option>)}</select></Field>,
+        <SettingsLink key="open" label={L(locale, "编辑这篇图文页的内容", "Edit this content page")} target={{ kind: "pages", id: block.pageId }} locale={locale} />);
       break;
     case "button":
       fields.push(<TextField key="label" label={L(locale, "按钮文字", "Label")} value={block.label} locale={locale} onChange={label => set({ label })} />,
@@ -225,7 +246,8 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
     case "filters":
       fields.push(<p key="hint" className="text-xs text-muted">{L(locale, "显示本页数据列表中开启的筛选（参与者阶段、活动标签），选择后整页列表一起更新。隐藏筛选条后，筛选会回到列表卡片里；完全不要筛选时，在数据列表里取消勾选筛选项。",
         "Shows the filters enabled on this page's lists; choosing one updates every list. When this bar is hidden the filters return to the list card; turn them off on the list to remove them.")}</p>,
-        <TextField key="clear" label={L(locale, "重置按钮文字", "Reset label")} value={block.clearLabel} locale={locale} onChange={clearLabel => set({ clearLabel })} />);
+        <TextField key="clear" label={L(locale, "重置按钮文字", "Reset label")} value={block.clearLabel} locale={locale} onChange={clearLabel => set({ clearLabel })} />,
+        <SettingsLink key="stages" label={L(locale, "阶段名称（学习阶段）", "Stage labels")} target={{ kind: "stages" }} locale={locale} />);
       break;
     case "divider": break;
   }
@@ -246,6 +268,7 @@ export function ScreenInspector({ screen, tab, tabs, screens, meta, locale, onSc
     <TextField label={L(locale, "页面标题", "Page title")} value={screen.title} locale={locale} onChange={title => onScreen({ ...screen, title })} />
     <Field label={L(locale, "顶部标题", "Top bar")}><select className={select} value={screen.navigation} onChange={event => onScreen({ ...screen, navigation: event.target.value as "brand" | "title" })}>
       <option value="title">{L(locale, "居中显示页面标题", "Centered page title")}</option><option value="brand">{L(locale, "左侧显示机构名称", "Brand name at left")}</option></select></Field>
+    {screen.navigation === "brand" && <SettingsLink label={L(locale, "机构名称与主题", "Name & theme")} target={{ kind: "brand" }} locale={locale} />}
     {tab && <div className="space-y-3 rounded-lg border border-line p-3">
       <p className="text-xs font-medium">{L(locale, `底部导航第 ${tab.slot} 项`, `Tab ${tab.slot}`)}</p>
       <ShownField label={L(locale, "在底部导航显示", "Show in the tab bar")} hidden={!!tab.hidden} locale={locale} onChange={hidden => onTab(withHidden(tab, hidden))}

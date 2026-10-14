@@ -7,5 +7,5 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
   const { locale } = await params; setRequestLocale(locale); await requirePerm(locale, "organization.profile.manage");
   const [index, initial] = await Promise.all([loadMiniappDocuments(), loadMiniappDocument("privacy")]);
   if (!index.ok || !initial.ok) throw new Error("UNAVAILABLE");
-  return <DashboardPage title={locale === "en" ? "Help and privacy documents" : "帮助与隐私文档"} backHref="/dashboard/miniapp-settings" backLabel={locale === "en" ? "Mini Program settings" : "小程序设置"}><MiniappDocumentsEditor initialIndex={index.data} initial={initial.data} locale={locale === "en" ? "en" : "zh"} /></DashboardPage>;
+  return <DashboardPage title={locale === "en" ? "Help and privacy documents" : "帮助与隐私文档"} backHref="/dashboard/miniapp-runtime" backLabel={locale === "en" ? "Mini Program" : "小程序"}><MiniappDocumentsEditor initialIndex={index.data} initial={initial.data} locale={locale === "en" ? "en" : "zh"} /></DashboardPage>;
 }

@@ -11,7 +11,9 @@ import { clearNavigation, openPage, requestLogin, resumeAfterLogin } from "../ap
 describe("native composition contract", () => {
   it("covers actual registered pages and preserves configurations created before screen customization", () => {
     const app = JSON.parse(readFileSync("apps/parent-wechat/miniprogram/app.json", "utf8"));
-    expect([...nativeScreenIds].map(id => `pages/${id}/index`).sort()).toEqual([...app.pages].sort());
+    // Runtime hosts render screens composed by Mathin and have no native screen configuration.
+    const runtimeHosts = ["pages/tab-4/index", "pages/tab-5/index", "pages/screen/index", "pages/login/index"];
+    expect([...[...nativeScreenIds].map(id => `pages/${id}/index`), ...runtimeHosts].sort()).toEqual([...app.pages].sort());
     const old = defaultMiniappExperience(defaultMiniappSettings());
     delete old.screens;
     expect(miniappExperienceSchema.safeParse(old).success).toBe(true);

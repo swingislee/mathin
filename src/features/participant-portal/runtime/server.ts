@@ -219,9 +219,12 @@ export async function runtimeScreenGet(request: Request) {
   return Response.json(await screenView(value, value.params.get("id")), { headers: privateHeaders });
 }
 
-/** Renders a draft for the staff canvas: visitors see real public data, the signed-in view uses example records only. */
-export async function previewRuntimeScreen(spec: RuntimeSpec, screenId: string, mode: "visitor" | "member", locale: RuntimeLocale) {
-  const { settings } = await readPublishedRuntime();
+/** Renders a draft for the staff canvas: visitors see real public data, the signed-in view uses example records only.
+ * Draft brand and stage labels replace the published ones so unpublished settings appear on the canvas. */
+export async function previewRuntimeScreen(spec: RuntimeSpec, screenId: string, mode: "visitor" | "member", locale: RuntimeLocale,
+  draft?: Pick<MiniappSettings, "brand" | "stages">) {
+  const published = (await readPublishedRuntime()).settings;
+  const settings = draft ? { ...published, brand: draft.brand, stages: draft.stages } : published;
   const identity: RuntimeIdentity = mode === "member"
     ? { signedIn: true, db: null, name: locale === "zh" ? "示例家长" : "Example parent", participants: sampleParticipants, participant: sampleParticipants[0].id, stage: 3 }
     : { signedIn: false, db: null, name: "", participants: [], participant: null, stage: null };

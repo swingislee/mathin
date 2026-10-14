@@ -17,10 +17,11 @@ import { ReferenceField } from "./ExperienceServiceEditor";
 import { ContentEditor } from "./ContentEditor";
 import styles from "./workbench.module.css";
 import { newId } from "@/lib/uuid";
-import { defaultMiniappSettings, miniappText, type MiniappSettings, type MiniappHomeBlock, type MiniappContact } from "../../../../contracts/participant-api/miniapp-settings";
+import { defaultMiniappSettings, type MiniappSettings, type MiniappHomeBlock, type MiniappContact } from "../../../../contracts/participant-api/miniapp-settings";
 import type { SettingsState } from "./contract";
 import { loadMiniappSettings, restoreMiniappSettings, saveMiniappSettings, uploadMiniappImage } from "./actions";
 import { BookingPolicyEditor } from "./BookingPolicyEditor";
+import { StagesEditor } from "./StagesEditor";
 import { ContactsEditor } from "./ContactsEditor";
 import { ReportTemplatesEditor } from "./ReportTemplatesEditor";
 import { ActionField, LocalizedField, MenuEditor, MoveControls, moveItem, settingsField } from "./fields";
@@ -34,7 +35,7 @@ function initialAssembly(config: MiniappSettings, tab: string): AssemblyTarget {
   const page = x.pages.find(p => (p.purpose === "report") === (tab === "reports"));
   if (["pages", "reports"].includes(tab) && page) return { kind: "page", id: page.id };
   if (tab === "forms" && x.forms[0]) return { kind: "form", id: x.forms[0].id };
-  return { kind: "native", id: "discover" };
+  return { kind: "native", id: "assessment" };
 }
 
 const imageUrl = (path: string) => path ? `/api/v1/participant/settings/image?preview=1&path=${encodeURIComponent(path)}` : "";
@@ -50,7 +51,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
   const chooseTarget = (target: AssemblyTarget) => { setAssemblyTarget(target); inspect(assemblyFocus(config, target)); };
   const navigate = (nextTab: string, id = "", part = "") => {
     inspect({ tab: nextTab, id, part });
-    if (nextTab === "native-pages") setAssemblyTarget({ kind: "native", id: nativeScreens.find(s => s.id === id)?.id || "discover" });
+    if (nextTab === "native-pages") setAssemblyTarget({ kind: "native", id: nativeScreens.find(s => s.id === id)?.id || "assessment" });
     else if (["pages", "reports"].includes(nextTab)) { const page = config.experience!.pages.find(p => p.id === id) || config.experience!.pages.find(p => (p.purpose === "report") === (nextTab === "reports")); if (page) setAssemblyTarget({ kind: "page", id: page.id }); }
     else if (nextTab === "forms") { const form = config.experience!.forms.find(f => f.id === id) || config.experience!.forms[0]; if (form) setAssemblyTarget({ kind: "form", id: form.id }); }
   };
@@ -58,8 +59,8 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
   const focus = { tab, id: selectedId, part: selectedPart };
   const allNodes = assemblyNodes(config, assemblyTarget, locale).flatMap(function flatten(node: AssemblyNode): AssemblyNode[] { return [node, ...(node.children || []).flatMap(flatten)]; });
   const focusedNode = allNodes.find(node => node.tab === tab && node.id === selectedId && node.part === selectedPart);
-  const currentTitle = tab === "native-pages" ? assemblyTitle(config, { kind: "native", id: nativeScreens.find(s => s.id === selectedId)?.id || "discover" }, locale) : ["pages", "reports", "forms"].includes(tab) ? assemblyTitle(config, { kind: tab === "forms" ? "form" : "page", id: selectedId }, locale) : item.title[locale];
-  const nativePreview = tab === "native-pages" ? (nativeScreens.find(s => s.id === selectedId)?.id || "discover") : assemblyTarget.kind === "native" && ["home", "menus", "pages"].includes(tab) ? assemblyTarget.id : null;
+  const currentTitle = tab === "native-pages" ? assemblyTitle(config, { kind: "native", id: nativeScreens.find(s => s.id === selectedId)?.id || "assessment" }, locale) : ["pages", "reports", "forms"].includes(tab) ? assemblyTitle(config, { kind: tab === "forms" ? "form" : "page", id: selectedId }, locale) : item.title[locale];
+  const nativePreview = tab === "native-pages" ? (nativeScreens.find(s => s.id === selectedId)?.id || "assessment") : assemblyTarget.kind === "native" && ["home", "menus", "pages"].includes(tab) ? assemblyTarget.id : null;
   const dirty = JSON.stringify(config) !== baseline;
   useEffect(() => {
     if (!dirty) return;
@@ -90,13 +91,13 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
   const patchHome = (index: number, change: Partial<MiniappHomeBlock>) => setConfig(v => ({ ...v, home: v.home.map((b, i) => i === index ? { ...b, ...change } : b) }));
   const issues = settingsExperienceIssues(config);
   return <ExperienceContext.Provider value={config.experience}><WorkbenchContext.Provider value={{ previewHost: nativePreview ? null : previewHost, selectedId, select: id => navigate(tab, id), navigate, config, tab, activities, assembly: true, selectedPart, selectPart }}>
-    <DashboardPage className={styles.page} title={en ? "Mini Program settings" : "小程序设置"} backHref="/dashboard/organization" backLabel={en ? "Organization" : "机构设置"} commandPanel={<DashboardCommandPanel><DashboardCommandActions>
+    <DashboardPage className={styles.page} title={en ? "More Mini Program settings" : "小程序更多设置"} backHref="/dashboard/miniapp-runtime" backLabel={en ? "Mini Program" : "小程序"} commandPanel={<DashboardCommandPanel><DashboardCommandActions>
       <span className="text-sm text-muted">{dirty ? (en ? "Unsaved changes" : "有未保存修改") : state.publishedAt ? `${en ? "Published" : "最近发布"} ${new Date(state.publishedAt).toLocaleString(locale)}` : (en ? "Not published" : "尚未发布")}</span>
       {conflict && <Button variant="secondary" disabled={busy} onClick={reload}>{en ? "Reload draft" : "重新载入草稿"}</Button>}
-      <Link href="/dashboard/miniapp-runtime" className="text-sm text-ink underline-offset-4 hover:underline">{en ? "Page workbench" : "页面操作台"}</Link>
       <Button disabled={busy || conflict} onClick={() => save(false)} variant="secondary">{en ? "Save draft" : "保存草稿"}</Button><Button disabled={busy || conflict} onClick={() => save(true)}>{en ? "Publish" : "发布"}</Button>
     </DashboardCommandActions></DashboardCommandPanel>}><div className={styles.workspace + " space-y-4"}>
     {activityLoadFailed && <p className="text-sm text-muted">{en ? "Activity choices could not be loaded. Reload to edit recommendations." : "活动选项暂未载入，编辑推荐活动前请刷新重试。"}</p>}
+    <p className="text-sm text-muted">{en ? "Pages, name and theme, stages, contacts, assessment rules, content pages, forms and report layouts are edited in the Mini Program workbench. This page keeps services, flows and other settings not yet moved there." : "页面、名称与主题、学习阶段、联系方式、诊断预约规则、图文页、表单和报告版式都在「小程序」操作台里编辑；这里保留服务、流程等还没搬过去的设置。"} <Link href="/dashboard/miniapp-runtime" className="text-ink underline underline-offset-4">{en ? "Open the workbench" : "回到操作台"}</Link></p>
     {notice && <p role="status" className="text-sm">{notice}</p>}
     {issues.length > 0 && <details className="border-l-2 border-crater pl-3"><summary className="cursor-pointer text-sm">{en ? `${issues.length} configuration items need attention before publishing` : `${issues.length} 项配置需要在发布前补齐`}</summary><ul className="mt-2 space-y-1 text-sm text-muted">{issues.slice(0, 30).map((issue, index) => <li key={index}>{issue[locale]} <span className="text-xs">({issue.path})</span></li>)}</ul></details>}
     <div className={styles.columns}>
@@ -135,14 +136,7 @@ export function MiniappSettingsEditor({ initial, locale, activities = [], contac
           <LocalizedField label={en ? "Group title" : "分组名称"} value={group.title} max={60} onChange={title => setConfig(v => ({ ...v, accountGroups: v.accountGroups.map((g, i) => i === index ? { ...g, title } : g) }))} />
           <MenuEditor value={group.entries} locale={locale} onChange={entries => setConfig(v => ({ ...v, accountGroups: v.accountGroups.map((g, i) => i === index ? { ...g, entries } : g) }))} /></div>)}
           <Button type="button" variant="secondary" disabled={config.accountGroups.length >= 8} onClick={() => setConfig(v => ({ ...v, accountGroups: [...v.accountGroups, { id: newId(), title: { zh: "新分组", en: "New group" }, entries: [] }] }))}>{en ? "Add group" : "添加分组"}</Button></section>}</div>}
-      {tab === "stages" && <div className="max-w-4xl space-y-6">{config.stages.map((group, gi) => <section key={group.id} className="space-y-3 border-b border-line pb-5">
-        <MoveControls en={en} index={gi} length={config.stages.length} move={offset => setConfig(v => ({ ...v, stages: moveItem(v.stages, gi, offset) }))} />
-        <LocalizedField label={en ? "Group name" : "阶段分组"} value={group.label} max={60} onChange={label => setConfig(v => ({ ...v, stages: v.stages.map((g, i) => i === gi ? { ...g, label } : g) }))} />
-        {group.stages.map((stage, si) => <div key={stage.id} className="space-y-2 border-t border-line pt-3"><MoveControls en={en} index={si} length={group.stages.length} move={offset => setConfig(v => ({ ...v, stages: v.stages.map((g, i) => i === gi ? { ...g, stages: moveItem(g.stages, si, offset) } : g) }))}>
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={stage.visible} onChange={e => setConfig(v => ({ ...v, stages: v.stages.map((g, i) => i === gi ? { ...g, stages: g.stages.map((s, j) => j === si ? { ...s, visible: e.target.checked } : s) } : g) }))} />{en ? "Available in new selections" : "新选择中可见"}</label></MoveControls>
-          <LocalizedField label={stage.stageNumber < 1 ? `K${stage.stageNumber + 3}` : `${en ? "Grade" : "年级"} ${stage.stageNumber}`} value={stage.label} max={60} onChange={label => setConfig(v => ({ ...v, stages: v.stages.map((g, i) => i === gi ? { ...g, stages: g.stages.map((s, j) => j === si ? { ...s, label } : s) } : g) }))} />
-          <select className={settingsField + " max-w-xs"} aria-label={en ? "Stage group" : "所属阶段分组"} value={group.id} onChange={e => setConfig(v => ({ ...v, stages: v.stages.map(g => g.id === group.id ? { ...g, stages: g.stages.filter(s => s.id !== stage.id) } : g.id === e.target.value ? { ...g, stages: [...g.stages, stage] } : g) }))}>{config.stages.map(g => <option key={g.id} value={g.id}>{miniappText(g.label, locale)}</option>)}</select>
-        </div>)}</section>)}</div>}
+      {tab === "stages" && <StagesEditor value={config.stages} locale={locale} onChange={stages => setConfig(v => ({ ...v, stages }))} />}
       {tab === "booking" && <BookingPolicyEditor value={config.booking} en={en} onChange={booking => setConfig(v => ({ ...v, booking }))} />}
       {tab === "reports" && <details className="border-t border-line pt-5"><summary className="cursor-pointer text-sm">{en ? "Compatible sections for original reports and clients" : "原报告与旧客户端兼容栏目"}</summary><div className="mt-4"><ReportTemplatesEditor value={config.reports} en={en} onChange={reports => setConfig(v => ({ ...v, reports }))} /></div></details>}
       {tab === "contacts" && (contactOptions ? <ContactsEditor value={config.contacts} legacy={contactOptions.legacy} campuses={contactOptions.campuses} stages={config.stages} locale={locale} onChange={contacts => setConfig(v => ({ ...v, contacts }))} upload={(file, update) => upload(file, update, true)} /> : <p className="text-sm text-muted">{en ? "Contact options could not be loaded. Reload to edit." : "联系服务选项暂未载入，请刷新后编辑。"}</p>)}
