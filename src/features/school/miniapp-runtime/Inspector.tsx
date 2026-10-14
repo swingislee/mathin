@@ -2,6 +2,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Plus, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,7 @@ import {
   runtimeIcons, runtimeRoutes, runtimeSources, runtimeTabSlots,
   type RuntimeAction, type RuntimeBlockSpec, type RuntimeEntrySpec, type RuntimeLinkSpec, type RuntimeRule, type RuntimeScreenSpec, type RuntimeTabSpec, type RuntimeText,
 } from "../../../../contracts/participant-api/runtime";
-import { blockNames, defaultAction, presetRule, rulePreset, type ActionKind, type Locale, type RulePreset } from "./model";
+import { blockNames, canHideTab, defaultAction, presetRule, rulePreset, withHidden, type ActionKind, type Locale, type RulePreset } from "./model";
 import { RuntimeIcon } from "./RuntimeRenderer";
 
 export type InspectorMeta = { contentPages: { id: string; title: string }[]; stages: { stageNumber: number; label: string; group: string }[] };
@@ -80,6 +81,16 @@ export function RuleField({ value, meta, locale, onChange }: { value?: RuntimeRu
   </div></Field>;
 }
 
+/** Unchecking keeps the object here and stops sending it to the Mini Program. */
+export function ShownField({ label, hidden, locale, disabledReason, onChange }: { label: string; hidden: boolean; locale: Locale; disabledReason?: string; onChange: (hidden: boolean) => void }) {
+  return <div className={cn("rounded-lg border p-3", hidden ? "border-dashed border-line bg-moon/10" : "border-line")}>
+    <label className="flex items-center gap-2 text-sm"><Checkbox checked={!hidden} disabled={!!disabledReason && !hidden} onCheckedChange={value => onChange(value !== true)} />{label}</label>
+    <p className="mt-1.5 text-[11px] text-muted">{disabledReason && !hidden ? disabledReason
+      : hidden ? L(locale, "已隐藏：设置都保留在这里，小程序里不显示。重新勾选并发布即可恢复。", "Hidden: settings are kept here and the Mini Program does not show it. Check it and publish to show it again.")
+      : L(locale, "取消勾选可暂时隐藏，不需要删除。", "Uncheck to hide it without deleting.")}</p>
+  </div>;
+}
+
 function ImageField({ label, value, locale, onChange }: { label: string; value: string; locale: Locale; onChange: (value: string) => void }) {
   const input = useRef<HTMLInputElement>(null), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const upload = async (file: File) => {
@@ -115,7 +126,10 @@ function EntriesField({ items, screens, meta, locale, onChange }: { items: Runti
   const move = (index: number, offset: number) => { const next = [...items]; [next[index], next[index + offset]] = [next[index + offset], next[index]]; onChange(next); };
   return <div className="space-y-2"><span className="text-xs font-medium text-muted">{L(locale, "入口项", "Entries")}</span>
     {items.map((item, index) => <div key={item.id} className="rounded-lg border border-line">
-      <div className="flex items-center gap-2 px-2 py-1.5"><button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left text-sm" onClick={() => setOpen(open === item.id ? "" : item.id)}>
+      <div className="flex items-center gap-2 px-2 py-1.5">
+        <Checkbox checked={!item.hidden} aria-label={L(locale, "在小程序中显示", "Show in the Mini Program")} title={L(locale, "取消勾选即隐藏，不删除", "Uncheck to hide without deleting")}
+          onCheckedChange={value => onChange(items.map(row => row.id === item.id ? withHidden(row, value !== true) : row))} />
+        <button type="button" className={cn("flex min-w-0 flex-1 items-center gap-2 text-left text-sm", item.hidden && "opacity-45")} onClick={() => setOpen(open === item.id ? "" : item.id)}>
         <RuntimeIcon value={`asset:icons/${item.icon}`} className="size-4 shrink-0" /><span className="truncate">{item.label[locale] || item.label.zh}</span></button>
         <Button type="button" size="sm" variant="ghost" className="size-7 p-0" disabled={!index} onClick={() => move(index, -1)} aria-label="up"><ArrowUp className="size-3.5" /></Button>
         <Button type="button" size="sm" variant="ghost" className="size-7 p-0" disabled={index === items.length - 1} onClick={() => move(index, 1)} aria-label="down"><ArrowDown className="size-3.5" /></Button>
@@ -209,20 +223,22 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
         <ActionField key="action" label={L(locale, "点击后", "On tap")} value={block.action} screens={screens} locale={locale} allowNone={false} onChange={value => value && set({ action: value })} />);
       break;
     case "filters":
-      fields.push(<p key="hint" className="text-xs text-muted">{L(locale, "显示本页数据列表中开启的筛选（参与者阶段、活动标签），选择后整页列表一起更新。", "Shows the filters enabled on this page's lists; choosing one updates every list.")}</p>,
+      fields.push(<p key="hint" className="text-xs text-muted">{L(locale, "显示本页数据列表中开启的筛选（参与者阶段、活动标签），选择后整页列表一起更新。隐藏筛选条后，筛选会回到列表卡片里；完全不要筛选时，在数据列表里取消勾选筛选项。",
+        "Shows the filters enabled on this page's lists; choosing one updates every list. When this bar is hidden the filters return to the list card; turn them off on the list to remove them.")}</p>,
         <TextField key="clear" label={L(locale, "重置按钮文字", "Reset label")} value={block.clearLabel} locale={locale} onChange={clearLabel => set({ clearLabel })} />);
       break;
     case "divider": break;
   }
   return <div className="space-y-4">
     <p className="text-xs text-muted">{blockNames[block.type][locale]} · <span className="font-mono">{block.id}</span></p>
+    <ShownField label={L(locale, "在小程序中显示", "Show in the Mini Program")} hidden={!!block.hidden} locale={locale} onChange={hidden => onChange(withHidden(block, hidden))} />
     {fields}
     <RuleField value={block.visibleWhen} meta={meta} locale={locale} onChange={rule => rule ? set({ visibleWhen: rule }) : omit("visibleWhen")} />
   </div>;
 }
 
-export function ScreenInspector({ screen, tab, screens, meta, locale, onScreen, onTab }: {
-  screen: RuntimeScreenSpec; tab?: RuntimeTabSpec; screens: RuntimeScreenSpec[]; meta: InspectorMeta; locale: Locale;
+export function ScreenInspector({ screen, tab, tabs, screens, meta, locale, onScreen, onTab }: {
+  screen: RuntimeScreenSpec; tab?: RuntimeTabSpec; tabs: RuntimeTabSpec[]; screens: RuntimeScreenSpec[]; meta: InspectorMeta; locale: Locale;
   onScreen: (screen: RuntimeScreenSpec) => void; onTab: (tab: RuntimeTabSpec) => void;
 }) {
   return <div className="space-y-4">
@@ -232,6 +248,8 @@ export function ScreenInspector({ screen, tab, screens, meta, locale, onScreen, 
       <option value="title">{L(locale, "居中显示页面标题", "Centered page title")}</option><option value="brand">{L(locale, "左侧显示机构名称", "Brand name at left")}</option></select></Field>
     {tab && <div className="space-y-3 rounded-lg border border-line p-3">
       <p className="text-xs font-medium">{L(locale, `底部导航第 ${tab.slot} 项`, `Tab ${tab.slot}`)}</p>
+      <ShownField label={L(locale, "在底部导航显示", "Show in the tab bar")} hidden={!!tab.hidden} locale={locale} onChange={hidden => onTab(withHidden(tab, hidden))}
+        disabledReason={canHideTab(tabs, tab.slot) ? undefined : tab.slot === 1 ? L(locale, "第 1 项是打开小程序时的首页，不能隐藏。", "Tab 1 opens first and cannot be hidden.") : L(locale, "底部导航至少要显示两项。", "At least two tabs must stay shown.")} />
       <TextField label={L(locale, "导航名称（最多 4 字）", "Tab label")} value={tab.label} locale={locale} onChange={label => onTab({ ...tab, label: { zh: label.zh.slice(0, 8), en: label.en.slice(0, 8) } })} />
       <IconField value={tab.icon} locale={locale} onChange={icon => onTab({ ...tab, icon })} />
       <RuleField value={tab.visibleWhen} meta={meta} locale={locale} onChange={rule => { const next = { ...tab }; if (rule) next.visibleWhen = rule; else delete next.visibleWhen; onTab(next); }} />

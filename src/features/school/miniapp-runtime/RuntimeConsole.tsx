@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { usePanelLayout } from "@/hooks/use-panel-layout";
@@ -16,7 +17,7 @@ import { loadMiniappRuntime, previewMiniappRuntime, restoreMiniappRuntime, saveM
 import { BlockInspector, ScreenInspector } from "./Inspector";
 import { RuntimePhone } from "./RuntimeRenderer";
 import {
-  blockNames, blockSummary, changes, findBlock, insertBlock, moveBlock, newBlock, newScreen, outline, removeBlock, updateBlock, type Locale,
+  blockNames, blockSummary, canHideTab, changes, findBlock, insertBlock, moveBlock, newBlock, newScreen, outline, removeBlock, updateBlock, withHidden, type Locale,
 } from "./model";
 
 const header = "h-11 min-h-11 max-h-11 shrink-0 border-b border-line";
@@ -109,7 +110,7 @@ export function MiniappRuntimeConsole({ initial, locale }: { initial: RuntimeWor
     setScreenId(value.id); setBlockId("");
   };
   const removeScreen = () => {
-    if (!screen || spec.screens.length < 2 || (tab && spec.tabs.length <= 2)) return;
+    if (!screen || spec.screens.length < 2 || (tab && !canHideTab(spec.tabs, tab.slot))) return;
     setSpec(current => ({ ...current, screens: current.screens.filter(row => row.id !== screen.id), tabs: current.tabs.filter(row => row.screen !== screen.id) }));
     setScreenId(spec.tabs.find(row => row.screen !== screen.id)?.screen ?? spec.screens.find(row => row.id !== screen.id)!.id); setBlockId("");
   };
@@ -139,6 +140,12 @@ export function MiniappRuntimeConsole({ initial, locale }: { initial: RuntimeWor
   const directoryRow = (id: string, label: string, sub: string, active: boolean, onClick: () => void) =>
     <button type="button" key={id} onClick={onClick} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-moon/20", active && "bg-moon/30 font-medium")}>
       <span className="min-w-0 flex-1 truncate">{label}</span><span className="shrink-0 text-[11px] text-muted">{sub}</span></button>;
+  // Unchecking hides a tab or block from the Mini Program while keeping it in the draft.
+  const shownBox = (hidden: boolean, onChange: (hidden: boolean) => void, disabledReason?: string) =>
+    <Checkbox checked={!hidden} disabled={!!disabledReason && !hidden} onCheckedChange={value => onChange(value !== true)} className="shrink-0"
+      aria-label={L("在小程序中显示", "Show in the Mini Program")} title={disabledReason && !hidden ? disabledReason : hidden ? L("已隐藏，勾选后重新显示", "Hidden; check to show") : L("取消勾选即隐藏，不删除", "Uncheck to hide without deleting")} />;
+  const setTabHidden = (slot: RuntimeTabSpec["slot"], hidden: boolean) => setSpec(current => ({ ...current, tabs: current.tabs.map(row => row.slot === slot ? withHidden(row, hidden) : row) }));
+  const setBlockHidden = (id: string, hidden: boolean) => updateScreen(blocks => updateBlock(blocks, id, row => withHidden(row, hidden)));
 
   return <DashboardPage title={L("小程序操作台", "Mini Program workbench")} backHref="/dashboard/miniapp-settings" backLabel={L("小程序设置", "Mini Program settings")}
     commandPanel={<DashboardCommandPanel><DashboardCommandActions>
@@ -159,17 +166,24 @@ export function MiniappRuntimeConsole({ initial, locale }: { initial: RuntimeWor
               <p className="px-3 pb-1 text-[11px] font-medium text-muted">{L("底部导航", "Tab bar")}</p>
               {runtimeTabSlots.map(slot => {
                 const row = spec.tabs.find(item => item.slot === slot), target = row && spec.screens.find(item => item.id === row.screen);
-                return row && target ? directoryRow("tab-" + slot, `${slot} · ${row.label[locale] || row.label.zh}`, row.visibleWhen ? L("有条件", "Rule") : "", screen?.id === target.id && !blockId, () => { setScreenId(target.id); setBlockId(""); })
+                return row && target ? <div key={"tab-" + slot} className={cn("flex items-center gap-1 pl-3 hover:bg-moon/20", screen?.id === target.id && !blockId && "bg-moon/30 font-medium")}>
+                  {shownBox(!!row.hidden, hidden => setTabHidden(slot, hidden), canHideTab(spec.tabs, slot) ? undefined : slot === 1 ? L("第 1 项是打开小程序时的首页，不能隐藏", "Tab 1 opens first") : L("底部导航至少显示两项", "Keep two tabs shown"))}
+                  <button type="button" onClick={() => { setScreenId(target.id); setBlockId(""); }} className={cn("flex min-w-0 flex-1 items-center gap-2 py-2 pl-1 pr-3 text-left text-sm", row.hidden && "opacity-45")}>
+                    <span className="min-w-0 flex-1 truncate">{`${slot} · ${row.label[locale] || row.label.zh}`}</span>
+                    <span className="shrink-0 text-[11px] text-muted">{row.hidden ? L("已隐藏", "Hidden") : row.visibleWhen ? L("有条件", "Rule") : ""}</span></button></div>
                   : spec.tabs.length < 5 && <button type="button" key={"tab-" + slot} onClick={() => addScreen(slot)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-muted hover:bg-moon/20"><Plus className="size-3.5" />{L(`第 ${slot} 项：添加导航`, `Add tab ${slot}`)}</button>;
               })}
               <p className="px-3 pb-1 pt-3 text-[11px] font-medium text-muted">{L("其他页面", "Other pages")}</p>
               {spec.screens.filter(row => !tabScreens.has(row.id)).map(row => directoryRow(row.id, row.title[locale] || row.title.zh || row.id, "", screen?.id === row.id && !blockId, () => { setScreenId(row.id); setBlockId(""); }))}
               {screen && <div className="mt-3 border-t border-line pt-2">
                 <p className="px-3 pb-1 text-[11px] font-medium text-muted">{L("本页组成", "On this page")} · {screen.title[locale] || screen.title.zh}</p>
-                {outline(screen.blocks).map(({ block: row, depth }) => <button type="button" key={row.id} onClick={() => setBlockId(row.id)} style={{ paddingLeft: 12 + depth * 14 }}
-                  title={preview && !shown.has(row.id) ? L("当前预览身份看不到这一项", "Hidden for this preview identity") : undefined}
-                  className={cn("flex w-full items-center gap-2 py-1.5 pr-3 text-left text-xs hover:bg-moon/20", blockId === row.id && "bg-crater/15 font-medium", preview && !shown.has(row.id) && "opacity-45")}>
-                  <span className="shrink-0 text-muted">{blockNames[row.type][locale]}</span><span className="truncate">{blockSummary(row, locale)}</span>{row.visibleWhen && <span className="ml-auto shrink-0 text-[10px] text-muted">{L("条件", "Rule")}</span>}</button>)}
+                {outline(screen.blocks).map(({ block: row, depth }) => <div key={row.id} style={{ paddingLeft: 12 + depth * 14 }}
+                  className={cn("flex items-center gap-1 hover:bg-moon/20", blockId === row.id && "bg-crater/15 font-medium")}>
+                  {shownBox(!!row.hidden, hidden => setBlockHidden(row.id, hidden))}
+                  <button type="button" onClick={() => setBlockId(row.id)} title={row.hidden ? L("已隐藏，小程序里不显示", "Hidden from the Mini Program") : preview && !shown.has(row.id) ? L("当前预览身份看不到这一项", "Hidden for this preview identity") : undefined}
+                    className={cn("flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-1 pr-3 text-left text-xs", (row.hidden || (preview && !shown.has(row.id))) && "opacity-45")}>
+                    <span className="shrink-0 text-muted">{blockNames[row.type][locale]}</span><span className="truncate">{blockSummary(row, locale)}</span>
+                    {(row.hidden || row.visibleWhen) && <span className="ml-auto shrink-0 text-[10px] text-muted">{row.hidden ? L("已隐藏", "Hidden") : L("条件", "Rule")}</span>}</button></div>)}
               </div>}
             </div>
           </nav>
@@ -210,12 +224,12 @@ export function MiniappRuntimeConsole({ initial, locale }: { initial: RuntimeWor
               <Button size="sm" variant="ghost" className="size-8 p-0" title={L("下移", "Move down")} aria-label={L("下移", "Move down")} onClick={() => updateScreen(blocks => moveBlock(blocks, block.id, 1))}><ArrowDown className="size-4" /></Button>
               <Button size="sm" variant="ghost" className="size-8 p-0" title={L("删除", "Delete")} aria-label={L("删除", "Delete")} onClick={() => { updateScreen(blocks => removeBlock(blocks, block.id)); setBlockId(""); }}><Trash2 className="size-4" /></Button>
             </> : screen && <Button size="sm" variant="ghost" className="size-8 p-0" title={tab ? L("移出底部导航并删除页面", "Remove tab and page") : L("删除页面", "Delete page")} aria-label={L("删除页面", "Delete page")}
-              disabled={spec.screens.length < 2 || (!!tab && spec.tabs.length <= 2)} onClick={removeScreen}><Trash2 className="size-4" /></Button>}
+              disabled={spec.screens.length < 2 || (!!tab && !canHideTab(spec.tabs, tab.slot))} onClick={removeScreen}><Trash2 className="size-4" /></Button>}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
             {block && screen ? <BlockInspector key={block.id + editLocale} block={block} screens={spec.screens} meta={meta} locale={editLocale}
               onChange={value => updateScreen(blocks => updateBlock(blocks, block.id, () => value))} />
-              : screen && <ScreenInspector key={screen.id + editLocale} screen={screen} tab={tab} screens={spec.screens} meta={meta} locale={editLocale}
+              : screen && <ScreenInspector key={screen.id + editLocale} screen={screen} tab={tab} tabs={spec.tabs} screens={spec.screens} meta={meta} locale={editLocale}
                 onScreen={value => setSpec(current => ({ ...current, screens: current.screens.map(row => row.id === value.id ? value : row) }))}
                 onTab={value => setSpec(current => ({ ...current, tabs: current.tabs.map(row => row.slot === value.slot ? value : row) }))} />}
           </div>

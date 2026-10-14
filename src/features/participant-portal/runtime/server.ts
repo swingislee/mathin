@@ -34,7 +34,7 @@ export async function readPublishedRuntime(): Promise<Published> {
   const config = settings.config ?? defaultMiniappSettings();
   const value = raw.error ? null : raw.data as { revision?: number; spec?: unknown } | null;
   const spec = value?.spec ? tolerantRuntimeSpec(value.spec) : null;
-  if (spec && spec.screens.length && spec.tabs.length >= 2) return { revision: `r${value!.revision}`, spec, settings: config };
+  if (spec && spec.screens.length && spec.tabs.filter(row => !row.hidden).length >= 2) return { revision: `r${value!.revision}`, spec, settings: config };
   return { revision: `s${settings.revision}`, spec: defaultRuntimeSpec(config), settings: config };
 }
 
@@ -67,6 +67,9 @@ async function loadIdentity(request: Request, requested: string | null): Promise
   const stage = participants.find(row => row.id === participant)?.stage ?? null;
   return { signedIn: true, db, participants, participant, stage, name: (profile.display_name as string | null) || "" };
 }
+
+/** Hidden objects are never sent; the rest are sent when their rule matches the requesting account. */
+function shown(row: { visibleWhen?: RuntimeRule; hidden?: boolean }, context: Context) { return !row.hidden && allows(row.visibleWhen, context); }
 
 function allows(rule: RuntimeRule | undefined, context: Context): boolean {
   if (!rule) return true;
@@ -102,7 +105,7 @@ const link = (value: RuntimeLinkSpec | undefined, context: Context) => value ? {
 const message = (state: "signedOut" | "error", context: Context) => text(state === "signedOut" ? runtimeStrings.signInPrompt : runtimeStrings.unavailable, context);
 
 async function view(block: RuntimeBlockSpec, context: Context): Promise<RuntimeBlockView | null> {
-  if (!allows(block.visibleWhen, context)) return null;
+  if (!shown(block, context)) return null;
   if (runtimeBlockVersions[block.type] > context.client) return { id: block.id, type: "unsupported", fallback: text(runtimeStrings.updateRequired, context) };
   const sourceInput = (): SourceInput => ({ identity: context.identity, locale: context.locale, settings: context.published.settings,
     filters: { ...context.filters[runtimePageFilters], ...context.filters[block.id] }, now: context.now });
@@ -116,7 +119,7 @@ async function view(block: RuntimeBlockSpec, context: Context): Promise<RuntimeB
     case "feature": return { id: block.id, type: "feature", title: text(block.title, context), body: text(block.body, context), image: image(block.image),
       action: block.action ?? null, style: block.style ?? "card" };
     case "entries": {
-      const items = block.items.filter(row => allows(row.visibleWhen, context)).map(row => ({ id: row.id, label: text(row.label, context), icon: icon(row.icon), action: row.action }));
+      const items = block.items.filter(row => shown(row, context)).map(row => ({ id: row.id, label: text(row.label, context), icon: icon(row.icon), action: row.action }));
       return items.length ? { id: block.id, type: "entries", title: text(block.title, context), style: block.style, items } : null;
     }
     case "list": {
@@ -172,7 +175,7 @@ async function context(request: Request): Promise<Context & { params: URLSearchP
 const privateHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 
 function tabsFor(value: Context): RuntimeTab[] {
-  return value.published.spec.tabs.filter(row => allows(row.visibleWhen, value) && value.published.spec.screens.some(screen => screen.id === row.screen))
+  return value.published.spec.tabs.filter(row => shown(row, value) && value.published.spec.screens.some(screen => screen.id === row.screen))
     .sort((a, b) => a.slot - b.slot).map(row => ({ slot: row.slot, label: text(row.label, value), icon: icon(row.icon, true), activeIcon: icon(row.icon, true, true), screen: row.screen }));
 }
 export async function runtimeAppGet(request: Request) {

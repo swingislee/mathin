@@ -1,6 +1,6 @@
 import { newId } from "@/lib/uuid";
 import {
-  runtimeText as t, type RuntimeAction, type RuntimeBlockSpec, type RuntimeBlockType, type RuntimeRule, type RuntimeScreenSpec, type RuntimeSpec,
+  runtimeText as t, type RuntimeAction, type RuntimeBlockSpec, type RuntimeBlockType, type RuntimeRule, type RuntimeScreenSpec, type RuntimeSpec, type RuntimeTabSpec,
 } from "../../../../contracts/participant-api/runtime";
 
 export type Locale = "zh" | "en";
@@ -84,6 +84,17 @@ export function blockSummary(block: RuntimeBlockSpec, locale: Locale): string {
   }
 }
 
+/** Hidden objects stay in the draft; the flag is left out while shown. */
+export function withHidden<T extends { hidden?: boolean }>(row: T, hidden: boolean): T {
+  const next = { ...row };
+  if (hidden) next.hidden = true; else delete next.hidden;
+  return next;
+}
+/** Slot 1 is the page WeChat opens first, and the tab bar keeps at least two shown tabs. */
+export function canHideTab(tabs: RuntimeTabSpec[], slot: RuntimeTabSpec["slot"]) {
+  return slot !== 1 && tabs.filter(row => !row.hidden && row.slot !== slot).length >= 2;
+}
+
 /** Visibility presets offered in the inspector; other combinations are kept as published. */
 export type RulePreset = "all" | "signedIn" | "signedOut" | "hasParticipants" | "stage" | "between" | "custom";
 export function rulePreset(rule: RuntimeRule | undefined): RulePreset {
@@ -117,13 +128,20 @@ export function defaultAction(kind: ActionKind, screens: RuntimeScreenSpec[]): R
 /** Plain-language changes between what clients receive now and the draft. */
 export function changes(live: RuntimeSpec, draft: RuntimeSpec, locale: Locale): string[] {
   const zh = locale === "zh", rows: string[] = [];
-  const title = (screen: RuntimeScreenSpec) => screen.title[locale] || screen.title.zh || screen.id;
+  // Tab pages often have no title of their own, so their tab label names them.
+  const title = (screen: RuntimeScreenSpec) => { const tab = draft.tabs.find(row => row.screen === screen.id);
+    return screen.title[locale] || screen.title.zh || (tab && (tab.label[locale] || tab.label.zh)) || screen.id; };
   for (const screen of draft.screens) {
     const before = live.screens.find(row => row.id === screen.id);
     if (!before) rows.push((zh ? "新增页面：" : "New page: ") + title(screen));
     else if (JSON.stringify(before) !== JSON.stringify(screen)) rows.push((zh ? "修改页面：" : "Changed page: ") + title(screen));
   }
   for (const screen of live.screens) if (!draft.screens.some(row => row.id === screen.id)) rows.push((zh ? "移除页面：" : "Removed page: ") + title(screen));
-  if (JSON.stringify(live.tabs) !== JSON.stringify(draft.tabs)) rows.push(zh ? "底部导航有调整" : "Tab bar changed");
+  for (const tab of draft.tabs) {
+    const before = live.tabs.find(row => row.slot === tab.slot), label = tab.label[locale] || tab.label.zh;
+    if (before && !!before.hidden !== !!tab.hidden) rows.push((tab.hidden ? (zh ? "隐藏底部导航：" : "Hide tab: ") : (zh ? "重新显示底部导航：" : "Show tab: ")) + label);
+  }
+  const rest = (tabs: RuntimeTabSpec[]) => JSON.stringify(tabs.map(row => ({ ...row, hidden: undefined })));
+  if (rest(live.tabs) !== rest(draft.tabs)) rows.push(zh ? "底部导航有调整" : "Tab bar changed");
   return rows;
 }

@@ -35,8 +35,8 @@ export const runtimeActionSchema: z.ZodType<RuntimeAction> = z.discriminatedUnio
 ]);
 
 const link = z.object({ label: text(40), action: runtimeActionSchema }).strict();
-const base = { id, visibleWhen: runtimeRuleSchema.optional() };
-const entry = z.object({ id, label: text(60), icon, action: runtimeActionSchema, visibleWhen: runtimeRuleSchema.optional() }).strict();
+const base = { id, visibleWhen: runtimeRuleSchema.optional(), hidden: z.boolean().optional() };
+const entry = z.object({ id, label: text(60), icon, action: runtimeActionSchema, visibleWhen: runtimeRuleSchema.optional(), hidden: z.boolean().optional() }).strict();
 
 export const runtimeBlockSchema: z.ZodType<RuntimeBlockSpec> = z.lazy(() => z.discriminatedUnion("type", [
   z.object({ ...base, type: z.literal("section"), title: text(60), style: z.enum(["card", "plain", "row"]), more: link.optional(),
@@ -61,7 +61,7 @@ export const runtimeBlockSchema: z.ZodType<RuntimeBlockSpec> = z.lazy(() => z.di
 
 const screen: z.ZodType<RuntimeScreenSpec> = z.object({ id, title: text(40), navigation: z.enum(["brand", "title"]), blocks: z.array(runtimeBlockSchema).max(40) }).strict();
 const tab: z.ZodType<RuntimeTabSpec> = z.object({ slot: z.union(runtimeTabSlots.map(slot => z.literal(slot))), screen: id, label: text(8), icon,
-  visibleWhen: runtimeRuleSchema.optional() }).strict();
+  visibleWhen: runtimeRuleSchema.optional(), hidden: z.boolean().optional() }).strict();
 
 function blockIds(blocks: RuntimeBlockSpec[], seen: Set<string>): boolean {
   for (const block of blocks) {
@@ -80,6 +80,9 @@ export const runtimeSpecSchema: z.ZodType<RuntimeSpec> = z.object({
   if (screens.size !== value.screens.length) ctx.addIssue({ code: "custom", path: ["screens"], message: "DUPLICATE_SCREEN" });
   if (new Set(value.tabs.map(row => row.slot)).size !== value.tabs.length) ctx.addIssue({ code: "custom", path: ["tabs"], message: "DUPLICATE_SLOT" });
   value.tabs.forEach((row, index) => { if (!screens.has(row.screen)) ctx.addIssue({ code: "custom", path: ["tabs", index, "screen"], message: "MISSING_SCREEN" }); });
+  // Slot 1 is the page WeChat opens first, and a tab bar needs two shown tabs.
+  value.tabs.forEach((row, index) => { if (row.hidden && row.slot === 1) ctx.addIssue({ code: "custom", path: ["tabs", index, "hidden"], message: "FIRST_TAB_HIDDEN" }); });
+  if (value.tabs.filter(row => !row.hidden).length < 2) ctx.addIssue({ code: "custom", path: ["tabs"], message: "TOO_FEW_TABS" });
   value.screens.forEach((row, index) => { if (!blockIds(row.blocks, new Set())) ctx.addIssue({ code: "custom", path: ["screens", index], message: "DUPLICATE_BLOCK" }); });
 });
 

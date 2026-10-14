@@ -44,9 +44,9 @@ export const runtimeSources = ["activities.catalog", "account.bookings", "accoun
 export type RuntimeSource = typeof runtimeSources[number];
 export type RuntimeFacetKind = "stage" | "topic";
 
-type BlockBase = { id: string; visibleWhen?: RuntimeRule };
+type BlockBase = { id: string; visibleWhen?: RuntimeRule; hidden?: boolean };
 export type RuntimeLinkSpec = { label: RuntimeText; action: RuntimeAction };
-export type RuntimeEntrySpec = { id: string; label: RuntimeText; icon: string; action: RuntimeAction; visibleWhen?: RuntimeRule };
+export type RuntimeEntrySpec = { id: string; label: RuntimeText; icon: string; action: RuntimeAction; visibleWhen?: RuntimeRule; hidden?: boolean };
 export type RuntimeBlockSpec = BlockBase & (
   /** `row` places its blocks side by side, as in the original account header row. */
   | { type: "section"; title: RuntimeText; style: "card" | "plain" | "row"; more?: RuntimeLinkSpec; blocks: RuntimeBlockSpec[] }
@@ -73,7 +73,8 @@ export const runtimeBlockVersions: Readonly<Record<RuntimeBlockType, number>> = 
 };
 
 export type RuntimeScreenSpec = { id: string; title: RuntimeText; navigation: "brand" | "title"; blocks: RuntimeBlockSpec[] };
-export type RuntimeTabSpec = { slot: RuntimeTabSlot; screen: string; label: RuntimeText; icon: string; visibleWhen?: RuntimeRule };
+/** `hidden` keeps a tab, block or entry in the specification while Mathin stops sending it to every client. */
+export type RuntimeTabSpec = { slot: RuntimeTabSlot; screen: string; label: RuntimeText; icon: string; visibleWhen?: RuntimeRule; hidden?: boolean };
 export type RuntimeSpec = { version: 1; tabs: RuntimeTabSpec[]; screens: RuntimeScreenSpec[] };
 
 /* Views sent to clients: text is localized and data is already authorized. Image values are `/api/…` paths on the API origin,
