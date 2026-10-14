@@ -3,6 +3,26 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "FULL-RANGE-FILTER-PERFORMANCE-20261014",
+      "title": "全量筛选与共享读取性能优化",
+      "agent": "codex",
+      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/FULL-RANGE-FILTER-PERFORMANCE-20261014.md",
+      "writePaths": [
+        "supabase/migrations/20261014011000_full_range_filter_performance.sql",
+        ".ai/tasks/FULL-RANGE-FILTER-PERFORMANCE-20261014.md",
+        ".tmp/full-range-filter-performance-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "909949081d811d3dabf836317b90dd2bdeff98f1",
+      "next": "PG 查询优化已应用开发库：线索完整筛选 1.83→1.26 秒，沟通 3.65→2.44 秒；完整结果、月份多选、分页排序与年级修订合同一致。待实际使用验收，生产未部署。后续优先从 PG 数据结构、索引和执行计划处理瓶颈。"
+    },
+    {
       "id": "ASSESSMENT-PG-READ-20261014",
       "title": "测评 PostgreSQL 首屏读取继续提速",
       "agent": "codex",
