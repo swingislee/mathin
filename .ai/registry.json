@@ -3,6 +3,26 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "ASSESSMENT-PG-READ-20261014",
+      "title": "测评 PostgreSQL 首屏读取继续提速",
+      "agent": "codex",
+      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ASSESSMENT-PG-READ-20261014.md",
+      "writePaths": [
+        ".ai/tasks/ASSESSMENT-PG-READ-20261014.md",
+        ".tmp/assessment-pg-read-20261014/",
+        "supabase/migrations/20261014013000_assessment_narrow_read.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "43ca3056",
+      "next": "PG 来源中间结果与日期聚合已收窄并应用开发库；3951 条来源及默认、多月份小组、筛选分页结果一致。RPC 约 589 毫秒、页面完整响应 1.267 秒，待实际首访验收；前端未改，生产未部署。"
+    },
+    {
       "id": "ASSESSMENT-INITIAL-LOAD-20261014",
       "title": "测评页首次进入加载优化",
       "agent": "codex",
