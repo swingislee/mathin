@@ -11,7 +11,7 @@ export const classSessionDetailSchema = z.union([z.object({
   canPrepare: z.boolean(), canEnterLive: z.boolean(), canMarkAttendance: z.boolean(),
 }), z.object({
   records: teachingRecordsSchema,
-  canEnterLive: z.boolean().default(false),
+  canEnterLive: z.boolean().optional(),
   canWriteReview: z.boolean(),
   resultStatus: z.enum(["draft", "review", "published", "withdrawn", "revised"]),
 })]);
