@@ -3,7 +3,8 @@ import ClassesPage from "../src/app/[locale]/dashboard/classes/page";
 import EnrollmentsPage from "../src/features/school/ClassPlacementPage";
 import { ClassWorkspaceEntry } from "../src/features/school/ClassWorkspaceMemory";
 
-const mocks = vi.hoisted(() => ({ teacher: vi.fn(), permissions: vi.fn(), capability: vi.fn(), board: vi.fn(), history: vi.fn(), redirect: vi.fn(), sessions: vi.fn() }));
+const mocks = vi.hoisted(() => ({ teacher: vi.fn(), permissions: vi.fn(), capability: vi.fn(), board: vi.fn(), history: vi.fn(), redirect: vi.fn(), sessions: vi.fn(), cookie: vi.fn() }));
+vi.mock("next/headers", () => ({ cookies: async () => ({ get: (name: string) => name === "mathin_class_workspace" ? mocks.cookie() : undefined }) }));
 vi.mock("server-only", () => ({}));
 vi.mock("next-intl/server", () => ({ setRequestLocale: vi.fn(), getTranslations: async () => (key: string) => key, getNow: async () => new Date("2026-09-11T00:00:00Z") }));
 vi.mock("@/lib/auth", () => ({ requireUser: async () => ({ id: "teacher-a" }), requireDashboardEnvironment: async () => ({ user: { id: "teacher-a" } }), getMyPerms: mocks.permissions }));
@@ -31,6 +32,21 @@ describe("teacher entry and placement access", () => {
     mocks.permissions.mockResolvedValue(new Set(["followup.view", "class.view.mine"])); mocks.board.mockResolvedValue(board);
     mocks.sessions.mockResolvedValue([]);
     mocks.redirect.mockImplementation(() => { throw new Error("REDIRECT"); });
+    mocks.cookie.mockReturnValue(undefined);
+  });
+
+  it("enters the remembered class view on the server when this account saved one", async () => {
+    mocks.cookie.mockReturnValue({ value: "teacher-a|view=tasks&scope=mine" });
+    await expect(ClassesPage({ params, searchParams: Promise.resolve({}) })).rejects.toThrow("REDIRECT");
+    expect(mocks.redirect).toHaveBeenCalledWith({ href: "/dashboard/classes?view=tasks&scope=mine", locale: "zh" });
+    expect(mocks.permissions).not.toHaveBeenCalled();
+  });
+
+  it("ignores a class view saved by another account in the same browser", async () => {
+    mocks.cookie.mockReturnValue({ value: "teacher-b|view=directory" });
+    const page = await ClassesPage({ params, searchParams: Promise.resolve({}) });
+    expect(page.type).toBe(ClassWorkspaceEntry);
+    expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
   it("restores the teacher's last selection before loading a class view", async () => {

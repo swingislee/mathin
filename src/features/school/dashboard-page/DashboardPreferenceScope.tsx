@@ -15,6 +15,11 @@ function subscribe(listener: () => void) {
   return () => { window.removeEventListener("storage", listener); window.removeEventListener(CHANGE, listener); };
 }
 
+/** 当前后台账号；偏好镜像到 Cookie 时用于区分账号。 */
+export function useDashboardUserId() {
+  return useContext(Scope);
+}
+
 /** 仅保存当前账号的展示偏好；读取失败时继续使用页面默认配置。 */
 export function useDashboardPreference(key?: string) {
   const userId = useContext(Scope);

@@ -61,6 +61,8 @@ import { DashboardSidebarResizeHandle } from "./DashboardSidebarResizeHandle";
 import { resolveActiveNavHref, type SchoolNavItem } from "./nav";
 import { Student360Workspace } from "./Student360Sheet";
 import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
+import { useDashboardPreference } from "./dashboard-page/DashboardPreferenceScope";
+import { CLASS_WORKSPACE_PREFERENCE, rememberedClassWorkspaceHref } from "./class-workspace-preferences";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
@@ -128,6 +130,10 @@ function NavList({
   const returnTo = useSearchParams().get("returnTo");
   // 桌面与移动端共用同一个 active 结果（doc22 §9）：两端各算一次曾经是双重高亮的来源之一。
   const activeHref = resolveActiveNavHref(pathname, nav, returnTo);
+  // 班级入口直接指向本人上次的视图，点击即进入目标页，不经过恢复偏好的过渡页。
+  const classPreference = useDashboardPreference(CLASS_WORKSPACE_PREFERENCE);
+  const linkHref = (href: string) => href === "/dashboard/classes" && classPreference.ready
+    ? rememberedClassWorkspaceHref(classPreference.raw) : href;
   return (
     // 具名：讲次工作区等页面会渲染自己的 <nav>，无名导航既让读屏用户分不清两者，
     // 也让"侧栏当前项"无法被稳定选中（验收脚本据此断言无双重高亮）。
@@ -142,7 +148,7 @@ function NavList({
         const label = navT(item.labelKey);
         const link = (
           <DashboardIntentLink
-            href={item.href}
+            href={linkHref(item.href)}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
             aria-label={label}

@@ -39,3 +39,20 @@ export function rememberedClassWorkspaceHref(raw: string | null): string {
   } catch { /* 无效偏好使用当前账号的默认班级范围。 */ }
   return `/dashboard/classes?${classWorkspacePreference(query) ?? "view=arrange"}`;
 }
+
+/** 同一选择镜像到 Cookie，裸入口在服务端直接进入目标视图；值带账号，换号登录不串用。 */
+export const CLASS_WORKSPACE_COOKIE = "mathin_class_workspace";
+const CLASS_WORKSPACE_COOKIE_MAX = 3_000;
+
+export function classWorkspaceCookieValue(userId: string, preference: string): string | null {
+  const value = `${userId}|${preference}`;
+  return value.length <= CLASS_WORKSPACE_COOKIE_MAX ? value : null;
+}
+
+export function classWorkspaceHrefFromCookie(value: string | undefined, userId: string): string | null {
+  if (!value || value.length > CLASS_WORKSPACE_COOKIE_MAX) return null;
+  const separator = value.indexOf("|");
+  if (separator < 0 || value.slice(0, separator) !== userId) return null;
+  const preference = classWorkspacePreference(Object.fromEntries(new URLSearchParams(value.slice(separator + 1))));
+  return preference ? `/dashboard/classes?${preference}` : null;
+}
