@@ -48,9 +48,7 @@
         "tests/wechat-callback.test.ts",
         "docs/ops/wechat-oauth.md"
       ],
-      "sharedPaths": [
-        ".ai/registry.json"
-      ],
+      "sharedPaths": [".ai/registry.json"],
       "checkpoint": "e1df192e7b3b30cdcfb92756e558eb47cb775df8",
       "next": "已按授权部署生产 20261015-141320，仅更新三个微信登录运行文件；定向鉴权、Linux 构建与生产健康通过，微信配置仍启用。待本人退出旧会话并重新微信登录验收，密码登录仍需 MFA。"
     },
@@ -205,26 +203,6 @@
       "next": "开发库已应用 PG 生成列与查询优化：沟通全量 RPC 2.40→1.02 秒，完整筛选接口 3.17→1.46 秒；完整结果、来源自动更新与权限合同一致。待实际使用验收，生产未部署。后续从任务卡接续剩余执行计划。"
     },
     {
-      "id": "FULL-RANGE-FILTER-PERFORMANCE-20261014",
-      "title": "全量筛选与共享读取性能优化",
-      "agent": "codex",
-      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
-      "status": "done",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/FULL-RANGE-FILTER-PERFORMANCE-20261014.md",
-      "writePaths": [
-        "supabase/migrations/20261014011000_full_range_filter_performance.sql",
-        ".ai/tasks/FULL-RANGE-FILTER-PERFORMANCE-20261014.md",
-        ".tmp/full-range-filter-performance-20261014/"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json"
-      ],
-      "checkpoint": "909949081d811d3dabf836317b90dd2bdeff98f1",
-      "next": "PG 查询优化已应用开发库：线索完整筛选 1.83→1.26 秒，沟通 3.65→2.44 秒；完整结果、月份多选、分页排序与年级修订合同一致。待实际使用验收，生产未部署。后续优先从 PG 数据结构、索引和执行计划处理瓶颈。"
-    },
-    {
       "id": "ASSESSMENT-PG-READ-20261014",
       "title": "测评 PostgreSQL 首屏读取继续提速",
       "agent": "codex",
@@ -265,24 +243,24 @@
       "next": "测评专用 RPC 来源关联和重复聚合已优化并应用开发库；941 条记录及多月份小组、筛选分页结果一致。RPC 2.98→1.23 秒，页面完整响应 3.17→2.30 秒，待实际首访确认，生产未部署。"
     },
     {
-      "id": "WORKLIST-FACETS-PG-20261014",
-      "title": "沟通表头筛选 PostgreSQL 超时修复",
+      "id": "FULL-RANGE-FILTER-PERFORMANCE-20261014",
+      "title": "全量筛选与共享读取性能优化",
       "agent": "codex",
-      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
+      "threadId": "01a13480-024a-7ac3-b90c-14d1e3b240f0",
       "status": "done",
       "checkout": "local",
       "branch": "main",
-      "card": ".ai/tasks/WORKLIST-FACETS-PG-20261014.md",
+      "card": ".ai/tasks/FULL-RANGE-FILTER-PERFORMANCE-20261014.md",
       "writePaths": [
-        ".ai/tasks/WORKLIST-FACETS-PG-20261014.md",
-        "supabase/migrations/20261014010000_worklist_field_read_performance.sql",
-        ".tmp/worklist-facets-pg-20261014/"
+        "supabase/migrations/20261014011000_full_range_filter_performance.sql",
+        ".ai/tasks/FULL-RANGE-FILTER-PERFORMANCE-20261014.md",
+        ".tmp/full-range-filter-performance-20261014/"
       ],
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": null,
-      "next": "PG 沟通摘要改为一次汇总，开发库已应用；2569 条摘要和三组完整查询结果一致，原超时 RPC 3.36 秒成功、开发筛选接口 200。待实际使用确认，生产未部署。"
+      "checkpoint": "909949081d811d3dabf836317b90dd2bdeff98f1",
+      "next": "PG 查询优化已应用开发库：线索完整筛选 1.83→1.26 秒，沟通 3.65→2.44 秒；完整结果、月份多选、分页排序与年级修订合同一致。待实际使用验收，生产未部署。后续优先从 PG 数据结构、索引和执行计划处理瓶颈。"
     },
     {
       "id": "NESTED-ROW-LATENCY-20261014",
@@ -303,6 +281,26 @@
       "next": "诊断完成：基础信息懒加载越过行内边界，隔离复现触发整页等待；年级计算单人约143–182ms并处理4925条来源。建议先让基础信息编辑器点击时独立加载，再收窄单人年级查询。尚未修改产品代码或数据库。"
     },
     {
+      "id": "WORKLIST-FACETS-PG-20261014",
+      "title": "沟通表头筛选 PostgreSQL 超时修复",
+      "agent": "codex",
+      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WORKLIST-FACETS-PG-20261014.md",
+      "writePaths": [
+        ".ai/tasks/WORKLIST-FACETS-PG-20261014.md",
+        "supabase/migrations/20261014010000_worklist_field_read_performance.sql",
+        ".tmp/worklist-facets-pg-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "PG 沟通摘要改为一次汇总，开发库已应用；2569 条摘要和三组完整查询结果一致，原超时 RPC 3.36 秒成功、开发筛选接口 200。待实际使用确认，生产未部署。"
+    },
+    {
       "id": "COMMUNICATION-ROW-LAYOUT-20261014",
       "title": "待测评列表选择列与学生信息对齐",
       "agent": "codex",
@@ -320,6 +318,40 @@
       ],
       "checkpoint": null,
       "next": "已实现：沟通列表移除重复登记列，复选框独立，姓名年级同列对齐，前导展开填写。文件静态检查通过，待开发端实际使用确认，生产未部署。"
+    },
+    {
+      "id": "ASSESSMENT-MONTHS-GROUPS-20261014",
+      "title": "测评小组与三页月份多选",
+      "agent": "codex",
+      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/ASSESSMENT-MONTHS-GROUPS-20261014.md",
+      "writePaths": [
+        ".ai/tasks/ASSESSMENT-MONTHS-GROUPS-20261014.md",
+        "src/features/school/AssessmentPagedWorkbench.tsx",
+        "src/features/school/AssessmentUnifiedWorkbench.tsx",
+        "src/features/school/assessment-list-data.ts",
+        "src/features/school/assessment-workbench-page.ts",
+        "src/features/school/source-worklist/MonthMultiSelect.tsx",
+        "src/features/school/source-worklist/period-selection.ts",
+        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
+        "src/features/school/source-worklist/contract.ts",
+        "supabase/migrations/20261014001000_worklist_months_assessment_groups.sql",
+        "tests/assessment-followup-layout.test.ts",
+        "tests/assessment-page-navigation.test.ts",
+        "tests/assessment-workbench-page.test.ts",
+        "tests/followup-primary-filter-interaction.test.ts",
+        ".tmp/assessment-months-groups-20261014/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/source-worklist/Page.tsx",
+        "src/features/school/source-worklist/Workspace.tsx"
+      ],
+      "checkpoint": null,
+      "next": "开发端已可验收：测评只按小组，当前与历史合并；三页月份可多选并按账号记忆。定向静态、数据库与页面读取通过，待实际操作验收，生产未发布。"
     },
     {
       "id": "LEAD-COMMUNICATION-SUMMARY-20261013",
@@ -375,40 +407,6 @@
       ],
       "checkpoint": null,
       "next": "开发端可验收：主行精简、来源学服、按学年推算的当前年级、所有学生嵌套表与 360 快捷修订。定向静态、SQL 和页面读取通过，待实际使用；旧专用列表年级读取留作后续统一批次。未部署生产。"
-    },
-    {
-      "id": "ASSESSMENT-MONTHS-GROUPS-20261014",
-      "title": "测评小组与三页月份多选",
-      "agent": "codex",
-      "threadId": "01a135fd-0890-7133-a8da-819727d366cb",
-      "status": "done",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/ASSESSMENT-MONTHS-GROUPS-20261014.md",
-      "writePaths": [
-        ".ai/tasks/ASSESSMENT-MONTHS-GROUPS-20261014.md",
-        "src/features/school/AssessmentPagedWorkbench.tsx",
-        "src/features/school/AssessmentUnifiedWorkbench.tsx",
-        "src/features/school/assessment-list-data.ts",
-        "src/features/school/assessment-workbench-page.ts",
-        "src/features/school/source-worklist/MonthMultiSelect.tsx",
-        "src/features/school/source-worklist/period-selection.ts",
-        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
-        "src/features/school/source-worklist/contract.ts",
-        "supabase/migrations/20261014001000_worklist_months_assessment_groups.sql",
-        "tests/assessment-followup-layout.test.ts",
-        "tests/assessment-page-navigation.test.ts",
-        "tests/assessment-workbench-page.test.ts",
-        "tests/followup-primary-filter-interaction.test.ts",
-        ".tmp/assessment-months-groups-20261014/"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json",
-        "src/features/school/source-worklist/Page.tsx",
-        "src/features/school/source-worklist/Workspace.tsx"
-      ],
-      "checkpoint": null,
-      "next": "开发端已可验收：测评只按小组，当前与历史合并；三页月份可多选并按账号记忆。定向静态、数据库与页面读取通过，待实际操作验收，生产未发布。"
     },
     {
       "id": "LEAD-COMMUNICATION-REFINE-20261013",
@@ -478,6 +476,26 @@
       "next": "开发端可验收：全年数独12讲解析通过；课程页直达草稿，研发任务按课程/版本/班型分组；相关TypeScript检查通过，待用户实际使用。"
     },
     {
+      "id": "WECHAT-DOMAIN-VERIFY-20261013",
+      "title": "生产微信业务域名校验文件",
+      "agent": "codex",
+      "threadId": "01a134ab-1bbf-7ce0-ac80-70ce81eb1625",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-DOMAIN-VERIFY-20261013.md",
+      "writePaths": [
+        "public/us6QJi226o.txt",
+        ".ai/tasks/WECHAT-DOMAIN-VERIFY-20261013.md",
+        ".tmp/wechat-domain-verify-20261013/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "生产精确校验地址已生效；HTTPS 200、32 字节原文一致、零跳转及 TLS 1.2 通过，现有服务保持。回微信平台对 mathin.club 点击校验。"
+    },
+    {
       "id": "SUDOKU-COURSE-2026-20261013",
       "title": "数独教学2026版十二讲成品课程",
       "agent": "claude",
@@ -527,24 +545,38 @@
       "next": "12讲已按校准逻辑重做并在开发端更新；新增学生讲义（与课件同页同题、无答案）；棋盘保留彩色宫底、改深色粗宫线。待用户试课确认投屏、节奏与讲义。"
     },
     {
-      "id": "WECHAT-DOMAIN-VERIFY-20261013",
-      "title": "生产微信业务域名校验文件",
-      "agent": "codex",
-      "threadId": "01a134ab-1bbf-7ce0-ac80-70ce81eb1625",
-      "status": "done",
+      "id": "MINI-RUNTIME-PLAN-20261013",
+      "title": "小程序运行时 1.0 规划",
+      "agent": "claude",
+      "threadId": null,
+      "status": "in_progress",
       "checkout": "local",
       "branch": "main",
-      "card": ".ai/tasks/WECHAT-DOMAIN-VERIFY-20261013.md",
+      "card": ".ai/tasks/MINI-RUNTIME-PLAN-20261013.md",
       "writePaths": [
-        "public/us6QJi226o.txt",
-        ".ai/tasks/WECHAT-DOMAIN-VERIFY-20261013.md",
-        ".tmp/wechat-domain-verify-20261013/"
+        ".ai/tasks/MINI-RUNTIME-PLAN-20261013.md",
+        "apps/parent-wechat/docs/",
+        "apps/parent-wechat/miniprogram/",
+        "contracts/participant-api/",
+        "src/features/participant-portal/",
+        "src/features/school/miniapp-runtime/",
+        "src/app/[locale]/dashboard/miniapp-runtime/",
+        "scripts/sync-participant-contract.mjs",
+        "supabase/migrations/20261013190000_miniapp_runtime_specs.sql",
+        "supabase/migrations/20261015210000_miniapp_runtime_capabilities.sql",
+        "supabase/tests/miniapp_runtime_capabilities.sql",
+        "src/app/[locale]/auth/miniapp/",
+        "src/features/school/miniapp-settings/",
+        ".tmp/miniapp-runtime-20261015/",
+        "supabase/tests/miniapp_runtime_specs.sql",
+        "tests/miniapp-runtime.test.ts",
+        ".tmp/miniapp-runtime-20261013/"
       ],
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": null,
-      "next": "生产精确校验地址已生效；HTTPS 200、32 字节原文一致、零跳转及 TLS 1.2 通过，现有服务保持。回微信平台对 mathin.club 点击校验。"
+      "checkpoint": "2b63309331847bb0796747dad0d7aad42aa269c0",
+      "next": "2026-10-15 运行时能力补全已提交 c39bbc15 并在本机开发库演练通过；生产候选 .tmp/miniapp-runtime-20261015/candidate（分支 claude/miniapp-runtime-production-20261015，生产 e1df192e + 小程序 31 提交、23 迁移）待负责人授权执行生产迁移与发布，随后上传 0.2.0、补隐私指引、真机验收、提审。"
     },
     {
       "id": "LEAD-COMMUNICATION-REPAIR-20261013",
@@ -1414,38 +1446,6 @@
       "next": "分组与学服设置和明确学服名单已接通，三个分配接口校验资格；开发库已应用、定向静态与权限 SQL 检查通过，待实际使用验收，生产未改动。"
     },
     {
-      "id": "MINI-UNIFIED-ENTRY-20261009",
-      "title": "微信绑定与首次登记统一入口",
-      "agent": "codex",
-      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
-      "status": "done",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/MINI-UNIFIED-ENTRY-20261009.md",
-      "writePaths": [
-        ".ai/tasks/MINI-UNIFIED-ENTRY-20261009.md",
-        "apps/parent-wechat/miniprogram/",
-        "src/features/parent-portal/onboarding-server.ts",
-        "src/features/parent-portal/onboarding-contract.ts",
-        "src/features/parent-portal/wechat-server.ts",
-        "src/features/parent-portal/wechat-contract.ts",
-        "contracts/parent-api/portal.ts",
-        "contracts/participant-api/",
-        "tests/parent-wechat-auth.test.ts",
-        "tests/parent-wechat-auth-client.test.ts",
-        "tests/parent-portal-identity.test.ts",
-        "tests/wechat-family-onboarding.test.ts",
-        "tests/wechat-registration-location.test.ts",
-        "supabase/migrations/20261009180000_miniapp_existing_participant_registration.sql",
-        "supabase/tests/miniapp_existing_participant_registration.sql"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json"
-      ],
-      "checkpoint": null,
-      "next": "开发端已统一首次登记与微信绑定：已验证手机号免重复授权，已登录手机号账号点击确认即可绑定，已登记账号直接进入。既有参与人保留原档案与权限。定向鉴权、客户端、提交定位、SQL、小程序类型及模板检查通过；全仓类型检查仍有既存依赖声明错误。开发工程已刷新，生产与手机包未更新，待实际验收。"
-    },
-    {
       "id": "LEAD-OWNER-DETAIL-20261009",
       "title": "线索行内负责人分配与细分状态",
       "agent": "codex",
@@ -1506,6 +1506,38 @@
       ],
       "checkpoint": "abdea2db311a66d99ee35ea53118e3707e05be60",
       "next": "已部署生产 3c8026aa（release 20261009-102728），活动标签迁移与原 970 条活动保留核对通过；生产构建、完整类型和接口读取通过。小程序 0.1.3 已上传，待用户设为体验版、提审并实际验收。"
+    },
+    {
+      "id": "MINI-UNIFIED-ENTRY-20261009",
+      "title": "微信绑定与首次登记统一入口",
+      "agent": "codex",
+      "threadId": "01a0f7bd-4ca2-7370-a49c-a8f73fd4f5e9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-UNIFIED-ENTRY-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-UNIFIED-ENTRY-20261009.md",
+        "apps/parent-wechat/miniprogram/",
+        "src/features/parent-portal/onboarding-server.ts",
+        "src/features/parent-portal/onboarding-contract.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/wechat-contract.ts",
+        "contracts/parent-api/portal.ts",
+        "contracts/participant-api/",
+        "tests/parent-wechat-auth.test.ts",
+        "tests/parent-wechat-auth-client.test.ts",
+        "tests/parent-portal-identity.test.ts",
+        "tests/wechat-family-onboarding.test.ts",
+        "tests/wechat-registration-location.test.ts",
+        "supabase/migrations/20261009180000_miniapp_existing_participant_registration.sql",
+        "supabase/tests/miniapp_existing_participant_registration.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端已统一首次登记与微信绑定：已验证手机号免重复授权，已登录手机号账号点击确认即可绑定，已登记账号直接进入。既有参与人保留原档案与权限。定向鉴权、客户端、提交定位、SQL、小程序类型及模板检查通过；全仓类型检查仍有既存依赖声明错误。开发工程已刷新，生产与手机包未更新，待实际验收。"
     },
     {
       "id": "MINI-REGISTRATION-REPLAY-20261009",
@@ -1614,6 +1646,34 @@
       ],
       "checkpoint": "8c50b542",
       "next": "小程序页面、动态表单与隐私弹窗中英文称呼已统一，开发检查通过；2026-10-09 已随 0.1.1 上传并更新版本说明，待用户在后台选择新体验版并实际验收。"
+    },
+    {
+      "id": "MINI-REVIEW-SUBMIT-20261009",
+      "title": "小程序后端接通与提交审核",
+      "agent": "codex",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
+      "writePaths": [
+        ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
+        ".tmp/mini-review-submit-20261009/",
+        "src/features/parent-portal/server.ts",
+        "src/features/parent-portal/wechat-server.ts",
+        "src/features/parent-portal/onboarding-server.ts",
+        "tests/parent-wechat-auth.test.ts",
+        "tests/parent-portal-identity.test.ts",
+        "tests/wechat-family-onboarding.test.ts",
+        "supabase/migrations/20261009160000_miniapp_multi_identity.sql",
+        "supabase/tests/miniapp_multi_identity.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "apps/parent-wechat/docs/portal.md"
+      ],
+      "checkpoint": "eaef65950b2eebfcf8ec97c5a3822132d08d8567",
+      "next": "定位接口申请已通过；客户端 0.1.5 已上传，生产支持已绑定微信登录及普通登记参与人预约。首次提审文本已准备，真实时段与活动待发布，手机业务验收、平台提审和正式发布分别办理。"
     },
     {
       "id": "MINI-LEAD-FIRST-CONTACT-20261009",
@@ -2097,6 +2157,30 @@
       "next": "开发业务副本已清理并按最新 Base 重建；工作名单可用，按任务精简信息并保留分组、顺序、颜色与接续位置。导入、权限和保存链路检查通过，待产品负责人实际验收，生产未改动。"
     },
     {
+      "id": "DASHBOARD-SIDEBAR-RESIZE-20261005",
+      "title": "Dashboard 侧栏拖动宽度与独立收起",
+      "agent": "codex",
+      "threadId": "01a10c18-c296-76f0-82b4-df74469666bd",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/DASHBOARD-SIDEBAR-RESIZE-20261005.md",
+      "writePaths": [
+        "src/features/school/DashboardShell.tsx",
+        "src/features/school/DashboardSidebarResizeHandle.tsx",
+        "src/features/school/dashboard-sidebar.ts",
+        "src/app/[locale]/dashboard/layout.tsx",
+        ".ai/tasks/DASHBOARD-SIDEBAR-RESIZE-20261005.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json"
+      ],
+      "checkpoint": null,
+      "next": "已实现边缘拖动、图标吸附与独立收起，恢复上次宽度；定向静态检查通过，3130 开发服务可访问，待实际拖动手感验收，生产未部署。"
+    },
+    {
       "id": "BASE-VIEW-DIAGNOSIS-20261005",
       "title": "Base 工作视图与学生阶段差异核对",
       "agent": "codex",
@@ -2133,30 +2217,6 @@
       ],
       "checkpoint": "694812e7",
       "next": "替换 Base 的 19 表 5,379 行及 31 仪表盘内容一致；原增量已写入生产，逐项核对通过。保留 4 条身份疑义待业务核对，正式班级及人工修订完整。"
-    },
-    {
-      "id": "DASHBOARD-SIDEBAR-RESIZE-20261005",
-      "title": "Dashboard 侧栏拖动宽度与独立收起",
-      "agent": "codex",
-      "threadId": "01a10c18-c296-76f0-82b4-df74469666bd",
-      "status": "done",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/DASHBOARD-SIDEBAR-RESIZE-20261005.md",
-      "writePaths": [
-        "src/features/school/DashboardShell.tsx",
-        "src/features/school/DashboardSidebarResizeHandle.tsx",
-        "src/features/school/dashboard-sidebar.ts",
-        "src/app/[locale]/dashboard/layout.tsx",
-        ".ai/tasks/DASHBOARD-SIDEBAR-RESIZE-20261005.md"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json",
-        "messages/zh.json",
-        "messages/en.json"
-      ],
-      "checkpoint": null,
-      "next": "已实现边缘拖动、图标吸附与独立收起，恢复上次宽度；定向静态检查通过，3130 开发服务可访问，待实际拖动手感验收，生产未部署。"
     },
     {
       "id": "ADMIN-MATERIAL-SUPPLEMENT-20261005",
@@ -2332,6 +2392,53 @@
       "next": "本批完成：16 处旧构建产物约 3.39 GiB 已移除；工具扫描排除范围补齐；23 个本地依赖包缺失已修复。源码、工作区、数据、生产备份与此前恢复材料保留，后续从具体业务任务继续。"
     },
     {
+      "id": "REPO-CODE-AUDIT-20261005",
+      "title": "全仓代码核查与优化",
+      "agent": "codex",
+      "threadId": "01a0ffb9-c74e-7c80-ac23-13b52f30e52a",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/REPO-CODE-AUDIT-20261005.md",
+      "writePaths": [
+        ".ai/tasks/REPO-CODE-AUDIT-20261005.md",
+        ".tmp/repo-code-audit-20261005/",
+        "src/lib/request-body.ts",
+        "src/app/api/csp-report/route.ts",
+        "src/app/api/integrations/webhooks/[provider]/route.ts",
+        "src/features/wechat/broker.ts",
+        "tests/request-body-limits.test.ts",
+        "src/features/classroom/sync/idb.ts",
+        "src/features/classroom/live/useClassBoard.ts",
+        "tests/classroom-idb-transactions.test.ts",
+        "tests/classroom-board-reconcile.test.ts",
+        "src/features/games/match.tsx",
+        "src/features/tools/motion-lab/shared.ts",
+        "src/features/tools/motion-lab/RulerOverlay.tsx",
+        "tests/motion-lab-values.test.ts",
+        "scripts/lib/postgres-process-env.mjs",
+        "scripts/lib/db-audit-runner.mjs",
+        "scripts/ci-rebuild-db.mjs",
+        "tests/db-audit-target-policy.test.ts",
+        "src/features/notebook/workspace/NotebookSync.tsx",
+        "src/features/notebook/store.ts",
+        "tests/notebook-sync-lifecycle.test.ts",
+        "src/features/notebook/editor/TitleField.tsx",
+        "tests/notebook-title-save.test.ts",
+        "src/features/school/students.ts",
+        "tests/student-learning-read.test.ts",
+        "scripts/ops/deploy-mathin-linux.sh",
+        "tests/deploy-rollback.test.ts",
+        "supabase/migrations/20261005001000_profile_account_state_guard.sql",
+        "supabase/tests/profile_account_state_guard.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "中断时已有修复已由 MINI-REVIEW-SUBMIT-20261009 接手，定向测试、源码静态检查与隔离账户权限 SQL 通过，纳入本次生产发布；原全仓核查其余范围未继续。"
+    },
+    {
       "id": "COMMUNICATION-TIMEOUT-20261007",
       "title": "沟通页读取超时修复",
       "agent": "codex",
@@ -2480,81 +2587,6 @@
       "next": "生产数据与标签界面已发布，100条分页超时及20条重复读取已修复；网站7a24ede8、迁移head19000。该筛选生产数据库20条1.05–1.17秒、100条1.98–2.02秒，阶段、页面、人工证据与权限检查通过。待实际加载体验验收及391项业务复核。"
     },
     {
-      "id": "REPO-CODE-AUDIT-20261005",
-      "title": "全仓代码核查与优化",
-      "agent": "codex",
-      "threadId": "01a0ffb9-c74e-7c80-ac23-13b52f30e52a",
-      "status": "in_progress",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/REPO-CODE-AUDIT-20261005.md",
-      "writePaths": [
-        ".ai/tasks/REPO-CODE-AUDIT-20261005.md",
-        ".tmp/repo-code-audit-20261005/",
-        "src/lib/request-body.ts",
-        "src/app/api/csp-report/route.ts",
-        "src/app/api/integrations/webhooks/[provider]/route.ts",
-        "src/features/wechat/broker.ts",
-        "tests/request-body-limits.test.ts",
-        "src/features/classroom/sync/idb.ts",
-        "src/features/classroom/live/useClassBoard.ts",
-        "tests/classroom-idb-transactions.test.ts",
-        "tests/classroom-board-reconcile.test.ts",
-        "src/features/games/match.tsx",
-        "src/features/tools/motion-lab/shared.ts",
-        "src/features/tools/motion-lab/RulerOverlay.tsx",
-        "tests/motion-lab-values.test.ts",
-        "scripts/lib/postgres-process-env.mjs",
-        "scripts/lib/db-audit-runner.mjs",
-        "scripts/ci-rebuild-db.mjs",
-        "tests/db-audit-target-policy.test.ts",
-        "src/features/notebook/workspace/NotebookSync.tsx",
-        "src/features/notebook/store.ts",
-        "tests/notebook-sync-lifecycle.test.ts",
-        "src/features/notebook/editor/TitleField.tsx",
-        "tests/notebook-title-save.test.ts",
-        "src/features/school/students.ts",
-        "tests/student-learning-read.test.ts",
-        "scripts/ops/deploy-mathin-linux.sh",
-        "tests/deploy-rollback.test.ts",
-        "supabase/migrations/20261005001000_profile_account_state_guard.sql",
-        "supabase/tests/profile_account_state_guard.sql"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json"
-      ],
-      "checkpoint": null,
-      "next": "中断时已有修复已由 MINI-REVIEW-SUBMIT-20261009 接手，定向测试、源码静态检查与隔离账户权限 SQL 通过，纳入本次生产发布；原全仓核查其余范围未继续。"
-    },
-    {
-      "id": "MINI-REVIEW-SUBMIT-20261009",
-      "title": "小程序后端接通与提交审核",
-      "agent": "codex",
-      "status": "in_progress",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
-      "writePaths": [
-        ".ai/tasks/MINI-REVIEW-SUBMIT-20261009.md",
-        ".tmp/mini-review-submit-20261009/",
-        "src/features/parent-portal/server.ts",
-        "src/features/parent-portal/wechat-server.ts",
-        "src/features/parent-portal/onboarding-server.ts",
-        "tests/parent-wechat-auth.test.ts",
-        "tests/parent-portal-identity.test.ts",
-        "tests/wechat-family-onboarding.test.ts",
-        "supabase/migrations/20261009160000_miniapp_multi_identity.sql",
-        "supabase/tests/miniapp_multi_identity.sql"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json",
-        "docs/current.md",
-        "apps/parent-wechat/docs/portal.md"
-      ],
-      "checkpoint": "eaef65950b2eebfcf8ec97c5a3822132d08d8567",
-      "next": "定位接口申请已通过；客户端 0.1.5 已上传，生产支持已绑定微信登录及普通登记参与人预约。首次提审文本已准备，真实时段与活动待发布，手机业务验收、平台提审和正式发布分别办理。"
-    },
-    {
       "id": "COMMUNICATION-MONTH-FILTER-20261009",
       "title": "线索与沟通月份筛选收紧",
       "agent": "codex",
@@ -2572,25 +2604,6 @@
       ],
       "checkpoint": null,
       "next": "线索和沟通月份已改为紧凑下拉，完整月份及人数保留在选项中；两个组件静态检查通过，3130开发服务可用，待实际使用确认，生产未发布。"
-    },
-    {
-      "id": "COMMUNICATION-HEADER-20261009",
-      "title": "线索与沟通顶部整理",
-      "agent": "codex",
-      "status": "done",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/COMMUNICATION-HEADER-20261009.md",
-      "writePaths": [
-        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
-        ".ai/tasks/COMMUNICATION-HEADER-20261009.md"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json",
-        "src/features/school/source-worklist/Workspace.tsx"
-      ],
-      "checkpoint": null,
-      "next": "线索和沟通的月份、小组并入统一页头筛选区，操作集中右侧图标；两个组件静态检查通过，复用现有开发服务，待实际密度及换行验收，生产未发布。"
     },
     {
       "id": "SOURCE-READ-MODEL-20261009",
@@ -2615,6 +2628,55 @@
       ],
       "checkpoint": "4befadbd",
       "next": "两个增量已应用开发库：来源关系统一、整页复用证据，结果与身份权限检查通过。20条数据库456–594ms，100条547–1271ms；开发端可验收，100条完整档案仍有优化空间，生产未部署。"
+    },
+    {
+      "id": "COMMUNICATION-HEADER-20261009",
+      "title": "线索与沟通顶部整理",
+      "agent": "codex",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/COMMUNICATION-HEADER-20261009.md",
+      "writePaths": [
+        "src/features/school/source-worklist/SourceLayoutFilters.tsx",
+        ".ai/tasks/COMMUNICATION-HEADER-20261009.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/source-worklist/Workspace.tsx"
+      ],
+      "checkpoint": null,
+      "next": "线索和沟通的月份、小组并入统一页头筛选区，操作集中右侧图标；两个组件静态检查通过，复用现有开发服务，待实际密度及换行验收，生产未发布。"
+    },
+    {
+      "id": "BASE-LIFECYCLE-REBUILD-20261015",
+      "title": "BASE 生产数据重写、五阶段拆分与名单读取改写",
+      "agent": "claude",
+      "threadId": "2026-07-mathin-89",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/BASE-LIFECYCLE-REBUILD-20261015.md",
+      "writePaths": [
+        ".ai/tasks/BASE-LIFECYCLE-REBUILD-20261015.md",
+        ".tmp/base-restructure-20261015/",
+        "supabase/migrations/20261015",
+        "src/features/school/ActivitiesManager.tsx",
+        "src/features/school/activities.ts",
+        "src/features/school/source-worklist/",
+        "src/features/school/business-record-messages.ts",
+        "src/features/school/business-search-query.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/features/school/",
+        "src/app/[locale]/dashboard/",
+        "tests/",
+        "docs/workflows/school-operations.md",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": null,
+      "next": "两条迁移（20261015100000、20261015110000）已应用开发库并跑完 10-14 导入（待首联1238/待测评2455/待报名338/待续报169/已停课244）；current/historical 前后端舍弃、名单按带年份月份；待报名/已停课 100 行 RPC 2.2→0.54s，活动页元素 9803→1617。未提交；生产待本次授权。"
     }
   ]
 }
