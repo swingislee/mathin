@@ -313,9 +313,6 @@
   },
   "auth": {
     "loginTitle": "Sign in to Mathin",
-    "loginMethod": "Choose a sign-in method",
-    "passwordLogin": "Account password",
-    "existingAccountHelp": "Verify your existing phone or email account with its password. To link WeChat for the first time, sign in and open Account security.",
     "welcomeBack": "Welcome back",
     "passwordMethod": "Choose account type",
     "phoneNumber": "Phone number",
@@ -10844,7 +10841,7 @@
     "title": "WeChat",
     "login": "Continue with WeChat",
     "disabled": "WeChat sign-in will open after configuration and authorization testing are complete.",
-    "loginNotice": "A linked WeChat identity signs in to your existing account. To link it for the first time, choose Account password and verify your existing account.",
+    "loginNotice": "A linked WeChat identity signs in to your existing account. To link it for the first time, sign in with your phone or email and password, then open Account security.",
     "privacy": "Privacy information",
     "linked": "Linked",
     "unbound": "Not linked",
@@ -10864,7 +10861,7 @@
     "guestNotice": "This WeChat identity is not linked to a Mathin account. The name above is your WeChat name. Verify your existing phone or email account with its password, then link WeChat in Account security.",
     "guestRoles": "Guests see public content only. Staff, parent and student workspaces require an administrator invitation and an established relationship.",
     "guestExpiry": "This page retains your WeChat details for 14 minutes. Linking requires a new WeChat authorization. Guest visits do not create a separate account.",
-    "existingAccount": "Sign in with your existing password to link",
+    "existingAccount": "Sign in, then link WeChat",
     "browse": "Browse public content",
     "leave": "Leave and clear this authorization",
     "errors": {

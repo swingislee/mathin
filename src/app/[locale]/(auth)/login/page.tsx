@@ -2,9 +2,8 @@ import { AuthForm } from "@/components/auth-form";
 
 export default async function LoginPage({ params, searchParams }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string; next?: string; wechatError?: string; method?: string }>;
+  searchParams: Promise<{ error?: string; next?: string; wechatError?: string }>;
 }) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
-  return <AuthForm mode="login" locale={locale} error={query.error} next={query.next} wechatError={query.wechatError}
-    loginMethod={query.method === "password" ? "password" : undefined} />;
+  return <AuthForm mode="login" locale={locale} error={query.error} next={query.next} wechatError={query.wechatError} />;
 }

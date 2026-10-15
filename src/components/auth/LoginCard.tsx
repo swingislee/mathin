@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link } from "@/i18n/navigation";
 import { WechatLoginButton } from "@/features/wechat/WechatLoginButton";
 import { wechatError as parseWechatError } from "@/features/wechat/contract";
-import type { LoginMethod, LoginState } from "./login-contract";
+import type { LoginState } from "./login-contract";
 import { EmailLoginInput, PhoneLoginInput } from "./LoginIdentifierFields";
 import { emailInputIdentifier, phoneInputIdentifier } from "./login-identifier-input";
 
@@ -21,7 +21,6 @@ export type LoginCardProps = {
   next?: string;
   error?: string;
   wechatError?: string;
-  initialMethod?: LoginMethod;
   dialog?: boolean;
   family?: boolean;
   onSuccess?: () => void;
@@ -29,11 +28,10 @@ export type LoginCardProps = {
 };
 
 /** 页面与浮窗共用一份表单；外层 Card / Dialog 各自提供唯一表面。 */
-export function LoginCard({ locale, wechatAvailable, next, error, wechatError, initialMethod, dialog = false, family = false, onSuccess, onNavigate }: LoginCardProps) {
+export function LoginCard({ locale, wechatAvailable, next, error, wechatError, dialog = false, family = false, onSuccess, onNavigate }: LoginCardProps) {
   const t = useTranslations("auth");
   const wechat = useTranslations("wechat");
   const id = useId();
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>(initialMethod === "password" || !wechatAvailable || error ? "password" : "wechat");
   const [method, setMethod] = useState(family ? "phone" : "email");
   const [email, setEmail] = useState({ localPart: "", domain: locale === "zh" ? "qq.com" : "gmail.com" });
   const [phone, setPhone] = useState("");
@@ -54,18 +52,7 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, i
       {family && <p className="mt-3 text-sm text-muted">{locale === "en" ? "Sign in to see your child's schedule, feedback and registration." : "登录后查看孩子的安排、学习反馈与班级报名。"}</p>}
     </div>
 
-    {wechatError ? <p role="alert" className="mt-3 text-sm text-rose">{wechat(`errors.${parseWechatError(wechatError)}`)}</p> : null}
-    <Tabs value={loginMethod} onValueChange={(value) => setLoginMethod(value as LoginMethod)} className="mt-5">
-      <TabsList className="mb-5 grid h-11 w-full grid-cols-2 rounded-xl" aria-label={t("loginMethod")}>
-        <TabsTrigger value="wechat" disabled={busy || !wechatAvailable} className="rounded-lg">{wechat("login")}</TabsTrigger>
-        <TabsTrigger value="password" disabled={busy} className="rounded-lg">{t("passwordLogin")}</TabsTrigger>
-      </TabsList>
-      <TabsContent value="wechat" className="mt-0">
-        <WechatLoginButton locale={locale} next={next} available={wechatAvailable} disabled={busy} />
-        <p className="mt-4 text-sm leading-6 text-muted">{wechat("loginNotice")}</p>
-      </TabsContent>
-      <TabsContent value="password" className="mt-0">
-    <p className="mb-4 text-sm leading-6 text-muted">{t("existingAccountHelp")}</p>
+    {wechatError ? <p role="alert" className="mb-4 text-sm text-rose">{wechat(`errors.${parseWechatError(wechatError)}`)}</p> : null}
     <form action={action} autoComplete="on" aria-busy={busy}>
       <Input type="hidden" name="locale" value={locale} />
       <Input type="hidden" name="presentation" value={dialog ? "dialog" : "page"} />
@@ -100,8 +87,10 @@ export function LoginCard({ locale, wechatAvailable, next, error, wechatError, i
       </Button>
     </form>
 
-      </TabsContent>
-    </Tabs>
+    {wechatAvailable ? <div className="mt-6 border-t border-line pt-5">
+      <p className="mb-3 text-center text-sm text-muted">{t("otherLoginMethods")}</p>
+      <WechatLoginButton locale={locale} next={next} available={wechatAvailable} disabled={busy} />
+    </div> : null}
     <p className="mt-6 text-center text-sm text-muted">{t("haveInvitation")} <Link href="/signup" onNavigate={onNavigate} className="text-ink underline underline-offset-4">{t("activateAccount")}</Link></p>
   </div>;
 }

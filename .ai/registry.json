@@ -21,11 +21,13 @@
         "src/features/wechat/account.ts",
         "src/features/wechat/contract.ts",
         "src/features/wechat/WechatIdentitySettings.tsx",
+        "src/features/wechat/WechatLoginButton.tsx",
         "src/features/account/AccountSecurityPanel.tsx",
         "tests/wechat-broker.test.ts",
         "tests/wechat-actions.test.ts",
         "tests/wechat-login-entry.test.ts",
-        ".tmp/wechat-login-loop-20261014/"
+        ".tmp/wechat-login-loop-20261014/",
+        ".tmp/wechat-login-loop-20261015/"
       ],
       "sharedPaths": [
         ".ai/registry.json",
@@ -33,8 +35,8 @@
         "messages/en.json",
         "docs/ops/wechat-oauth.md"
       ],
-      "checkpoint": null,
-      "next": "开发端已修复：已有账号直接密码登录，绑定须重新微信授权。定向身份安全用例、修改文件静态检查和中英文匿名浏览器入口通过；生产待授权发布，真实扫码及本人使用待验收。"
+      "checkpoint": "0cd2f7cb",
+      "next": "10 月 15 日登录呈现已调整：账号密码表单直接显示，微信作为下方同屏入口，取消登录方式页签。修改文件静态检查通过，待使用确认；本任务未发布生产。"
     },
     {
       "id": "CLASSROOM-SMART-ENTRY-20261014",

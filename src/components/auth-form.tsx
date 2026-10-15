@@ -10,9 +10,8 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { LoginCard } from "@/components/auth/LoginCard";
 import { getWechatConfig } from "@/features/wechat/config";
-import type { LoginMethod } from "@/components/auth/login-contract";
 
-export async function AuthForm({ mode, locale, error, next, wechatError, loginMethod }: { mode: "login" | "signup"; locale: string; error?: string; next?: string; wechatError?: string; loginMethod?: LoginMethod }) {
+export async function AuthForm({ mode, locale, error, next, wechatError }: { mode: "login" | "signup"; locale: string; error?: string; next?: string; wechatError?: string }) {
   const t = await getTranslations("auth");
   const common = await getTranslations("common");
   if (mode === "login") {
@@ -20,7 +19,7 @@ export async function AuthForm({ mode, locale, error, next, wechatError, loginMe
     return <main className="grid min-h-dvh place-items-center px-4 py-10 sm:px-6">
       <div className="flex w-full max-w-md flex-col items-center">
         <Star4 size={24} className="mb-6" />
-        <Card className="w-full overflow-hidden rounded-[2rem]"><LoginCard key={loginMethod ?? "default"} locale={locale} next={next} error={error} wechatError={wechatError} initialMethod={loginMethod} wechatAvailable={Boolean(getWechatConfig())} /></Card>
+        <Card className="w-full overflow-hidden rounded-[2rem]"><LoginCard locale={locale} next={next} error={error} wechatError={wechatError} wechatAvailable={Boolean(getWechatConfig())} /></Card>
       </div>
     </main>;
   }
