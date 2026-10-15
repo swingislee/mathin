@@ -220,18 +220,18 @@ describe("DEV-SCHOOL-OPS-1 Phase 2 assessment-session worktable", () => {
     });
     const rows = [makeRow("pending", false), makeRow("recorded", true)];
 
-    expect(assessmentWorkbenchCounts(rows)).toEqual({ pending: 1, in_progress: 0, feedback: 1, handled: 0, all: 2, historical: 0 });
+    expect(assessmentWorkbenchCounts(rows)).toEqual({ pending: 1, in_progress: 0, feedback: 1, handled: 0, all: 2 });
     expect(assessmentWorkbenchRowsForView(rows, { queue: "pending" }, "zh").map((row) => row.id))
       .toEqual(["pending"]);
     expect(assessmentWorkbenchRowsForView(rows, { queue: "feedback", q: "审题" }, "zh").map((row) => row.id))
       .toEqual([]);
     expect(assessmentWorkbenchRowsForView(rows, { queue: "feedback", q: "贝贝" }, "zh").map((row) => row.id))
       .toEqual(["recorded"]);
-    const historical: AssessmentWorkbenchRow={...makeRow('historical',true),recordState:'historical',scheduledAt:'',occurredOn:'2025-12-29'};
-    const combined=[...rows,historical];
-    // 历史标记记录来源；已完成、尚待跟进的测评继续进入反馈队列。
-    expect(assessmentWorkbenchCounts(combined)).toEqual({pending:1,in_progress:0,feedback:2,handled:0,all:3,historical:1});
-    expect(assessmentWorkbenchRowsForView(combined,{queue:'feedback'},'zh').map(row=>row.id)).toEqual(['recorded','historical']);
-    expect(assessmentWorkbenchRowsForView(combined,{queue:'all',q:'贝贝'},'zh').map(row=>row.id)).toContain('historical');
+    const earlier: AssessmentWorkbenchRow={...makeRow('earlier',true),scheduledAt:'',occurredOn:'2025-12-29'};
+    const combined=[...rows,earlier];
+    // 早期日期的测评与近期一样：已完成、尚待跟进的继续进入反馈队列。
+    expect(assessmentWorkbenchCounts(combined)).toEqual({pending:1,in_progress:0,feedback:2,handled:0,all:3});
+    expect(assessmentWorkbenchRowsForView(combined,{queue:'feedback'},'zh').map(row=>row.id)).toEqual(['recorded','earlier']);
+    expect(assessmentWorkbenchRowsForView(combined,{queue:'all',q:'贝贝'},'zh').map(row=>row.id)).toContain('earlier');
   });
 });

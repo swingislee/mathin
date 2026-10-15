@@ -25,10 +25,10 @@ export function placementClassMatchesWorkFilter(classroom: Pick<PlacementClassro
 
 export const RENEWAL_WORK_FILTERS = ["uncontacted", "following", "payment", "paid", "deferred", "all"] as const;
 export type RenewalWorkFilter = typeof RENEWAL_WORK_FILTERS[number];
-export function renewalMatchesWorkFilter(row: { stage: string; payment?: RenewalPayment | null; recordState?: string }, filter: RenewalWorkFilter) {
+export function renewalMatchesWorkFilter(row: { stage: string; payment?: RenewalPayment | null; sourceRecord?: boolean }, filter: RenewalWorkFilter) {
   if (filter === "all") return true;
-  // 往期结果及未知结果不进入当前催办队列，尤其不推断欠费。
-  if (row.recordState === "historical" || row.stage === "unknown") return false;
+  // 来源表导入的结果及未知结果不进入催办队列，尤其不推断欠费。
+  if (row.sourceRecord || row.stage === "unknown") return false;
   const result = renewalResult(row.stage, row.payment);
   if (filter === "uncontacted") return result === "unprepared";
   if (filter === "following") return result === "considering" || result === "payment_pending";

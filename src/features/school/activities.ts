@@ -45,7 +45,8 @@ export interface ActivityRow {
   title: string;
   scheduledAt: string;
   occurredOn?: string | null;
-  recordState?: 'current' | 'historical';
+  /** 来源表导入的活动（每条到访登记一条）；列表按同一场合并显示。 */
+  sourceRecordId?: string | null;
   durationMin: number | null;
   location: string;
   capacity: number | null;
@@ -68,7 +69,7 @@ interface ActivityQueryRow {
   title: string;
   scheduled_at: string | null;
   occurred_on: string | null;
-  record_state: 'current' | 'historical';
+  source_record_id: string | null;
   duration_min: number | null;
   location: string;
   capacity: number | null;
@@ -82,6 +83,7 @@ interface ActivityQueryRow {
     reported_result: string;
     result_link_status: string;
     students: { name: string; grade: number | null } | null;
+    leads: { provisional_student_name: string; grade_hint: number | null } | null;
   }>;
   target_grades: number[] | null;
   tags: string[];
@@ -134,10 +136,10 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
   const supabase = await createClient();
   let query = supabase
     .from("business_activities" as "activities")
-    .select("id,kind,title,scheduled_at,occurred_on,record_state,duration_min,location,capacity,remark,target_grades,tags,activity_registrations(id,student_id,status,outcome,registered_on,reported_result,result_link_status,students(name,grade))")
+    .select("id,kind,title,scheduled_at,occurred_on,source_record_id,duration_min,location,capacity,remark,target_grades,tags,activity_registrations(id,student_id,status,outcome,registered_on,reported_result,result_link_status,students(name,grade),leads(provisional_student_name,grade_hint))")
     .is("deleted_at", null)
     .order("scheduled_at", { ascending: true });
-  if (activityId) query = query.eq("id", activityId).eq("record_state","current");
+  if (activityId) query = query.eq("id", activityId);
   else query = query.is("source_invitation_id", null).neq("kind", "assessment_1v1");
 
   const { data, error } = await query.returns<ActivityQueryRow[]>();
@@ -173,7 +175,7 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
     title: activity.title,
     scheduledAt: activity.scheduled_at??'',
     occurredOn:activity.occurred_on,
-    recordState:activity.record_state,
+    sourceRecordId:activity.source_record_id,
     durationMin: activity.duration_min,
     location: activity.location,
     capacity: activity.capacity,
@@ -187,8 +189,9 @@ async function readActivities(activityId?: string): Promise<ActivityRow[]> {
         return {
           id: registration.id,
           studentId: registration.student_id,
-          studentName: registration.students?.name ?? "-",
-          studentGrade: registration.students?.grade ?? null,
+          // 尚未建档的线索用线索登记的姓名。
+          studentName: registration.students?.name ?? (registration.leads?.provisional_student_name || "-"),
+          studentGrade: registration.students?.grade ?? registration.leads?.grade_hint ?? null,
           status: registration.status,
           outcome: registration.outcome,
           registeredOn:registration.registered_on,
@@ -228,7 +231,7 @@ export async function getActivity(activityId: string): Promise<ActivityRow | nul
 }
 
 export function summarizeActivityWorkspace(activities: readonly ActivityRow[]): ActivityWorkspaceSummary {
-  const registrations = activities.filter(activity=>activity.recordState!=='historical').flatMap((activity) => activity.registrations);
+  const registrations = activities.flatMap((activity) => activity.registrations);
   return {
     activeRegistrations: registrations.filter((registration) => registration.status !== "cancelled").length,
     attended: registrations.filter((registration) => registration.status === "attended").length,

@@ -65,6 +65,7 @@ type CommunicationRow = Pick<TableRow<"lead_communications">,
   "id" | "lead_id" | "channel" | "outcome" | "note" | "wechat_added" |
   "visit_committed" | "interest_level" | "recorded_by" | "occurred_at" | "occurred_on"
 > & { recorded_by_name: string; source_date_label: string | null; sort_key: string };
+type ContactDateMarkRow = { id: string; date_basis: string | null; date_review: string | null; source_month: string | null };
 type NextActionRow = Pick<TableRow<"lead_next_actions">,
   "id" | "lead_id" | "kind" | "due_at" | "status" | "created_by" |
   "completed_by" | "completed_at" | "created_at"
@@ -273,17 +274,14 @@ export async function getStudent360Snapshot(
       .returns<InvitationRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("activity_registrations")
       .select("id,activity_id,student_id,lead_id,status,outcome,source_enrollment_facts,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
-      .eq("record_state", "current")
       .eq("student_id", studentId).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<RegistrationRow[]>()) : Promise.resolve([]),
     leadIds.length ? readRows(supabase.from("activity_registrations")
       .select("id,activity_id,student_id,lead_id,status,outcome,source_enrollment_facts,operated_by,assessment_started_at,assessment_completed_at,created_at,updated_at")
-      .eq("record_state", "current")
       .in("lead_id", leadIds).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<RegistrationRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("student_follow_ups")
       .select("id,student_id,author_id,content,kind,next_follow_up_at,status_after,created_at,source_record_id,occurred_on")
-      .eq("record_state", "current")
       .eq("student_id", studentId).order("created_at", { ascending: false }).limit(READ_LIMIT)
       .returns<FollowUpRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("enrollments")
@@ -300,7 +298,6 @@ export async function getStudent360Snapshot(
       .returns<ReviewRow[]>()) : Promise.resolve([]),
     studentId ? readRows(supabase.from("course_enrollments")
       .select("id,note,confirmed_by,confirmed_at,cancelled_by,cancelled_at,source_record_id,source_enrollment_facts,registered_on,courses(title),school_terms(name)")
-      .eq("record_state", "current")
       .eq("student_id", studentId).order("confirmed_at", { ascending: false }).limit(READ_LIMIT)
       .returns<CommercialEnrollmentRow[]>()) : Promise.resolve([]),
     readStudentLifecycle(supabase, { studentId, leadId: directLead?.id ?? linkedLeads[0]?.id ?? null }),
@@ -329,6 +326,7 @@ export async function getStudent360Snapshot(
     questionResultRows,
     postActivityContactRows,
     sessionRows,
+    contactDateMarkRows,
   ] = await Promise.all([
     invitationIds.length ? readRows(supabase.from("lead_invitation_events")
       .select("id,invitation_id,from_state,to_state,channel,note,recorded_by,occurred_at")
@@ -360,7 +358,13 @@ export async function getStudent360Snapshot(
     sessionIds.length ? readRows(supabase.from("class_sessions")
       .select("id,classroom_id,title,scheduled_at,started_at,ended_at")
       .in("id", sessionIds).limit(READ_LIMIT).returns<SessionRow[]>()) : Promise.resolve([]),
+    // 来源沟通的日期依据与疑点：年份按登记补全、只记月份或待核对时在时间线上提示。
+    communicationRows.length ? readRows(supabase.from("lead_communications")
+      .select("id,date_basis:source_metric_facts->>dateBasis,date_review:source_metric_facts->>dateReview,source_month:source_metric_facts->months->>contacts")
+      .in("id", communicationRows.map((row) => row.id)).limit(READ_LIMIT)
+      .returns<ContactDateMarkRow[]>()) : Promise.resolve([]),
   ]);
+  const contactDateMarks = new Map(contactDateMarkRows.map((row) => [row.id, row]));
 
   const segmentIds = unique(publicClassRecordRows.map((row) => row.segment_id));
   const questionIds = unique(questionResultRows.map((row) => row.question_id));
@@ -427,6 +431,7 @@ export async function getStudent360Snapshot(
       phase: "source",
       kind: "lead_created",
       occurredAt: origin?.occurredAt ?? null,
+      dateMarks: origin?.dateBasis ? { basis: origin.dateBasis, label: origin.dateLabel ?? null } : null,
       title: "",
       status: origin?.imported ? null : `lead.${lead.status}`,
       actorName: nameOf(lead.created_by),
@@ -481,7 +486,9 @@ export async function getStudent360Snapshot(
     phase: "contact",
     kind: "contact",
     occurredAt: row.occurred_at ?? row.occurred_on,
+    occurredMonth: row.occurred_at || row.occurred_on ? null : contactDateMarks.get(row.id)?.source_month ?? null,
     sourceDateLabel: row.source_date_label,
+    dateMarks: contactDateMarks.has(row.id) && !row.occurred_at ? { basis: contactDateMarks.get(row.id)!.date_basis, review: contactDateMarks.get(row.id)!.date_review, label: row.source_date_label } : null,
     orderKey: row.sort_key,
     title: "",
     status: `contact.${row.outcome}`,

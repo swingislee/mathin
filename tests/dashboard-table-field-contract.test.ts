@@ -179,7 +179,7 @@ describe("assessment field adapter", () => {
   it("keeps draft scores out of final comparisons and source dates out of import-time sorting", () => {
     const base = assessment("draft");
     expect(assessmentTableScore({ ...base, assessmentCompletedAt: null, assessment: { ...base.assessment!, finalizedAt: null } }).score).toBeNull();
-    const source = assessment("source", { scheduledAt: "", occurredOn: "2025-02-03", sourceRecordId: "source-id", recordState: "current" });
+    const source = assessment("source", { scheduledAt: "", occurredOn: "2025-02-03", sourceRecordId: "source-id" });
     expect(assessmentScheduledDate(source, context.timeZone)).toBe("2025-02-03"); expect(assessmentRecordDate(source)).toBe("2025-02-03");
     expect(assessmentRecordDate({ ...source, occurredOn: null })).toBeNull();
     expect(assessmentTableBand({ ...base, assessment: { ...base.assessment!, assessmentBand: "below_a" } })).toBeNull();

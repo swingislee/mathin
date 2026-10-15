@@ -14,6 +14,8 @@ import { FollowupEntryFields } from "./FollowupEntryFields";
 import { FollowupContactFacts } from "./FollowupContactFacts";
 import { FirstContactRecordRow } from "./FirstContactRecordRow";
 import { RecordStatusIcons } from './record-status/RecordStatusIcons';
+import { SourceDateText } from './SourceDateText';
+import { businessRecordMessages } from './business-record-messages';
 import type { StudentStageRow } from './student-stage-contract';
 import { studentStageMessages } from './student-stage-messages';
 import { firstContactRowMessages } from "./first-contact-row-messages";
@@ -334,7 +336,8 @@ export function LeadContactEntryRow({
         tone: lead.status === "invalid" ? "unhealthy" : lead.status === "nurture" ? "attention" : lead.status === "uncontacted" ? "neutral" : "healthy",
         context: `${lead.acquisitionLocation || t("acquisitionLocationMissing")}${lead.interests.length ? ` · ${lead.interests.join(" / ")}` : ""}`,
         contextTitle: [lead.acquisitionLocation, sourceAttribution, ...lead.interests].filter(Boolean).join(" · ") },
-      updated: lead.lastContactAt ? formatAt(lead.lastContactAt) : t("notContacted"),
+      updated: lead.lastContactAt ? formatAt(lead.lastContactAt) : lead.contactCount ? businessRecordMessages(locale).dateUnknown : t("notContacted"),
+      updatedContent: lead.lastContactAt && lead.lastContactDateMarks ? <SourceDateText display={formatAt(lead.lastContactAt)} marks={lead.lastContactDateMarks} locale={locale} /> : undefined,
       countLabel: lead.contactCount ? t("contactCount", { count: lead.contactCount }) : undefined,
       note: lead.lastContactNote,
       contactFacts: lead,
@@ -345,7 +348,7 @@ export function LeadContactEntryRow({
     onOutcomeChange={canUseEntry ? chooseOutcome : undefined} onSave={canUseEntry ? () => saveEntry(false) : undefined}
     selection={leadingSelection} historicalSummary={historicalSummary} ownerControl={ownerControl}
     sourceInfo={sourceInfo} attention={attention} inlineOutcomes={inlineOutcomes ? outcomeControl : undefined}
-    hideStatusLabel={inlineOutcomes && (!lead.lastContactOutcome || statusRow?.detail === 'unassigned')}
+    hideStatusLabel={inlineOutcomes && (!lead.lastContactOutcome || Boolean(statusRow))}
     identityHint={<PossibleDuplicateBadge count={lead.possibleDuplicateCount} subject={{ studentId: lead.studentId ?? null, leadId: lead.id }} name={lead.provisionalStudentName} locale={locale} />}
     defaultCells={layout === "default" ? <>
       {canAssign && layout === "default" ? <LeadContactSelectionCell lead={lead} visibleIds={visibleIds} /> : null}
@@ -441,7 +444,9 @@ export function LeadFirstContactWorkbench({
     timeStyle: "short",
     timeZone: ACQUISITION_TIME_ZONE,
   }), [locale]);
-  const formatAt = (value: string) => dateTimeFormatter.format(new Date(value));
+  const dateFormatter = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "short", timeZone: ACQUISITION_TIME_ZONE }), [locale]);
+  // 来源沟通只有日期，不补造时刻。
+  const formatAt = (value: string) => (/^\d{4}-\d{2}-\d{2}$/.test(value) ? dateFormatter : dateTimeFormatter).format(new Date(value));
   const tableColumns = useMemo<Record<FirstContactTableColumn, DashboardTableColumnDefinition<LeadPoolRow>>>(() => ({
     seed: {
       filterValues: (lead) => [

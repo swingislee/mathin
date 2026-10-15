@@ -7,7 +7,6 @@ import { historicalAssessmentFeedback, relatedBusinessCommunications, uniqueBusi
 import { studentBusinessHistoryEvents, mergeStudentBusinessEvents } from '@/features/school/student-business-history-timeline';
 import { sortStudent360Events, summarizeStudent360Phases } from '@/features/school/student-360-contract';
 import type { StudentBusinessHistory } from '@/features/school/student-business-history-contract';
-import { loadHistoricalFirstContactRows } from '@/features/school/historical-first-contact-data';
 const IntlProvider=NextIntlClientProvider as ComponentType<PropsWithChildren<Omit<ComponentProps<typeof NextIntlClientProvider>,'children'>>>;
 
 const db = vi.hoisted(() => ({ history: null as StudentBusinessHistory | null, currentStudents: [] as string[] }));
@@ -86,7 +85,7 @@ describe('historical feedback ownership and Student 360', () => {
     const events = studentBusinessHistoryEvents(history(), 'zh');
     expect(events).toHaveLength(5);
     expect(events.filter(event => event.kind === 'course_enrollment')).toHaveLength(2);
-    expect(events.every(event => event.recordState === 'historical')).toBe(true);
+    expect(events.every(event => event.imported === true)).toBe(true);
     const feedback = events.flatMap(event => event.notes.map(note => note.content)).join('\n');
     expect(feedback.match(/计算准确/g)).toHaveLength(1);
     expect(feedback.match(/下个学期再联系/g)).toHaveLength(1);
@@ -103,14 +102,4 @@ describe('historical feedback ownership and Student 360', () => {
     expect(summarizeStudent360Phases(events).find(phase => phase.phase === 'experience')).toEqual({ phase: 'experience', count: 1, latestAt: null });
   });
 
-  it('keeps archived people out of first-contact placeholders and preserves note ownership for current people', async () => {
-    db.history = history();
-    const id='11111111-1111-4111-8111-111111111111';
-    db.history.subjects={[id]:db.history.subjects.student};
-    db.currentStudents=[];
-    expect(await loadHistoricalFirstContactRows('zh', '样例学生')).toEqual([]);
-    db.currentStudents=[id];
-    expect(await loadHistoricalFirstContactRows('zh', '样例学生')).toEqual([{ studentId: id, name: '样例学生', phone: '', grade: 3, context: '' }]);
-    expect(await loadHistoricalFirstContactRows('zh', '计算准确')).toEqual([]);
-  });
 });

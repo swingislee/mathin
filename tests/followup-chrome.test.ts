@@ -8,8 +8,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import zh from "../messages/zh.json";
 import en from "../messages/en.json";
 import { LeadPoolPagination } from "@/features/school/LeadPoolPagination";
-import { BusinessRecordStateFilter } from "@/features/school/BusinessRecordStateFilter";
-import { businessRecordMessages } from "@/features/school/business-record-state-contract";
 
 const navigation = vi.hoisted(() => ({ replace: vi.fn() }));
 vi.mock("@/i18n/navigation", () => ({
@@ -41,7 +39,7 @@ describe("compact follow-up chrome", () => {
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 
   it("keeps all five headers free of passive totals without removing the footer or batch-selection feedback", () => {
-    const files = ["src/app/[locale]/dashboard/leads/page.tsx", "src/features/school/CommunicationWorklistPage.tsx",
+    const files = ["src/app/[locale]/dashboard/leads/page.tsx", "src/features/school/source-worklist/Workspace.tsx",
       "src/features/school/AssessmentUnifiedWorkbench.tsx", "src/features/school/EnrollmentPlacementWorkbench.tsx", "src/features/school/RenewalStudentPool.tsx"];
     for (const file of files) {
       const source = read(file);
@@ -99,7 +97,7 @@ describe("compact follow-up chrome", () => {
 
   it("resets the page size to page one while retaining communication scope, date, worklist, focus and query", async () => {
     await render(createElement(LeadPoolPagination, { ...paging, baseHref: "/dashboard/communication/worklists", scope: "mine",
-      focusLeadId: "focused-lead", status: undefined, extraQuery: { view: "worklist", date: "2026-09-07", worklist: "fixed-list", state: "current" } }));
+      focusLeadId: "focused-lead", status: undefined, extraQuery: { view: "worklist", date: "2026-09-07", worklist: "fixed-list" } }));
     const trigger = container.querySelector('[role="combobox"]')!;
     await act(async () => { trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true })); });
     const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(node => node.textContent === "50 条/页")!;
@@ -108,21 +106,8 @@ describe("compact follow-up chrome", () => {
     expect(navigation.replace).toHaveBeenCalledOnce();
     const url = new URL(navigation.replace.mock.calls[0][0], "http://example.test");
     expect(url.pathname).toBe("/dashboard/communication/worklists");
-    expect(Object.fromEntries(url.searchParams)).toEqual({ view: "worklist", date: "2026-09-07", worklist: "fixed-list", state: "current",
+    expect(Object.fromEntries(url.searchParams)).toEqual({ view: "worklist", date: "2026-09-07", worklist: "fixed-list",
       scope: "mine", q: "Sample", lead: "focused-lead", pageSize: "50" });
   });
 
-  it.each(["zh", "en"] as const)("changes the work scope only after an explicit selection in %s", async locale => {
-    const onChange = vi.fn();
-    await render(createElement(BusinessRecordStateFilter, { value: "historical", onChange, locale, presentation: "followup" }), locale);
-    const m = businessRecordMessages(locale);
-    const group = container.querySelector('[data-followup-primary-filter]')!;
-    expect(group.getAttribute('aria-label')).toBe(m.state);
-    expect(group.querySelector('[data-state="on"]')?.textContent).toBe(m.historical);
-    expect([...group.querySelectorAll('button')].map(button => button.textContent)).toEqual([m.current,m.historical,m.all]);
-    expect(onChange).not.toHaveBeenCalled();
-    const current = [...group.querySelectorAll('button')].find(button => button.textContent === m.current)!;
-    await act(async () => current.click());
-    expect(onChange).toHaveBeenCalledExactlyOnceWith('current');
-  });
 });

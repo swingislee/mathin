@@ -4,7 +4,7 @@ import { DashboardSection, DashboardTableShell } from './dashboard-page';
 import { businessSubjectKey, type BusinessRecordSource, type BusinessHistoryKind, type StudentBusinessHistory } from './student-business-history-contract';
 import { getStudentBusinessHistoryMessages } from './student-business-history-messages';
 import { hasBusinessFeedbackOwner, historicalAssessmentFeedback, relatedBusinessCommunications, uniqueBusinessFeedback } from './business-record-notes';
-import { businessRecordMessages } from './business-record-state-contract';
+import { businessRecordMessages } from './business-record-messages';
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 
 type SourceReference = { source_record_id: string; source_field_ids: string[] };

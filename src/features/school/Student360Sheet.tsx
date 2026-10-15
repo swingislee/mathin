@@ -29,8 +29,8 @@ import { Student360SplitLayout } from "./Student360SplitLayout";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { getStudent360Action } from "./actions/student-360";
-import { HistoricalRecordBadge } from "./BusinessRecordStateFilter";
-import { businessRecordMessages } from "./business-record-state-contract";
+import { businessRecordMessages } from "./business-record-messages";
+import { SourceDateText } from "./SourceDateText";
 import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
 import { STUDENT_LIFECYCLE_ROADMAP, STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
 import {
@@ -416,7 +416,8 @@ function Student360PanelBody({
   const groups = useMemo(() => {
     const result: Array<{ key: string; label: string; events: Student360Event[] }> = [];
     for (const event of visibleEvents) {
-      const label = event.occurredAt ? month.format(new Date(event.occurredAt)) : recordM.dateUnknown;
+      const label = event.occurredAt ? month.format(new Date(event.occurredAt))
+        : event.occurredMonth ? month.format(new Date(`${event.occurredMonth}-15T00:00:00+08:00`)) : recordM.dateUnknown;
       const key = label;
       const last = result[result.length - 1];
       if (last?.key === key) last.events.push(event);
@@ -656,17 +657,18 @@ function Student360TimelineEvent({
   };
   const statusKey = event.status ? STATUS_KEYS[event.status] : null;
   return (
-    <li data-student-360-event={event.id} data-record-state={event.recordState ?? 'current'} className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] pb-5 last:pb-0">
+    <li data-student-360-event={event.id} data-imported={event.imported || undefined} className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] pb-5 last:pb-0">
       <span className={cn(
         "relative z-10 mt-1 block rounded-full border-2 border-paper",
         event.important ? "size-4 bg-leaf-deep" : "ml-1 size-2.5 bg-crater/60",
       )} />
       <article className="min-w-0 border-b border-line/80 pb-5 last:border-b-0 last:pb-0">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          {event.occurredAt ? <time className="text-[11px] tabular-nums text-muted" dateTime={event.occurredAt}>{event.occurredAt.length === 10 ? event.occurredAt : day.format(new Date(event.occurredAt))}</time> : <span className="text-[11px] text-muted">{event.sourceDateLabel || recordM.dateUnknown}</span>}
+          {event.occurredAt ? <time className="text-[11px] tabular-nums text-muted" dateTime={event.occurredAt}>
+            <SourceDateText display={event.occurredAt.length === 10 ? event.occurredAt : day.format(new Date(event.occurredAt))} marks={event.dateMarks} locale={locale} />
+          </time> : <SourceDateText className="text-[11px] text-muted" display={event.occurredMonth ?? (event.sourceDateLabel || recordM.dateUnknown)} marks={event.dateMarks} locale={locale} />}
           <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">{t(`phase_${event.phase}`)}</span>
           <span className="text-xs font-medium text-ink">{t(`event_${event.kind}`)}</span>
-          {event.recordState === 'historical' ? <HistoricalRecordBadge locale={locale} /> : null}
           {statusKey ? <Badge
             variant="outline"
             className={cn(
@@ -698,7 +700,7 @@ function Student360TimelineEvent({
           </div>
         ) : null}
         <p className="mt-2 text-[10px] text-muted">
-          {event.actorName ? t("recordedBy", { name: event.actorName }) : event.recordState === 'historical' ? `${historyM.author}：${recordM.unknown}` : t("systemRecord")}
+          {event.actorName ? t("recordedBy", { name: event.actorName }) : event.imported ? `${historyM.author}：${recordM.unknown}` : t("systemRecord")}
         </p>
       </article>
     </li>

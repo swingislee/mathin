@@ -1,5 +1,5 @@
 import { STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
-import type { StatusEvidence } from './record-status/contract';
+import type { StatusEvidence, StoredStatus } from './record-status/contract';
 import type { InvitationDraft } from "./invitation-contract";
 import type { InvitationActivityOption, InvitationAssessorOption } from "./invitation-contract";
 import type { Phase3EnrollmentOptions } from "./phase3-enrollment-contract";
@@ -12,10 +12,10 @@ export type StudentEntryMode = "note" | "contact" | "invitation" | "enrollment";
 export const STUDENT_RECONTACT_REASONS = ["unreachable", "assessed", "former", "dormant"] as const;
 export type StudentRecontactReason = typeof STUDENT_RECONTACT_REASONS[number];
 export const STUDENT_STAGE_DETAILS = {
-  awaiting_first_contact: ["not_contacted", "unreachable", "unassigned", "invalid_number"],
-  awaiting_assessment: ["not_booked", "coordinating", "booked", "no_show", "cancelled", "in_progress", "attended_without_result"],
-  awaiting_enrollment: ["assessed", "awaiting_reply", "considering", "ready_to_enroll", "awaiting_class", "not_enrolling", "payment_pending", "nurturing"],
-  awaiting_renewal: ["attending", "awaiting_class", "renewal_considering", "renewal_committed", "renewal_confirmed", "not_renewing"],
+  awaiting_first_contact: ["not_contacted", "unreachable", "callback", "attempted", "invalid_number"],
+  awaiting_assessment: ["following", "declined", "promised", "coordinating", "booked", "no_show", "visited_untested"],
+  awaiting_enrollment: ["assessed", "assessed_no_band", "considering", "ready_to_enroll", "not_enrolling", "payment_pending", "nurturing"],
+  awaiting_renewal: ["attending", "prepaid_next", "awaiting_class", "renewal_considering", "renewal_committed", "renewal_confirmed", "not_renewing"],
   former_student: ["withdrawn", "ended"],
 } as const satisfies Record<StudentStage, readonly string[]>;
 
@@ -24,10 +24,13 @@ export type StudentStageAssignee = { userId: string; displayName: string };
 
 export interface StudentStageRow {
   statusEvidence?: StatusEvidence[];
+  lifecycle?: StoredStatus | null;
   communication?: {
     count: number; effectiveCount: number; latestNote: string;
     latestOutcome: 'connected' | 'unreachable' | 'declined' | 'invalid_number' | null;
     latestAt: string | null; latestDateLabel: string | null; latestActor: string;
+    /** 来源日期依据与疑点：年份按登记补全、只记月份或待核对。 */
+    latestDateBasis?: string | null; latestDateReview?: string | null;
   };
   key: string; studentId: string | null; leadId: string | null;
   name: string; phone: string; grade: number | null; gradeText: string;

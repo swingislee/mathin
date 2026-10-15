@@ -1,4 +1,5 @@
 import type { SourcePlacement } from './contract';
+import { periodLabel } from './period-selection';
 
 /** 沟通与测评的客户端列表共用来源表分组层级。 */
 export function sourceGroupLabels(kind: SourcePlacement['kind'], locale: string, mode?: SourcePlacement['groupMode']) {
@@ -11,7 +12,7 @@ export function sourceGroupLabels(kind: SourcePlacement['kind'], locale: string,
 
 export function sourceGroupPath(placement: SourcePlacement, allMonths: boolean, locale: string) {
   const labels = sourceGroupLabels(placement.kind, locale, placement.groupMode);
-  const month = placement.period === 'unknown' ? (locale.startsWith('en') ? 'Month not recorded' : '月份未填') : placement.period;
+  const month = periodLabel(placement.period, locale);
   return [
     ...(allMonths ? [{ key: `month:${placement.period}`, label: month }] : []),
     { key: JSON.stringify(['group',placement.period,placement.group]), label: `${labels.group} · ${placement.group}` },

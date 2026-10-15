@@ -154,24 +154,20 @@ describe("enrollment placement class roster", () => {
     expect(rows.flatMap(row => classroomId(row.attributes) ? [classroomId(row.attributes)] : []).sort())
       .toEqual(board.options.classrooms.map(value => value.id).sort());
     const current = rows.find(row => classroomId(row.attributes) === 'autumn-4')!;
-    const historical = rows.find(row => row.attributes.includes('data-record-state="historical"'))!;
+    const historical = rows.find(row => row.attributes.includes('data-source-enrollment="true"'))!;
     const columnClasses = (row: typeof historical) => row.cells.map(cell => cell.attributes.match(/class="([^"]*)"/)?.[1]);
     expect(columnClasses(historical)).toEqual(columnClasses(current));
     expect(studentKeys(historical.cells[4].content)).toEqual(['historical-enrollment']);
     expect(historical.content).toContain('原老师');
     expect(historical.content).toContain('aria-label="班级信息 · 原寒假班"');
     expect(historical.content).not.toMatch(/data-placement-target|data-placement-select|touch-none/);
-    for(const state of ['current','historical','all']){
-      const visible=renderRoster(undefined,{initialBoard,history,workspaceQuery:{state}});
-      expect(visible.some(row=>row.attributes.includes('data-record-state="historical"'))).toBe(true);
-      expect(visible.some(row=>classroomId(row.attributes))).toBe(true);
-    }
     const mixed = { ...history, enrollments: [...history.enrollments, { ...history.enrollments[0], id: 'active-source', record_state: 'current' as const }] };
     const visible = renderRoster(undefined, { initialBoard, history: mixed });
     const keys = visible.flatMap(row => studentKeys(row.content));
     expect(keys).toContain('active-source');
     expect(keys).toContain('historical-enrollment');
-    expect(visible.find(row => studentKeys(row.content).includes('active-source'))?.attributes).toContain('data-record-state="current"');
+    // 同一来源班级（同班名、老师、时间、教室）的报名合在一行，先后只看各自日期。
+    expect(visible.find(row => studentKeys(row.content).includes('active-source'))?.attributes).toContain('data-source-enrollment="true"');
   });
 
   it("groups full rosters under each teacher while retaining the original classroom and grade", () => {

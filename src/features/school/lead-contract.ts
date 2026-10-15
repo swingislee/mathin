@@ -3,6 +3,7 @@ import { FOLLOWUP_DEFAULT_PAGE_SIZE, FOLLOWUP_PAGE_SIZES } from "./followup-tabl
 
 /** Client-safe lead constants and DTOs shared by the server reader and table UI. */
 import type { BaseLeadAcquisition } from "./base-business-fields-contract";
+import type { SourceDateMarks } from './source-date-note';
 
 export const LEAD_STATUSES = [
   "uncontacted",
@@ -77,6 +78,8 @@ export interface LeadPoolRow {
   interests: string[];
   contactCount: number;
   lastContactAt: string | null;
+  /** 来源沟通日期的依据与疑点（年份按登记补全、只记月份、待核对）。 */
+  lastContactDateMarks?: SourceDateMarks | null;
   lastContactOutcome: LeadContactOutcome | null;
   lastContactChannel?: string | null;
   lastContactNote: string;

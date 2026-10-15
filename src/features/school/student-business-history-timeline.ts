@@ -1,4 +1,4 @@
-import { businessRecordMessages } from './business-record-state-contract';
+import { businessRecordMessages } from './business-record-messages';
 import { historicalAssessmentFeedback, relatedBusinessCommunications, uniqueBusinessFeedback } from './business-record-notes';
 import type { HistoricalRenewal, StudentBusinessHistory } from './student-business-history-contract';
 import { getStudentBusinessHistoryMessages } from './student-business-history-messages';
@@ -21,19 +21,19 @@ export function studentBusinessHistoryEvents(data: StudentBusinessHistory | null
 
   for (const row of data.assessments) {
     for (const communication of relatedBusinessCommunications(data, row, 'assessment')) coveredCommunications.add(communication.id);
-    events.push({ id: `historical-assessment:${row.id}`, phase: 'assessment', kind: 'assessment', recordState: 'historical',
+    events.push({ id: `historical-assessment:${row.id}`, phase: 'assessment', kind: 'assessment', imported: true,
       occurredAt: row.assessed_on, title: '', status: null, actorName: null, important: true,
       facts: facts([['band', row.assessment_band], ['score', row.score]]),
       notes: notes('assessment_summary', historicalAssessmentFeedback(row, data)), source: { kind: 'assessment_results', id: row.id } });
   }
   for (const row of data.activities) events.push({
-    id: `historical-activity:${row.id}`, phase: 'experience', kind: 'activity', recordState: 'historical',
+    id: `historical-activity:${row.id}`, phase: 'experience', kind: 'activity', imported: true,
     occurredAt: row.occurred_on, title: row.activity_name, status: null, actorName: null, important: false,
     facts: facts([['registered_on', row.registered_on], ['activity_result', [row.reported_result, row.result_link_status === 'edition_unconfirmed' ? m.editionPending : ''].filter(Boolean).join(' · ')]]),
     notes: [], source: { kind: 'activity_registrations', id: row.id },
   });
   for (const row of data.enrollments) events.push({
-    id: `historical-enrollment:${row.id}`, phase: 'enrollment', kind: 'course_enrollment', recordState: 'historical',
+    id: `historical-enrollment:${row.id}`, phase: 'enrollment', kind: 'course_enrollment', imported: true,
     occurredAt: row.registered_on, title: row.period_label, status: null, actorName: null, important: true,
     facts: facts([['amount', row.amount ?? row.amount_original], ['classroom', row.class_label], ['teacher', row.teacher_label], ['location', row.room_label], ['scheduled', row.schedule_label]]),
     notes: notes('enrollment',row.note??''), source: { kind: 'course_enrollments', id: row.id },
@@ -44,19 +44,19 @@ export function studentBusinessHistoryEvents(data: StudentBusinessHistory | null
     for (const renewal of renewals) coveredRenewals.add(renewal.id);
     coveredCommunications.add(row.id);
     const extraNotes = renewals.map(renewal => renewal.decision_note).filter(value => value.trim() && !row.content.includes(value.trim()));
-    events.push({ id: `historical-renewal-contact:${row.id}`, phase: 'enrollment', kind: 'follow_up', recordState: 'historical',
+    events.push({ id: `historical-renewal-contact:${row.id}`, phase: 'enrollment', kind: 'follow_up', imported: true,
       occurredAt: row.occurred_on, title: `${renewals.map(period).join(' / ')} · ${m.renewalContext}`, status: null, actorName: row.author_label, important: false,
       facts: facts(renewals.map(renewal => ['renewal_result', `${period(renewal)} · ${outcome(renewal)}`])),
       notes: notes('follow_up', uniqueBusinessFeedback(row.content, ...extraNotes)), source: { kind: 'student_follow_ups', id: row.id } });
   }
   for (const row of data.renewals.filter(row => !coveredRenewals.has(row.id))) events.push({
-    id: `historical-renewal:${row.id}`, phase: 'enrollment', kind: 'follow_up', recordState: 'historical',
+    id: `historical-renewal:${row.id}`, phase: 'enrollment', kind: 'follow_up', imported: true,
     occurredAt: null, title: `${period(row)} · ${m.renewalContext}`, status: null, actorName: null, important: false,
     facts: facts([['renewal_result', outcome(row)], ['classroom', row.class_label], ['teacher', row.teacher_label]]),
     notes: notes('follow_up', uniqueBusinessFeedback(row.decision_note)), source: { kind: 'course_opportunities', id: row.id },
   });
   for (const row of data.communications.filter(row => !coveredCommunications.has(row.id))) events.push({
-    id: `historical-follow-up:${row.id}`, phase: row.context_kind === 'assessment' ? 'assessment' : row.context_kind === 'renewal' ? 'enrollment' : 'contact', kind: 'follow_up', recordState: 'historical',
+    id: `historical-follow-up:${row.id}`, phase: row.context_kind === 'assessment' ? 'assessment' : row.context_kind === 'renewal' ? 'enrollment' : 'contact', kind: 'follow_up', imported: true,
     occurredAt: row.occurred_on, title: row.context_kind === 'assessment' ? m.assessmentContext : row.context_kind === 'renewal' ? m.renewalContext : '',
     status: null, actorName: row.author_label, important: false, facts: [],
     notes: notes('follow_up', uniqueBusinessFeedback(row.content)), source: { kind: 'student_follow_ups', id: row.id },

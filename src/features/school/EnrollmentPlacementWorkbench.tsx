@@ -34,8 +34,8 @@ import { normalizeDashboardFieldQuery } from "./dashboard-page/dashboard-table-f
 import { PLACEMENT_TABLE_COLUMNS, placementTableFields, type PlacementRosterRow as RosterRow } from "./placement-table-fields";
 import { LeadPoolPagination } from "./LeadPoolPagination";
 import { useFollowupPagination } from "./useFollowupPagination";
-import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { businessRecordMessages } from './business-record-state-contract';
+import { useBusinessSearchQuery } from './business-search-query';
+import { businessRecordMessages } from './business-record-messages';
 import { businessSubjectKey, type HistoricalEnrollment, type StudentBusinessHistory } from './student-business-history-contract';
 import { canMovePlacement, classWeeklyScheduleLabel, enrollmentErrorKey, placementHealth, placementStudentBackground, placementStudents, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-contract";
 import { moveEnrollmentSeatAction } from "./enrollment-workflow-actions";
@@ -106,7 +106,7 @@ function sourceRosterRows(board:EnrollmentPlacementBoard,history:StudentBusiness
     if(bound.has(row.id))continue;
     const grade=history?.subjects[businessSubjectKey(row)]?.grade??0;
     const termId=board.options.terms.find(term=>termKey(term.name)===termKey(row.period_label))?.id??`period:${row.period_label}`;
-    const group=`${termId}:${grade}`,key=JSON.stringify([group,row.record_state??'historical',row.class_label,row.teacher_label,row.schedule_label,row.room_label]);
+    const group=`${termId}:${grade}`,key=JSON.stringify([group,row.class_label,row.teacher_label,row.schedule_label,row.room_label]);
     const existing=grouped.get(key);
     if(existing)existing.sourceEnrollments!.push(row);
     else grouped.set(key,{key,group,termId,grade,classroom:null,classrooms:[],students:[],historical:row,sourceEnrollments:[row]});
@@ -641,7 +641,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               const visibleSlots=slots.filter(slot=>slot.student||reservedSeats.has(slot.seat));
               if(availableSlots[0])visibleSlots.push(availableSlots[0]);
               const vacancyLabel=classroom?.capacity===null?t("availableSeat"):t("availableSeats",{count:availableSlots.length});
-              const classRowProps = { "data-record-state": fact ? fact.record_state ?? "historical" : "current", "data-placement-classroom": classroom?.id,
+              const classRowProps = { "data-source-enrollment": fact ? true : undefined, "data-placement-classroom": classroom?.id,
                 style: progressMode ? { height: rosterRowHeights[row.key] ?? 36 } : undefined,
                 ...(classroom ? registerTarget(`class:${classroom.id}`, classTarget) : {}), "data-placement-record": row.key, "data-mobile-roster-open": rosterOpen, className: "hover:bg-transparent" };
               const classCells = (disclosure?: ReactNode) => <>

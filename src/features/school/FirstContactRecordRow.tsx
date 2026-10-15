@@ -3,8 +3,7 @@
 import type { ComponentProps, ReactNode, Ref } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { HistoricalRecordBadge } from "./BusinessRecordStateFilter";
-import { businessRecordMessages, type BusinessRecordState } from "./business-record-state-contract";
+import { businessRecordMessages } from "./business-record-messages";
 import { FollowupEntryFields } from "./FollowupEntryFields";
 import { type FollowupTone } from "./dashboard-page/FollowupChoice";
 import { FirstContactStatusTags, type FirstContactFacts } from "./FirstContactStatusTags";
@@ -16,7 +15,6 @@ import { communicationNoteSummary } from './source-worklist/summary';
 
 export interface FirstContactRecord {
   key: string;
-  state?: BusinessRecordState;
   missingFirstContact?: boolean;
   visitCommitted?: boolean;
   person: Omit<ComponentProps<typeof FollowupPersonCell>, "selection" | "expanded" | "detailsId" | "onToggle">;
@@ -25,6 +23,8 @@ export interface FirstContactRecord {
   statusContent?: ReactNode;
   pendingChanges?: boolean;
   updated: string;
+  /** 带日期依据提示的最近更新；缺省时显示 updated 文本。 */
+  updatedContent?: ReactNode;
   countLabel?: string;
   note?: string;
 }
@@ -72,7 +72,7 @@ export function FirstContactRecordRow({
     focusOnActivate={Boolean(rowRef)}
     rowRef={rowRef} onActivate={onActivate} onExpandedChange={onExpandedChange} onKeyDown={onKeyDown} onOutcomeChange={onOutcomeChange} onSave={onSave}
     detailsId={detailsId} title={record.person.name} hideTitle colSpan={layout === "communication" ? 7 : canAssign ? 6 : 5}
-    rowProps={{ tabIndex, onClick, "data-first-contact-record": record.key, "data-record-state": record.state ?? "current",
+    rowProps={{ tabIndex, onClick, "data-first-contact-record": record.key,
       "data-first-contact-missing": record.missingFirstContact ? record.person.subject.studentId : undefined,
       "data-communication-work-key": layout === "communication" ? record.key : undefined,
       "data-followup-success": record.visitCommitted === true,
@@ -90,13 +90,12 @@ export function FirstContactRecordRow({
           {inlineOutcomes}
           <FirstContactStatusTags label={hideStatusLabel ? '' : record.status.label} tone={record.status.tone} facts={record.statusContent ? undefined : record.contactFacts} locale={locale} dirty={record.pendingChanges} />
           {record.statusContent}
-          {record.state === "historical" ? <HistoricalRecordBadge locale={locale} /> : null}
         </div>}</TableCell>
         <TableCell mobileLabel={fields.notes} mobileEmpty={!historicalSummary && !noteSummary} className="px-2 py-1.5">{historicalSummary ? historicalSummary.details : <p className="line-clamp-2 whitespace-normal break-words text-xs leading-5" title={noteSummary}>
           {noteSummary || "—"}
         </p>}</TableCell>
         <TableCell mobileLabel={fields.updated} className="px-2 py-1.5 text-[11px] text-muted">{historicalSummary ? historicalSummary.updated : <>
-          <span className="block truncate" title={record.updated}>{record.updated}</span>{record.countLabel ? <p className="mt-0.5 truncate">{record.countLabel}</p> : null}
+          {record.updatedContent ? <span className="block truncate">{record.updatedContent}</span> : <span className="block truncate" title={record.updated}>{record.updated}</span>}{record.countLabel ? <p className="mt-0.5 truncate">{record.countLabel}</p> : null}
         </>}</TableCell>
       </> : defaultCells}>
       {() => <>

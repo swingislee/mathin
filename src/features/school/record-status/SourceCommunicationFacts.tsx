@@ -3,7 +3,7 @@
 import { Tags } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { LEARNING_CHECK_STATUS_STYLE } from '../session-learning-visual';
+import { RECORD_TONE_STYLE } from './tones';
 import type { StatusEvidence } from './contract';
 
 const labels: Record<string,[string,string]> = {
@@ -38,7 +38,7 @@ export function SourceCommunicationFacts({ facts, locale }: { facts: StatusEvide
   const tagLabels = [...new Set(rows.map(f=>labels[`${f.type}:${f.value}`][en?1:0]))];
   return <Popover><PopoverTrigger asChild><button type="button" aria-label={`${title} · ${tagLabels.join('、')}`}
     title={`${title} · ${tagLabels.join('、')}`} data-source-communication-facts
-    className={cn('inline-flex size-6 shrink-0 items-center justify-center rounded-md border p-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater',LEARNING_CHECK_STATUS_STYLE.prompted.active)}>
+    className={cn('inline-flex size-6 shrink-0 items-center justify-center rounded-md border p-0 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-crater',RECORD_TONE_STYLE.progress)}>
     <Tags size={14} strokeWidth={2} aria-hidden="true" />
   </button></PopoverTrigger><PopoverContent align="start" className="w-96 max-w-[calc(100vw-2rem)] text-sm">
     <p className="font-medium">{title}</p>

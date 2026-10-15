@@ -4,7 +4,6 @@ import { listActivities } from "@/features/school/activities";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { loadPublicClassRegistration } from "@/features/school/public-class-registration-data";
-import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
 import { DashboardRevisitFreshness } from "@/features/school/dashboard-page/DashboardRevisitFreshness";
 import { newId } from "@/lib/uuid";
 
@@ -13,7 +12,7 @@ export const unstable_dynamicStaleTime = 30;
 
 const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.manage", "activity.register", "review.write", "followup.view"] as const;
 
-export default async function ActivitiesPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ activity?: string; view?: string; q?: string; state?:string }> }) {
+export default async function ActivitiesPage({ params, searchParams }: { params: Promise<{ locale: string }>; searchParams: Promise<{ activity?: string; q?: string }> }) {
   const [{ locale }, query] = await Promise.all([params, searchParams]);
   setRequestLocale(locale);
   const user = await requireAnyPerm(locale, ACTIVITY_WORKSPACE_PERMISSIONS);
@@ -36,6 +35,5 @@ export default async function ActivitiesPage({ params, searchParams }: { params:
     teachingActivityIds={permissions.has("activity.manage") ? rows.map((row) => row.id) : (assigned?.data ?? []).map((row) => row.activity_id)}
     initialRegistrationData={initialRegistrationData}
     initialQuery={query.q?.slice(0,100)}
-    initialRecordState={businessRecordStateFilter(query.view==='history'?'historical':query.state)}
   /></>;
 }

@@ -173,7 +173,7 @@ it('reuses an unprofiled historical lead for a seat only after identity confirma
   await fill('学生姓名','Historical');
   await act(async()=>vi.advanceTimersByTimeAsync(260));
   const match=document.querySelector<HTMLButtonElement>('[data-support-candidates] li button')!;
-  expect(match.textContent).toContain('历史记录');expect(match.textContent).toContain('待建立学生档案');
+  expect(match.textContent).not.toContain('历史记录');expect(match.textContent).toContain('待建立学生档案');
   await act(async()=>match.click());
   expect(calls.add).not.toHaveBeenCalled();
   expect(button('保存并补入此座位').disabled).toBe(true);

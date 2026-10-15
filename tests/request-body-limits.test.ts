@@ -30,7 +30,7 @@ function streamRequest(chunks: Uint8Array[], headers?: HeadersInit, cancelFailur
     },
     cancel,
   }, { highWaterMark: 0 });
-  const init: RequestInit & { duplex: "half" } = { method: "POST", headers, body: stream, duplex: "half" };
+  const init: ConstructorParameters<typeof NextRequest>[1] & { duplex: "half" } = { method: "POST", headers, body: stream, duplex: "half" };
   return { request: new NextRequest("https://example.test/endpoint", init), cancel, reads: () => reads };
 }
 

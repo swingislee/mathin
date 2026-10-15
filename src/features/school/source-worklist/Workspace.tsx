@@ -1,9 +1,8 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, ChevronDown, ChevronRight, CornerDownRight, RefreshCw, ChevronsDownUp, ChevronsUpDown, Upload } from 'lucide-react';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ChevronDown, ChevronRight, CornerDownRight, RefreshCw, ChevronsDownUp, ChevronsUpDown, Upload } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { tabsListClassName, tabsTriggerClassName } from '@/components/ui/tabs-styles';
@@ -11,32 +10,27 @@ import { Table, TableCell, TableHead, TableHeader, TableRow } from '@/components
 import { Link, useRouter } from '@/i18n/navigation';
 import { DashboardCommandActions, DashboardCommandFilters, DashboardCommandSelection, DashboardCommandState, DashboardPage, DashboardTableColumnHeader, DashboardTableShell } from '../dashboard-page';
 import { useDashboardFieldView } from '../dashboard-page/useDashboardFieldView';
-import { FollowupRecordRow, FollowupTableBody } from '../dashboard-page/FollowupRecordRow';
-import { DashboardRowDisclosure } from '../dashboard-page/DashboardRowDisclosure';
+import { FollowupTableBody } from '../dashboard-page/FollowupRecordRow';
 import { useDashboardPreference } from '../dashboard-page/DashboardPreferenceScope';
 import { FollowupCommandPanel } from '../FollowupCommandPanel';
 import { FilterSearchInput } from '../FilterBar';
 import { FollowupQueryMemory } from '../FollowupQueryMemory';
 import { LIST_ENTRY_MEMORY, WORKLIST_QUERY_KEYS } from '../dashboard-page/list-entry-memory';
 import { LeadPoolPagination } from '../LeadPoolPagination';
-import { Student360Trigger } from '../Student360Sheet';
-import { StudentStageAssignmentControl, StudentStageOwnerControl } from '../StudentStageAssignmentControl';
+import { StudentStageAssignmentControl } from '../StudentStageAssignmentControl';
 import { studentStageMessages } from '../student-stage-messages';
 import { schoolCollaborationMessages } from '../school-collaboration-contract';
 import { communicationEntryMode } from '../work-entry-contract';
 import type { StudentEntryMode, StudentStageSaved, StudentStageAssignee, StudentStageAssignment } from '../student-stage-contract';
 import { COMMUNICATION_STAGES, href, workMessages, taskPeriodFields, type WorkPage, type WorkQuery, type WorkRow } from './contract';
 import { sourceGroupLabels, sourceGroupPath } from './grouping';
-import { RecordStatusIcons } from '../record-status/RecordStatusIcons';
 import { SourceLayoutFilters } from './SourceLayoutFilters';
-import { showsMultiplePeriods } from './period-selection';
+import { periodLabel, showsMultiplePeriods } from './period-selection';
 import { WORKLIST_COLUMNS, worklistFields } from './fields';
 import { useWorklistFields } from './useWorklistFields';
 import { useWorklistSelection } from './Selection';
-import { communicationNoteSummary, worklistGrade } from './summary';
-import { SourceInfo } from './SourceInfo';
+import { WorklistRow, type WorklistOutcome, type WorklistRowActions, type WorklistRowView } from './Row';
 
-const Entry = dynamic(() => import('../StudentStageEntryLoader').then(m => m.StudentStageEntryLoader));
 const monthKey = (row: WorkRow) => `month:${row.worklist.period}`;
 const parentKey = (row: WorkRow) => JSON.stringify(['group',row.worklist.period,row.worklist.group]);
 const childKey = (row: WorkRow) => JSON.stringify(['person',row.worklist.period,row.worklist.group,row.worklist.subgroup]);
@@ -50,12 +44,12 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
   firstContactContent?: ReactNode; data: WorkPage; query: WorkQuery; locale: string; currentUserId: string; canEnroll: boolean; canAssess: boolean; timeZone: string; now: number;
   canAssign: boolean; canImport: boolean; assignees: StudentStageAssignee[];
 }) {
-  const m = workMessages(locale), stages = studentStageMessages(locale);
+  const m = useMemo(() => workMessages(locale), [locale]), stages = useMemo(() => studentStageMessages(locale), [locale]);
   const leadT = useTranslations('school.leads');
   const firstContact = query.stage === 'awaiting_first_contact';
   const showContext = query.stage === 'awaiting_enrollment' || query.stage === 'former_student';
   const tasks = firstContact ? ['awaiting_first_contact' as const] : COMMUNICATION_STAGES;
-  const allMonths = query.stage !== 'former_student' && showsMultiplePeriods(query.period);
+  const allMonths = showsMultiplePeriods(query.period);
   const router = useRouter();
   const [rows, setRows] = useState(data.rows);
   const [focused, setFocused] = useState<string | null>(null);
@@ -77,7 +71,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
     return { ...props, disabled: busy, ...(props.fields.some(field => field.kind === 'enum' || field.kind === 'date')
       ? { onLoadFacets: sourceFields.onLoadFacets, facetsStatus: sourceFields.facetsStatus } : {}) };
   };
-  const [outcome, setOutcome] = useState<{ id: string; value: '' | 'unreachable' | 'connected' | 'declined' | 'invalid_number' } | null>(null);
+  const [outcome, setOutcome] = useState<WorklistOutcome | null>(null);
   const [acceptedData, setAcceptedData] = useState(data);
   const [refreshRequested, setRefreshRequested] = useState(false);
   if (acceptedData !== data) {
@@ -151,7 +145,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
     if (previous?.key === key) previous.rows.push(row); else result.push({ key,rows: [row] });
     return result;
   },[]);
-  const periodLabel = (period: string) => period === 'unknown' ? m.unknownPeriod : period === 'all' ? m.allPeriods : locale.startsWith('en') ? `${Number(period.replace('月',''))}` : period;
+  const monthLabel = (period: string) => period === 'all' ? m.allPeriods : periodLabel(period, locale);
   const groupHeader = (key: string, label: string, count: number | undefined, depth: number, invisible = false) =>
     <TableRow hidden={invisible} data-followup-group="true" className={depth === 0 ? 'bg-line/20' : 'bg-card'}><TableCell colSpan={columnCount} className="py-1.5 font-medium">
       <button disabled={busy} aria-expanded={!collapsed.has(key)} style={{ paddingInlineStart: depth * 18 }} className="flex w-full items-center gap-2 text-left" onClick={() => {
@@ -163,15 +157,29 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
         {count !== undefined ? <span className="text-xs font-normal tabular-nums text-muted">{count}</span> : null}
       </button>
     </TableCell></TableRow>;
-  const date = (value: string) => new Intl.DateTimeFormat(locale, { timeZone, month: 'numeric', day: 'numeric' }).format(new Date(value));
-  const contextText = (row: WorkRow) => {
-    const priority = query.stage === 'awaiting_enrollment' ? ['学员情况','培养重点&核心期待&共识点','家长情况','思维测评等级','学习力测评等级']
-      : query.stage === 'awaiting_assessment' ? ['跟进信息','确认信息备注','沟通情况','跟进结果','确认结果'] : [];
-    const rank = (label: string) => priority.includes(label) ? priority.indexOf(label) : priority.length;
-    const recent = row.communication?.latestNote ?? row.note;
-    return [...new Set([...row.worklist.context].sort((a,b) => rank(a.label)-rank(b.label))
-      .map(c => c.value.trim()).filter(value => value && !recent.includes(value)))].slice(0, query.stage === 'former_student' ? 4 : 2).join(' · ');
-  };
+  const date = useMemo(() => {
+    // 今年的日期只写月日，其他年份带上年份，避免“12/19”被误读为今年。
+    const format = new Intl.DateTimeFormat(locale, { timeZone, month: 'numeric', day: 'numeric' });
+    const withYear = new Intl.DateTimeFormat(locale, { timeZone, year: 'numeric', month: 'numeric', day: 'numeric' });
+    const yearOf = new Intl.DateTimeFormat('en', { timeZone, year: 'numeric' }), thisYear = yearOf.format(new Date());
+    return (value: string) => { const at = new Date(value); return (yearOf.format(at) === thisYear ? format : withYear).format(at); };
+  }, [locale, timeZone]);
+  const selectable = Boolean(canAssign && selection);
+  const view = useMemo<WorklistRowView>(() => ({ stage: query.stage, locale, now, currentUserId, canEnroll, canAssess, canAssign, selectable, showContext, columnCount, assignees, m, stages, date }),
+    [query.stage, locale, now, currentUserId, canEnroll, canAssess, canAssign, selectable, showContext, columnCount, assignees, m, stages, date]);
+  // 行组件保持引用不变，事件发生时读取这里的最新状态。
+  const rowActions = useRef<WorklistRowActions | null>(null);
+  useLayoutEffect(() => {
+    rowActions.current = {
+      focus, open, close: () => setActive(null), outcome: (row, value) => { open(row,'contact'); setOutcome({ id: row.worklist.id,value }); },
+      saved, assigned: result => { assigned(result); router.refresh(); }, select: (row, checked) => selection?.toggle([selectionKey(row)],checked), setBusy: value => setBusy(value),
+      save: id => entryRefs.current.get(id)?.save(),
+      register: (id, entry) => { if (entry) entryRefs.current.set(id,entry); else entryRefs.current.delete(id); },
+    };
+  });
+  const hiddenRows = new Set(rows.filter(hidden).map(row => row.worklist.id));
+  let lastVisible = -1;
+  rows.forEach((row,index) => { if (!hiddenRows.has(row.worklist.id)) lastVisible = index; });
   const returnFromSearch = () => {
     if (busy) return;
     try { const previous = JSON.parse(searchOrigin.raw ?? 'null'); if (previous && typeof previous === 'object') { router.replace(href(query, { ...previous, q: '' }), { scroll: false }); return; } } catch { /* Return to the current list. */ }
@@ -254,63 +262,15 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
             const count = data.groups.find(g => g.key === first.worklist.group);
             const labels = sourceGroupLabels(first.worklist.kind,locale,first.worklist.groupMode);
             return <Fragment key={`${group.key}:${index}`}>
-            {allMonths && (!previous || monthKey(previous) !== monthKey(first)) ? groupHeader(monthKey(first),periodLabel(first.worklist.period),data.periods.find(p => p.key === first.worklist.period)?.count,0) : null}
+            {allMonths && (!previous || monthKey(previous) !== monthKey(first)) ? groupHeader(monthKey(first),monthLabel(first.worklist.period),data.periods.find(p => p.key === first.worklist.period)?.count,0) : null}
             {!previous || parentKey(previous) !== parentKey(first) ? groupHeader(parentKey(first),`${labels.group} · ${first.worklist.group}`,allMonths ? undefined : count?.count,allMonths ? 1 : 0,topHidden) : null}
             {first.worklist.subgroup ? groupHeader(childKey(first),`${labels.subgroup} · ${first.worklist.subgroup}`,allMonths ? undefined : count?.subgroups.find(s => s.key === first.worklist.subgroup)?.count,allMonths ? 2 : 1,parentHidden) : null}
             {group.rows.map(row => {
-              const placement = row.worklist, expanded = !hidden(row) && active?.id === placement.id;
-              const nextAt = row.nextContactAt && Number.isFinite(Date.parse(row.nextContactAt)) ? row.nextContactAt : null;
-              const communication = row.communication;
-              const originalNote = communication?.latestNote || row.note;
-              const recentNote = communicationNoteSummary(originalNote);
-              const recentDate = communication?.latestAt && Number.isFinite(Date.parse(communication.latestAt))
-                ? date(communication.latestAt) : communication?.latestDateLabel;
-              return <FollowupRecordRow key={placement.id} rowKey={placement.id} detailsId={`worklist-${placement.id}`} title={row.name} colSpan={columnCount}
-                profileSubject={row}
-                selected={Boolean(selection?.keys.has(selectionKey(row)))}
-                active={focused === placement.id && !hidden(row)} expanded={expanded} keepMounted={visited.has(placement.id)} pending={busy} focusOnActivate hideTitle
-                onActivate={() => focus(placement.id)} onExpandedChange={value => { if (!busy) { if (value) open(row); else setActive(null); } }}
-                onSave={row.canWrite ? () => entryRefs.current.get(placement.id)?.save() : undefined}
-                onOutcomeChange={query.stage === 'awaiting_first_contact' && row.canContact ? value => { open(row,'contact'); setOutcome({ id: placement.id,value }); } : undefined}
-                rowProps={{ hidden: hidden(row), className: 'h-12 cursor-pointer [&>td]:py-1.5 [&>td]:align-middle', 'data-worklist-record': placement.id }}
-                summary={<>
-                  {canAssign && selection ? <TableCell mobileSpan="secondary" className="w-9" onClick={event => event.stopPropagation()}><div className="flex justify-center"><Checkbox
-                    checked={selection.keys.has(selectionKey(row))} disabled={busy} aria-label={`${locale.startsWith('en') ? 'Select' : '选择'} ${row.name}`}
-                    onCheckedChange={checked => selection.toggle([selectionKey(row)],checked === true)} /></div></TableCell> : null}
-                  <TableCell mobileSpan="primary"><div className="flex items-start gap-1">
-                    <DashboardRowDisclosure expanded={expanded} controls={`worklist-${placement.id}`} label={`${m.recordByTask[query.stage]} · ${row.name}`}
-                      onToggle={() => { if (!busy) { if (expanded) setActive(null); else open(row); } }} />
-                    <div className="min-w-0"><div className="flex items-center gap-1.5">
-                    <Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{row.name}</Student360Trigger>
-                    {handled.has(placement.id) ? <Check aria-label={m.handled} className="size-3.5 text-leaf-deep" /> : null}</div>
-                    <span className="block text-[11px] text-muted">{worklistGrade(row, locale)}</span></div></div></TableCell>
-                  <TableCell mobileLabel={m.phone}>{row.phone || '—'}</TableCell>
-                  <TableCell mobileLabel={locale.startsWith('en') ? 'Learning support' : '学服'}>{canAssign ? <StudentStageOwnerControl row={row} assignees={assignees} locale={locale} disabled={busy} context="lead"
-                    onBusyChange={setBusy} onAssigned={result => { assigned(result); router.refresh(); }} /> : row.ownerName || stages.unassigned}</TableCell>
-                  <TableCell mobileLabel={m.stage}>{row.detail !== 'unassigned' ? <div className="mb-1 text-[11px] text-muted">{stages.details[row.detail] ?? row.detail}</div> : null}
-                    <RecordStatusIcons row={row} locale={locale} /></TableCell>
-                  {showContext ? <TableCell mobileLabel={m.contextByTask[query.stage]}><p className="line-clamp-2 leading-5" title={contextText(row)}>{contextText(row) || '—'}</p>
-                    {query.stage === 'awaiting_enrollment' && row.registrationId && canAssess ? <Link className="inline-block py-1 text-primary hover:underline" href={`/dashboard/assessments/${row.registrationId}`}>{m.assessment}</Link> : null}
-                  </TableCell> : null}
-                  <TableCell mobileLabel={m.recent}>
-                    <p className="line-clamp-2 leading-5" title={recentNote}>{recentNote || (communication?.count ? m.noContactNote : m.noNote)}</p>
-                    {communication?.count ? <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-muted">
-                      {recentDate ? <span>{recentDate}</span> : null}
-                      <span>{communication.latestOutcome ? m.contactOutcomes[communication.latestOutcome] : m.unknownOutcome}</span>
-                      <Student360Trigger className="font-normal text-muted" subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{m.contactCount(communication.count)}</Student360Trigger>
-                    </div> : null}
-                    {nextAt ? <span className={Date.parse(nextAt) < now ? 'text-rose-deep' : 'text-muted'}>{m.nextContact} · {date(nextAt)}</span> : null}</TableCell>
-                </>}>
-                {() => <div className="space-y-2">
-                  {row.canWrite ? <Entry row={row} requestedMode={active?.id === placement.id ? active.mode : modeFor(row)} locale={locale} currentUserId={currentUserId} canEnroll={canEnroll}
-                    contactContext={firstContact ? 'first_contact' : 'followup'}
-                    ref={entry => { if (entry) entryRefs.current.set(placement.id,entry); else entryRefs.current.delete(placement.id); }}
-                    outcomeRequest={outcome?.id === placement.id ? outcome : null} canAdvance={rows.slice(rows.indexOf(row)+1).some(r => !hidden(r))}
-                    onBusyChange={setBusy} onSaved={(result,advance) => saved(row,result,advance)} /> : null}
-                  <SourceInfo placement={placement} locale={locale} />
-                  {originalNote ? <details className="text-xs"><summary className="cursor-pointer text-muted">{locale.startsWith('en') ? 'Original latest note' : '最近备注原文'}</summary><p className="mt-2 whitespace-pre-wrap break-words leading-5">{originalNote}</p></details> : null}
-                </div>}
-              </FollowupRecordRow>;
+              const id = row.worklist.id, rowHidden = hiddenRows.has(id), expanded = !rowHidden && active?.id === id;
+              return <WorklistRow key={id} row={row} view={view} actions={rowActions} active={focused === id && !rowHidden} expanded={expanded}
+                mode={active?.id === id ? active.mode : null} keepMounted={visited.has(id)} hidden={rowHidden} busy={busy}
+                selected={Boolean(selection?.keys.has(selectionKey(row)))} handled={handled.has(id)} outcome={outcome?.id === id ? outcome : null}
+                canAdvance={rows.indexOf(row) < lastVisible} />;
             })}
           </Fragment>; })}
           {!rows.length ? <TableRow><TableCell colSpan={columnCount} className="h-32 text-center text-muted">{m.empty}</TableCell></TableRow> : null}

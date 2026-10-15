@@ -62,7 +62,7 @@ export type SupportProfile = z.infer<typeof supportProfileSchema>;
 export const SUPPORT_REFRESH_EVENT = 'mathin:school-support-refresh';
 
 export function supportEntryHref(item: SupportItem): string {
-  const query = new URLSearchParams({ manual: item.id, state: 'current' });
+  const query = new URLSearchParams({ manual: item.id });
   if (item.workspace === 'students') {
     query.set('population','records'); query.set('q', item.name); query.set('scope','all');
     return `/dashboard/students?${query}`;

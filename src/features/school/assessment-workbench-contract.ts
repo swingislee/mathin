@@ -87,7 +87,6 @@ export interface AssessmentWorkbenchRow {
   /** 列表摘要在展开时读取完整证据与编辑上下文。 */
   listSummary?: boolean;
   id: string;
-  recordState?: 'current' | 'historical';
   occurredOn?: string | null;
   assessmentKind: AssessmentWorkbenchKind;
   activityId: string | null;
@@ -142,7 +141,6 @@ export interface AssessmentWorkbenchCounts {
   feedback: number;
   handled: number;
   all: number;
-  historical: number;
 }
 
 export function assessmentWorkbenchQueueFrom(
@@ -176,7 +174,6 @@ export function assessmentWorkbenchCounts(
     feedback: stages.filter((stage) => stage === "feedback").length,
     handled: stages.filter((stage) => stage === "handled").length,
     all: rows.length,
-    historical: rows.filter(row=>row.recordState==='historical').length,
   };
 }
 

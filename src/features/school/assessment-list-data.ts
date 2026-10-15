@@ -41,12 +41,12 @@ export async function loadAssessmentWorkbenchPage(fields: DashboardFieldDefiniti
   // 新 RPC 的边界在此集中声明；不将未生成的数据库类型扩散到页面。
   const rpc = (client.rpc as unknown as (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>).bind(client);
   const response = await rpc("list_assessment_workbench_page", {
-    p_state: filters.state, p_search: filters.q.trim(), p_page: filters.page, p_page_size: filters.pageSize,
+    p_state: "all", p_search: filters.q.trim(), p_page: filters.page, p_page_size: filters.pageSize,
     p_query: { ...studentListRpcQuery(query), sourceLayout }, p_locale: context.locale.startsWith("en") ? "en" : "zh", p_labels: labels,
   });
   if (response.error) throw new Error(response.error.message);
   const { facets, rows, ...page } = pageSchema.parse(response.data);
   const referencedRows = await withAssessmentReferenceValidity(rows as unknown as AssessmentWorkbenchRow[], client);
-  return { ...page, rows: referencedRows, q: filters.q, state: filters.state,
+  return { ...page, rows: referencedRows, q: filters.q,
     fieldView: { query, facets: studentListFacets(facets, fields, context.locale) } };
 }

@@ -6,7 +6,6 @@ import { loadRenewalPoolSupplement } from "@/features/school/renewal-pool-data";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { loadStudentBusinessHistory } from "@/features/school/student-business-history-data";
-import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
 import { DashboardRevisitFreshness } from "@/features/school/dashboard-page/DashboardRevisitFreshness";
 import { newId } from "@/lib/uuid";
 
@@ -55,7 +54,6 @@ async function RenewalsContent({
     healthSampleMode={process.env.NODE_ENV === "development" && raw.samples === "1"}
     history={history}
     initialQuery={typeof raw.q==='string'?raw.q.slice(0,100):undefined}
-    initialRecordState={businessRecordStateFilter(raw.view==='history'?'historical':raw.state)}
   /></>;
 }
 

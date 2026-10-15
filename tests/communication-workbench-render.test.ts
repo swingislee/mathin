@@ -138,7 +138,7 @@ describe("communication workbench server rendering", () => {
 
   it("opens historical first-contact details with the shared fields and no submit controls", () => {
     const element = createElement(FirstContactRecordRow, {
-      record: { key: 'student:existing', state: 'historical',
+      record: { key: 'student:existing',
         person: { name: '历史学生', phone: '', grade: '', subject: { studentId: 'existing', leadId: null } },
         status: { label: '首联记录缺失', tone: 'neutral', context: '原资料未记录首联' }, updated: '资料未记录', note: '保留完整历史事实' },
       locale: 'zh', active: true, expanded: true, detailsId: 'existing-details', onExpandedChange: vi.fn(),
@@ -155,7 +155,7 @@ describe("communication workbench server rendering", () => {
 
   it("shows a missing first-contact explanation once without copying other business notes", () => {
     const element = createElement(FirstContactRecordRow, {
-      record: { key: 'student:existing', state: 'historical', missingFirstContact: true,
+      record: { key: 'student:existing', missingFirstContact: true,
         person: { name: '历史学生', phone: '', grade: '', subject: { studentId: 'existing', leadId: null } },
         status: { label: '首联记录缺失', tone: 'neutral', context: '' }, updated: '资料未记录', note: '来自测评和续班的内容' },
       locale: 'zh', active: true, expanded: true, detailsId: 'existing-details', onExpandedChange: vi.fn(),

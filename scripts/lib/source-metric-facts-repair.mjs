@@ -1,7 +1,8 @@
 import {isDeepStrictEqual} from 'node:util';
 import {createImportUuid} from './import-uuid.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
-import {historicalDate,historyFieldName} from './student-business-history.mjs';
+import {historyFieldName} from './student-business-history.mjs';
+import {sourceContactDay,sourceRegisteredOn} from './source-day.mjs';
 import {resolveSourceStaffId} from '../../src/features/school/business-source-contract.ts';
 import {sourceContactSummary,sourceContactEvidence} from '../../src/features/school/source-lifecycle-evidence.mjs';
 
@@ -49,7 +50,7 @@ export function buildSourceMetricFactsRepair(snapshot){
     inserts.push({table:'lead_communications',row:{id:id(key),lead_id:distinct[0],source_record_id:source.id,source_key:key,
       channel:'other',outcome:sourceContactEvidence(name=>field(source,name),'confirmation').outcome,
       note:sourceContactSummary(name=>field(source,name),'confirmation'),occurred_at:null,
-      occurred_on:historicalDate(field(source,'确认日期')),
+      occurred_on:sourceContactDay(name=>field(source,name),'confirmation',{registeredOn:sourceRegisteredOn(source.record_data),notAfter:facts.sourceVersion||null})?.day??null,
       recorded_by:resolveSourceStaffId(field(source,'确认人员'),snapshot.profiles),owner_id_at_contact:null,
       wechat_added:null,visit_committed:null,interest_level:null,source_metric_facts:facts}});
   }

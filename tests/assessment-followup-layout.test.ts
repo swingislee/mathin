@@ -64,9 +64,9 @@ function renderDetails(record: AssessmentWorkbenchRow, canAssess = true, stage?:
 }
 
 describe("assessment page aligned with first contact", () => {
-  it.each(['zh', 'en'] as const)('shows current and historical records together in %s', locale => {
+  it.each(['zh', 'en'] as const)('shows recent and earlier records together in %s', locale => {
     const markup = render(createElement(AssessmentUnifiedWorkbench, {
-      initialRows: [row('present'), row('past', { recordState: 'historical' })],
+      initialRows: [row('present'), row('past', { scheduledAt: '', occurredOn: '2025-01-04' })],
       assessors: [], locale, canAssess: true, canSupport: true, canManageAssessor: true,
     }), locale);
     const body = markup.match(/<tbody\b[^>]*>([\s\S]*?)<\/tbody>/)?.[1] ?? '';
@@ -74,7 +74,7 @@ describe("assessment page aligned with first contact", () => {
     expect(body).toContain('同学past');
   });
   it.each(["zh", "en"] as const)("uses the general assessment title and compact shared row identity in %s", (locale) => {
-    const rows = [row("solo"), row("group", { assessmentKind: "activity" }), row("history", { recordState: "historical", scheduledAt: "", occurredOn: null })];
+    const rows = [row("solo"), row("group", { assessmentKind: "activity" }), row("earlier", { scheduledAt: "", occurredOn: null })];
     const markup = render(createElement(AssessmentUnifiedWorkbench, {
       initialRows: rows, assessors: [], locale, canAssess: true, canSupport: true, canManageAssessor: true,
     }), locale);
@@ -90,18 +90,18 @@ describe("assessment page aligned with first contact", () => {
     expect(body).not.toMatch(/<input|<textarea|role="combobox"/);
     expect(body).not.toContain('aria-selected="true"');
     expect(body).toContain('data-followup-expanded="false"');
-    expect(body).toContain('data-record-state="historical"');
-    expect(body?.match(/逐题登记/g)).toHaveLength(1);
+    expect(body).not.toContain('data-record-state');
+    expect(body?.match(/逐题登记/g)).toHaveLength(2);
     expect(body).toContain('data-assessment-question-entry');
   });
 
-  it("shows the question entry only for authorized current one-to-one rows, including unstarted invitations", () => {
-    const rows = [row("booked", { registrationId: null }), row("group", { assessmentKind: "activity" }), row("history", { recordState: "historical" })];
+  it("shows the question entry for authorized one-to-one rows of any date, including unstarted invitations", () => {
+    const rows = [row("booked", { registrationId: null }), row("group", { assessmentKind: "activity" }), row("earlier", { scheduledAt: "", occurredOn: "2025-03-01" })];
     for (const canAssess of [true, false]) {
       const markup = render(createElement(AssessmentUnifiedWorkbench, {
         initialRows: rows, assessors: [], locale: "zh", canAssess, canSupport: true, canManageAssessor: true,
       }));
-      expect(markup.match(/逐题登记/g) ?? []).toHaveLength(canAssess ? 1 : 0);
+      expect(markup.match(/逐题登记/g) ?? []).toHaveLength(canAssess ? 2 : 0);
     }
   });
 
@@ -127,13 +127,14 @@ describe("assessment page aligned with first contact", () => {
     expect(body).toContain('aria-controls="assessment-details-compact"');
   });
 
-  it("leaves empty and historical update cells free of communication previews", () => {
+  it("leaves empty update cells free of communication previews and shows earlier notes by date", () => {
     const latestFollowUp = { id: "note", content: "   ", kind: "note", createdAt: "2026-09-05T01:00:00Z", nextFollowUpAt: null, statusAfter: null };
     const markup = render(createElement(AssessmentUnifiedWorkbench, {
-      initialRows: [row("empty", { latestFollowUp }), row("history", { recordState: "historical", latestFollowUp: { ...latestFollowUp, content: "历史跟进" } })],
+      initialRows: [row("empty", { latestFollowUp }), row("earlier", { scheduledAt: "", occurredOn: "2025-03-01", latestFollowUp: { ...latestFollowUp, content: "早期跟进" } })],
       assessors: [], locale: "zh", canAssess: true, canSupport: true, canManageAssessor: true,
     }));
-    expect(markup).not.toContain("data-current-situation");
+    expect(markup.match(/data-current-situation/g)).toHaveLength(1);
+    expect(markup).toContain("早期跟进");
     expect(markup.match(/data-assessment-latest-update/g)).toHaveLength(2);
   });
 
@@ -227,15 +228,15 @@ describe("assessment page aligned with first contact", () => {
     expect(business).not.toContain("家长关注时间安排");
   });
 
-  it("renders historical feedback without live progress, reassignment, or editable modules", () => {
-    const record = row("history", { recordState: "historical", assessment: {
-      id: "historical", assessmentBand: null, score: null, strengths: "", focusAreas: "", parentConcerns: "保留原反馈",
+  it("keeps imported feedback workable with the same stages as any other record", () => {
+    const record = row("imported", { sourceRecordId: "source-row", scheduledAt: "", occurredOn: "2025-03-01", assessment: {
+      id: "imported", assessmentBand: null, score: null, strengths: "", focusAreas: "", parentConcerns: "保留原反馈",
       teacherRecommendation: "", recommendedClass: "", teacherObservation: "保留原反馈", updatedAt: "",
     } });
     const markup = renderDetails(record);
-    expect(markup.match(/保留原反馈/g)).toHaveLength(1);
-    expect(markup).not.toMatch(/data-assessment-progress|data-assessor-reassignment|<input|<textarea|aria-keyshortcuts/);
-    expect(markup).not.toContain("role=\"tab\"");
+    expect(markup).toContain("保留原反馈");
+    expect(markup).toContain("data-assessment-progress");
+    expect(markup.match(/data-assessment-stage=/g)).toHaveLength(4);
   });
 
   it("uses the same note-and-save layout for an independent student note", () => {

@@ -3,7 +3,9 @@ import { z } from "zod";
 import { studentStageRpc } from "./student-stage-data";
 import type { createClient } from "@/lib/supabase/server";
 
-const origins = z.array(z.object({ leadId: z.string(), occurredAt: z.string().nullable(), sourceOwnerName: z.string().nullable(), imported: z.boolean() }));
+const origins = z.array(z.object({ leadId: z.string(), occurredAt: z.string().nullable(), sourceOwnerName: z.string().nullable(), imported: z.boolean(),
+  /** 获取日期只写月日时，年份按表内登记先后补全。 */
+  dateBasis: z.string().nullable().optional(), dateLabel: z.string().nullable().optional() }));
 
 export async function readLeadOrigins(client: Awaited<ReturnType<typeof createClient>>, leadIds: string[]) {
   if (!leadIds.length) return [];

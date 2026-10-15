@@ -8,7 +8,6 @@ export interface OverviewActivity {
   occurred_on: string | null;
   source_invitation_id: string | null;
   remark: string;
-  record_state: string;
 }
 
 export interface OverviewRegistration {
@@ -17,7 +16,6 @@ export interface OverviewRegistration {
   student_id: string | null;
   lead_id: string | null;
   status: string;
-  record_state: string;
   registered_on: string | null;
   created_at: string;
   source_record_id: string | null;

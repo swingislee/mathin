@@ -7,7 +7,8 @@ import { applyBaseLeadAcquisition } from '@/features/school/base-lead-acquisitio
 
 describe('current support group filters',()=>{
   it('keeps empty groups selectable and applies group membership before pagination',()=>{
-    const groups=[{id:'empty',name:'空组',memberIds:[]},{id:'active',name:'合成组',memberIds:['support']}];
+    const groups=[{id:'empty',name:'空组',memberIds:[]},{id:'active',name:'合成组',memberIds:['support']}]
+      .map(group=>({...group,parentId:null,kind:'group' as const,sortOrder:0,leadIds:[],studentCount:0}));
     const query={version:2 as const,filters:{},sort:null};
     const rows: LeadPoolRow[]=Array.from({length:125},(_,i)=>({id:String(i),provisionalStudentName:`合成${i}`,ownerId:i<100?null:'support',interests:[],status:'uncontacted',
       phone:'',gradeHint:null,gradeText:'',ownerName:'',suggestedStudentId:null,suggestedStudentName:'',createdAt:'',acquiredAt:null,

@@ -13,7 +13,7 @@ function row(index: number): AssessmentWorkbenchRow {
     invitationId: null, registrationId: String(index), studentId: String(index), leadId: null, name: `Student ${index}`, phone: "", grade: index % 6 + 1,
     gradeText: "", scheduledAt: "2026-09-20T10:00:00Z", location: index % 2 ? "East" : "West", assessorId: null, assessorName: "", assessorSource: "assigned",
     background: index === 1200 ? "Needle in background" : "", participationStatus: "booked", assessmentStartedAt: null, assessmentCompletedAt: null,
-    assessment: null, questionSummary: null, route: null, updatedAt: "2026-09-20T10:00:00Z", recordState: index < 1230 ? "current" : "historical" };
+    assessment: null, questionSummary: null, route: null, updatedAt: "2026-09-20T10:00:00Z", occurredOn: index < 1230 ? null : "2025-03-01" };
 }
 
 describe("assessment server page", () => {
@@ -29,7 +29,7 @@ describe("assessment server page", () => {
     const context = { locale, timeZone: "Asia/Shanghai", now: 0 };
     it(`${locale}: filters, sorts and computes facets across the complete authorized set before paging`, () => {
       const query = { version: 2 as const, filters: { grade: { kind: "enum" as const, values: ["1", "2"] } }, sort: { field: "name", direction: "desc" as const } };
-      const all = assessmentSearchRows(rows, "", "all", locale);
+      const all = assessmentSearchRows(rows, "", locale);
       const expected = filterAndSortDashboardFields(all, fields, query, locale, context.timeZone);
       const page = assessmentWorkbenchFieldPage(rows, fields, { fields: JSON.stringify(query), page: "3", pageSize: "20" }, context);
       expect(page.rows).toEqual(expected.slice(40, 60));
@@ -37,17 +37,15 @@ describe("assessment server page", () => {
       expect(page.fieldView.facets).toEqual(dashboardFieldFacets(all, fields, query.filters, locale, context.timeZone));
       expect(page.fieldView.facets.grade.options).toHaveLength(6);
     });
-    it(`${locale}: preserves source order and search while including current and historical rows`, () => {
+    it(`${locale}: preserves source order and search across rows of every date`, () => {
       expect(assessmentWorkbenchFieldPage(rows, fields, {}, context).rows).toEqual(rows.slice(0, 50));
       const found = assessmentWorkbenchFieldPage(rows, fields, { q: "needle", page: "99" }, context);
       expect(found.rows).toEqual([rows[1200]]); expect(found.page).toBe(1);
-      const history = assessmentWorkbenchFieldPage(rows, fields, { state: "historical" }, context);
-      expect(history.rows).toEqual(rows.slice(0, 50)); expect(history.count).toBe(1250);
-      expect(assessmentWorkbenchFieldPage(rows, fields, { state: "all" }, context).count).toBe(1250);
+      expect(assessmentWorkbenchFieldPage(rows, fields, {}, context).count).toBe(1250);
     });
   }
   it("normalizes malformed query values", () => {
-    expect(assessmentPageFilters({ page: "NaN", pageSize: "4000", state: "bad", q: "x".repeat(150) })).toMatchObject({ page: 1, pageSize: 50, state: "all", q: "x".repeat(100) });
+    expect(assessmentPageFilters({ page: "NaN", pageSize: "4000", q: "x".repeat(150) })).toMatchObject({ page: 1, pageSize: 50, q: "x".repeat(100) });
   });
 });
 

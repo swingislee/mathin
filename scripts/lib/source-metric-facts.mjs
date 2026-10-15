@@ -1,22 +1,27 @@
 import {historicalDate,historyFieldName} from './student-business-history.mjs';
+import {sourceContactDating,sourceMonth,sourceRegisteredOn} from './source-day.mjs';
 import {sourceContactEvidence,sourceContactFlags,sourceContactSummary,sourceHasAssessmentResult,sourceNoteIsEffective,sourceWechatEvidence} from '../../src/features/school/source-lifecycle-evidence.mjs';
 
 const field=(source,name)=>source.record_data.cells.find(c=>historyFieldName(c.fieldName)===name)?.text?.trim()??'';
 const monthNumber=value=>{const match=/^(?:\d{4}[-年/])?\s*(1[0-2]|[1-9])\s*月?$/.exec(value);return match?Number(match[1]):null;};
 
-/** 月份选项属于来源报表年度；具体日期只用于推断已注明年份的独立日期事实。 */
-export function sourceReportingMonth(value,sourceVersion,fallbackDate=null) {
+/** 月份选项的年份取离锚点日最近的一年（锚点为同一行的日期或登记日）；没有锚点时归入导出日之前的十二个月。 */
+export function sourceReportingMonth(value,sourceVersion,fallbackDate=null,anchorOn=null) {
   const explicit=/^(\d{4})[-年/](\d{1,2})月?$/.exec(value);
   if(explicit&&Number(explicit[2])>=1&&Number(explicit[2])<=12)return `${explicit[1]}-${explicit[2].padStart(2,'0')}`;
+  const anchored=anchorOn?sourceMonth(value,{registeredOn:anchorOn,notAfter:/^\d{4}-\d{2}-\d{2}$/.test(sourceVersion)?sourceVersion:null}):null;
+  if(anchored)return anchored;
   const month=monthNumber(value),stamp=/^(\d{4})-(\d{2})-\d{2}$/.exec(sourceVersion);
   if(month&&stamp){const year=Number(stamp[1])-(month>Number(stamp[2])?1:0);return `${year}-${String(month).padStart(2,'0')}`;}
   return fallbackDate?.slice(0,7)??null;
 }
 
-/** 原表的月日记法只补统计月份；实际日期仍保持原有精度。 */
-export function sourceContactReportingMonth(label,date,sourceVersion) {
-  if(label.trim())return sourceReportingMonth(label,sourceVersion);
-  const actual=historicalDate(date);if(actual)return actual.slice(0,7);
+/** 统计月份优先取月份选项，年份以同一行的联系日期为锚（没有日期时用登记日）；否则取联系日期
+ *  （月日写法已按登记顺序补年时用补全的日期）。 */
+export function sourceContactReportingMonth(label,date,sourceVersion,{registeredOn=null,day=null}={}) {
+  const actual=day??historicalDate(date);
+  if(label.trim())return sourceReportingMonth(label,sourceVersion,null,actual??registeredOn);
+  if(actual)return actual.slice(0,7);
   const short=/^(1[0-2]|0?[1-9])[.月/-](0?[1-9]|[12]\d|3[01])日?$/.exec(date.trim());
   if(short){
     const month=sourceReportingMonth(`${Number(short[1])}月`,sourceVersion);
@@ -32,9 +37,10 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
   const facts={version:1,sourceKey:`${String(source.source_table_id??'').split(':').at(-1)}:${source.source_record_id??source.id}`,
     sourceName:source.record_data.names?.[0]??field(source,'学员姓名'),sourceTable:table,sourceVersion:version,
     scope:'other',confirmed:{},months:{},staff:{},evidence:[]};
+  const registeredOn=sourceRegisteredOn(source.record_data);
   const put=(metric,confirmed,monthField,staffField,evidence,{fallback=false}={})=>{
     facts.confirmed[metric]=confirmed;
-    facts.months[metric]=sourceReportingMonth(field(source,monthField),version,fallback?historicalDate(field(source,monthField.replace('月份','日期'))):null);
+    facts.months[metric]=sourceReportingMonth(field(source,monthField),version,fallback?historicalDate(field(source,monthField.replace('月份','日期'))):null,registeredOn);
     facts.staff[metric]=field(source,staffField);
     if(confirmed)facts.evidence.push(...evidence);
   };
@@ -53,7 +59,11 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
     const prefix=phase==='confirmation'?'确认':phase==='followup'?'跟进':'沟通';
     facts.communicationDate=field(source,`${prefix}日期`)||null;
     put('contacts',phase!=='project'&&contact.effective,`${prefix}月份`,phase==='confirmation'?'确认人员':phase==='followup'?'跟进人':'沟通人员',contact.evidence,{fallback:true});
-    facts.months.contacts=sourceContactReportingMonth(field(source,`${prefix}月份`),field(source,`${prefix}日期`),version);
+    // 日期依据与疑点随事实保存，界面据此提示“年份按登记补全”或“日期待核对”。
+    const dating=sourceContactDating(read,phase,{registeredOn,notAfter:/^\d{4}-\d{2}-\d{2}$/.test(version)?version:null});
+    if(dating.basis)facts.dateBasis=dating.basis;
+    if(dating.review)facts.dateReview=dating.review;
+    facts.months.contacts=sourceContactReportingMonth(field(source,`${prefix}月份`),field(source,`${prefix}日期`),version,{registeredOn,day:dating.day});
     facts.staff.contacts=field(source,phase==='confirmation'?'确认人员':phase==='followup'?'跟进人':'沟通人员');
   }else if(table==='到访数据与信息表1.0-总'){
     facts.scope='selection';
@@ -63,7 +73,7 @@ export function buildSourceMetricFacts(source,{phase='confirmation',sourceVersio
     facts.effectiveContact=arrived||assessment||contactFields.length>0;
     facts.semanticVersion=2;
     put('contacts',facts.effectiveContact,'确认月份','学服老师',contactFields.length?contactFields:arrived?['到访与否']:assessment?['思维测评等级','学习力测评等级','测评成绩（分数）']:[]);
-    facts.months.contacts=sourceContactReportingMonth(field(source,'确认月份'),field(source,'确认日期'),version);
+    facts.months.contacts=sourceContactReportingMonth(field(source,'确认月份'),field(source,'确认日期'),version,{registeredOn});
     const arranged=arrived||assessment||['是','诺访','已诺访'].includes(field(source,'诺访与否'))
       || Boolean(historicalDate(field(source,'到访日期'))&&field(source,'参与内容'));
     put('invitations',arranged,'确认月份','学服老师',['到访日期','参与内容','到访与否']);

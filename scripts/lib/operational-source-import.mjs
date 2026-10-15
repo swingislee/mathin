@@ -3,6 +3,7 @@ import {normalizeGradeLabel,parseSchoolGrade} from '../../src/lib/grade-format.m
 import {historyFieldName,historicalDate} from './student-business-history.mjs';
 import {historyPayloadHash} from './history-import-trial.mjs';
 import {buildSourceMetricFacts} from './source-metric-facts.mjs';
+import {sourceContactDay,sourceRegisteredOn} from './source-day.mjs';
 import {observeSourceFields} from './source-field-coverage.mjs';
 import {buildBaseBusinessPlan} from './base-business-fields.mjs';
 import {sourceContactEvidence,sourceContactFlags,sourceWechatEvidence} from '../../src/features/school/source-lifecycle-evidence.mjs';
@@ -17,6 +18,9 @@ const name=r=>r.record_data.names[0]??'';
 const grade=r=>parseSchoolGrade(field(r,'年级')||field(r,'年级/25级'));
 const provenance=r=>({source_record_id:r.id,source_field_ids:r.record_data.cells.filter(c=>c.kind!=='system'&&c.text.trim()).map(c=>c.fieldId)});
 const validDate=(r,...fields)=>fields.map(f=>historicalDate(field(r,f))).find(Boolean)??null;
+/** 联系日期：“10.14”“10/10”等月日写法按来源行登记顺序补年。 */
+const contactDay=(r,phase)=>sourceContactDay(name=>field(r,name),phase,{registeredOn:sourceRegisteredOn(r.record_data),
+  notAfter:/^(\d{4}-\d{2}-\d{2})/.exec(r.source_data?.filename??'')?.[1]??null})?.day??null;
 
 /** 原表中的个人业务行各有稳定主键；待确认归属保留来源锚点，实际使用时绑定已有学生。 */
 export function buildOperationalSourceImport(payload,snapshot) {
@@ -90,7 +94,7 @@ export function buildOperationalSourceImport(payload,snapshot) {
         const noteWechat=sourceWechatEvidence(field(r,noteFields[0]));
         const phaseWechat=mapped.wechatAdded??(noteWechat==='yes'?true:noteWechat==='no'?false:null);
         rows.lead_communications.push({id:contactId,lead_id:leadId,source_record_id:r.id,source_key:previous?.source_key??key,channel:'other',outcome:evidence.outcome,source_metric_facts:metricFacts,
-          note,occurred_at:null,occurred_on:validDate(r,dateField),recorded_by:staff(r,phase==='followup'?'跟进人':phase==='project'?'沟通人员':'确认人员'),owner_id_at_contact:support(r),
+          note,occurred_at:null,occurred_on:contactDay(r,phase)??validDate(r,dateField),recorded_by:staff(r,phase==='followup'?'跟进人':phase==='project'?'沟通人员':'确认人员'),owner_id_at_contact:support(r),
           wechat_added:failed?null:phase==='confirmation'?flags.wechatAdded??phaseWechat:phaseWechat,
           visit_committed:failed?null:phase==='confirmation'?flags.visitCommitted??mapped.visitCommitted:mapped.visitCommitted,
           interest_level:phase==='confirmation'&&['A','B','C'].includes(interest)?interest:null});

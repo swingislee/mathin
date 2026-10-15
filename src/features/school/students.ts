@@ -203,7 +203,6 @@ export async function listStudents(
     const { data: followUps, error: followUpError } = await supabase
       .from("student_follow_ups")
       .select("student_id,content,created_at")
-      .eq("record_state", "current")
       .in("student_id", rows.map((row) => row.id))
       .order("created_at", { ascending: false })
       .returns<FollowUpSummaryRow[]>();
@@ -228,7 +227,6 @@ export async function getStudentDetail(id: string): Promise<StudentDetail | null
   const { data: followUps, error: followUpError } = await supabase
     .from("student_follow_ups")
     .select("id,content,kind,next_follow_up_at,status_after,created_at,context_source_record_id,session_id,occurred_on,next_action,profiles!student_follow_ups_author_id_fkey(display_name)")
-    .eq("record_state", "current")
     .eq("student_id", id)
     .order("created_at", { ascending: false })
     .limit(50)

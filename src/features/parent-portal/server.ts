@@ -117,7 +117,7 @@ export async function portalGet(request:Request) {
     // 仅补充公开 RPC 已放行的项目；不把未发布活动或内部备注带入公开接口。
     const metadata=z.array(z.object({id:uuid,target_grades:z.array(z.number().int().min(1).max(12)).nullable(),kind:z.string()}))
       .parse(requireResult(await createAdminClient().from("activities").select("id,target_grades,kind")
-        .in("id",rows.map(row=>row.id)).is("deleted_at",null).eq("record_state","current")));
+        .in("id",rows.map(row=>row.id)).is("deleted_at",null)));
     const byId=new Map(metadata.map(row=>[row.id,row]));
     return response(rows.filter(row=>byId.has(row.id)).map(row=>({...row,
       targetGrades:byId.get(row.id)!.target_grades,

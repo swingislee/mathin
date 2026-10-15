@@ -18,8 +18,6 @@ import { FollowupEntryFields, FollowupEntryLayout } from "./FollowupEntryFields"
 import { ASSESSMENT_STAGES, currentAssessmentReportWasSent, type AssessmentStage, type AssessmentWorkflowCommand } from "./assessment-workflow-contract";
 import { getAssessmentWorkflowAction, saveAssessmentWorkflowAction } from "./assessment-workflow-actions";
 import { assessmentWorkbenchHasFinalResult, type AssessmentWorkbenchQueue, type AssessmentWorkbenchRow } from "./assessment-workbench-contract";
-import { businessRecordMessages, isCurrentBusinessRecord } from "./business-record-state-contract";
-import { uniqueBusinessFeedback } from "./business-record-notes";
 import { FollowupChoice } from "./dashboard-page/FollowupChoice";
 import { PostActivityHandoff } from "./EnrollmentHandoffButton";
 import type { ActivityEnrollmentContext } from "./enrollment-workflow-contract";
@@ -46,11 +44,9 @@ export function AssessmentRecordDetails({
   const assessmentT = useTranslations("school.assessments");
   const sessionT = useTranslations("school.session");
   const quickT = useTranslations("school.assessmentQuickEntry");
-  const recordM = businessRecordMessages(locale);
-  const current = isCurrentBusinessRecord(row.recordState);
   const completed = assessmentWorkbenchHasFinalResult(row);
   const finalized = Boolean(row.workflow?.finalizedAt);
-  const canWrite = current && row.participationStatus !== "no_show" && row.participationStatus !== "cancelled" && (canAssess || canQuickEntry || canRoute);
+  const canWrite = row.participationStatus !== "no_show" && row.participationStatus !== "cancelled" && (canAssess || canQuickEntry || canRoute);
   const [section, setSection] = useState<AssessmentStage>(stage);
   const [visited, setVisited] = useState<Set<AssessmentStage>>(() => new Set([stage]));
   const [assessorId, setAssessorId] = useState(row.assessorId ?? "");
@@ -91,13 +87,13 @@ export function AssessmentRecordDetails({
     onSaved(saved);
     if (assessmentWorkbenchHasFinalResult(saved) && section === "in_progress") show("feedback");
   };
-  const mayReassign = current && !finalized && !row.assessmentCompletedAt && row.assessmentKind === "one_to_one" && canManageAssessor && Boolean(row.invitationId);
+  const mayReassign = !finalized && !row.assessmentCompletedAt && row.assessmentKind === "one_to_one" && canManageAssessor && Boolean(row.invitationId);
   const panelId = (value: AssessmentStage) => "assessment-stage-" + row.id + "-" + value;
 
   const evidence = <section className="min-w-0" data-assessment-evidence>
     {completed && <ReferenceValidity value={row.referenceValidity} locale={locale} details />}
-    <h3 className="text-xs font-medium">{current ? row.assessment?.resultSource === "quick_entry" ? quickT("quickEvidence") : t("teacherEvidence") : recordM.historicalFeedback}</h3>
-    <p className="mt-2 whitespace-pre-wrap text-xs leading-6">{(current ? conclusion : uniqueBusinessFeedback(conclusion, row.assessment?.parentConcerns)) || t("conclusionPending")}</p>
+    <h3 className="text-xs font-medium">{row.assessment?.resultSource === "quick_entry" ? quickT("quickEvidence") : t("teacherEvidence")}</h3>
+    <p className="mt-2 whitespace-pre-wrap text-xs leading-6">{conclusion || t("conclusionPending")}</p>
     {row.questionSummary ? <>
       <div className="mt-3 flex flex-wrap gap-1">{TEACHER_ASSESSMENT_OUTCOMES.map((status) => {
         const count = row.questionSummary?.outcomeCounts[status] ?? 0;
@@ -111,7 +107,6 @@ export function AssessmentRecordDetails({
     </> : null}
   </section>;
 
-  if (!current) return <div data-assessment-workbench-detail={row.id}>{evidence}</div>;
   const renderEntry = (entry: AssessmentEntryParts) => <AssessmentClassificationPanel
     key={row.id + ":" + (row.workflow?.contactedAt ?? "draft")} id={`assessment-classification-${row.id}`}
     workflow={row.workflow} disabled={!canWrite} pending={pending || Boolean(entry.followup.pending)} locale={locale}

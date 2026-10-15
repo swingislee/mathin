@@ -9,6 +9,12 @@ export const statusEvidenceSchema = z.object({
 });
 export type StatusEvidence = z.infer<typeof statusEvidenceSchema>;
 export type StatusFacet = 'wechat' | 'interest' | 'visit' | 'assessment';
+/** 阶段表随写入与导入整理的微信、意向、到访与测评等级；与小状态同源。 */
+export interface StoredStatus { wechat: 'yes' | 'no' | null; interest: string | null; visit: 'arrived' | 'promised' | null; visitOn: string | null; band?: string | null }
+export function storedStatusValue(stored: StoredStatus | null | undefined, facet: StatusFacet) {
+  if (!stored) return null;
+  return facet === 'assessment' ? stored.band ?? null : stored[facet];
+}
 const phases: Record<string, number> = { acquisition: 0, confirmation: 1, followup: 2, current: 3 };
 function sameSource(a: StatusEvidence, b: StatusEvidence) {
   return Boolean(a.logicalKey && a.logicalKey === b.logicalKey || a.sourceId && a.sourceId === b.sourceId);

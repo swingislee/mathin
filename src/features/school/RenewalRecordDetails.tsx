@@ -16,8 +16,7 @@ import { cn } from "@/lib/utils";
 import { createTeacherProfessionalSignalAction } from "./actions/renewals";
 import { BusinessRecordRevisionButton } from "./BusinessRecordRevisionButton";
 import {SourceUseButton} from './SourceUseButton';
-import { HistoricalRecordBadge } from "./BusinessRecordStateFilter";
-import { businessRecordMessages, isCurrentBusinessRecord, type BusinessRecordState } from "./business-record-state-contract";
+import { businessRecordMessages } from "./business-record-messages";
 import { FollowupEntryFields, FollowupEntryLayout } from "./FollowupEntryFields";
 import { FollowupFieldIcon } from "./FollowupFieldIcon";
 import { FollowupChoice, followupToneClasses, type FollowupTone } from "./dashboard-page/FollowupChoice";
@@ -54,7 +53,10 @@ export interface RenewalPoolRow {
   updatedAt: string | null;
   record?: RenewalWorkbenchRecord;
   payment?: RenewalPayment;
-  recordState?: BusinessRecordState;
+  /** 来源表导入的续报结果：只读，改动走来源修订。 */
+  sourceRecord?: boolean;
+  /** 期次文字，供按时间筛选。 */
+  period?: string;
   sourceRecordId?: string;
   ownerId?: string | null;
   classroomId?: string | null;
@@ -92,8 +94,8 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
   const legacy = useTranslations("school.renewals");
   const policyT = useTranslations("school.renewals.healthSettings");
   const locale = useLocale(), recordM = businessRecordMessages(locale);
-  const historical = !isCurrentBusinessRecord(row.recordState);
-  const savedResult = historical ? (row.stage === "enrolled" ? "registered" : row.stage) : renewalResult(row.stage, row.payment);
+  const sourceRecord = Boolean(row.sourceRecord);
+  const savedResult = sourceRecord ? (row.stage === "enrolled" ? "registered" : row.stage) : renewalResult(row.stage, row.payment);
   const writable = canWrite && (!['registered', 'paid'].includes(savedResult) || canEnroll);
   const [draft, setDraft] = useState(() => draftFor(row));
   const [draftBaseline, setDraftBaseline] = useState(() => draftFor(row));
@@ -149,7 +151,7 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
   } });
   const pending = busy || save.pending || observe.pending;
   const submit = (advance: boolean) => {
-    if (!writable || historical || !row.membershipId || pending || !valid || conflict) return;
+    if (!writable || sourceRecord || !row.membershipId || pending || !valid || conflict) return;
     advanceRef.current = advance;
     save.run({ cycleId, membershipId: row.membershipId, expectedRevision: revision,
       result: draft.result, note: draft.note, contactMethod: draft.contactMethod, seasons: draft.seasons,
@@ -158,7 +160,7 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
       paidOn: paid ? draft.paidOn : null, paymentMethod: paid ? draft.paymentMethod : null });
   };
   const submitObservation = () => {
-    if (!canObserve || historical || !row.membershipId || pending || !observationNote.trim()) return;
+    if (!canObserve || sourceRecord || !row.membershipId || pending || !observationNote.trim()) return;
     observe.run({ studentId: row.studentId, sourceMembershipId: row.membershipId, sourceSessionId: null,
       signalType: observationType, recommendation: observationNote, suggestedCourseId: null, targetTermId: null });
   };
@@ -190,7 +192,7 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
   const open = () => { if (!pending) { if (active) onClose(); else onActivate(); } };
 
   return <>
-    <TableRow data-record-state={row.recordState ?? "current"} data-renewal-pool-row={row.id} data-followup-row-key={row.id} aria-busy={pending}
+    <TableRow data-source-record={sourceRecord || undefined} data-renewal-pool-row={row.id} data-followup-row-key={row.id} aria-busy={pending}
       data-followup-active={active} data-followup-expanded={active} tabIndex={0} aria-expanded={active} aria-controls={detailId}
       className="cursor-pointer [&>td]:px-2 [&>td]:py-2" onKeyDown={keyDown}
       onClick={event => { if (!(event.target as HTMLElement).closest("button,a,input,textarea,select,[role='combobox']")) open(); }}>
@@ -198,16 +200,15 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
         {sampleMode ? <Button size="sm" variant="ghost" className="h-auto whitespace-normal px-1 text-xs" aria-expanded={active} onClick={open}>{row.name}</Button>
           : <FollowupPersonCell name={row.name} phone={row.phone} grade={grade} owner={row.owner} expanded={active} detailsId={detailId} onToggle={open}
             subject={{ studentId: row.studentId, leadId: null }} studentGrade={row.grade} />}
-        {historical ? <HistoricalRecordBadge locale={locale} /> : null}
       </TableCell>
       <TableCell mobileLabel={`${pool("classroom")} / ${t("teacher")}`} className="align-top"><p className="line-clamp-2 leading-5" title={row.classroom}>{row.classroom || "—"}</p><p className="mt-1 truncate text-[11px] text-muted">{row.teacher || t("teacherMissing")}</p></TableCell>
       <TableCell mobileLabel={t("arrangement")} className="align-top"><p className="leading-5">{row.record?.seasons.length ? row.record.seasons.map(value => t(`season_${value}`)).join(" / ") : "—"}</p><p className="mt-1 text-[11px] text-muted">{row.record?.contactMethod ? t(`contact_${row.record.contactMethod}`) : "—"}</p></TableCell>
       <TableCell mobileLabel={t("learning")} className="align-top"><Button type="button" size="sm" variant="ghost" disabled={pending} className="h-auto w-full justify-start whitespace-normal px-0 text-left text-xs" onClick={() => show("learning")}>
-        <span className="line-clamp-2 leading-5">{currentObservation || (historical ? "—" : pool("noObservation"))}</span></Button>
-        {!historical ? <p className={cn("mt-1 text-[11px]", followupToneClasses[healthTone(renewalHealthLevel(health))])}>{healthAvailable ? pool(renewalHealthLevel(health)) : pool("unavailable")}</p> : null}
+        <span className="line-clamp-2 leading-5">{currentObservation || (sourceRecord ? "—" : pool("noObservation"))}</span></Button>
+        {!sourceRecord ? <p className={cn("mt-1 text-[11px]", followupToneClasses[healthTone(renewalHealthLevel(health))])}>{healthAvailable ? pool(renewalHealthLevel(health)) : pool("unavailable")}</p> : null}
       </TableCell>
       <TableCell mobileSpan="secondary" className="align-top"><Badge variant="outline" className={cn("max-w-full whitespace-normal text-[11px]", followupToneClasses[renewalResultTone(savedResult)])}>{resultLabel}</Badge>
-        {!historical ? <div className="mt-1.5 flex items-center gap-1" aria-label={t("progress")}>
+        {!sourceRecord ? <div className="mt-1.5 flex items-center gap-1" aria-label={t("progress")}>
           {RENEWAL_PANELS.map((value, index) => <Button key={value} type="button" size="sm" variant="ghost" className="size-6 rounded-full p-0 text-[10px]" disabled={pending}
             title={t(`panel_${value}`)} aria-label={t(`panel_${value}`)} onClick={() => show(value)}>
             <span className={cn("flex size-4 items-center justify-center rounded-full border", active && section === value ? "border-crater bg-moon/60" : "border-line text-muted")}>{index + 1}</span>
@@ -224,36 +225,36 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
       onOpenChange={value => { if (!value && !pending) onClose(); }} onSubmit={() => submit(false)}>
       {() => <div data-renewal-entry-detail onKeyDown={keyDown}>
         <FollowupEntryLayout data-renewal-detail-layout>
-          <FollowupEntryFields id={detailId} layout="stage" note={historical ? row.note : draft.note} onNoteChange={note => patch({ note })}
-            noteLabel={t("note")} placeholder={t("notePlaceholder")} readOnly={!writable || historical} pending={pending}
+          <FollowupEntryFields id={detailId} layout="stage" note={sourceRecord ? row.note : draft.note} onNoteChange={note => patch({ note })}
+            noteLabel={t("note")} placeholder={t("notePlaceholder")} readOnly={!writable || sourceRecord} pending={pending}
             onSave={submit} saveDisabled={!valid || conflict} canAdvance={canAdvance} saveLabel={t("save")}
             hint={conflict ? t("conflict") : paid && !valid ? t("paymentRequired") : t("keys")}
             reminderContent={<div className="space-y-1.5"><Label htmlFor={`${detailId}-next`} className="text-xs text-muted">{t("nextContact")}</Label>
-              {historical ? <p className="text-xs">{formatDashboardDate(row.nextContactAt, { locale, timeZone, now }, { time: true })}</p> : <DateTimePicker id={`${detailId}-next`} mode="datetime" disabled={!writable || pending || !nextAllowed}
+              {sourceRecord ? <p className="text-xs">{formatDashboardDate(row.nextContactAt, { locale, timeZone, now }, { time: true })}</p> : <DateTimePicker id={`${detailId}-next`} mode="datetime" disabled={!writable || pending || !nextAllowed}
                 value={draft.nextContactAt ? zonedDateTimeInputValue(new Date(draft.nextContactAt), "Asia/Shanghai") : ""}
                 onValueChange={value => patch({ nextContactAt: value ? dateTimeInputToInstant(value, "Asia/Shanghai")?.toISOString() ?? null : null })}
                 className="h-auto min-h-9 w-full whitespace-normal bg-card text-xs" />}
-              {!historical && !nextAllowed ? <p className="text-[11px] text-muted">{t("nextContactClosed")}</p> : null}
+              {!sourceRecord && !nextAllowed ? <p className="text-[11px] text-muted">{t("nextContactClosed")}</p> : null}
             </div>}
-            tools={historical ? <><BusinessRecordRevisionButton kind="renewal" recordId={row.opportunityId!} subject={row.name} />
+            tools={sourceRecord ? <><BusinessRecordRevisionButton kind="renewal" recordId={row.opportunityId!} subject={row.name} />
               {row.sourceRecordId?<SourceUseButton recordId={row.sourceRecordId} locale={locale} studentId={row.studentId||undefined} linked={Boolean(row.studentId)} context="renewal" label={locale==='en'?'Check student':'核对学生'}/>:null}
               {row.studentId?<Link href={`/dashboard/students/${row.studentId}?tab=history&history=renewal`} className="text-xs underline">{recordM.viewStudent}</Link>:null}</> : undefined}
             stageHeader={<div data-renewal-detail-header className="col-start-1 row-start-1 min-w-0 space-y-3">
               <div data-renewal-tags className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2">
                 <div className="flex min-h-8 items-center gap-2"><FollowupFieldIcon icon={Signpost} label={t("result")} className="fill-moon text-crater" />
-                  {historical ? <span className="text-xs">{resultLabel}</span> : <FollowupChoice label={t("result")} value={draft.result} disabled={!writable || pending} className="min-h-8 w-32 py-1"
+                  {sourceRecord ? <span className="text-xs">{resultLabel}</span> : <FollowupChoice label={t("result")} value={draft.result} disabled={!writable || pending} className="min-h-8 w-32 py-1"
                     options={RENEWAL_RESULTS.filter(value => value === draft.result || renewalResultCanBeSelected(value, savedResult, canEnroll)).map(value => ({ value, label: `${RENEWAL_RESULTS.indexOf(value) + 1} ${t(`result_${value}`)}`, tone: renewalResultTone(value) }))}
                     onValueChange={value => choose(value as RenewalResult)} />}
                 </div>
                 <div className="flex min-h-8 items-center gap-2"><FollowupFieldIcon icon={MessagesSquare} label={t("contactMethod")} className="fill-leaf/50 text-leaf-deep" />
-                  <FollowupChoice label={t("contactMethod")} value={draft.contactMethod ?? "none"} disabled={!writable || pending || historical} className="min-h-8 w-32 py-1"
+                  <FollowupChoice label={t("contactMethod")} value={draft.contactMethod ?? "none"} disabled={!writable || pending || sourceRecord} className="min-h-8 w-32 py-1"
                     options={[{ value: "none", label: t("notRecorded") }, ...RENEWAL_CONTACT_METHODS.map(value => ({ value, label: t(`contact_${value}`) }))]}
                     onValueChange={value => patch({ contactMethod: value === "none" ? null : value as RenewalWorkbenchDraft["contactMethod"] })} />
                 </div>
                 <div className="flex min-h-8 max-w-full flex-wrap items-center gap-2"><FollowupFieldIcon icon={CalendarRange} label={t("seasons")} className="fill-cheek/60 text-crater" />
                   <div role="group" aria-label={t("seasons")} className="flex flex-wrap gap-1">{RENEWAL_SEASONS.map(value => <Button key={value} type="button" size="sm" variant="ghost"
                     className={cn("h-7 min-w-8 rounded-md border px-2 text-xs", draft.seasons.includes(value) ? "border-crater bg-moon/50" : "border-transparent text-muted")}
-                    aria-pressed={draft.seasons.includes(value)} disabled={!writable || pending || historical}
+                    aria-pressed={draft.seasons.includes(value)} disabled={!writable || pending || sourceRecord}
                     onClick={() => patch({ seasons: RENEWAL_SEASONS.filter(season => season === value ? !draft.seasons.includes(value) : draft.seasons.includes(season)) })}>{t(`season_${value}`)}</Button>)}</div>
                 </div>
               </div>
@@ -269,14 +270,14 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
             </div>}>
             <section id={`${detailId}-learning`} data-renewal-panel="learning" hidden={section !== "learning"} className="space-y-4">
               <div><h3 className="text-xs font-medium">{pool("recommendation")}</h3><p className="mt-2 whitespace-pre-wrap text-xs leading-6">{currentObservation || pool("noObservation")}</p></div>
-              {canObserve && !historical ? <div data-renewal-teacher-entry className="space-y-2" onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !event.nativeEvent.isComposing && !event.repeat) { event.preventDefault(); event.stopPropagation(); submitObservation(); } }}>
+              {canObserve && !sourceRecord ? <div data-renewal-teacher-entry className="space-y-2" onKeyDown={event => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && !event.nativeEvent.isComposing && !event.repeat) { event.preventDefault(); event.stopPropagation(); submitObservation(); } }}>
                 <Label className="text-xs" htmlFor={`${detailId}-observation`}>{pool("observe")}</Label>
                 <FollowupChoice label={pool("signalType")} value={observationType} disabled={pending} className="w-44"
                   options={TEACHER_PROFESSIONAL_SIGNAL_TYPES.map(value => ({ value, label: legacy(`signalType_${value}`) }))} onValueChange={value => setObservationType(value as TeacherProfessionalSignalType)} />
                 <Textarea id={`${detailId}-observation`} value={observationNote} rows={3} maxLength={2000} disabled={pending} className="bg-card text-sm" onChange={event => setObservationNote(event.target.value)} />
                 <Button type="button" size="sm" variant="secondary" disabled={pending || !observationNote.trim()} onClick={submitObservation}><Pencil className="size-3.5" />{t("saveObservation")}</Button>
               </div> : null}
-              {!historical ? <div className="space-y-2"><h3 className="text-xs font-medium">{pool("healthTitle")}</h3><p className="text-[11px] text-muted">{policyT("windowHint", { days: policy.windowDays })}</p>
+              {!sourceRecord ? <div className="space-y-2"><h3 className="text-xs font-medium">{pool("healthTitle")}</h3><p className="text-[11px] text-muted">{policyT("windowHint", { days: policy.windowDays })}</p>
                 {!healthAvailable ? <p className="text-xs text-muted">{pool("unavailable")}</p> : <div className="grid gap-x-5 gap-y-3 @[34rem]/followup-entry:grid-cols-2">{health.map(signal => <div key={signal.key} className="min-w-0 space-y-1 text-xs">
                   <div className="flex items-center justify-between gap-2"><span>{pool(signal.key)}</span><Badge variant="outline" className={cn("text-[10px]", followupToneClasses[healthTone(signal.level)])}>{pool(signal.level)}</Badge></div>
                   {signal.key !== "unavailable" ? <><p className="text-[11px]">{policyT(`facts_${signal.key}`, { count: signal.count ?? 0, total: signal.total ?? 0 })}</p>
@@ -287,22 +288,22 @@ export function RenewalEntryRow({ row, cycleId, cycleName, targetTerm, health, h
             <section id={`${detailId}-communication`} data-renewal-panel="communication" hidden={section !== "communication"} className="space-y-4">
               <dl className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs"><div><dt className="text-muted">{t("sourceClass")}</dt><dd className="mt-1 leading-5">{row.classroom || "—"}</dd></div>
                 <div><dt className="text-muted">{t("teacher")}</dt><dd className="mt-1">{row.teacher || "—"}</dd></div><div><dt className="text-muted">{pool("owner")}</dt><dd className="mt-1">{row.owner || "—"}</dd></div>
-                <div><dt className="text-muted">{t("targetTerm")}</dt><dd className="mt-1">{historical ? "—" : targetTerm || "—"}</dd></div></dl>
+                <div><dt className="text-muted">{t("targetTerm")}</dt><dd className="mt-1">{sourceRecord ? "—" : targetTerm || "—"}</dd></div></dl>
               <div><h3 className="text-xs font-medium">{t("communicationFocus")}</h3><p className="mt-2 text-xs leading-6 text-muted">{t(`hint_${draft.result}`)}</p></div>
               {currentObservation ? <div><h3 className="text-xs font-medium">{pool("recommendation")}</h3><p className="mt-2 whitespace-pre-wrap text-xs leading-6">{currentObservation}</p></div> : null}
             </section>
             <section id={`${detailId}-registration`} data-renewal-panel="registration" hidden={section !== "registration"} className="space-y-4">
-              <dl className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs"><div><dt className="text-muted">{pool("cycle")}</dt><dd className="mt-1">{historical ? "—" : cycleName || "—"}</dd></div>
+              <dl className="grid grid-cols-2 gap-x-5 gap-y-3 text-xs"><div><dt className="text-muted">{pool("cycle")}</dt><dd className="mt-1">{sourceRecord ? "—" : cycleName || "—"}</dd></div>
                 <div><dt className="text-muted">{legacy("targetCourse")}</dt><dd className="mt-1">{row.targetCourse || "—"}</dd></div></dl>
               <p className="text-xs leading-6 text-muted">{t("registrationScope")}</p>
-              {paid && !historical ? <div data-renewal-payment-fields className="grid grid-cols-2 gap-4">
+              {paid && !sourceRecord ? <div data-renewal-payment-fields className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5"><Label htmlFor={`${detailId}-periods`} className="text-xs">{pool("periods")}</Label><Input id={`${detailId}-periods`} type="number" min={1} max={24} step={1} value={draft.periodCount} disabled={!writable || pending} className="h-9 bg-card text-xs" onChange={event => patch({ periodCount: event.target.value })} /></div>
                 <div className="space-y-1.5"><Label htmlFor={`${detailId}-amount`} className="text-xs">{pool("amount")}</Label><Input id={`${detailId}-amount`} type="number" min="0.01" max="1000000" step="0.01" value={draft.paidAmount} disabled={!writable || pending} className="h-9 bg-card text-xs" onChange={event => patch({ paidAmount: event.target.value })} /></div>
                 <div className="space-y-1.5"><Label htmlFor={`${detailId}-paidOn`} className="text-xs">{t("paidOn")}</Label><DateTimePicker id={`${detailId}-paidOn`} mode="date" value={draft.paidOn} disabled={!writable || pending} onValueChange={value => patch({ paidOn: value })} className="h-9 bg-card text-xs" /></div>
                 <div className="space-y-1.5"><Label className="text-xs">{t("paymentMethod")}</Label><FollowupChoice label={t("paymentMethod")} value={draft.paymentMethod ?? "none"} disabled={!writable || pending} className="min-h-9 w-full"
                   options={[{ value: "none", label: t("notRecorded") }, ...RENEWAL_PAYMENT_METHODS.map(value => ({ value, label: t(`payment_${value}`) }))]}
                   onValueChange={value => patch({ paymentMethod: value === "none" ? null : value as RenewalWorkbenchDraft["paymentMethod"] })} /></div>
-              </div> : <p className="text-xs leading-6">{historical ? resultLabel : t(`hint_${draft.result}`)}</p>}
+              </div> : <p className="text-xs leading-6">{sourceRecord ? resultLabel : t(`hint_${draft.result}`)}</p>}
               {savedResult === "registered" || savedResult === "paid" ? <p className="text-[11px] leading-5 text-muted">{t("enrollmentLocked")}</p> : null}
             </section>
           </FollowupEntryFields>

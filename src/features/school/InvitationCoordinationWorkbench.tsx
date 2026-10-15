@@ -10,7 +10,7 @@ import { StudentStageOwnerControl } from './StudentStageAssignmentControl';
 import dynamic from 'next/dynamic';
 import { studentStageMessages } from './student-stage-messages';
 import { firstContactRowMessages } from './first-contact-row-messages';
-import { businessRecordMessages } from './business-record-state-contract';
+import { businessRecordMessages } from './business-record-messages';
 import type { HistoricalFirstContactRow } from './historical-first-contact-contract';
 
 import { Check, ChevronDown, ChevronRight, Copy, LoaderCircle } from "lucide-react";
@@ -851,7 +851,7 @@ export function InvitationCoordinationWorkbench({ rows, activities, assessors, l
     const ownerControl = canAssign && statusRow ? <StudentStageOwnerControl row={statusRow} assignees={assignees}
       locale={locale} context="lead" disabled={assigning || savingIds.size > 0} onBusyChange={setAssigning} onAssigned={() => router.refresh()} /> : undefined;
     if (row.source === 'profile') return <FirstContactRecordRow key={canonicalKey} locale={locale} record={{
-      key: canonicalKey, state: firstContactOnly ? 'current' : 'historical', missingFirstContact: true,
+      key: canonicalKey, missingFirstContact: true,
       statusContent: statusRow ? <RecordStatusIcons row={statusRow} locale={locale} /> : undefined,
       person: { name: row.value.name, phone: row.value.phone, owner: statusRow?.ownerName, grade: gradeOf(row) || t('gradePending'),
         subject: { studentId: row.value.studentId, leadId: null }, studentGrade: row.value.grade },

@@ -8,8 +8,7 @@ import { FollowupTableRecord, type FollowupRowState } from "./dashboard-page/Fol
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import {sourceCompletionMessages} from './source-completion-contract';
 
-import { useBusinessSearchQuery } from './BusinessRecordStateFilter';
-import { isCurrentBusinessRecord } from './business-record-state-contract';
+import { useBusinessSearchQuery } from './business-search-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, UserCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -140,13 +139,13 @@ export function AssessmentUnifiedWorkbench({
   const initialDrafts = useMemo(() => Object.fromEntries(
     initialRows.map((row) => [row.id, draftFromRow(row)]),
   ), [initialRows]);
-  const [currentRows, setRows] = useState(() => initialRows.filter(row => isCurrentBusinessRecord(row.recordState)));
+  const [currentRows, setRows] = useState(initialRows);
   const [loadedRows,setLoadedRows]=useState(initialRows);
   if(loadedRows!==initialRows){
     setLoadedRows(initialRows);
     setRows(previous=>{
       const saved=new Map(previous.map(row=>[row.id,row]));
-      return initialRows.filter(row=>isCurrentBusinessRecord(row.recordState)).map(row=>{
+      return initialRows.map(row=>{
         const local=saved.get(row.id);
         return local&&local.updatedAt>row.updatedAt?local:row;
       });
@@ -154,7 +153,7 @@ export function AssessmentUnifiedWorkbench({
   }
   const rows = useMemo(() => {
     const currentById = new Map(currentRows.map(row => [row.id, row]));
-    return initialRows.map(row => isCurrentBusinessRecord(row.recordState) ? currentById.get(row.id) ?? row : row);
+    return initialRows.map(row => currentById.get(row.id) ?? row);
   }, [currentRows, initialRows]);
   const [drafts, setDrafts] = useState<Record<string, SupportDraft>>(initialDrafts);
   const [localQuery, setLocalQuery] = useBusinessSearchQuery("assessments",initialQuery);
@@ -169,7 +168,7 @@ export function AssessmentUnifiedWorkbench({
   const [retainedView, setRetainedView] = useState<{ key: string; ids: string[] } | null>(null);
   const [reassigningId, setReassigningId] = useState<string | null>(null);
   const paged = Boolean(pageControl);
-  const scopedRows = useMemo(() => paged ? rows : assessmentSearchRows(rows, query, 'all', locale), [paged, locale, query, rows]);
+  const scopedRows = useMemo(() => paged ? rows : assessmentSearchRows(rows, query, locale), [paged, locale, query, rows]);
   const fields = useMemo(() => assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT,
     stageFor: row => queueFor(row, drafts[row.id]),
   }), [locale, timeZone, tableT, assessmentT, t, teacherT, quickT, drafts]);
@@ -250,10 +249,9 @@ export function AssessmentUnifiedWorkbench({
   }, [assessors, retainCurrentView, t]);
   const renderRow = useCallback((row: AssessmentWorkbenchRow, state: FollowupRowState) => {
     const { active, expanded, retained } = state;
-    const current = isCurrentBusinessRecord(row.recordState);
     const closed=assessmentAppointmentClosed(row);
-    const mayAssess = current && canAssess && !closed;
-    const maySupport = current && canSupport;
+    const mayAssess = canAssess && !closed;
+    const maySupport = canSupport;
     const draft = drafts[row.id];
     const stage = queueFor(row, draft);
     const completed = assessmentWorkbenchHasFinalResult(row);
@@ -269,7 +267,6 @@ export function AssessmentUnifiedWorkbench({
     return (
       <ActivityAssessmentDraftProvider key={row.id} row={row}>
         <TableRow
-          data-record-state={row.recordState ?? "current"}
           data-followup-row-key={row.id}
           data-followup-active={active}
           data-followup-expanded={expanded}
@@ -301,7 +298,7 @@ export function AssessmentUnifiedWorkbench({
           </TableCell>
           <TableCell mobileSpan="secondary" data-assessment-state-kind className="px-2 py-2">
             <div className="flex min-w-0 flex-col items-start gap-1">
-              <AssessmentStatusTags row={row} locale={locale} showStatus={current || closed || Boolean(row.sourceEnrollmentFacts?.confirmed)} />
+              <AssessmentStatusTags row={row} locale={locale} showStatus />
               {row.assessmentKind !== "one_to_one" ? <Badge variant="outline" className="whitespace-nowrap border-line bg-line/20 text-muted">{t(`type_${row.assessmentKind}`)}</Badge> : null}
             </div>
           </TableCell>
@@ -335,9 +332,9 @@ export function AssessmentUnifiedWorkbench({
             ) : <p className="truncate font-medium text-muted">{completed ? "—" : t(stage === "pending" ? "waitingStart" : "stageInProgress")}</p>}
             {completed && <ReferenceValidity value={row.referenceValidity} locale={locale} />}
             {row.questionSummary?.paperTitle ? <p className="mt-0.5 truncate text-[11px] text-muted">{row.questionSummary.paperTitle}</p> : null}
-            {current && row.quickEntry && !row.quickEntry.finalizedAt && !row.assessmentCompletedAt ? <p className="mt-1 text-[11px] text-crater" data-assessment-pending-result>
+            {row.quickEntry && !row.quickEntry.finalizedAt && !row.assessmentCompletedAt ? <p className="mt-1 text-[11px] text-crater" data-assessment-pending-result>
               {quickT("pendingResult")}{row.quickEntry.values.score !== null ? ` · ${row.quickEntry.values.score}` : ""}</p> : null}
-            {current && row.assessment?.resultSource && row.assessment.resultSource !== "legacy" ? <p className="mt-1 text-[11px] text-muted">
+            {row.assessment?.resultSource && row.assessment.resultSource !== "legacy" ? <p className="mt-1 text-[11px] text-muted">
               {quickT(row.assessment.resultSource === "quick_entry" ? "quickResult" : "teacherResult")}{row.assessment.recordedByName ? ` · ${row.assessment.recordedByName}` : ""}</p> : null}
           </TableCell>
           <TableCell mobileLabel={t("teacherColumn")} className="px-2 py-2">
@@ -346,7 +343,7 @@ export function AssessmentUnifiedWorkbench({
             </p>
           </TableCell>
           <TableCell mobileLabel={t("statusColumn")} data-assessment-current-work className="px-2 py-2">
-            {current && !closed && row.workflow?.nextContactAt ? <p className="mb-1 text-[11px] text-crater" data-assessment-next-contact>
+            {!closed && row.workflow?.nextContactAt ? <p className="mb-1 text-[11px] text-crater" data-assessment-next-contact>
               <time dateTime={row.workflow.nextContactAt}>{formatDashboardDate(row.workflow.nextContactAt, dateContext, { time: true })}</time>
             </p> : null}
             <div className="flex min-w-0 items-center gap-1.5 text-[11px]">
@@ -355,7 +352,6 @@ export function AssessmentUnifiedWorkbench({
                 {row.assessorSource === "actual" ? <UserCheck aria-hidden className="size-4 text-leaf-deep" /> : <CalendarClock aria-hidden className="size-4 text-crater" />}
               </span>
               <span className="truncate font-medium text-ink" title={row.assessorName || undefined}>{row.assessorName || "—"}</span>
-              {!current && row.assessment ? <BusinessRecordRevisionButton kind="assessment" recordId={row.assessment.id} subject={row.name}/> : null}
             </div>
             {mayAssess && row.assessmentKind === "one_to_one" ? <div className="mt-1" data-assessment-question-entry
               title={quickT(row.assessmentCompletedAt ? "questionCompleted" : row.assessmentStartedAt ? "questionInProgress" : row.teacherRequired ? "questionRequired" : "questionOptional")}>
@@ -364,7 +360,7 @@ export function AssessmentUnifiedWorkbench({
           </TableCell>
           <TableCell mobileLabel={fieldM.recordedAt} data-assessment-latest-update className="px-2 py-2 text-[11px] text-muted">
             <p className="truncate tabular-nums"><time dateTime={recordedAt ?? undefined} title={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })} aria-label={formatDashboardDate(recordedAt, dateContext, { time: true, full: true })}>{formatDashboardDate(recordedAt, dateContext, { time: true })}</time></p>
-            {current && latestContext?.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{latestContext}</p> : null}
+            {latestContext?.trim() ? <p data-current-situation className="mt-0.5 truncate leading-4">{latestContext}</p> : null}
           </TableCell>
         </TableRow>
 
@@ -380,7 +376,7 @@ export function AssessmentUnifiedWorkbench({
             onLoaded={detail => setRows(current => current.map(candidate => candidate.id === detail.id && candidate.listSummary
               && candidate.updatedAt === row.updatedAt ? detail : candidate))}
             canAssess={mayAssess} canSupport={maySupport} canManageAssessor={canManageAssessor}
-            canQuickEntry={current && canQuickEntry} canRoute={current && canManageAssessor}
+            canQuickEntry={canQuickEntry} canRoute={canManageAssessor}
             assessors={assessors} reassigning={reassigningId === row.id} onReassign={(id) => reassignAssessor(row, id)}
             onSaved={saveRow} onNoteSaved={(entry) => saveQuickFollowUp(row, entry.content, entry.createdAt)}
             onSaveAndNext={nextAssessmentWorkbenchRowId(visibleRows.map((item) => item.id), row.id) ? () => advanceFrom(row.id) : undefined}

@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { workMessages, type SourceLayout } from './contract';
+import { periodLabel } from './period-selection';
 
 export function MonthMultiSelect({ data, locale, disabled, onChange }: {
   data: SourceLayout; locale: string; disabled?: boolean; onChange: (period: string) => void;
@@ -13,7 +14,7 @@ export function MonthMultiSelect({ data, locale, disabled, onChange }: {
   const [selected, setSelected] = useState<string[]>([]);
   const m = workMessages(locale), en = locale.startsWith('en');
   const current = data.period && data.period !== 'all' ? data.period.split(',') : [];
-  const label = (key: string) => key === 'unknown' ? m.unknownPeriod : key;
+  const label = (key: string) => periodLabel(key, locale);
   const description = current.length ? current.map(label).join(en ? ', ' : '、') : m.allPeriods;
   const summary = current.length > 2 ? en ? `${current.length} months` : `${current.length} 个月` : description;
   // 零结果筛选仍保留已选月份，便于直接取消。

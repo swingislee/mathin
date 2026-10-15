@@ -68,7 +68,6 @@ interface ActivityDbRow {
   title: string;
   scheduled_at: string | null;
   occurred_on: string | null;
-  record_state: 'current' | 'historical';
   location: string;
   remark: string;
   source_invitation_id: string | null;
@@ -153,7 +152,6 @@ interface RouteDbRow {
 }
 
 interface FollowUpDbRow {
-  record_state: 'current' | 'historical';
   id: string;
   student_id: string;
   content: string;
@@ -204,7 +202,7 @@ const INVITATION_COLUMNS = [
 const ACTIVITY_COLUMNS = [
   "rescheduled_at",
   "id",
-  "record_state,occurred_on",
+  "occurred_on",
   "kind",
   "title",
   "scheduled_at",
@@ -312,7 +310,7 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
   const [
     assessmentResult,
     routeResult,
-    historicalInvitationResult,
+    sourceInvitationResult,
     paperVersionResult,
     questionResult,
     publicClassSegmentResult,
@@ -331,7 +329,7 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
     readRelatedRows<QuestionResultDbRow>(supabase, "assessment_question_results", "activity_registration_id,question_id,outcome,note", "activity_registration_id", registrationIds),
     readRelatedRows<PublicClassSegmentDbRow>(supabase, "public_class_segments", "id,activity_id,kind,title,scheduled_at,location,primary_teacher_id,primary_teacher:profiles!public_class_segments_primary_teacher_id_fkey(display_name)", "activity_id", publicClassActivityIds),
     readRelatedRows<PublicClassRecordDbRow>(supabase, "public_class_participant_records", "id,segment_id,registration_id,student_presence,guardian_presence,learning_observation,assessment_summary,parent_feedback,recommendation,updated_at", "activity_id", publicClassActivityIds),
-    readRelatedRows<FollowUpDbRow>(supabase, "business_student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at,record_state", "student_id", followUpStudentIds),
+    readRelatedRows<FollowUpDbRow>(supabase, "business_student_follow_ups", "id,student_id,content,kind,next_follow_up_at,status_after,created_at", "student_id", followUpStudentIds),
     readRelatedRows<QuickEntryDbRow>(supabase, "assessment_quick_entries", "id,registration_id,entry,revision,recorded_by,updated_at,finalized_at,recorder:profiles!assessment_quick_entries_recorded_by_fkey(display_name)", "registration_id", registrationIds),
     readRelatedRows<EntryActorDbRow>(supabase, "assessment_entry_actors", "id,registration_id,entry_kind,recorded_by,recorded_at,display_name", "registration_id", registrationIds),
     readRelatedRows<AssessmentWorkflowDbRow>(supabase, "assessment_workflow_states", ASSESSMENT_WORKFLOW_COLUMNS, "registration_id", registrationIds),
@@ -345,7 +343,7 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
   ]);
   if (assessmentResult.error) throw new Error(assessmentResult.error.message);
   if (routeResult.error) throw new Error(routeResult.error.message);
-  if (historicalInvitationResult.error) throw new Error(historicalInvitationResult.error.message);
+  if (sourceInvitationResult.error) throw new Error(sourceInvitationResult.error.message);
   if (paperVersionResult.error) throw new Error(paperVersionResult.error.message);
   if (questionResult.error) throw new Error(questionResult.error.message);
   if (publicClassSegmentResult.error) throw new Error(publicClassSegmentResult.error.message);
@@ -417,7 +415,6 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
   }
   const latestFollowUps = new Map<string, AssessmentWorkbenchFollowUp>();
   for (const row of followUpResult.data ?? []) {
-    if (row.record_state === 'historical') continue;
     const current = latestFollowUps.get(row.student_id);
     if (!current || row.created_at > current.createdAt) {
       latestFollowUps.set(row.student_id, {
@@ -431,7 +428,7 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
     }
   }
   const invitations = new Map<string, InvitationDbRow>();
-  for (const row of historicalInvitationResult.data ?? []) invitations.set(row.id, row);
+  for (const row of sourceInvitationResult.data ?? []) invitations.set(row.id, row);
   for (const row of confirmedInvitationResult.data ?? []) invitations.set(row.id, row);
 
   const paperById = new Map((paperResult.data ?? []).map((row) => [row.id, row]));
@@ -525,7 +522,6 @@ export async function listAssessmentWorkbenchRows(subject?: { studentId: string 
         gradeText: lead?.grade_text ?? "",
         scheduledAt: activity.scheduled_at ?? '',
         rescheduledAt: [activity.rescheduled_at, invitation?.rescheduled_at].filter((value): value is string => Boolean(value)).sort().at(-1) ?? null,
-        recordState: activity.record_state,
         occurredOn: assessmentDates.get(registration.id) ?? activity.occurred_on,
         location: activity.location,
         assessorId: completed && actualAssessorId ? actualAssessorId : invitation?.assessor_id ?? actualAssessorId,

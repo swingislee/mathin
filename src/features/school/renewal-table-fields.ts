@@ -1,5 +1,4 @@
 import type { RenewalPoolRow } from "./RenewalRecordDetails";
-import { isCurrentBusinessRecord } from "./business-record-state-contract";
 import { followupTableMessages } from "./followup-table-messages";
 import { RENEWAL_SEASONS, RENEWAL_CONTACT_METHODS, RENEWAL_PAYMENT_METHODS } from "./renewal-workbench-contract";
 import type { DashboardFieldDefinitions, DashboardFieldOption } from "./dashboard-page/dashboard-table-field-contract";
@@ -7,7 +6,7 @@ import type { DashboardFieldDefinitions, DashboardFieldOption } from "./dashboar
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 const option = (value: string | null | undefined, label = value): DashboardFieldOption[] => value ? [{ value, label: label || value }] : [];
 export const RENEWAL_TABLE_COLUMNS = {
-  name: ["name", "phone", "grade", "owner"], classroom: ["classroom", "teacher", "sourceText"],
+  name: ["name", "phone", "grade", "owner"], classroom: ["classroom", "period", "teacher", "sourceText"],
   seasons: ["seasons", "targetTerm", "course", "contactMethod"], health: ["health", "observation"], stage: ["stage"],
   payment: ["paymentMethod", "amount", "paidOn", "periods"], next: ["nextAt", "due", "note"],
 } as const;
@@ -23,8 +22,9 @@ export function renewalTableFields({ locale, now, t, pool, resultFor, labelFor, 
     grade: { kind: "enum", label: m.grade, values: row => row.grade ? option(String(row.grade), String(row.grade)) : [], sortValue: row => row.grade },
     owner: { kind: "enum", label: m.owner, values: row => option(row.ownerId, row.owner), sortValue: row => row.ownerId ? row.owner : null },
     classroom: { kind: "enum", label: pool("classroom"), values: row => option(row.classroomId, row.classroom), sortValue: row => row.classroomId ? row.classroom : null },
+    period: { kind: "enum", label: locale.startsWith("zh") ? "期次" : "Period", values: row => option(row.period, row.period) },
     teacher: { kind: "enum", label: m.teacher, values: row => (row.teachers ?? []).flatMap(item => option(item.id, item.name)), sortValue: row => row.teachers?.length ? row.teacher : null },
-    sourceText: { kind: "text", label: m.sourceText, value: row => isCurrentBusinessRecord(row.recordState) ? "" : [row.classroom, row.teacher, row.note].join(" "), sortable: false },
+    sourceText: { kind: "text", label: m.sourceText, value: row => row.sourceRecord ? [row.classroom, row.teacher, row.note].join(" ") : "", sortable: false },
     seasons: { kind: "enum", label: t("seasons"), options: RENEWAL_SEASONS.map(value => ({ value, label: t(`season_${value}`) })),
       values: row => row.record?.seasons.flatMap(value => option(value, t(`season_${value}`))) ?? [],
       hint: locale.startsWith("zh") ? "按最早所选季节排序：寒、春、暑、秋。" : "Sort by earliest selected season: winter, spring, summer, autumn.",

@@ -49,7 +49,7 @@ export function assessmentScheduledDate(row: AssessmentWorkbenchRow, timeZone: s
 
 export function assessmentRecordDate(row: AssessmentWorkbenchRow): string | null {
   // 来源行的 updatedAt 可能是导入时间，只有实际发生日可以作为已知业务日期。
-  return row.sourceRecordId || row.recordState === "historical" ? row.occurredOn ?? null : row.updatedAt;
+  return row.sourceRecordId ? row.occurredOn ?? null : row.updatedAt;
 }
 
 export function assessmentTableConclusion(row: AssessmentWorkbenchRow): string {
@@ -104,12 +104,11 @@ export function assessmentTableFields({ locale, timeZone, tableT, assessmentT, t
     conclusion: { kind: "text", label: t("teacherColumn"), sortable: false, value: row => [assessmentTableConclusion(row), row.assessment?.strengths, row.assessment?.focusAreas, row.assessment?.parentConcerns].filter(Boolean).join("\n") },
     status: { kind: "enum", label: tableT("fieldStatus"), options: stages, multiple: false,
       values: row => assessmentAppointmentClosed(row)?option(row.participationStatus,row.participationStatus==='no_show'?sourceM.noShow:sourceM.cancelled)
-        : row.recordState === "historical" ? [] : option(stageFor(row), t(queueKeys[stageFor(row)])),
-      sortValue: row => row.recordState === "historical" ? null : ASSESSMENT_WORKBENCH_QUEUES.indexOf(stageFor(row)) },
+        : option(stageFor(row), t(queueKeys[stageFor(row)])),
+      sortValue: row => ASSESSMENT_WORKBENCH_QUEUES.indexOf(stageFor(row)) },
     substatus: { kind: "enum", label: statusM.substatus,
       options: ASSESSMENT_DETAIL_STATUSES.map(value => ({ value, label: statusM.labels[value] })),
-      values: row => row.recordState === "historical" && !assessmentAppointmentClosed(row) && !row.sourceEnrollmentFacts?.confirmed ? []
-        : assessmentDetailStatuses(row).map(value => ({ value, label: statusM.labels[value] })),
+      values: row => assessmentDetailStatuses(row).map(value => ({ value, label: statusM.labels[value] })),
       sortValue: row => ASSESSMENT_DETAIL_STATUSES.indexOf(assessmentDetailStatuses(row)[0]) },
     recordedAt: { kind: "date", label: m.recordedAt, hint: m.recordedHint, value: assessmentRecordDate },
   };

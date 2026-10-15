@@ -14,12 +14,16 @@ export function studentStageMessages(locale: string) {
     ready_to_enroll: "Interested in enrolling", awaiting_class: "Awaiting a class", not_enrolling: "Not enrolling for now",
     attending: "Attending", withdrawn: "Withdrawn", ended: "Course ended", payment_pending: "Payment to verify", nurturing: "Keep in touch",
     renewal_considering: "Considering renewal", renewal_committed: "Intends to renew", renewal_confirmed: "Renewed", not_renewing: "Not renewing this time",
+    callback: "Busy · call back", attempted: "Tried · outcome not recorded", following: "In conversation · invite", declined: "No current need",
+    promised: "Promised to visit", visited_untested: "Visited · not assessed", assessed_no_band: "Assessed · level not recorded", prepaid_next: "Prepaid next term",
   } : { not_contacted: "尚未联系", unreachable: "未接通 · 需再次联系", unassigned: "待分配", invalid_number: "号码无效",
     attended_without_result: "已到场 · 暂无测评结果",
     not_booked: "尚未预约", coordinating: "测评协调中", booked: "已约待测", no_show: "未到待重约", cancelled: "取消后待沟通",
     in_progress: "测评待完成", assessed: "测后未报", awaiting_reply: "待回复", considering: "考虑中", ready_to_enroll: "有意报名",
     awaiting_class: "已报名 · 待入班", not_enrolling: "暂不报名", attending: "在读", withdrawn: "已退课／停课", ended: "课程结束／未续报", payment_pending: "缴费待核实", nurturing: "长期关注",
-    renewal_considering: "续班考虑中", renewal_committed: "有意续班", renewal_confirmed: "本轮已续", not_renewing: "本轮不续" };
+    renewal_considering: "续班考虑中", renewal_committed: "有意续班", renewal_confirmed: "本轮已续", not_renewing: "本轮不续",
+    callback: "接通在忙 · 需回拨", attempted: "已联系 · 结果未记", following: "沟通中 · 待邀约", declined: "暂无需求",
+    promised: "已诺访", visited_untested: "到访过 · 未测评", assessed_no_band: "已测评 · 等级未录", prepaid_next: "已连报下期" };
   return {
     stages, details, title: en ? "Students" : "学生", name: en ? "Student / parent" : "学生／家长", phone: en ? "Phone" : "联系电话", state: en ? "Current situation" : "当前情况",
     background: en ? "Assessment / learning" : "测评／学习", owner: en ? "Learning support" : "学服", teacher: en ? "Teacher" : "老师", recent: en ? "Latest note" : "最近记录",

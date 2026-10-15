@@ -114,7 +114,7 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
       "20260903001100_school_ops_invitation_coordination.sql",
     );
     const page = read("src", "app", "[locale]", "dashboard", "communication", "page.tsx");
-    const worklistPage = read("src", "features", "school", "CommunicationWorklistPage.tsx");
+    const worklistPage = read("src", "features", "school", "source-worklist", "Page.tsx");
     const workbench = read("src", "features", "school", "InvitationCoordinationWorkbench.tsx");
     const draftFields = read("src", "features", "school", "InvitationDraftFields.tsx");
     const availabilityGrid = read("src", "features", "school", "AssessmentAvailabilityGrid.tsx");
@@ -150,10 +150,10 @@ describe("SCHOOL-OPS lead assignment and first-contact workbench", () => {
     expect(reminderMigration).toContain("'invitation_followup'");
     expect(reminderMigration).toContain("p_remind_at is not null and p_remind_at <= now()");
     expect(reminderMigration).toContain("lead_invitation_threads_close_reminder");
-    expect(page).toContain("CommunicationWorklistPage");
+    expect(page).toContain("source-worklist/Page");
     expect(worklistPage).toContain("InvitationCoordinationWorkbench");
-    expect(worklistPage).toContain("loadCommunicationWorkbench");
-    expect(worklistPage).toContain("contactLeads={data.contactLeads}");
+    expect(worklistPage).toContain("loadWorklistPage");
+    expect(worklistPage).toContain("contactLeads={currentLeads}");
     expect(page).not.toContain("COORDINATION_STAGES");
     expect(workbench).toContain("copyWithFallback");
     expect(workbench).toContain("copyRelay");

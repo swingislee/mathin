@@ -23,7 +23,7 @@ describe('来源阶段确认与资料待补',()=>{
   });
   it('已结束的预约退出工作队列，全部记录保留同一学生的每次预约',()=>{
     const base={name:'示例学生',phone:'',gradeText:'',location:'',assessorName:'',background:'',scheduledAt:'2026-08-20',updatedAt:'2026-08-20',
-      recordState:'current',assessmentKind:'one_to_one',assessment:null,assessmentStartedAt:null,assessmentCompletedAt:null,route:null} as AssessmentWorkbenchRow;
+      assessmentKind:'one_to_one',assessment:null,assessmentStartedAt:null,assessmentCompletedAt:null,route:null} as AssessmentWorkbenchRow;
     const rows=[{...base,id:'first',participationStatus:'no_show' as const},{...base,id:'second',participationStatus:'booked' as const}];
     expect(assessmentWorkbenchRowsForView(rows,{queue:'pending'},'zh').map(row=>row.id)).toEqual(['second']);
     expect(assessmentWorkbenchRowsForView(rows,{queue:'all',q:'示例学生'},'zh')).toHaveLength(2);

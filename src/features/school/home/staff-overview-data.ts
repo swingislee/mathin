@@ -277,9 +277,9 @@ async function readOverviewCore(supabase: Awaited<ReturnType<typeof createClient
     : { data: [], error: null });
   const [activities, registrations, assessments, courseEnrollments, memberships, classrooms, currentTerms, currentClassIds] = await Promise.all([
     read<OverviewActivity>("activities", () => supabase.from("statistics_activities" as "activities")
-      .select("id,scheduled_at,occurred_on,source_invitation_id,remark,record_state").is("deleted_at", null)),
+      .select("id,scheduled_at,occurred_on,source_invitation_id,remark").is("deleted_at", null)),
     read<OverviewRegistration>("registrations", () => supabase.from("statistics_activity_registrations" as "activity_registrations")
-      .select("id,activity_id,student_id,lead_id,status,record_state,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts,source_metric_facts")),
+      .select("id,activity_id,student_id,lead_id,status,registered_on,created_at,source_record_id,assessment_started_at,assessment_completed_at,source_enrollment_facts,source_metric_facts")),
     read<OverviewAssessment>("assessments", () => supabase.from("statistics_assessment_results" as "assessment_results")
       .select("id,activity_registration_id,student_id,lead_id,assessed_by,assessed_on,created_at,source_record_id,result_source,result_finalized_at,assessment_band,score,strengths")),
     read<OverviewCourseEnrollment>("courseEnrollments", () => supabase.from("statistics_course_enrollments" as "course_enrollments")
@@ -459,8 +459,7 @@ async function readStaffOverviewData({
   const sourceEvents = coreEvents(core, timeZone, grain);
   const assessmentRefs = assessments;
   const activityById = new Map(activities.map(row => [row.id, row]));
-  const attended = registrations.filter(row => row.status === "attended" && row.record_state === "current"
-    && activityById.get(row.activity_id)?.record_state === "current");
+  const attended = registrations.filter(row => row.status === "attended" && activityById.has(row.activity_id));
   const sourceExact = (source: StaffOverviewSourceKey) => !unavailable.has(source) && !truncated.has(source);
 
   const leadById = new Map(leadDirectory.map((row) => [row.id, row]));

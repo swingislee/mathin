@@ -59,7 +59,7 @@ export function CommunicationWorkToolbar({ options, scope, canViewAll, canManage
     <DashboardCommandFilters>
       <FollowupPrimaryFilter value={options.view} label={t("viewLabel")} disabled={pending}
         options={(["unscheduled", "day", "records", "all", ...(worklist ? ["worklist"] : [])] as const).map((value) => ({ value, label: value === "worklist" ? t("view_worklist") : t(`view_${value}`) }))}
-        onValueChange={(view) => navigate({ view, fields: null, ...(view !== "all" ? { state: "current" } : {}), worklist: view === "worklist" ? worklist?.id ?? null : null })} />
+        onValueChange={(view) => navigate({ view, fields: null, worklist: view === "worklist" ? worklist?.id ?? null : null })} />
       {options.view === "worklist" && worklist ? <span className="max-w-52 truncate text-xs text-muted" title={worklist.name}>{worklist.name}</span> : null}
       {options.view === "day" || options.view === "records" ? <div className="flex items-center gap-1">
         <Button variant="ghost" size="sm" className="size-8 p-0" aria-label={t("previousDay")} disabled={pending} onClick={() => shiftDay(-1)}><ChevronLeft className="size-4" /></Button>

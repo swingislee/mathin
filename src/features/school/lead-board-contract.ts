@@ -124,8 +124,8 @@ export function resolveLeadRules(board: LeadBoard, lane: LeadLane): LeadRuleConf
 const PAUSED_DETAILS = new Set(["invalid_number", "not_enrolling", "not_renewing", "renewal_confirmed", "nurturing"]);
 export function supportCluster(stage: string, detail: string | null) {
   if (stage === "awaiting_first_contact") return "first";
-  if (stage === "awaiting_assessment") return detail === "attended_without_result" ? "after" : "assess";
-  if (stage === "awaiting_enrollment") return detail === "assessed" ? "after" : "enroll";
+  if (stage === "awaiting_assessment") return detail === "visited_untested" ? "after" : "assess";
+  if (stage === "awaiting_enrollment") return detail === "assessed" || detail === "assessed_no_band" ? "after" : "enroll";
   if (stage === "awaiting_renewal") return detail?.startsWith("renewal") || detail === "not_renewing" ? "renew" : "serve";
   return "other";
 }

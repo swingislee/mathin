@@ -3,7 +3,7 @@ import { createDefaultPlaceValueInitial, PLACE_VALUE_VERSION, placeValueSnapshot
 import { toolSceneOriginHash } from "@/features/tools/scenes/classroom-envelope";
 
 const key = (toolId: string, contentVersion: string) => `${toolId}\n${contentVersion}`;
-const packet = (state: unknown) => ({ schema: "mathin-classroom-tool-state", version: 1, pageId: "page", docId: "doc", instanceId: "one",
+const packet = (state: unknown) => ({ schema: "mathin-classroom-tool-state" as const, version: 1 as const, pageId: "page", docId: "doc", instanceId: "one",
   originHash: toolSceneOriginHash({ seed: 1 }), toolId: "place-value", contentVersion: PLACE_VALUE_VERSION, state });
 const validState = () => placeValueSnapshot(createDefaultPlaceValueInitial());
 

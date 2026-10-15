@@ -11,7 +11,7 @@ vi.mock("@/i18n/navigation", () => ({ usePathname: () => "/dashboard/assessments
 vi.mock("@/features/school/AssessmentUnifiedWorkbench", () => ({ AssessmentUnifiedWorkbench: (props: ComponentProps<typeof AssessmentUnifiedWorkbench>) => { state.props = props; return null; } }));
 let root: Root, container: HTMLDivElement;
 const props: ComponentProps<typeof AssessmentPagedWorkbench> = { locale: "zh", canAssess: true, canSupport: true, canManageAssessor: true, assessors: [],
-  data: { rows: [], count: 930, page: 3, pageSize: 50, totalPages: 19, q: "", state: "all", fieldView: { query: { version: 2, filters: {}, sort: null }, facets: {} } } };
+  data: { rows: [], count: 930, page: 3, pageSize: 50, totalPages: 19, q: "", fieldView: { query: { version: 2, filters: {}, sort: null }, facets: {} } } };
 beforeEach(async () => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true }); vi.useFakeTimers();
   state.search = "page=3&pageSize=50"; state.replace.mockClear();

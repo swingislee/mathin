@@ -25,7 +25,7 @@ it("keeps an activity table mounted through its first inline module and registra
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   const container = document.createElement("div"); document.body.append(container); const root = createRoot(container);
-  const activity: ActivityRow = { id: "activity", kind: "public_class", title: "Sample activity", scheduledAt: "2026-09-21T02:00:00Z", recordState: "current",
+  const activity: ActivityRow = { id: "activity", kind: "public_class", title: "Sample activity", scheduledAt: "2026-09-21T02:00:00Z",
     durationMin: 60, location: "", capacity: null, remark: "", registrations: [] };
   const data: PublicClassRegistrationData = { activity: { ...activity, printBackgroundPath: "" }, segments: [], participants: [], roomOptions: [], staffOptions: [], canRecord: true, canManage: false, canFollowUp: false };
   const result = Promise.withResolvers<{ ok: true; data: PublicClassRegistrationData }>(); deps.read.mockReturnValue(result.promise);

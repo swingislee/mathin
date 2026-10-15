@@ -104,7 +104,6 @@ export async function listFollowUpBoard(userId: string, scope: BoardScope, bucke
     collectPostgrestRowsInBatches<string, { student_id: string; content: string }>(studentIds, (batch) => supabase
       .from("business_student_follow_ups" as "student_follow_ups")
       .select("student_id,content")
-      .eq("record_state", "current")
       .in("student_id", batch)
       .order("created_at", { ascending: false })
       .limit(2000)

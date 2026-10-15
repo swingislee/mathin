@@ -15,6 +15,7 @@ import {
 import type { InvitationKind, InvitationState } from "./invitation-contract";
 import { mergeSourceNotes, sourceLeadContactFacts } from './business-source-contract';
 import { readSchoolQueryPages } from "./school-query-pages";
+import type { SourceDateMarks } from './source-date-note';
 
 interface LeadDbRow {
   note: string;
@@ -57,8 +58,11 @@ interface LeadCommunicationDbRow {
   visit_committed: boolean | null;
   interest_level: LeadInterestLevel | null;
   occurred_at: string | null;
+  original_occurred_at?: string | null;
   occurred_on?: string | null;
+  date_marks?: SourceDateMarks | null;
 }
+type LeadCommunicationDateRow = { id: string; occurred_on: string | null; date_basis: string | null; date_review: string | null; date_label: string | null };
 
 interface LeadInvitationDbRow {
   id: string;
@@ -179,7 +183,7 @@ export async function listLeadPool(
       .returns<LeadInterestDbRow[]>()),
     readSchoolQueryPages((start, end) => supabase
       .from("effective_lead_communications" as "lead_communications")
-      .select("id,lead_id,outcome,channel,note,wechat_added,visit_committed,interest_level,occurred_at")
+      .select("id,lead_id,outcome,channel,note,wechat_added,visit_committed,interest_level,occurred_at,original_occurred_at")
       .in("lead_id", leadIds)
       .order("original_occurred_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: false })
@@ -209,8 +213,9 @@ export async function listLeadPool(
     suggestedStudentIds.length > 0
       ? supabase.from("students").select("id,name").in("id", suggestedStudentIds).is("deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
-    readSchoolQueryPages((start, end) => supabase.from('lead_communications').select('id,occurred_on').in('lead_id',leadIds)
-      .order('id', { ascending: true }).range(start, end)),
+    readSchoolQueryPages((start, end) => supabase.from('lead_communications')
+      .select('id,occurred_on,date_basis:source_metric_facts->>dateBasis,date_review:source_metric_facts->>dateReview,date_label:source_metric_facts->>communicationDate')
+      .in('lead_id',leadIds).order('id', { ascending: true }).range(start, end).returns<LeadCommunicationDateRow[]>()),
   ]);
   let invitationResult = initialInvitationResult;
   if (invitationResult.error?.message?.includes("assessment_slot_id")) {
@@ -239,8 +244,13 @@ export async function listLeadPool(
   if (interestResult.error) throw new Error(interestResult.error.message);
   if (communicationResult.error) throw new Error(communicationResult.error.message);
   if (communicationDates.error) throw new Error(communicationDates.error.message);
-  const contactDateById=new Map((communicationDates.data??[]).map(row=>[row.id,row.occurred_on]));
-  for(const contact of communicationResult.data??[])contact.occurred_on=contactDateById.get(contact.id)??null;
+  const contactDateById=new Map((communicationDates.data??[]).map(row=>[row.id,row]));
+  for(const contact of communicationResult.data??[]){
+    const dated=contactDateById.get(contact.id);
+    contact.occurred_on=dated?.occurred_on??null;
+    // 来源沟通的日期依据与疑点；老师改过时间的以修订为准，不再提示。
+    contact.date_marks=dated&&contact.occurred_at===(contact.original_occurred_at??null)?{basis:dated.date_basis,review:dated.date_review,label:dated.date_label}:null;
+  }
   if (reminderResult.error) throw new Error(reminderResult.error.message);
   const invitationUnavailable = invitationResult.error?.code === "42P01"
     || invitationResult.error?.code === "PGRST205";
@@ -293,7 +303,9 @@ export async function listLeadPool(
     entries.push(communication);
     communicationsByLead.set(communication.lead_id, entries);
   }
-  // 保留查询的原录入顺序；更正历史发生时间不改变当前最新沟通事实。
+  // 按原始发生时间排序（来源沟通取补全后的日期），同日保留查询顺序；更正历史发生时间不改变当前最新沟通事实。
+  const originalDay=(contact:LeadCommunicationDbRow)=>contact.original_occurred_at??contact.occurred_on??'';
+  for(const entries of communicationsByLead.values())entries.sort((a,b)=>originalDay(b).localeCompare(originalDay(a)));
 
   return {
     count: count ?? 0,
@@ -336,6 +348,7 @@ export async function listLeadPool(
         interests: interestsByLead.get(row.id) ?? [],
         contactCount: communications.length,
         lastContactAt: lastContact?.occurred_at ?? lastContact?.occurred_on ?? null,
+        lastContactDateMarks: lastContact?.date_marks ?? null,
         lastContactOutcome: lastContact?.outcome ?? null,
         lastContactChannel: lastContact?.channel ?? null,
         lastContactNote: mergeSourceNotes(lastContact?.note,row.note),

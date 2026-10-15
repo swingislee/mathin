@@ -1,7 +1,7 @@
 import type { LeadIdentitySubject } from "./lead-identity-contract";
 import type { StudentLifecycleStage } from "./student-lifecycle-contract";
-import type { BusinessRecordState } from "./business-record-state-contract";
 import type {SourceCompletionSummary} from './source-completion-contract';
+import type { SourceDateMarks } from './source-date-note';
 
 export const STUDENT_360_REFRESH_EVENT = "mathin:student-360-refresh";
 
@@ -119,9 +119,14 @@ export interface Student360Event {
   phase: Student360Phase;
   kind: Student360EventKind;
   occurredAt: string | null;
+  /** 原表只写月份时的 YYYY-MM，用于归入月份分组。 */
+  occurredMonth?: string | null;
   sourceDateLabel?: string | null;
+  /** 来源日期的依据与疑点，界面据此提示。 */
+  dateMarks?: SourceDateMarks | null;
   orderKey?: string;
-  recordState?: BusinessRecordState;
+  /** 来源表导入的事件：作者未记录。 */
+  imported?: boolean;
   title: string;
   status: string | null;
   actorName: string | null;
@@ -179,7 +184,7 @@ export interface Student360Snapshot {
 
 export function sortStudent360Events(events: readonly Student360Event[]): Student360Event[] {
   return [...events].sort((left, right) => {
-    const byTime = (right.occurredAt ?? '').localeCompare(left.occurredAt ?? '');
+    const byTime = (right.occurredAt ?? right.occurredMonth ?? '').localeCompare(left.occurredAt ?? left.occurredMonth ?? '');
     return byTime || (right.orderKey ?? '').localeCompare(left.orderKey ?? '') || left.id.localeCompare(right.id);
   });
 }

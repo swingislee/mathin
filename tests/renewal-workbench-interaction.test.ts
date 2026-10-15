@@ -202,8 +202,8 @@ describe("renewal worksheet interaction", () => {
     expect(container.querySelector("[data-followup-entry-actions] button[aria-keyshortcuts]")).toBeNull();
     expect(actions.save).not.toHaveBeenCalled();
   });
-  it("shows historical facts without current renewal or teacher-write controls", async () => {
-    await mount({ initialRow: { ...initial, membershipId: null, stage: "enrolled", recordState: "historical" } });
+  it("shows imported source results without renewal or teacher-write controls", async () => {
+    await mount({ initialRow: { ...initial, membershipId: null, stage: "enrolled", sourceRecord: true } });
     for (const value of ["learning", "communication", "registration"]) await panel(value);
     expect(choice(t.result)).toBeNull(); expect(choice(t.contactMethod).disabled).toBe(true);
     expect(container.querySelector("[data-followup-notes] textarea")).toBeNull();

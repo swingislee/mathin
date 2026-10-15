@@ -10,7 +10,7 @@ beforeAll(async () => { vi.stubGlobal("Component", (value: Definition) => { comp
 afterAll(() => vi.unstubAllGlobals());
 beforeEach(() => { api.token = ""; api.get.mockReset(); api.experienceRequest.mockReset(); });
 function mount() {
-  const instance = { ...component.methods, data: { ...component.data, source: "tasks", limit: 3, locale: "zh" }, setData: vi.fn(function(this: Instance, next: Record<string, unknown>) { Object.assign(this.data, next); }) };
+  const instance: Instance = { ...component.methods, data: { ...component.data, source: "tasks", limit: 3, locale: "zh" }, setData: vi.fn(function(this: Instance, next: Record<string, unknown>) { Object.assign(this.data, next); }) };
   component.lifetimes.attached.call(instance);
   return instance;
 }

@@ -84,7 +84,7 @@ describe("title-bar primary filters", () => {
     expect(container.querySelectorAll("[data-followup-primary-filter] button")).toHaveLength(4);
     await click(primary(zh.school.communicationWorkday.view_unscheduled));
     const query = new URL(actions.replace.mock.calls[0][0], "http://example.test").searchParams;
-    expect(Object.fromEntries(query)).toEqual({ view: "unscheduled", date: "2026-09-07", scope: "mine", q: "Sample", pageSize: "50", state: "current" });
+    expect(Object.fromEntries(query)).toEqual({ view: "unscheduled", date: "2026-09-07", scope: "mine", q: "Sample", pageSize: "50" });
     expect(actions.create).not.toHaveBeenCalled();
   });
   it("filters assessment stages from saved facts, shares the column filter, and retains a saved row until the next filter change", async () => {
@@ -123,7 +123,7 @@ describe("title-bar primary filters", () => {
       await render(createElement(AssessmentUnifiedWorkbench, { initialRows: rows, assessors: [], locale: "zh", canAssess: false,
         canSupport: true, canManageAssessor: false, pageControl: { q: "", fields, pending: false,
           onSearch: vi.fn(), onFields: vi.fn(), onSourceLayout: vi.fn(), onPage: vi.fn(),
-          data: { rows, count: 21, page: number, pageSize: 20, totalPages: 2, q: "", state: "all", fieldView: { query: fields, facets: {} } } } }));
+          data: { rows, count: 21, page: number, pageSize: 20, totalPages: 2, q: "", fieldView: { query: fields, facets: {} } } } }));
     };
     await page(1);
     await click(container.querySelector<HTMLElement>('[data-followup-row-key="page-1"]')!);
@@ -145,7 +145,7 @@ describe("title-bar primary filters", () => {
       enrollments: [{ id: "pending", opportunityId: "pending", studentId: "pending", studentName: "Pending", studentPhone: "", courseId: "course-3", courseTitle: "Course",
         termId: "term", termName: "Term", status: "active", note: "", confirmedAt: at, confirmedByName: "", cancelledAt: null, cancelledByName: null,
         assignmentId: null, classroomId: null, classroomName: null, membershipId: null, assignedAt: null, claimableClassroomIds: [], updatedAt: at }] };
-    await render(createElement(EnrollmentPlacementWorkbench, { initialBoard: board, canCreateClass: true, canTeach: true, workspace: "classes", workspaceQuery: { state: "historical" } }));
+    await render(createElement(EnrollmentPlacementWorkbench, { initialBoard: board, canCreateClass: true, canTeach: true, workspace: "classes" }));
     const labels = zh.school.followupFilters;
     const panel = container.querySelector('[data-dashboard-command-panel]')!;
     expect([...panel.children].map(child => child.getAttribute("data-dashboard-command-slot"))).toEqual(["state", "filters", "actions"]);

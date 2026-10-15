@@ -1,7 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {reviewCurrentWorkflow} from '../scripts/lib/current-workflow-review.mjs';
 import {sourceWorkflowPeriod} from '../scripts/lib/base-workflow-scope.mjs';
-import {businessRecordStateFilter,matchesBusinessRecordState} from '../src/features/school/business-record-state-contract';
 
 const options={authoritativeFilename:'current.base',currentPeriod:'2026-09'};
 type Row=Record<string,unknown>;
@@ -67,12 +66,5 @@ describe('current work separated from preserved history',()=>{
   });
   it('uses an explicit year before a matching month label',()=>{
     expect(sourceWorkflowPeriod(source('old',null,{'获取日期':'2024-09-03','获取月份':'9月'}),'2026-09')).toBe('2024-09');
-  });
-  it('defaults invalid or missing scope to current and preserves explicit history/all requests',()=>{
-    expect([undefined,'invalid',[],['historical'],'all'].map(businessRecordStateFilter)).toEqual(['current','current','current','historical','all']);
-    expect(matchesBusinessRecordState('historical','current')).toBe(false);
-    expect(matchesBusinessRecordState('current','historical')).toBe(false);
-    expect(matchesBusinessRecordState('historical','all')).toBe(true);
-    expect(matchesBusinessRecordState(undefined,'current')).toBe(true);
   });
 });

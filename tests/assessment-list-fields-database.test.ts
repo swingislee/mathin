@@ -16,7 +16,7 @@ const row: AssessmentWorkbenchRow = {
   invitationId: null, registrationId: "fixture", studentId: null, leadId: null, name: "示例", phone: "", grade: 3, gradeText: "",
   scheduledAt: "2026-09-20T16:30:00Z", location: "", assessorId: null, assessorName: "", assessorSource: "assigned",
   background: "", participationStatus: "booked", assessmentStartedAt: null, assessmentCompletedAt: null,
-  assessment: null, questionSummary: null, route: null, updatedAt: "2026-09-20T15:30:00Z", recordState: "current",
+  assessment: null, questionSummary: null, route: null, updatedAt: "2026-09-20T15:30:00Z",
 };
 const result = { id: "result", assessmentBand: "a" as const, score: 80, scoreMax: 100, strengths: "优势", focusAreas: "关注",
   parentConcerns: "家长", teacherRecommendation: "建议", recommendedClass: "", teacherObservation: "观察", updatedAt: row.updatedAt };
@@ -32,8 +32,8 @@ describe.skipIf(process.env.MATHIN_TABLE_PAGE_DB_TEST !== "1")("assessment SQL f
         assessment: { ...result, score, resultSource, finalizedAt: final ? row.updatedAt : null },
         paperVersionId: "paper", questionSummary: { paperVersionId: "paper", paperTitle: "卷2", answeredCount: 1, questionCount: 3, totalScore: 100,
           outcomeCounts: {} as NonNullable<AssessmentWorkbenchRow["questionSummary"]>["outcomeCounts"], keyNotes: [] } })))),
-      ...(["no_show", "cancelled", "attended"] as const).flatMap(participationStatus => ["current", "historical"].map(recordState => ({ ...row,
-        sourceRecordId: "source", assessment: result, participationStatus, recordState: recordState as "current" | "historical", occurredOn: "2026-01-02" }))),
+      ...(["no_show", "cancelled", "attended"] as const).flatMap(participationStatus => ["2026-01-02", "2025-01-02"].map(occurredOn => ({ ...row,
+        sourceRecordId: "source", assessment: result, participationStatus, occurredOn }))),
       { ...row, rescheduledAt: row.updatedAt },
       { ...row, sourceEnrollmentFacts: { version: 1, confirmed: true } as AssessmentWorkbenchRow["sourceEnrollmentFacts"] },
       ...([null, "awaiting_reply", "considering", "ready_to_enroll", "awaiting_class", "not_enrolling"] as const).flatMap(classification => [false, true].map(trialIntent => ({ ...row,
