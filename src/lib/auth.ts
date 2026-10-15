@@ -4,6 +4,7 @@ import type { User } from "@supabase/supabase-js";
 import { PERMISSION_KEYS, type PermissionKey } from "@/features/school/permissions";
 import { pickActiveEnvironment, resolveAvailableEnvironments, type UserEnvironment } from "@/lib/environment";
 import { hasLocalDevelopmentMfaExemption } from "@/lib/local-development-security";
+import { hasTrustedWechatSession } from "@/features/wechat/trusted-session";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileRole = "student" | "parent" | "staff" | "admin";
@@ -94,8 +95,9 @@ export async function requireUser(locale: string, options: { allowAccountRecover
     nodeEnv: process.env.NODE_ENV,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   });
-  // 当前保障等级即已验签 token 的 aal，与 mfa.getAuthenticatorAssuranceLevel 的 currentLevel 同源。
-  if (!options.allowAccountRecovery && account?.role === "admin" && !localDevelopmentMfaExempt && user.aal !== "aal2") {
+  // 通过微信回调核验的当前会话可直接进入；密码登录仍按原生 AAL 要求 MFA。
+  if (!options.allowAccountRecovery && account?.role === "admin" && !localDevelopmentMfaExempt && user.aal !== "aal2"
+    && !(await hasTrustedWechatSession(user.id))) {
     redirect(`/${locale}/dashboard/account-security?required=mfa`);
   }
   return user;

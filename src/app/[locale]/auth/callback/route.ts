@@ -6,6 +6,7 @@ import { WECHAT_FLOW_COOKIE, WECHAT_GUEST_COOKIE, WECHAT_PROVIDER } from "@/feat
 import { assertAccountActive, saveWechatSnapshot } from "@/features/wechat/store";
 import { assertWechatFlowSession, setWechatCookie } from "@/features/wechat/session";
 import { authReturnOrigin } from "@/lib/auth-return-origin";
+import { rememberWechatSession } from "@/features/wechat/trusted-session";
 
 export async function GET(request: Request, { params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
@@ -33,6 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ loca
       }
       await assertAccountActive(completion.userId);
       await saveWechatSnapshot(completion.userId, completion.identity);
+      await rememberWechatSession(completion.userId, completion.identity.subject);
       await setWechatCookie(WECHAT_FLOW_COOKIE, "", 0);
       await setWechatCookie(WECHAT_GUEST_COOKIE, "", 0);
       const destination = completion.flow.mode === "link"

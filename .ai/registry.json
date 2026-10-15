@@ -3,6 +3,32 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WECHAT-ADMIN-SESSION-20261015",
+      "title": "管理员微信登录免重复 MFA",
+      "agent": "codex",
+      "threadId": "01a13e17-ff3e-76a0-9cce-bbf84f9029d9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-ADMIN-SESSION-20261015.md",
+      "writePaths": [
+        ".ai/tasks/WECHAT-ADMIN-SESSION-20261015.md",
+        ".tmp/wechat-admin-session-20261015/",
+        "src/features/wechat/trusted-session.ts",
+        "src/lib/auth.ts",
+        "src/app/[locale]/auth/callback/route.ts",
+        "tests/wechat-trusted-session.test.ts",
+        "tests/auth-admin-wechat.test.ts",
+        "tests/wechat-callback.test.ts",
+        "docs/ops/wechat-oauth.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "微信回调和管理员会话判断已实现，定向鉴权、类型与静态检查通过，3130 可加载；生产尚未发布，需从现有生产基线仅加入本修复，真实微信往返待验收。"
+    },
+    {
       "id": "WECHAT-OFFICIAL-CONFIG-LOAD-20261015",
       "title": "服务号登录生产配置加载",
       "agent": "codex",
