@@ -6,9 +6,9 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { AssessmentUnifiedWorkbench } from "./AssessmentUnifiedWorkbench";
 import type { AssessmentWorkbenchPage } from "./assessment-workbench-page";
 import { FollowupQueryMemory } from './FollowupQueryMemory';
+import { ASSESSMENT_QUERY_KEYS, LIST_ENTRY_MEMORY } from './dashboard-page/list-entry-memory';
 
 type Props = Omit<ComponentProps<typeof AssessmentUnifiedWorkbench>, "initialRows" | "initialQuery" | "pageControl">;
-const QUERY_KEYS = ['periodField', 'period', 'group', 'pageSize', 'fields'];
 
 export function AssessmentPagedWorkbench({ data, ...props }: Props & { data: AssessmentWorkbenchPage }) {
   const router = useRouter(), pathname = usePathname(), search = useSearchParams();
@@ -38,7 +38,7 @@ export function AssessmentPagedWorkbench({ data, ...props }: Props & { data: Ass
       startTransition(() => router.replace(href, { scroll: false }));
     }, delay);
   };
-  return <><FollowupQueryMemory preferenceKey="assessment-months-entry:v1" keys={QUERY_KEYS} />
+  return <><FollowupQueryMemory preferenceKey={LIST_ENTRY_MEMORY["/dashboard/assessments"].preferenceKey} keys={ASSESSMENT_QUERY_KEYS} />
     <AssessmentUnifiedWorkbench {...props} initialRows={data.rows} initialQuery={data.q}
     pageControl={{ data, pending, q: draft.q, fields: draft.fields,
       onSearch: q => { setDraft(current => ({ ...current, q })); navigate({ q, page: "" }, 250); },

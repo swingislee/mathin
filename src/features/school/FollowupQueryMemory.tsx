@@ -4,14 +4,15 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useDashboardPreference } from "./dashboard-page/DashboardPreferenceScope";
+import { followupQueryPreferenceKey } from "./dashboard-page/list-entry-memory";
 
 /** 保存服务端查询条件；分页和临时定位参数不进入偏好。 */
 const DEFAULT_KEYS = ["q", "scope", "assignment", "status", "pageSize", "queue", "stage", "cycle", "fields"];
-export function FollowupQueryMemory({ keys = DEFAULT_KEYS, preferenceKey }: { keys?: string[]; preferenceKey?: string }) {
+export function FollowupQueryMemory({ keys = DEFAULT_KEYS, preferenceKey }: { keys?: readonly string[]; preferenceKey?: string }) {
   const pathname = usePathname();
   const query = useSearchParams().toString();
   const router = useRouter();
-  const memoryKey = `query:${preferenceKey ?? pathname}`;
+  const memoryKey = followupQueryPreferenceKey(preferenceKey ?? pathname);
   const preference = useDashboardPreference(memoryKey);
   const visited = useRef<string | null>(null);
   useEffect(() => {

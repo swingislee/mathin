@@ -63,6 +63,7 @@ import { Student360Workspace } from "./Student360Sheet";
 import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 import { useDashboardPreference } from "./dashboard-page/DashboardPreferenceScope";
 import { CLASS_WORKSPACE_PREFERENCE, rememberedClassWorkspaceHref } from "./class-workspace-preferences";
+import { followupQueryPreferenceKey, isListEntryPath, LIST_ENTRY_MEMORY, rememberedListHref } from "./dashboard-page/list-entry-memory";
 
 const ICONS: Record<string, ComponentType<{ size?: number; strokeWidth?: number }>> = {
   home: LayoutDashboard,
@@ -132,8 +133,15 @@ function NavList({
   const activeHref = resolveActiveNavHref(pathname, nav, returnTo);
   // 班级入口直接指向本人上次的视图，点击即进入目标页，不经过恢复偏好的过渡页。
   const classPreference = useDashboardPreference(CLASS_WORKSPACE_PREFERENCE);
+  // 线索、沟通、测评直接进入页面会恢复的上次条件，不再先按默认条件读取一次。
+  const listPreferences = {
+    "/dashboard/leads": useDashboardPreference(followupQueryPreferenceKey(LIST_ENTRY_MEMORY["/dashboard/leads"].preferenceKey)),
+    "/dashboard/communication": useDashboardPreference(followupQueryPreferenceKey(LIST_ENTRY_MEMORY["/dashboard/communication"].preferenceKey)),
+    "/dashboard/assessments": useDashboardPreference(followupQueryPreferenceKey(LIST_ENTRY_MEMORY["/dashboard/assessments"].preferenceKey)),
+  };
   const linkHref = (href: string) => href === "/dashboard/classes" && classPreference.ready
-    ? rememberedClassWorkspaceHref(classPreference.raw) : href;
+    ? rememberedClassWorkspaceHref(classPreference.raw)
+    : isListEntryPath(href) && listPreferences[href].ready ? rememberedListHref(href, listPreferences[href].raw) : href;
   return (
     // 具名：讲次工作区等页面会渲染自己的 <nav>，无名导航既让读屏用户分不清两者，
     // 也让"侧栏当前项"无法被稳定选中（验收脚本据此断言无双重高亮）。

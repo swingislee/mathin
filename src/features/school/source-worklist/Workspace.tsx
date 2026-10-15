@@ -17,6 +17,7 @@ import { useDashboardPreference } from '../dashboard-page/DashboardPreferenceSco
 import { FollowupCommandPanel } from '../FollowupCommandPanel';
 import { FilterSearchInput } from '../FilterBar';
 import { FollowupQueryMemory } from '../FollowupQueryMemory';
+import { LIST_ENTRY_MEMORY, WORKLIST_QUERY_KEYS } from '../dashboard-page/list-entry-memory';
 import { LeadPoolPagination } from '../LeadPoolPagination';
 import { Student360Trigger } from '../Student360Sheet';
 import { StudentStageAssignmentControl, StudentStageOwnerControl } from '../StudentStageAssignmentControl';
@@ -36,7 +37,6 @@ import { communicationNoteSummary, worklistGrade } from './summary';
 import { SourceInfo } from './SourceInfo';
 
 const Entry = dynamic(() => import('../StudentStageEntryLoader').then(m => m.StudentStageEntryLoader));
-const QUERY_KEYS = ['stage','scope','group','marker','periodField','period','page','pageSize','fields','batch','interest','channel'];
 const monthKey = (row: WorkRow) => `month:${row.worklist.period}`;
 const parentKey = (row: WorkRow) => JSON.stringify(['group',row.worklist.period,row.worklist.group]);
 const childKey = (row: WorkRow) => JSON.stringify(['person',row.worklist.period,row.worklist.group,row.worklist.subgroup]);
@@ -177,7 +177,7 @@ export function Workspace({ data, query, locale, currentUserId, canEnroll, canAs
     try { const previous = JSON.parse(searchOrigin.raw ?? 'null'); if (previous && typeof previous === 'object') { router.replace(href(query, { ...previous, q: '' }), { scroll: false }); return; } } catch { /* Return to the current list. */ }
     navigate({ q: '' });
   };
-  return <><FollowupQueryMemory preferenceKey={firstContact ? "leads-first-contact-entry:v2" : "communication-stage-entry:v2"} keys={QUERY_KEYS} />
+  return <><FollowupQueryMemory preferenceKey={LIST_ENTRY_MEMORY[firstContact ? "/dashboard/leads" : "/dashboard/communication"].preferenceKey} keys={WORKLIST_QUERY_KEYS} />
     <DashboardPage title={firstContact ? (locale.startsWith('en') ? 'Leads' : '线索') : m.title} density="compact" commandPanel={<FollowupCommandPanel>
       {selectedRows.length > 0 && selection ? <DashboardCommandSelection>
         <span className="text-xs">{locale.startsWith('en') ? `${selectedRows.length} selected` : `已选 ${selectedRows.length} 人`}</span>
