@@ -32,9 +32,10 @@ const block = z.discriminatedUnion("kind", [
 export const contentDocumentSchema = z.object({ id: experienceId, version: z.literal(1), title: text(200), description: text(1000),
   purpose: z.enum(["page", "service", "preparation", "confirmation", "report", "help"]), audience, enabled: z.boolean(), layout: z.enum(["reading", "sections"]), blocks: list(block, 80) }).strict();
 const formCondition = z.object({ fieldId: experienceId, operator: z.enum(["equals", "notEquals", "answered", "includes"]), value: z.string().max(200) }).strict();
-const field = z.object({ id: experienceId, type: z.enum(["text", "textarea", "phone", "email", "number", "date", "select", "multiselect", "consent"]),
+const field = z.object({ id: experienceId, type: z.enum(["text", "textarea", "phone", "email", "number", "date", "time", "select", "multiselect", "rating", "address", "media", "consent"]),
   label: text(200), help: text(1000), placeholder: text(200), required: z.boolean(), options: list(z.object({ id: experienceId, label: text(200) }).strict(), 30),
   visibleWhen: formCondition.optional(), min: z.number().finite().optional(), max: z.number().finite().optional(),
+  display: z.enum(["picker", "pills"]).optional(), accept: z.array(z.enum(["image", "video", "file"])).min(1).max(3).optional(),
 }).strict();
 export const experienceFormSchema = z.object({ id: experienceId, version: z.literal(1), title: text(200), introduction: text(4000),
   submitLabel: text(120), successMessage: text(2000), audience, enabled: z.boolean(), purpose: z.enum(["intake", "request", "feedback", "followup"]),

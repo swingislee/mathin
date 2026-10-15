@@ -12,6 +12,13 @@ export const runtimeStrings: Record<RuntimeStringKey, RuntimeText> = {
   updateRequired: t("此内容需要更新小程序后查看", "Update the Mini Program to view this content"), choose: t("请选择", "Choose"), clear: t("清除筛选", "Clear filters"),
   account: t("我的账号", "My account"), view: t("查看", "View"), chooseParticipant: t("选择参与人", "Choose participant"),
   noParticipants: t("暂未关联参与人，请联系工作人员。", "No participant linked. Contact staff."), signInNow: t("点击登录", "Sign in"),
+  more: t("加载更多", "Load more"), search: t("搜索", "Search"), submit: t("提交", "Submit"), submitted: t("已提交", "Submitted"),
+  required: t("请完成标 * 的项目", "Complete the items marked *"), upload: t("添加", "Add"), uploading: t("正在上传…", "Uploading…"),
+  uploadFailed: t("文件未能上传，请重试", "The file was not uploaded. Try again."), chooseAddress: t("选择收货地址", "Choose address"),
+  confirm: t("确定", "OK"), cancel: t("取消", "Cancel"), saved: t("已保存", "Saved"), opening: t("正在打开…", "Opening…"),
+  updateReady: t("新版本已准备好，重启后使用", "A new version is ready. Restart to use it."), updateLatest: t("已是最新版本", "You have the latest version"),
+  cacheCleared: t("缓存已清理", "Cache cleared"), play: t("播放", "Play"), pause: t("暂停", "Pause"), next: t("下一首", "Next"), previous: t("上一首", "Previous"),
+  done: t("完成", "Done"),
 };
 
 /** Existing published menu actions keep opening the same native pages while those pages move to runtime screens. */

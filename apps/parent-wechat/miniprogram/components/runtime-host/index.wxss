@@ -2,3 +2,25 @@
 /* The custom tab bar is drawn over the page, so tab pages reserve its height. */
 .runtime-page.with-tab-bar { padding-bottom: calc(140rpx + env(safe-area-inset-bottom)); }
 .runtime-state { display: flex; flex-direction: column; align-items: center; gap: 16rpx; padding-top: 80rpx; }
+.screen-sheet { max-height: 88vh; display: flex; flex-direction: column; background: var(--paper); }
+.screen-sheet-scroll { max-height: 72vh; }
+.reveal-mask { position: fixed; z-index: 200; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(30, 34, 42, .62); }
+.reveal-card { position: relative; width: 560rpx; box-sizing: border-box; padding: 56rpx 44rpx 40rpx; border-radius: 36rpx; background: var(--card); text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 14rpx; overflow: hidden; animation: reveal-pop .45s cubic-bezier(.2, 1.4, .4, 1) both; }
+.reveal-burst { position: absolute; top: -120rpx; left: 50%; width: 520rpx; height: 520rpx; margin-left: -260rpx; border-radius: 50%;
+  background: radial-gradient(circle, var(--primary-soft) 0%, transparent 68%); animation: reveal-spin 6s linear infinite; }
+.reveal-image { position: relative; width: 200rpx; height: 200rpx; animation: reveal-rise .6s .1s ease-out both; }
+.reveal-tag { position: relative; padding: 4rpx 18rpx; border-radius: 20rpx; background: #e3a83a; color: #fff; font-size: 22rpx; font-weight: 700; letter-spacing: 2rpx; }
+.reveal-title { position: relative; font-size: 38rpx; font-weight: 700; }
+.reveal-body { position: relative; font-size: 27rpx; line-height: 1.7; color: var(--muted); white-space: pre-wrap; }
+.reveal-button { position: relative; width: 100%; margin-top: 18rpx; }
+.reveal-style-envelope { animation-name: reveal-unfold; }
+.reveal-style-wheel .reveal-image { animation: reveal-wheel 1.2s cubic-bezier(.2, .8, .2, 1) both; }
+.reveal-style-card { animation-name: reveal-flip; }
+@keyframes reveal-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes reveal-flip { from { transform: perspective(800rpx) rotateY(90deg); opacity: 0; } to { transform: perspective(800rpx) rotateY(0); opacity: 1; } }
+@keyframes reveal-unfold { from { transform: scaleY(.1); transform-origin: top; opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+@keyframes reveal-rise { from { transform: translateY(40rpx) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes reveal-wheel { from { transform: rotate(-720deg) scale(.6); opacity: 0; } to { transform: rotate(0) scale(1); opacity: 1; } }
+@keyframes reveal-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .reveal-card, .reveal-image, .reveal-burst { animation: none !important; } }

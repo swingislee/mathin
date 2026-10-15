@@ -5,6 +5,9 @@
     "runtime-list": "/components/runtime-list/index",
     "runtime-calendar": "/components/runtime-calendar/index",
     "runtime-participants": "/components/runtime-participants/index",
+    "runtime-form": "/components/runtime-form/index",
+    "runtime-audio": "/components/runtime-audio/index",
+    "runtime-card": "/components/runtime-card/index",
     "screen-content": "/components/screen-content/index"
   }
 }

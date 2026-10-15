@@ -1,8 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useTransition } from "react";
 import {
-  ArrowDown, ArrowUp, CalendarDays, FileText, ImageIcon, LayoutGrid, LayoutPanelTop, List, Minus, MousePointerClick, Plus, Redo2, SlidersHorizontal, SquareStack, Trash2, Type, Undo2, UserRound, Users,
-  type LucideIcon,
+  ArrowDown, ArrowUp, Award, BarChart3, CalendarDays, ChevronsDownUp, ClipboardList, FileText, Gauge, IdCard, ImageIcon, LayoutGrid, LayoutPanelTop, List, Minus, MousePointerClick,
+  Music, PanelBottom, PanelTop, Plus, Redo2, SlidersHorizontal, SquareStack, Table2, Trash2, TrendingUp, Type, Undo2, UserRound, Users, Video, type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,10 +19,10 @@ import { localText } from "../../../../contracts/participant-api/miniapp-experie
 import { defaultMiniappExperience } from "../../../../contracts/participant-api/miniapp-experience-templates";
 import { settingsExperienceIssues } from "../../../../contracts/participant-api/miniapp-experience-validation";
 import { defaultMiniappSettings, type MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
-import { runtimeTabSlots, type RuntimeBlockType, type RuntimeScreen, type RuntimeSpec, type RuntimeTab, type RuntimeTabSpec } from "../../../../contracts/participant-api/runtime";
+import { runtimeChildren, runtimeTabSlots, type RuntimeBlockType, type RuntimeScreen, type RuntimeSpec, type RuntimeTab, type RuntimeTabSpec } from "../../../../contracts/participant-api/runtime";
 import { loadMiniappRuntime, previewMiniappRuntime, restoreMiniappRuntime, saveMiniappRuntime, type RuntimeWorkbench } from "./actions";
 import { BlockInspector, OpenLibrary, ScreenInspector } from "./Inspector";
-import { Breadcrumb, LibraryCanvas, LibraryInsert, LibraryInspector, LibraryList, partTitle, type ContactOptions, type LibraryUpload } from "./Library";
+import { Breadcrumb, InsertMenu, LibraryCanvas, LibraryInsert, LibraryInspector, LibraryList, partTitle, type ContactOptions, type LibraryUpload } from "./Library";
 import { RuntimePhone } from "./RuntimeRenderer";
 import {
   blockNames, blockSummary, canHideTab, changes, findBlock, insertBlock, libraryItems, libraryNames, moveBlock, newBlock, newScreen, outline, removeBlock, settingsChanges,
@@ -30,11 +30,19 @@ import {
 } from "./model";
 
 const header = "h-11 min-h-11 max-h-11 shrink-0 border-b border-line";
-const tools: { type: RuntimeBlockType; icon: LucideIcon }[] = [
-  { type: "section", icon: SquareStack }, { type: "text", icon: Type }, { type: "image", icon: ImageIcon }, { type: "feature", icon: LayoutPanelTop },
-  { type: "entries", icon: LayoutGrid }, { type: "filters", icon: SlidersHorizontal }, { type: "list", icon: List }, { type: "calendar", icon: CalendarDays }, { type: "participants", icon: Users },
-  { type: "account", icon: UserRound }, { type: "content", icon: FileText }, { type: "button", icon: MousePointerClick }, { type: "divider", icon: Minus },
+const icons: Record<RuntimeBlockType, LucideIcon> = {
+  section: SquareStack, tabs: PanelTop, collapse: ChevronsDownUp, text: Type, image: ImageIcon, feature: LayoutPanelTop, entries: LayoutGrid, filters: SlidersHorizontal,
+  list: List, calendar: CalendarDays, participants: Users, account: UserRound, content: FileText, form: ClipboardList, card: IdCard, metrics: Gauge, chart: BarChart3,
+  progress: TrendingUp, badges: Award, table: Table2, video: Video, audio: Music, button: MousePointerClick, bar: PanelBottom, divider: Minus,
+};
+/** The insert menu groups blocks by what they are for; the most used ones also sit on the toolbar. */
+const toolGroups: { zh: string; en: string; types: RuntimeBlockType[] }[] = [
+  { zh: "文字与图片", en: "Text & media", types: ["text", "image", "feature", "button", "content", "video", "audio", "divider"] },
+  { zh: "入口与布局", en: "Layout", types: ["section", "entries", "tabs", "collapse", "bar"] },
+  { zh: "孩子与数据", en: "Family data", types: ["list", "calendar", "participants", "account", "filters", "card", "metrics", "chart", "progress", "badges", "table"] },
+  { zh: "填写与提交", en: "Forms", types: ["form"] },
 ];
+const quickTools: RuntimeBlockType[] = ["text", "image", "button", "entries", "list", "form"];
 const withExperience = (value: MiniappSettings | null): MiniappSettings => { const config = value ?? defaultMiniappSettings(); return { ...config, experience: config.experience || defaultMiniappExperience(config) }; };
 
 /** Pages and the settings they use form one draft with one undo history; each part is saved to its own store. */
@@ -65,6 +73,8 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
   const { spec } = doc;
   const [screenId, setScreenId] = useState(initial.draft.tabs[0]?.screen ?? initial.draft.screens[0]?.id ?? "");
   const [blockId, setBlockId] = useState("");
+  /** The tab shown on the canvas for each tabs block; new blocks go into it. */
+  const [openTabs, setOpenTabs] = useState<Record<string, string>>({});
   const [editLocale, setEditLocale] = useState<Locale>("zh");
   const [mode, setMode] = useState<"visitor" | "member">("member");
   const [preview, setPreview] = useState<{ screen: RuntimeScreen; tabs: RuntimeTab[]; issues: string[] } | null>(null);
@@ -121,11 +131,11 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
   useEffect(() => {
     if (!screenId) return;
     const timer = setTimeout(async () => {
-      const result = await previewMiniappRuntime(spec, screenId, mode, editLocale, { brand: doc.settings.brand, stages: doc.settings.stages });
+      const result = await previewMiniappRuntime(spec, screenId, mode, editLocale, { brand: doc.settings.brand, stages: doc.settings.stages, forms: doc.settings.experience?.forms });
       if (result.ok) setPreview(result.data);
     }, 350);
     return () => clearTimeout(timer);
-  }, [spec, screenId, mode, editLocale, doc.settings.brand, doc.settings.stages]);
+  }, [spec, screenId, mode, editLocale, doc.settings.brand, doc.settings.stages, doc.settings.experience?.forms]);
 
   const screen = spec.screens.find(row => row.id === screenId) ?? spec.screens[0];
   const tab = spec.tabs.find(row => row.screen === screen?.id);
@@ -134,17 +144,23 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
     contentPages: (doc.settings.experience?.pages ?? []).filter(page => page.enabled && page.audience === "all" && page.purpose !== "report")
       .map(page => ({ id: page.id, title: page.title.zh || page.title.en || page.id })),
     stages: doc.settings.stages.flatMap(group => group.stages.map(stage => ({ stageNumber: stage.stageNumber, label: stage.label.zh, group: group.label.zh }))),
-  }), [doc.settings.experience?.pages, doc.settings.stages]);
+    forms: (doc.settings.experience?.forms ?? []).filter(form => form.enabled).map(form => ({ id: form.id, title: form.title.zh || form.title.en || form.id })),
+  }), [doc.settings.experience?.pages, doc.settings.experience?.forms, doc.settings.stages]);
   // Blocks the current preview identity does not receive are dimmed in the outline.
   const shown = useMemo(() => {
     const ids = new Set<string>();
-    const walk = (rows: RuntimeScreen["blocks"]) => rows.forEach(row => { ids.add(row.id); if (row.type === "section") walk(row.blocks); });
+    const walk = (rows: RuntimeScreen["blocks"]) => rows.forEach(row => { ids.add(row.id); walk(runtimeChildren(row)); });
     if (preview) walk(preview.screen.blocks);
     return ids;
   }, [preview]);
   const screenTitle = (value: typeof screen) => value ? value.title[locale] || value.title.zh || spec.tabs.find(row => row.screen === value.id)?.label[locale] || value.id : "";
   const updateScreen = (change: (blocks: typeof screen.blocks) => typeof screen.blocks) => setSpec(value => ({ ...value, screens: value.screens.map(row => row.id === screen.id ? { ...row, blocks: change(row.blocks) } : row) }));
-  const insert = (type: RuntimeBlockType) => { if (!screen) return; const value = newBlock(type); updateScreen(blocks => insertBlock(blocks, blockId, value)); setBlockId(value.id); };
+  const insert = (type: RuntimeBlockType) => {
+    if (!screen) return;
+    const value = newBlock(type);
+    // A new form block starts with the first form, so the draft stays complete and saves.
+    if (value.type === "form" && meta.forms[0]) value.formId = meta.forms[0].id;
+    updateScreen(blocks => insertBlock(blocks, blockId, value, openTabs[blockId] ?? "")); setBlockId(value.id); };
   const addScreen = (slot?: RuntimeTabSpec["slot"]) => {
     const value = newScreen(spec.screens.length + 1);
     setSpec(current => ({ ...current, screens: [...current.screens, value],
@@ -234,10 +250,10 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
     {saveState === "conflict" && <Button size="sm" variant="secondary" onClick={reload}>{L("重新读取", "Reload")}</Button>}
   </>;
   const phone = preview ? <RuntimePhone title={preview.screen.title} brand={preview.screen.navigation === "brand"} blocks={preview.screen.blocks} tabs={preview.tabs} activeScreen={screen?.id ?? ""}
-    strings={editLocale === "zh" ? { signIn: "登录", today: "今", weekdays: "一,二,三,四,五,六,日", view: "查看", chooseParticipant: "选择参与人", signInNow: "点击登录", brandSettings: "点击修改名称与主题" }
-      : { signIn: "Sign in", today: "Today", weekdays: "M,T,W,T,F,S,S", view: "View", chooseParticipant: "Choose participant", signInNow: "Sign in", brandSettings: "Edit name and theme" }}
+    strings={editLocale === "zh" ? { signIn: "登录", today: "今", weekdays: "一,二,三,四,五,六,日", view: "查看", chooseParticipant: "选择参与人", signInNow: "点击登录", brandSettings: "点击修改名称与主题", more: "加载更多" }
+      : { signIn: "Sign in", today: "Today", weekdays: "M,T,W,T,F,S,S", view: "View", chooseParticipant: "Choose participant", signInNow: "Sign in", brandSettings: "Edit name and theme", more: "Load more" }}
     selected={library ? "" : blockId} onSelect={library ? undefined : setBlockId} onTab={id => { setScreenId(id); setBlockId(""); }}
-    onTitle={() => openLibrary({ kind: "brand" }, [screenTitle(screen)])} />
+    onTitle={() => openLibrary({ kind: "brand" }, [screenTitle(screen)])} openTabs={openTabs} onOpenTab={(block, tab) => setOpenTabs(current => ({ ...current, [block]: tab }))} />
     : <p className="pt-20 text-center text-sm text-muted">{L("正在生成预览…", "Rendering preview…")}</p>;
   const ownPreview = library && ["pages", "forms", "reports"].includes(library.kind);
 
@@ -306,8 +322,16 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
           </div> : <div className="flex size-full min-h-0 flex-col">
             <div role="toolbar" aria-label={L("插入组件", "Insert")} className={cn(header, "flex items-center gap-1 px-2")}>
               {historyButtons}<span className="mx-1 h-5 w-px bg-line" />
-              <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">{tools.map(({ type, icon: Icon }) =>
-                <Button key={type} size="sm" variant="ghost" className="size-9 shrink-0 p-0" title={L(`插入${blockNames[type].zh}`, `Insert ${blockNames[type].en}`)} aria-label={blockNames[type][locale]} onClick={() => insert(type)}><Icon className="size-4" /></Button>)}</div>
+              <div className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+                <InsertMenu wide label={L("插入组件", "Insert")}>{close => <div className="grid gap-3">{toolGroups.map(group => <div key={group.en}>
+                  <p className="px-1 pb-1 text-[11px] font-medium text-muted">{group[locale]}</p>
+                  <div className="grid grid-cols-3 gap-1">{group.types.map(type => { const Icon = icons[type]; return <button key={type} type="button"
+                    className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-moon/20" onClick={() => { insert(type); close(); }}>
+                    <Icon className="size-4 shrink-0 text-muted" />{blockNames[type][locale]}</button>; })}</div></div>)}
+                  <p className="px-1 text-[11px] text-muted">{L("插入到选中组件之后；选中区段、折叠分组或标签页时插入到里面。", "Inserted after the selected block, or inside a selected container.")}</p></div>}</InsertMenu>
+                <span className="mx-1 h-5 w-px shrink-0 bg-line" />
+                {quickTools.map(type => { const Icon = icons[type]; return <Button key={type} size="sm" variant="ghost" className="size-9 shrink-0 p-0"
+                  title={L(`插入${blockNames[type].zh}`, `Insert ${blockNames[type].en}`)} aria-label={blockNames[type][locale]} onClick={() => insert(type)}><Icon className="size-4" /></Button>; })}</div>
               {saveStatus}
             </div>
             <div className="flex shrink-0 items-center justify-center gap-4 border-b border-line px-3 py-1.5 text-xs">

@@ -1,0 +1,18 @@
+<view class="surface runtime-form">
+  <text wx:if="{{block.title}}" class="section-title">{{block.title}}</text>
+  <text wx:if="{{block.intro}}" class="runtime-form-intro">{{block.intro}}</text>
+  <view wx:if="{{block.state === 'signedOut'}}" class="inline-signin runtime-form-signin"><text class="small muted">{{block.message}}</text><button class="primary" bindtap="login">{{strings.signIn}}</button></view>
+  <block wx:else>
+    <view wx:for="{{groups}}" wx:for-item="group" wx:key="id" class="runtime-form-group">
+      <text wx:if="{{group.title}}" class="runtime-form-group-title">{{group.title}}</text>
+      <text wx:if="{{group.description}}" class="rf-help">{{group.description}}</text>
+      <view wx:for="{{group.rows}}" wx:for-item="row" wx:key="index" class="runtime-form-entry">
+        <view wx:if="{{group.repeat}}" class="runtime-form-entry-heading"><text>{{row.index + 1}}</text><button wx:if="{{group.canRemove}}" class="text-button" data-group="{{group.id}}" data-row="{{row.index}}" bindtap="remove">×</button></view>
+        <runtime-field wx:for="{{row.fields}}" wx:for-item="cell" wx:key="key" field="{{cell.field}}" value="{{cell.value}}" error="{{cell.error}}" disabled="{{busy}}" strings="{{strings}}"
+          data-group="{{group.id}}" data-row="{{row.index}}" data-field="{{cell.field.id}}" bindchange="change" />
+      </view>
+      <button wx:if="{{group.canAdd}}" class="text-button" data-group="{{group.id}}" bindtap="add">＋ {{strings.upload}}</button>
+    </view>
+    <button class="primary runtime-form-submit" loading="{{busy}}" disabled="{{busy}}" bindtap="submit">{{block.submitLabel}}</button>
+  </block>
+</view>

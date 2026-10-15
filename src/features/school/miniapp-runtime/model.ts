@@ -1,6 +1,7 @@
 import { newId } from "@/lib/uuid";
 import {
-  runtimeText as t, type RuntimeAction, type RuntimeBlockSpec, type RuntimeBlockType, type RuntimeRoute, type RuntimeRule, type RuntimeScreenSpec, type RuntimeSpec, type RuntimeTabSpec,
+  runtimeChildren, runtimeText as t, type RuntimeAction, type RuntimeBlockSpec, type RuntimeBlockType, type RuntimeRoute, type RuntimeRule, type RuntimeScreenSpec, type RuntimeSpec,
+  type RuntimeTabSpec,
 } from "../../../../contracts/participant-api/runtime";
 import type { MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
 
@@ -10,6 +11,9 @@ export const blockNames: Record<RuntimeBlockType, { zh: string; en: string }> = 
   entries: { zh: "入口", en: "Entries" }, list: { zh: "数据列表", en: "Data list" }, participants: { zh: "孩子切换", en: "Participants" },
   calendar: { zh: "本周日历", en: "Week calendar" }, filters: { zh: "筛选条", en: "Filter bar" }, account: { zh: "账号头部", en: "Account header" }, content: { zh: "图文页", en: "Content page" },
   button: { zh: "按钮", en: "Button" }, divider: { zh: "分隔线", en: "Divider" },
+  tabs: { zh: "标签页", en: "Tabs" }, collapse: { zh: "折叠分组", en: "Collapsible group" }, video: { zh: "视频", en: "Video" }, audio: { zh: "音频列表", en: "Audio list" },
+  card: { zh: "证书 / 凭证卡", en: "Certificate / card" }, metrics: { zh: "指标组", en: "Metrics" }, chart: { zh: "图表", en: "Chart" }, progress: { zh: "进度", en: "Progress" },
+  badges: { zh: "徽章墙", en: "Badges" }, table: { zh: "表格", en: "Table" }, form: { zh: "表单", en: "Form" }, bar: { zh: "底部按钮栏", en: "Bottom bar" },
 };
 const shortId = (prefix: string) => `${prefix}-${newId().slice(0, 8)}`;
 
@@ -29,24 +33,48 @@ export function newBlock(type: RuntimeBlockType): RuntimeBlockSpec {
     case "button": return { id, type, label: t("按钮", "Button"), appearance: "primary", action: { type: "login" } };
     case "filters": return { id, type, clearLabel: t("重置所有筛选", "Reset filters") };
     case "divider": return { id, type };
+    case "tabs": return { id, type, style: "segmented", tabs: [
+      { id: shortId("tab"), label: t("全部", "All"), blocks: [newBlock("text")] }, { id: shortId("tab"), label: t("进行中", "Ongoing"), blocks: [] }] };
+    case "collapse": return { id, type, title: t("第 1 讲", "Lesson 1"), summary: t("点击展开", "Tap to expand"), open: false, blocks: [newBlock("text")] };
+    case "video": return { id, type, title: t("视频讲解", "Video"), src: "", poster: "" };
+    case "audio": return { id, type, title: t("磨耳朵", "Listening"), loop: true, tracks: [] };
+    case "card": return { id, type, style: "credential", title: t("学员卡", "Student card"), subtitle: t(), fields: [], image: "", stamp: t(), source: "account.participant" };
+    case "metrics": return { id, type, title: t("学习概况", "Overview"), columns: 2, items: [], source: "account.summary" };
+    case "chart": return { id, type, title: t("能力对比", "Skills"), kind: "radar", labels: [t("计算"), t("推理"), t("表达"), t("空间"), t("专注")],
+      series: [{ name: t("孩子", "Child"), values: [80, 72, 65, 88, 70] }, { name: t("班级平均", "Class average"), values: [70, 68, 70, 75, 72] }], max: 100, caption: t() };
+    case "progress": return { id, type, title: t("本周打卡", "Check-ins"), items: [], source: "account.checkins" };
+    case "badges": return { id, type, title: t("我的徽章", "Badges"), columns: 4, items: [
+      { id: shortId("badge"), label: t("坚持之星", "Steady"), image: "asset:icons/complete", earned: true, caption: t() },
+      { id: shortId("badge"), label: t("思考达人", "Thinker"), image: "asset:icons/book", earned: false, caption: t() }] };
+    case "table": return { id, type, title: t("级别表", "Levels"), columns: [t("科目", "Subject"), t("级别", "Level"), t("状态", "Status")], rows: [[t("思维", "Thinking"), t("L3"), t("有效", "Valid")]] };
+    case "form": return { id, type, title: t(), formId: "", submitLabel: t() };
+    case "bar": return { id, type, buttons: [{ id: shortId("button"), label: t("提交", "Submit"), appearance: "primary", action: { type: "login" } }] };
   }
 }
 export function newScreen(index: number): RuntimeScreenSpec {
   return { id: shortId("page"), title: t(`新页面 ${index}`, `New page ${index}`), navigation: "title", blocks: [newBlock("text")] };
 }
 
+/** Applies a change to the blocks inside a container; other blocks are returned unchanged. */
+function withChildren(block: RuntimeBlockSpec, change: (rows: RuntimeBlockSpec[], tab?: string) => RuntimeBlockSpec[]): RuntimeBlockSpec {
+  if (block.type === "section" || block.type === "collapse") return { ...block, blocks: change(block.blocks) };
+  if (block.type === "tabs") return { ...block, tabs: block.tabs.map(tab => ({ ...tab, blocks: change(tab.blocks, tab.id) })) };
+  return block;
+}
+export const isContainer = (block: RuntimeBlockSpec) => block.type === "section" || block.type === "collapse" || block.type === "tabs";
 export function findBlock(blocks: RuntimeBlockSpec[], id: string): RuntimeBlockSpec | null {
   for (const block of blocks) {
     if (block.id === id) return block;
-    if (block.type === "section") { const found = findBlock(block.blocks, id); if (found) return found; }
+    const found = findBlock(runtimeChildren(block), id);
+    if (found) return found;
   }
   return null;
 }
 export function updateBlock(blocks: RuntimeBlockSpec[], id: string, change: (block: RuntimeBlockSpec) => RuntimeBlockSpec): RuntimeBlockSpec[] {
-  return blocks.map(block => block.id === id ? change(block) : block.type === "section" ? { ...block, blocks: updateBlock(block.blocks, id, change) } : block);
+  return blocks.map(block => block.id === id ? change(block) : withChildren(block, rows => updateBlock(rows, id, change)));
 }
 export function removeBlock(blocks: RuntimeBlockSpec[], id: string): RuntimeBlockSpec[] {
-  return blocks.filter(block => block.id !== id).map(block => block.type === "section" ? { ...block, blocks: removeBlock(block.blocks, id) } : block);
+  return blocks.filter(block => block.id !== id).map(block => withChildren(block, rows => removeBlock(rows, id)));
 }
 /** Moves a block among its siblings. */
 export function moveBlock(blocks: RuntimeBlockSpec[], id: string, offset: -1 | 1): RuntimeBlockSpec[] {
@@ -58,18 +86,22 @@ export function moveBlock(blocks: RuntimeBlockSpec[], id: string, offset: -1 | 1
     [next[index], next[target]] = [next[target], next[index]];
     return next;
   }
-  return blocks.map(block => block.type === "section" ? { ...block, blocks: moveBlock(block.blocks, id, offset) } : block);
+  return blocks.map(block => withChildren(block, rows => moveBlock(rows, id, offset)));
 }
-/** Inserts into a selected section, after a selected block, or at the end of the page. */
-export function insertBlock(blocks: RuntimeBlockSpec[], selected: string, block: RuntimeBlockSpec): RuntimeBlockSpec[] {
+/** Inserts into a selected container (the chosen tab of a tabs block), after a selected block, or at the end of the page.
+ * `tab` names the tab shown on the canvas for a selected tabs block. */
+export function insertBlock(blocks: RuntimeBlockSpec[], selected: string, block: RuntimeBlockSpec, tab = ""): RuntimeBlockSpec[] {
   const target = selected ? findBlock(blocks, selected) : null;
-  if (target?.type === "section" && block.type !== "section") return updateBlock(blocks, target.id, row => row.type === "section" ? { ...row, blocks: [...row.blocks, block] } : row);
+  if (target && isContainer(target) && !isContainer(block)) return updateBlock(blocks, target.id, row => {
+    if (row.type === "tabs") { const into = row.tabs.some(item => item.id === tab) ? tab : row.tabs[0]?.id; return { ...row, tabs: row.tabs.map(item => item.id === into ? { ...item, blocks: [...item.blocks, block] } : item) }; }
+    return withChildren(row, rows => [...rows, block]);
+  });
   if (!target) return [...blocks, block];
-  const place = (rows: RuntimeBlockSpec[]): RuntimeBlockSpec[] => rows.flatMap(row => row.id === selected ? [row, block] : row.type === "section" ? [{ ...row, blocks: place(row.blocks) }] : [row]);
+  const place = (rows: RuntimeBlockSpec[]): RuntimeBlockSpec[] => rows.flatMap(row => row.id === selected ? [row, block] : [withChildren(row, place)]);
   return place(blocks);
 }
 export function outline(blocks: RuntimeBlockSpec[], depth = 0): { block: RuntimeBlockSpec; depth: number }[] {
-  return blocks.flatMap(block => [{ block, depth }, ...(block.type === "section" ? outline(block.blocks, depth + 1) : [])]);
+  return blocks.flatMap(block => [{ block, depth }, ...outline(runtimeChildren(block), depth + 1)]);
 }
 export function blockSummary(block: RuntimeBlockSpec, locale: Locale): string {
   const text = (value: { zh: string; en: string }) => value[locale] || value.zh || value.en;
@@ -81,6 +113,9 @@ export function blockSummary(block: RuntimeBlockSpec, locale: Locale): string {
     case "list": case "participants": case "calendar": return text(block.title);
     case "button": return text(block.label);
     case "content": return block.pageId;
+    case "collapse": case "video": case "audio": case "card": case "metrics": case "chart": case "progress": case "badges": case "table": case "form": return text(block.title) || (block.type === "form" ? block.formId : "");
+    case "tabs": return block.tabs.map(tab => text(tab.label)).join(" / ").slice(0, 18);
+    case "bar": return block.buttons.map(button => text(button.label)).join(" / ").slice(0, 18);
     default: return "";
   }
 }
@@ -122,6 +157,14 @@ export function defaultAction(kind: ActionKind, screens: RuntimeScreenSpec[]): R
     case "route": return { type: "route", route: "assessment" };
     case "phone": return { type: "phone", number: "4000000000" };
     case "copy": return { type: "copy", text: "" };
+    case "web": return { type: "web", url: "/zh/family", signIn: true };
+    case "command": return { type: "command", command: "checkin" };
+    case "toast": return { type: "toast", text: t("已收到", "Got it") };
+    case "preview": return { type: "preview", images: ["asset:appointment"] };
+    case "save": return { type: "save", image: "asset:appointment" };
+    case "document": return { type: "document", url: "/zh/family" };
+    case "location": return { type: "location", latitude: 31.2304, longitude: 121.4737, name: t("校区", "Campus"), address: t() };
+    case "subscribe": return { type: "subscribe", templates: ["TEMPLATE_ID"] };
     default: return { type: kind } as RuntimeAction;
   }
 }

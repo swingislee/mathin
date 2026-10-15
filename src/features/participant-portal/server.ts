@@ -19,6 +19,8 @@ import { experienceProviderPost, experienceBookingsGet, experienceBookingDetailG
 import { notificationsGet } from "./notification-server";
 import { miniappDocumentGet, miniappConsentsGet, miniappConsentsPost } from "./document-server";
 import { runtimeAppGet, runtimeBlockGet, runtimeScreenGet } from "./runtime/server";
+import { runtimeCommandPost, runtimeResolveGet, runtimeUploadPost, runtimeWebTicketPost } from "./runtime/commands";
+import { runtimeMediaGet } from "./runtime/media";
 import { questionAnswersSchema, formAnswerSnapshotSchema } from "@/features/parent-portal/form-questions";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 
@@ -72,6 +74,8 @@ async function get(request: Request, endpoint: string) {
     case "runtime/app": return runtimeAppGet(request);
     case "runtime/screen": return runtimeScreenGet(request);
     case "runtime/block": return runtimeBlockGet(request);
+    case "runtime/resolve": return runtimeResolveGet(request);
+    case "settings/media": return runtimeMediaGet(request);
     case "settings": return miniappSettingsGet(request);
     case "experience": return experienceGet(request);
     case "experience/requests": return experienceRequestsGet(request);
@@ -117,6 +121,9 @@ async function get(request: Request, endpoint: string) {
 
 async function post(request: Request, endpoint: string) {
   switch (endpoint) {
+    case "runtime/command": return runtimeCommandPost(request);
+    case "runtime/web-ticket": return runtimeWebTicketPost(request);
+    case "runtime/upload": return runtimeUploadPost(request);
     case "experience/requests": return experienceRequestsPost(request);
     case "experience/provider": return experienceProviderPost(request);
     case "auth": return authPost(request);

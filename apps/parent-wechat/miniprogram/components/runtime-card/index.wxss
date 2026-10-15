@@ -1,0 +1,17 @@
+.runtime-card { position: relative; margin-bottom: 24rpx; padding: 32rpx; border-radius: 28rpx; background: var(--card); overflow: hidden; }
+.runtime-card.style-credential { background: linear-gradient(135deg, var(--primary), var(--leaf-deep, #4f6a31)); color: #fff; }
+.runtime-card.style-certificate { background: linear-gradient(160deg, #fffaf0, #f7ecd2); border: 4rpx double #d6b45a; text-align: center; }
+.runtime-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx; }
+.style-certificate .runtime-card-head { flex-direction: column; align-items: center; }
+.runtime-card-copy { display: flex; flex-direction: column; gap: 8rpx; min-width: 0; }
+.runtime-card-title { font-size: 36rpx; font-weight: 700; line-height: 1.4; }
+.style-certificate .runtime-card-title { font-size: 40rpx; color: #8a6a1f; letter-spacing: 4rpx; }
+.runtime-card-subtitle { font-size: 25rpx; opacity: .8; }
+.runtime-card-stamp { flex-shrink: 0; padding: 8rpx 18rpx; border: 3rpx solid currentColor; border-radius: 12rpx; font-size: 24rpx; transform: rotate(-8deg); opacity: .85; }
+.style-certificate .runtime-card-stamp { color: #c94a4f; margin-top: 12rpx; }
+.runtime-card-fields { display: flex; flex-wrap: wrap; gap: 20rpx 32rpx; margin-top: 28rpx; }
+.style-certificate .runtime-card-fields { justify-content: center; }
+.runtime-card-field { display: flex; flex-direction: column; gap: 4rpx; min-width: 40%; }
+.runtime-card-label { font-size: 22rpx; opacity: .75; }
+.runtime-card-value { font-size: 30rpx; font-weight: 600; }
+.runtime-card-image { display: block; width: 320rpx; height: 320rpx; margin: 28rpx auto 0; border-radius: 16rpx; background: #fff; }

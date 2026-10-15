@@ -1,0 +1,7 @@
+.runtime-form { margin-bottom: 24rpx; padding: 30rpx 32rpx 34rpx; }
+.runtime-form-intro { display: block; margin-top: 12rpx; font-size: 26rpx; line-height: 1.7; color: var(--muted); white-space: pre-wrap; }
+.runtime-form-group { margin-top: 12rpx; }
+.runtime-form-group-title { display: block; margin-top: 24rpx; font-size: 29rpx; font-weight: 600; }
+.runtime-form-entry-heading { display: flex; justify-content: space-between; align-items: center; margin-top: 20rpx; font-size: 25rpx; color: var(--muted); }
+.runtime-form-submit { margin-top: 40rpx; }
+.runtime-form-signin { display: flex; flex-direction: column; align-items: flex-start; gap: 16rpx; padding-top: 16rpx; }

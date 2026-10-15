@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { WECHAT_GUEST_COOKIE, opaqueTokenSchema, wechatChannelSchema, wechatIdentitySchema, type WechatIdentity } from "./contract";
 import { randomToken, tokenHash } from "./provider";
 
-export type TicketKind = "flow" | "state" | "guest" | "grant" | "access" | "completion";
+export type TicketKind = "flow" | "state" | "guest" | "grant" | "access" | "completion" | "miniapp_web";
 export const flowSchema = z.object({
   mode: z.enum(["login", "link"]), locale: z.enum(["zh", "en"]), next: z.string().max(2000),
   userId: z.string().uuid().nullable(), sessionId: z.string().uuid().nullable(),

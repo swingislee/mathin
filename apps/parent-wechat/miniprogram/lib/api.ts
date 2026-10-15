@@ -208,3 +208,27 @@ export function requestId(){return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replac
 
 export async function consentDocuments() { return send<import("./miniapp-settings").ConsentDocuments>("consents", "GET"); }
 export async function acceptConsentDocuments(privacyVersion: string, childrenPrivacyVersion: string) { return send<{ ok: true }>("consents", "POST", { privacyVersion, childrenPrivacyVersion, consent: true }, await accessToken()); }
+
+/** Runtime commands and helpers. A signed-in request carries the session; visitors are asked to sign in by the caller. */
+export async function runtimePost<T>(path: string, data: object): Promise<T> { return send<T>("runtime/" + path, "POST", data, await accessToken()); }
+/** A one-time address that signs the web page in as this account; a fresh WeChat code proves the same person is present. */
+export async function runtimeWebTicket(url: string): Promise<{ url: string }> {
+  const token = await accessToken(), code = await wechatCode();
+  return send<{ url: string }>("runtime/web-ticket", "POST", { code, url }, token);
+}
+export function uploadRuntimeFile(filePath: string): Promise<import("./runtime-contract").RuntimeUpload> {
+  return accessToken().then(token => new Promise((resolve, reject) => {
+    wx.uploadFile({ url: origin() + "/api/v1/participant/runtime/upload", filePath, name: "file", timeout: 180000,
+      header: { Authorization: "Bearer " + token, "x-mathin-runtime": String(runtimeClientVersion) },
+      success: result => { try { const body = JSON.parse(result.data); if (result.statusCode >= 200 && result.statusCode < 300) resolve(body); else reject(new ApiError(body.code || "UNAVAILABLE")); } catch { reject(new ApiError("UNAVAILABLE")); } },
+      fail: () => reject(new ApiError("NETWORK")) });
+  }));
+}
+/** Downloads from the API origin carry the session; other HTTPS files are fetched as published. */
+export async function runtimeDownload(url: string): Promise<string> {
+  const absolute = url.startsWith("/") ? origin() + url : url;
+  const header: Record<string, string> = url.startsWith("/api/") && session() ? { Authorization: "Bearer " + await accessToken() } : {};
+  return new Promise((resolve, reject) => wx.downloadFile({ url: absolute, header, timeout: 120000,
+    success: result => result.statusCode >= 200 && result.statusCode < 300 ? resolve(result.tempFilePath) : reject(new ApiError("UNAVAILABLE")),
+    fail: () => reject(new ApiError("NETWORK")) }));
+}

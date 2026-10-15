@@ -32,30 +32,78 @@ export type RuntimeRule =
   | { kind: "between"; from: string; to: string }
   | { kind: "all"; rules: RuntimeRule[] } | { kind: "any"; rules: RuntimeRule[] } | { kind: "not"; rule: RuntimeRule };
 
+/** The fixed action set of this client. Texts stay bilingual and are shown in the device language.
+ * Image values in views are `/api/…` paths on the API origin, `asset:<name>` for bundled PNG files, or HTTPS URLs. */
 export type RuntimeAction =
-  | { type: "screen"; screen: string; params?: Record<string, string> }
+  | { type: "screen"; screen: string; params?: Record<string, string>; /** Opens the screen in a bottom sheet over the current page. */ sheet?: boolean }
   | { type: "tab"; slot: RuntimeTabSlot }
   | { type: "route"; route: RuntimeRoute; query?: Record<string, string> }
+  /** A Mathin path such as `/zh/family`, or an HTTPS address on a configured business domain. Signed-in families arrive signed in. */
+  | { type: "web"; url: string; signIn?: boolean }
   | { type: "phone"; number: string }
   | { type: "copy"; text: string }
+  /** Runs a server command; Mathin checks permission and returns the effects to show. */
+  | { type: "command"; command: string; params?: Record<string, string>; confirm?: RuntimeText }
+  | { type: "toast"; text: RuntimeText }
+  | { type: "preview"; images: string[] }
+  | { type: "save"; image: string }
+  /** Downloads and opens a PDF or office document; the system menu prints or forwards it. */
+  | { type: "document"; url: string }
+  | { type: "location"; latitude: number; longitude: number; name: RuntimeText; address: RuntimeText }
+  /** Asks for one-time subscription messages; accepted template ids are reported to Mathin. */
+  | { type: "subscribe"; templates: string[] }
+  /** Scans a code; Mathin decides what it opens. */
+  | { type: "scan" }
+  /** WeChat customer service and share buttons use the native button types. */
+  | { type: "contact" } | { type: "share" }
+  | { type: "participant" }
+  | { type: "clearCache" } | { type: "update" }
   | { type: "login" } | { type: "logout" } | { type: "back" } | { type: "refresh" };
+export type RuntimeActionType = RuntimeAction["type"];
 
-export const runtimeSources = ["activities.catalog", "account.bookings", "account.tasks", "account.reports"] as const;
+/** What a command returns. Clients run the effects in order. */
+export type RuntimeEffect =
+  | { type: "toast"; text: string; icon?: "success" | "none" }
+  | { type: "dialog"; title: string; body: string; confirm: string; cancel?: string; action?: RuntimeAction }
+  /** A short celebration or reveal; the result is always decided by Mathin. */
+  | { type: "reveal"; style: "card" | "envelope" | "wheel" | "badge"; title: string; body: string; image: string; tag?: string; action?: RuntimeAction }
+  | { type: "action"; action: RuntimeAction }
+  /** Reads the listed blocks again, or the whole screen when none are listed. */
+  | { type: "refresh"; blocks?: string[] }
+  /** Clears the form that sent the command. */
+  | { type: "reset" }
+  /** Reads the app shell again, for example after the account's tabs change. */
+  | { type: "app" };
+export type RuntimeCommandRequest = {
+  id: string; command: string; params: Record<string, string>; values?: RuntimeAnswers;
+  screen: string; block: string; participant: string; locale: RuntimeLocale;
+};
+export type RuntimeCommandResult = { effects: RuntimeEffect[] };
+export type RuntimeUpload = { id: string; kind: "image" | "video" | "file"; name: string; bytes: number };
+
+export const runtimeSources = ["activities.catalog", "account.bookings", "account.tasks", "account.reports", "account.requests", "account.events"] as const;
 export type RuntimeSource = typeof runtimeSources[number];
-export type RuntimeFacetKind = "stage" | "topic";
 
 type BlockBase = { id: string; visibleWhen?: RuntimeRule; hidden?: boolean };
 export type RuntimeLinkSpec = { label: RuntimeText; action: RuntimeAction };
 export type RuntimeEntrySpec = { id: string; label: RuntimeText; icon: string; action: RuntimeAction; visibleWhen?: RuntimeRule; hidden?: boolean };
+export type RuntimeListTemplate = "card" | "row" | "timeline" | "message" | "tile" | "carousel";
+export type RuntimeMetricSpec = { label: RuntimeText; value: string; unit: RuntimeText; hint: RuntimeText };
+export type RuntimeSeriesSpec = { name: RuntimeText; values: number[] };
+export type RuntimeBadgeSpec = { id: string; label: RuntimeText; image: string; earned: boolean; caption: RuntimeText };
+export type RuntimeTrackSpec = { id: string; title: RuntimeText; subtitle: RuntimeText; src: string };
+export type RuntimeChartKind = "ring" | "bar" | "radar" | "trend";
 export type RuntimeBlockSpec = BlockBase & (
   /** `row` places its blocks side by side, as in the original account header row. */
   | { type: "section"; title: RuntimeText; style: "card" | "plain" | "row"; more?: RuntimeLinkSpec; blocks: RuntimeBlockSpec[] }
+  | { type: "tabs"; style: "segmented" | "underline"; tabs: { id: string; label: RuntimeText; blocks: RuntimeBlockSpec[] }[] }
+  | { type: "collapse"; title: RuntimeText; summary: RuntimeText; open: boolean; blocks: RuntimeBlockSpec[] }
   | { type: "text"; text: RuntimeText; tone: "body" | "muted" | "notice" }
   | { type: "image"; image: string; fit: "width" | "cover"; action?: RuntimeAction }
   | { type: "feature"; title: RuntimeText; body: RuntimeText; image: string; action?: RuntimeAction; style?: "card" | "tile" }
   | { type: "entries"; title: RuntimeText; style: "grid" | "floating"; items: RuntimeEntrySpec[] }
-  | { type: "list"; title: RuntimeText; source: RuntimeSource; template: "card" | "row"; limit: number; empty: RuntimeText;
-      more?: RuntimeLinkSpec; facets: RuntimeFacetKind[]; actionLabel: RuntimeText }
+  | { type: "list"; title: RuntimeText; source: RuntimeSource; template: RuntimeListTemplate; limit: number; empty: RuntimeText;
+      more?: RuntimeLinkSpec; facets: string[]; actionLabel: RuntimeText; params?: Record<string, string> }
   | { type: "participants"; title: RuntimeText; empty: RuntimeText; style?: "chips" | "picker" | "tile" }
   | { type: "calendar"; title: RuntimeText; empty: RuntimeText; more?: RuntimeLinkSpec; weekNavigation?: boolean; signInLabel?: RuntimeText }
   /** Page-level filter pills for the data lists on the same screen that enable facets. */
@@ -64,38 +112,75 @@ export type RuntimeBlockSpec = BlockBase & (
   | { type: "content"; pageId: string }
   | { type: "button"; label: RuntimeText; appearance: "primary" | "secondary" | "link"; action: RuntimeAction }
   | { type: "divider" }
+  | { type: "video"; title: RuntimeText; src: string; poster: string }
+  | { type: "audio"; title: RuntimeText; tracks: RuntimeTrackSpec[]; loop: boolean; source?: string }
+  /** Certificates, credentials such as a student card with a refreshable code, and plain info cards. */
+  | { type: "card"; style: "certificate" | "credential" | "plain"; title: RuntimeText; subtitle: RuntimeText; fields: { label: RuntimeText; value: RuntimeText }[];
+      image: string; stamp: RuntimeText; action?: RuntimeAction; source?: string; refreshSeconds?: number }
+  | { type: "metrics"; title: RuntimeText; items: RuntimeMetricSpec[]; columns: 2 | 3 | 4; source?: string }
+  | { type: "chart"; title: RuntimeText; kind: RuntimeChartKind; labels: RuntimeText[]; series: RuntimeSeriesSpec[]; max: number; caption: RuntimeText; source?: string }
+  | { type: "progress"; title: RuntimeText; items: { label: RuntimeText; value: number; max: number; caption: RuntimeText }[]; source?: string }
+  | { type: "badges"; title: RuntimeText; columns: 3 | 4 | 5; items: RuntimeBadgeSpec[]; source?: string }
+  | { type: "table"; title: RuntimeText; columns: RuntimeText[]; rows: RuntimeText[][]; source?: string }
+  /** A form from the Mini Program form library; answers are submitted as a command. */
+  | { type: "form"; title: RuntimeText; formId: string; submitLabel: RuntimeText; command?: string; after?: RuntimeAction }
+  /** Buttons pinned to the bottom of the page. */
+  | { type: "bar"; buttons: { id: string; label: RuntimeText; appearance: "primary" | "secondary"; action: RuntimeAction }[] }
 );
 export type RuntimeBlockType = RuntimeBlockSpec["type"];
-export const runtimeBlockTypes: readonly RuntimeBlockType[] = ["section", "text", "image", "feature", "entries", "list", "participants", "calendar", "filters", "account", "content", "button", "divider"];
+export const runtimeBlockTypes: readonly RuntimeBlockType[] = ["section", "tabs", "collapse", "text", "image", "feature", "entries", "list", "participants", "calendar",
+  "filters", "account", "content", "button", "divider", "video", "audio", "card", "metrics", "chart", "progress", "badges", "table", "form", "bar"];
 /** Client view protocol that first rendered each block type. */
 export const runtimeBlockVersions: Readonly<Record<RuntimeBlockType, number>> = {
-  section: 1, text: 1, image: 1, feature: 1, entries: 1, list: 1, participants: 1, calendar: 1, filters: 1, account: 1, content: 1, button: 1, divider: 1,
+  section: 1, tabs: 1, collapse: 1, text: 1, image: 1, feature: 1, entries: 1, list: 1, participants: 1, calendar: 1, filters: 1, account: 1, content: 1,
+  button: 1, divider: 1, video: 1, audio: 1, card: 1, metrics: 1, chart: 1, progress: 1, badges: 1, table: 1, form: 1, bar: 1,
 };
+/** Blocks that hold other blocks. */
+export function runtimeChildren<T extends { type: string; blocks?: unknown; tabs?: unknown }>(block: T): T[] {
+  if (Array.isArray(block.blocks)) return block.blocks as T[];
+  if (Array.isArray(block.tabs)) return (block.tabs as { blocks?: T[] }[]).reduce<T[]>((all, tab) => all.concat(Array.isArray(tab.blocks) ? tab.blocks : []), []);
+  return [];
+}
 
-export type RuntimeScreenSpec = { id: string; title: RuntimeText; navigation: "brand" | "title"; blocks: RuntimeBlockSpec[] };
+export type RuntimeScreenSpec = { id: string; title: RuntimeText; navigation: "brand" | "title"; blocks: RuntimeBlockSpec[];
+  /** Shown when this page is forwarded; without it the page cannot be shared. */ share?: { title: RuntimeText; image: string } };
 /** `hidden` keeps a tab, block or entry in the specification while Mathin stops sending it to every client. */
 export type RuntimeTabSpec = { slot: RuntimeTabSlot; screen: string; label: RuntimeText; icon: string; visibleWhen?: RuntimeRule; hidden?: boolean };
 export type RuntimeSpec = { version: 1; tabs: RuntimeTabSpec[]; screens: RuntimeScreenSpec[] };
 
-/* Views sent to clients: text is localized and data is already authorized. Image values are `/api/…` paths on the API origin,
- * `asset:<path>` for bundled PNG files under /assets, or HTTPS URLs. */
+/* Views sent to clients: text is localized and data is already authorized. */
 export type RuntimeLink = { label: string; action: RuntimeAction };
 export type RuntimeItem = {
   id: string; title: string; subtitle: string; summary: string; meta: string[]; tags: string[]; image: string;
   status: { label: string; tone: "neutral" | "positive" | "warning" | "muted" } | null; actionLabel: string; action: RuntimeAction | null;
   date: string; start: string; end: string; phase: "" | "upcoming" | "ongoing" | "ended";
+  /** Optional slots used by some templates: unread count, message side, avatar, completion, stamp text and thumbnail images. */
+  badge?: string; side?: "start" | "end"; avatar?: string; progress?: number; stamp?: string; images?: string[];
 };
-export type RuntimeFacet = { id: RuntimeFacetKind; label: string; hint: string; value: string; valueLabel: string; options: { value: string; label: string; group: string }[] };
+/** `choice` facets open an option sheet; `search` facets show a search field. */
+export type RuntimeFacet = { id: string; kind?: "choice" | "search"; label: string; hint: string; value: string; valueLabel: string; options: { value: string; label: string; group: string }[] };
 export type RuntimeDay = { date: string; day: string; weekday: number; today: boolean; count: number };
 export type RuntimeDataState = "ready" | "signedOut" | "error";
+export type RuntimeFieldKind = "text" | "textarea" | "number" | "phone" | "email" | "date" | "time" | "select" | "multiselect" | "rating" | "address" | "media" | "consent";
+export type RuntimeFieldOption = { value: string; label: string; hint: string; badge: string; disabled: boolean };
+export type RuntimeField = {
+  id: string; kind: RuntimeFieldKind; label: string; help: string; placeholder: string; required: boolean; options: RuntimeFieldOption[];
+  /** Choices appear as a picker row or as pills. */ display: "picker" | "pills";
+  min: number | null; max: number | null; accept: ("image" | "video" | "file")[];
+  visibleWhen: { field: string; operator: "equals" | "notEquals" | "answered" | "includes"; value: string } | null;
+};
+export type RuntimeFormGroup = { id: string; title: string; description: string; repeat: boolean; min: number; max: number; fields: RuntimeField[] };
+export type RuntimeAnswers = Record<string, Record<string, string | string[]>[]>;
 export type RuntimeBlockView = { id: string; fallback?: string } & (
   | { type: "section"; title: string; style: "card" | "plain" | "row"; more: RuntimeLink | null; blocks: RuntimeBlockView[] }
+  | { type: "tabs"; style: "segmented" | "underline"; tabs: { id: string; label: string; blocks: RuntimeBlockView[] }[] }
+  | { type: "collapse"; title: string; summary: string; open: boolean; blocks: RuntimeBlockView[] }
   | { type: "text"; text: string; tone: "body" | "muted" | "notice" }
   | { type: "image"; image: string; fit: "width" | "cover"; action: RuntimeAction | null }
   | { type: "feature"; title: string; body: string; image: string; action: RuntimeAction | null; style: "card" | "tile" }
-  | { type: "entries"; title: string; style: "grid" | "floating"; items: { id: string; label: string; icon: string; action: RuntimeAction }[] }
-  | { type: "list"; title: string; template: "card" | "row"; items: RuntimeItem[]; empty: string; more: RuntimeLink | null;
-      facets: RuntimeFacet[]; state: RuntimeDataState; message: string }
+  | { type: "entries"; title: string; style: "grid" | "floating"; items: { id: string; label: string; icon: string; action: RuntimeAction; badge?: string }[] }
+  | { type: "list"; title: string; template: RuntimeListTemplate; items: RuntimeItem[]; empty: string; more: RuntimeLink | null;
+      facets: RuntimeFacet[]; state: RuntimeDataState; message: string; /** Cursor for the next page; empty when there is none. */ next?: string }
   | { type: "participants"; title: string; style: "chips" | "picker" | "tile"; participants: { id: string; name: string; detail: string }[]; selected: string;
       empty: string; state: RuntimeDataState; message: string }
   | { type: "calendar"; title: string; anchor: string; previous: string; next: string; days: RuntimeDay[]; items: RuntimeItem[];
@@ -105,20 +190,41 @@ export type RuntimeBlockView = { id: string; fallback?: string } & (
   | { type: "content"; pageId: string }
   | { type: "button"; label: string; appearance: "primary" | "secondary" | "link"; action: RuntimeAction }
   | { type: "divider" }
+  | { type: "video"; title: string; src: string; poster: string }
+  | { type: "audio"; title: string; tracks: { id: string; title: string; subtitle: string; src: string; cover: string }[]; loop: boolean; state: RuntimeDataState; message: string }
+  | { type: "card"; style: "certificate" | "credential" | "plain"; title: string; subtitle: string; fields: { label: string; value: string }[]; image: string; stamp: string;
+      action: RuntimeAction | null; refreshSeconds: number; state: RuntimeDataState; message: string }
+  | { type: "metrics"; title: string; items: { label: string; value: string; unit: string; hint: string }[]; columns: number; state: RuntimeDataState; message: string }
+  /** Charts arrive as images drawn by Mathin, so new chart kinds need no client update. */
+  | { type: "chart"; title: string; image: string; ratio: number; legend: { label: string; color: string }[]; caption: string; state: RuntimeDataState; message: string }
+  | { type: "progress"; title: string; items: { label: string; value: number; max: number; percent: number; caption: string }[]; state: RuntimeDataState; message: string }
+  | { type: "badges"; title: string; columns: number; items: { id: string; label: string; image: string; earned: boolean; caption: string; action: RuntimeAction | null }[];
+      state: RuntimeDataState; message: string }
+  | { type: "table"; title: string; columns: string[]; rows: string[][]; state: RuntimeDataState; message: string }
+  | { type: "form"; title: string; intro: string; command: string; params: Record<string, string>; submitLabel: string; groups: RuntimeFormGroup[];
+      after: RuntimeAction | null; state: RuntimeDataState; message: string }
+  | { type: "bar"; buttons: { id: string; label: string; appearance: "primary" | "secondary"; action: RuntimeAction }[] }
   | { type: "unsupported" }
 );
 
 export const runtimeStringKeys = ["loading", "retry", "unavailable", "signIn", "signInPrompt", "signOut", "today", "weekdays", "all", "close", "updateRequired", "choose", "clear",
-  "account", "view", "chooseParticipant", "noParticipants", "signInNow"] as const;
+  "account", "view", "chooseParticipant", "noParticipants", "signInNow", "more", "search", "submit", "submitted", "required", "upload", "uploading", "uploadFailed",
+  "chooseAddress", "confirm", "cancel", "saved", "opening", "updateReady", "updateLatest", "cacheCleared", "play", "pause", "next", "previous", "done"] as const;
 /** Filters chosen in a page-level filter bar are stored under this key and apply to every list on the screen. */
 export const runtimePageFilters = "_page";
 export type RuntimeStringKey = typeof runtimeStringKeys[number];
-export type RuntimeTab = { slot: RuntimeTabSlot; label: string; icon: string; activeIcon: string; screen: string };
+export type RuntimeTab = { slot: RuntimeTabSlot; label: string; icon: string; activeIcon: string; screen: string; badge?: string };
 export type RuntimeApp = {
   protocol: 1; revision: string; locale: RuntimeLocale; signedIn: boolean;
   theme: "paper" | "leaf" | "rose"; brandName: string; tabs: RuntimeTab[]; strings: Record<RuntimeStringKey, string>;
 };
 export type RuntimeScreen = {
   id: string; revision: string; title: string; navigation: "brand" | "title"; signedIn: boolean; participant: string | null; blocks: RuntimeBlockView[];
+  /** The account's children, for the choose-child action. */ participants: { id: string; name: string }[];
+  share: { title: string; image: string } | null;
 };
 export type RuntimeBlockResult = { revision: string; block: RuntimeBlockView | null };
+/** A scanned code or launch scene resolved by Mathin. */
+export type RuntimeResolveResult = { effects: RuntimeEffect[] };
+/** A short-lived address that signs the web page in as the current account. */
+export type RuntimeWebTicket = { url: string };

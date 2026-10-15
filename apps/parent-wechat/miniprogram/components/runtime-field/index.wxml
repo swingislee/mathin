@@ -1,0 +1,37 @@
+<view class="rf {{error ? 'rf-error' : ''}}">
+  <text class="rf-label">{{field.label}}<text wx:if="{{field.required}}" class="rf-required"> *</text></text>
+  <textarea wx:if="{{field.kind === 'textarea'}}" class="rf-input rf-textarea" value="{{text}}" maxlength="4000" placeholder="{{field.placeholder}}" disabled="{{disabled}}" auto-height bindinput="input" />
+  <picker wx:elif="{{field.kind === 'select' && field.display !== 'pills'}}" range="{{pickerLabels}}" value="{{pickerIndex}}" disabled="{{disabled}}" bindchange="pick">
+    <view class="rf-input rf-picker {{pickerIndex ? '' : 'rf-placeholder'}}">{{pickerLabels[pickerIndex]}}<view class="chevron down"></view></view>
+  </picker>
+  <view wx:elif="{{field.kind === 'select' || field.kind === 'multiselect'}}" class="rf-options {{field.kind === 'multiselect' && field.display !== 'pills' ? 'rf-list' : ''}}">
+    <button wx:for="{{field.options}}" wx:key="value" class="rf-option {{(field.kind === 'multiselect' ? list.indexOf(item.value) >= 0 : text === item.value) ? 'selected' : ''}} {{item.disabled ? 'rf-disabled' : ''}}"
+      data-value="{{item.value}}" disabled="{{disabled || item.disabled}}" bindtap="choose">
+      <text>{{item.label}}</text><text wx:if="{{item.hint}}" class="rf-hint">{{item.hint}}</text><text wx:if="{{item.badge}}" class="rf-badge">{{item.badge}}</text>
+    </button>
+  </view>
+  <picker wx:elif="{{field.kind === 'date'}}" mode="date" value="{{text}}" disabled="{{disabled}}" bindchange="pick">
+    <view class="rf-input rf-picker {{text ? '' : 'rf-placeholder'}}">{{text || field.placeholder || strings.choose}}<view class="chevron down"></view></view>
+  </picker>
+  <picker wx:elif="{{field.kind === 'time'}}" mode="time" value="{{text}}" disabled="{{disabled}}" bindchange="pick">
+    <view class="rf-input rf-picker {{text ? '' : 'rf-placeholder'}}">{{text || field.placeholder || strings.choose}}<view class="chevron down"></view></view>
+  </picker>
+  <view wx:elif="{{field.kind === 'rating'}}" class="rf-rating">
+    <button wx:for="{{stars}}" wx:key="*this" class="rf-star {{item <= rating ? 'on' : ''}}" data-value="{{item}}" disabled="{{disabled}}" bindtap="rate" aria-label="{{item}}">★</button>
+  </view>
+  <button wx:elif="{{field.kind === 'address'}}" class="rf-input rf-picker rf-address {{text ? '' : 'rf-placeholder'}}" disabled="{{disabled}}" bindtap="address">
+    <text>{{text || field.placeholder || strings.chooseAddress}}</text><view class="chevron"></view>
+  </button>
+  <view wx:elif="{{field.kind === 'media'}}" class="rf-media">
+    <view wx:for="{{media}}" wx:key="id" class="rf-media-item">
+      <image wx:if="{{item.kind === 'image' && item.path}}" src="{{item.path}}" mode="aspectFill" data-path="{{item.path}}" bindtap="preview" />
+      <view wx:else class="rf-file"><text>{{item.kind === 'video' ? '▶' : 'PDF'}}</text><text class="rf-file-name">{{item.name}}</text></view>
+      <button wx:if="{{!disabled}}" class="rf-remove" data-id="{{item.id}}" bindtap="remove" aria-label="remove">×</button>
+    </view>
+    <view wx:for="{{pending}}" wx:key="key" class="rf-media-item rf-uploading"><image wx:if="{{item.kind === 'image'}}" src="{{item.path}}" mode="aspectFill" /><text class="rf-progress">{{strings.uploading}}</text></view>
+    <button wx:if="{{canAdd && !disabled}}" class="rf-media-item rf-add" bindtap="add"><text class="rf-plus">＋</text><text>{{strings.upload}}</text></button>
+  </view>
+  <checkbox-group wx:elif="{{field.kind === 'consent'}}" bindchange="check"><label class="rf-check"><checkbox value="yes" checked="{{text === 'yes'}}" disabled="{{disabled}}" /><text>{{field.placeholder || strings.confirm}}</text></label></checkbox-group>
+  <input wx:else class="rf-input" type="{{field.kind === 'number' ? 'digit' : field.kind === 'phone' ? 'number' : 'text'}}" value="{{text}}" maxlength="500" placeholder="{{field.placeholder}}" disabled="{{disabled}}" bindinput="input" />
+  <text wx:if="{{field.help}}" class="rf-help">{{field.help}}</text>
+</view>

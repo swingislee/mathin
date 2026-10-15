@@ -4,9 +4,9 @@
     <view wx:if="{{missing}}" class="runtime-state"><empty-state label="{{strings.unavailable}}" spacious /><button class="text-button" bindtap="firstTab">{{strings.retry}}</button></view>
     <text wx:elif="{{loading && !blocks.length}}" class="loading-line">{{strings.loading}}</text>
     <view wx:elif="{{error && !blocks.length}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="retry">{{strings.retry}}</button></view>
-    <runtime-blocks blocks="{{blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{tab > 0}}" bindaction="action" bindfacet="facet" bindweek="week" bindparticipant="participant" bindaccount="account" bindsheet="sheet" />
+    <runtime-blocks blocks="{{blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{tab > 0}}" screen="{{current}}" bindaction="action" bindfacet="facet" bindweek="week" bindparticipant="participant" bindaccount="account" bindsheet="sheet" bindsearch="search" bindmore="more" bindrefresh="refresh" bindeffects="effects" />
   </view>
-  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="close" catchtouchmove="noop"><view class="bottom-sheet {{sheet.kind === 'facet' ? 'catalog-sheet' : ''}}" catchtap="noop">
+  <view wx:if="{{sheet}}" class="sheet-mask" bindtap="close" catchtouchmove="noop"><view class="bottom-sheet {{sheet.kind === 'facet' ? 'catalog-sheet' : ''}} {{sheet.kind === 'screen' ? 'screen-sheet' : ''}}" catchtap="noop">
     <block wx:if="{{sheet.kind === 'facet'}}">
       <view class="sheet-heading"><view><text class="block">{{sheet.facet.label}}</text><text wx:if="{{sheet.facet.hint}}" class="sheet-subtitle">{{sheet.facet.hint}}</text></view><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
       <scroll-view class="stage-scroll" scroll-y><view wx:for="{{sheet.groups}}" wx:for-item="group" wx:key="group" class="stage-group"><text wx:if="{{group.group}}" class="section-title">{{group.group}}</text><view class="option-grid"><button wx:for="{{group.options}}" wx:key="value" class="option-pill {{sheet.facet.value === item.value ? 'selected' : ''}}" data-value="{{item.value}}" bindtap="choose">{{item.label}}</button></view></view></scroll-view>
@@ -16,10 +16,23 @@
       <text class="account-display-name">{{sheet.name || strings.account}}</text>
       <button class="secondary" bindtap="signOut">{{strings.signOut}}</button>
     </block>
+    <block wx:elif="{{sheet.kind === 'screen'}}">
+      <view class="sheet-heading"><text>{{sheet.title}}</text><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
+      <text wx:if="{{sheet.loading}}" class="loading-line">{{strings.loading}}</text>
+      <scroll-view wx:else scroll-y class="screen-sheet-scroll"><runtime-blocks blocks="{{sheet.blocks}}" strings="{{strings}}" locale="{{locale}}" screen="{{sheet.id}}" bindaction="sheetAction" bindeffects="sheetEffects" /></scroll-view>
+    </block>
     <block wx:else>
       <view class="sheet-heading"><text>{{strings.chooseParticipant}}</text><button class="sheet-close" bindtap="close" aria-label="{{strings.close}}">×</button></view>
       <button wx:for="{{sheet.rows}}" wx:key="id" class="member-option" data-id="{{item.id}}" bindtap="chooseParticipant"><image src="/assets/participant.png" class="participant-avatar" aria-hidden="true" /><text>{{item.name}}</text><view class="chevron"></view></button>
       <text wx:if="{{!sheet.rows.length}}" class="muted small">{{strings.noParticipants}}</text>
     </block>
+  </view></view>
+  <view wx:if="{{reveal}}" class="reveal-mask" bindtap="closeReveal" catchtouchmove="noop"><view class="reveal-card reveal-style-{{reveal.style}}" catchtap="noop">
+    <view class="reveal-burst"></view>
+    <image wx:if="{{reveal.image}}" class="reveal-image" src="{{reveal.image}}" mode="aspectFit" />
+    <text wx:if="{{reveal.tag}}" class="reveal-tag">{{reveal.tag}}</text>
+    <text class="reveal-title">{{reveal.title}}</text>
+    <text wx:if="{{reveal.body}}" class="reveal-body">{{reveal.body}}</text>
+    <button class="primary reveal-button" bindtap="revealAction">{{strings.done}}</button>
   </view></view>
 </view>

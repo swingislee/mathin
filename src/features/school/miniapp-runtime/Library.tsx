@@ -109,7 +109,8 @@ export function LibraryList({ settings, target, part, options, locale, onOpen, o
 }
 
 const fieldTypes: [ExperienceField["type"], string, string][] = [["text", "单行文字", "Short text"], ["textarea", "多行说明", "Long text"], ["select", "单项选择", "Single choice"],
-  ["multiselect", "多项选择", "Multiple choice"], ["number", "数字", "Number"], ["date", "日期", "Date"], ["phone", "联系电话", "Phone"], ["email", "电子邮箱", "Email"], ["consent", "确认同意", "Confirmation"]];
+  ["multiselect", "多项选择", "Multiple choice"], ["number", "数字", "Number"], ["date", "日期", "Date"], ["time", "时间", "Time"], ["phone", "联系电话", "Phone"], ["email", "电子邮箱", "Email"],
+  ["rating", "评分", "Rating"], ["address", "收货地址", "Address"], ["media", "照片 / 文件", "Photos / files"], ["consent", "确认同意", "Confirmation"]];
 /** Insert controls above the preview; new parts are placed after the selected one and selected. */
 export function LibraryInsert({ target, settings, part, options, locale, onChange, onPart }: {
   target: LibraryTarget; settings: MiniappSettings; part: string; options?: ContactOptions; locale: Locale; onChange: Change; onPart: (part: string) => void;
@@ -153,11 +154,11 @@ export function LibraryInsert({ target, settings, part, options, locale, onChang
   }
 }
 
-function InsertMenu({ label, children }: { label: string; children: (close: () => void) => ReactNode }) {
+export function InsertMenu({ label, children, wide = false }: { label: string; children: (close: () => void) => ReactNode; wide?: boolean }) {
   const [open, setOpen] = useState(false);
   return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild>
     <Button size="sm" variant="secondary"><Plus className="size-4" />{label}</Button></PopoverTrigger>
-    <PopoverContent align="start" className="w-64 p-2">{children(() => setOpen(false))}</PopoverContent></Popover>;
+    <PopoverContent align="start" className={cn(wide ? "w-[34rem]" : "w-64", "p-2")}>{children(() => setOpen(false))}</PopoverContent></Popover>;
 }
 
 function Phone({ title, children }: { title: string; children: ReactNode }) {

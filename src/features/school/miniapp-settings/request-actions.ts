@@ -17,3 +17,17 @@ export async function updateExperienceRequest(id: string, version: number, statu
     if (r.error) throw new Error(r.error.message); return { ok: true, data: r.data as ExperienceRequest };
   } catch (e) { return actionError(e, errors); }
 }
+/** Short-lived links to files a family attached to a form. RLS lets staff who handle requests read them. */
+export async function runtimeUploadLinks(ids: string[]): Promise<ActionResult<{ id: string; name: string; kind: string; url: string }[]>> {
+  try { const list = z.array(z.string().uuid()).min(1).max(30).parse(ids);
+    await authorizedClient("organization.profile.manage");
+    const { createAdminClient } = await import("@/lib/supabase/admin"), admin = createAdminClient();
+    const rows = await admin.from("miniapp_runtime_uploads").select("id,name,kind,object_path").in("id", list).eq("ready", true);
+    if (rows.error) throw new Error(rows.error.message);
+    const links = await Promise.all(((rows.data ?? []) as { id: string; name: string; kind: string; object_path: string }[]).map(async row => {
+      const signed = await admin.storage.from("miniapp-runtime-uploads").createSignedUrl(row.object_path, 600);
+      return { id: row.id, name: row.name, kind: row.kind, url: signed.data?.signedUrl ?? "" };
+    }));
+    return { ok: true, data: links.filter(row => row.url) };
+  } catch (e) { return actionError(e, errors); }
+}

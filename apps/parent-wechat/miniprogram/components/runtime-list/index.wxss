@@ -1,4 +1,5 @@
 .runtime-list { margin-bottom: 24rpx; padding: 30rpx 32rpx 12rpx; }
+.runtime-list-plain { padding: 0; }
 .runtime-facets { margin: 16rpx 0 8rpx; }
 .filter-pill.selected { color: var(--primary); background: var(--primary-soft); }
 .runtime-signin { display: flex; flex-direction: column; align-items: flex-start; gap: 16rpx; padding: 16rpx 0 28rpx; }
@@ -12,3 +13,43 @@
 .runtime-status.tone-positive { background: var(--primary-soft); color: var(--primary); }
 .runtime-status.tone-warning { background: #f8e5e6; color: var(--rose); }
 .runtime-row > .chevron { width: 18rpx; height: 18rpx; color: var(--muted); }
+.runtime-row-avatar { width: 80rpx; height: 80rpx; border-radius: 40rpx; flex-shrink: 0; background: var(--quiet); }
+.runtime-search { display: flex; align-items: center; gap: 8rpx; margin: 16rpx 0 8rpx; padding: 0 8rpx 0 24rpx; border-radius: 40rpx; background: var(--quiet); }
+.runtime-search-input { flex: 1; min-width: 0; height: 72rpx; font-size: 27rpx; }
+.runtime-search-clear, .runtime-search-go { margin: 0; padding: 0 16rpx; min-height: 56rpx; line-height: 56rpx; font-size: 26rpx; background: none; color: var(--muted); }
+.runtime-search-go { color: var(--primary); }
+.runtime-timeline-row { display: flex; align-items: stretch; gap: 18rpx; width: 100%; margin: 0; padding: 0; text-align: left; background: none; }
+.runtime-timeline-date { flex-shrink: 0; width: 120rpx; padding-top: 22rpx; display: flex; flex-direction: column; font-size: 22rpx; color: var(--muted); }
+.runtime-timeline-time { font-size: 26rpx; color: var(--ink); font-weight: 600; }
+.runtime-timeline-dot { flex-shrink: 0; position: relative; width: 4rpx; background: var(--line); }
+.runtime-timeline-dot::after { content: ""; position: absolute; top: 30rpx; left: -8rpx; width: 20rpx; height: 20rpx; border-radius: 10rpx; background: var(--primary); }
+.runtime-timeline-dot.tone-warning::after { background: var(--rose); }
+.runtime-timeline-dot.tone-muted::after { background: var(--line); }
+.runtime-timeline-row .runtime-row-main { padding: 20rpx 0 24rpx; }
+.runtime-row-foot { display: flex; gap: 12rpx; align-items: center; }
+.runtime-stamp { padding: 2rpx 12rpx; border: 2rpx solid var(--rose); border-radius: 8rpx; color: var(--rose); font-size: 21rpx; transform: rotate(-6deg); }
+.runtime-thumbs { display: flex; flex-wrap: wrap; gap: 10rpx; margin-top: 8rpx; }
+.runtime-thumbs image { width: 140rpx; height: 140rpx; border-radius: 12rpx; background: var(--quiet); }
+.runtime-messages { display: flex; flex-direction: column; gap: 22rpx; padding: 8rpx 0 20rpx; }
+.runtime-message { display: flex; gap: 14rpx; align-items: flex-start; }
+.runtime-message.side-end { flex-direction: row-reverse; }
+.runtime-message-avatar { width: 64rpx; height: 64rpx; border-radius: 32rpx; background: var(--quiet); flex-shrink: 0; }
+.runtime-bubble { max-width: 78%; padding: 18rpx 22rpx; border-radius: 22rpx; background: var(--quiet); display: flex; flex-direction: column; gap: 6rpx; }
+.side-end .runtime-bubble { background: var(--primary-soft); }
+.runtime-bubble-title { font-size: 26rpx; font-weight: 600; }
+.runtime-bubble-text { font-size: 27rpx; line-height: 1.7; white-space: pre-wrap; }
+.runtime-bubble-meta { font-size: 21rpx; color: var(--muted); }
+.runtime-tiles { display: flex; flex-wrap: wrap; gap: 20rpx; }
+.runtime-tiles .runtime-tile-card { width: calc((100% - 20rpx) / 2); }
+.runtime-carousel-scroll { width: 100%; white-space: nowrap; }
+.runtime-carousel-track { display: inline-flex; gap: 20rpx; padding-bottom: 8rpx; }
+.runtime-carousel-card { width: 300rpx; }
+.runtime-tile-card { position: relative; display: flex; flex-direction: column; gap: 8rpx; box-sizing: border-box; margin: 0; padding: 18rpx; text-align: left; white-space: normal; }
+.runtime-tile-image { width: 100%; height: 200rpx; border-radius: 16rpx; background: var(--quiet); }
+.runtime-tile-title { font-size: 27rpx; font-weight: 600; line-height: 1.45; }
+.runtime-tile-meta { font-size: 22rpx; color: var(--muted); }
+.runtime-tile-badge, .runtime-count { min-width: 36rpx; height: 36rpx; padding: 0 10rpx; box-sizing: border-box; border-radius: 18rpx; background: var(--rose); color: #fff; font-size: 21rpx; line-height: 36rpx; text-align: center; }
+.runtime-tile-badge { position: absolute; top: 12rpx; right: 12rpx; }
+.runtime-bar-track { height: 12rpx; margin-top: 8rpx; border-radius: 6rpx; background: var(--quiet); overflow: hidden; }
+.runtime-bar-fill { height: 100%; border-radius: 6rpx; background: var(--primary); }
+.runtime-more { display: block; width: 100%; margin: 4rpx 0 12rpx; }

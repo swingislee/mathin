@@ -96,7 +96,11 @@
     }
   },
   "requiredPrivateInfos": [
-    "getLocation"
+    "getLocation",
+    "chooseAddress"
+  ],
+  "requiredBackgroundModes": [
+    "audio"
   ],
   "darkmode": true,
   "themeLocation": "theme.json",

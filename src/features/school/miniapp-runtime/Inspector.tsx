@@ -15,8 +15,9 @@ import {
 } from "../../../../contracts/participant-api/runtime";
 import { blockNames, canHideTab, defaultAction, libraryNames, presetRule, routeSettings, rulePreset, withHidden, type ActionKind, type LibraryTarget, type Locale, type RulePreset } from "./model";
 import { RuntimeIcon } from "./RuntimeRenderer";
+import { MoreBlockFields } from "./InspectorFields";
 
-export type InspectorMeta = { contentPages: { id: string; title: string }[]; stages: { stageNumber: number; label: string; group: string }[] };
+export type InspectorMeta = { contentPages: { id: string; title: string }[]; stages: { stageNumber: number; label: string; group: string }[]; forms: { id: string; title: string }[] };
 const select = "h-9 w-full rounded-md border border-line bg-paper px-2 text-sm";
 const L = (locale: Locale, zh: string, en: string) => locale === "zh" ? zh : en;
 
@@ -53,15 +54,26 @@ const routeNames: Record<string, string> = { assessment: "诊断预约", "activi
 const actionKinds: { kind: ActionKind; zh: string; en: string }[] = [
   { kind: "none", zh: "无", en: "None" }, { kind: "screen", zh: "打开页面", en: "Open page" }, { kind: "tab", zh: "切换底部导航", en: "Switch tab" },
   { kind: "route", zh: "打开现有功能", en: "Open feature" }, { kind: "phone", zh: "拨打电话", en: "Call" }, { kind: "copy", zh: "复制文字", en: "Copy text" },
+  { kind: "web", zh: "打开网页（家长自动登录）", en: "Open web page" }, { kind: "command", zh: "执行操作（打卡、领取等）", en: "Run command" },
+  { kind: "toast", zh: "显示提示", en: "Show a message" }, { kind: "preview", zh: "查看大图", en: "View image" }, { kind: "save", zh: "保存图片到相册", en: "Save image" },
+  { kind: "document", zh: "打开文档（打印、转发）", en: "Open document" }, { kind: "location", zh: "打开地图位置", en: "Open map" },
+  { kind: "subscribe", zh: "订阅消息提醒", en: "Subscribe to reminders" }, { kind: "scan", zh: "扫码", en: "Scan a code" }, { kind: "contact", zh: "微信客服", en: "Customer service" },
+  { kind: "share", zh: "分享当前页面", en: "Share this page" }, { kind: "participant", zh: "切换孩子", en: "Choose child" },
+  { kind: "update", zh: "检查新版本", en: "Check for updates" }, { kind: "clearCache", zh: "清理缓存", en: "Clear cache" },
   { kind: "login", zh: "登录", en: "Sign in" }, { kind: "logout", zh: "退出登录", en: "Sign out" }, { kind: "back", zh: "返回", en: "Back" }, { kind: "refresh", zh: "刷新", en: "Refresh" },
 ];
+/** Commands Mathin runs today; new ones are added on the server and appear here. */
+const commands = [{ value: "checkin", zh: "每日打卡", en: "Daily check-in" }];
 export function ActionField({ label, value, screens, locale, onChange, allowNone = true }: { label: string; value?: RuntimeAction; screens: RuntimeScreenSpec[]; locale: Locale; onChange: (value: RuntimeAction | undefined) => void; allowNone?: boolean }) {
   const kind: ActionKind = value?.type ?? "none";
   return <Field label={label}><div className="space-y-2">
     <select className={select} value={kind} onChange={event => onChange(defaultAction(event.target.value as ActionKind, screens))}>
       {actionKinds.filter(row => allowNone || row.kind !== "none").map(row => <option key={row.kind} value={row.kind}>{row[locale]}</option>)}</select>
-    {value?.type === "screen" && <select className={select} value={value.screen} onChange={event => onChange({ type: "screen", screen: event.target.value })}>
-      {screens.map(screen => <option key={screen.id} value={screen.id}>{screen.title[locale] || screen.title.zh || screen.id}</option>)}</select>}
+    {value?.type === "screen" && <>
+      <select className={select} value={value.screen} onChange={event => onChange({ ...value, screen: event.target.value })}>
+        {screens.map(screen => <option key={screen.id} value={screen.id}>{screen.title[locale] || screen.title.zh || screen.id}</option>)}</select>
+      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.sheet === true} onChange={event => { const next = { ...value }; if (event.target.checked) next.sheet = true; else delete next.sheet; onChange(next); }} />
+        {L(locale, "从底部弹出，不离开当前页", "Open as a bottom sheet")}</label></>}
     {value?.type === "tab" && <select className={select} value={value.slot} onChange={event => onChange({ type: "tab", slot: Number(event.target.value) as RuntimeTabSpec["slot"] })}>
       {runtimeTabSlots.map(slot => <option key={slot} value={slot}>{L(locale, `第 ${slot} 项`, `Tab ${slot}`)}</option>)}</select>}
     {value?.type === "route" && <>
@@ -74,6 +86,28 @@ export function ActionField({ label, value, screens, locale, onChange, allowNone
     </>}
     {value?.type === "phone" && <Input value={value.number} onChange={event => onChange({ type: "phone", number: event.target.value })} />}
     {value?.type === "copy" && <Input value={value.text} onChange={event => onChange({ type: "copy", text: event.target.value })} />}
+    {value?.type === "web" && <>
+      <Input value={value.url} placeholder="/zh/family" onChange={event => onChange({ ...value, url: event.target.value.trim() })} />
+      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.signIn === true} onChange={event => onChange({ ...value, signIn: event.target.checked })} />
+        {L(locale, "已登录的家长打开后保持登录", "Keep the family signed in")}</label>
+      <p className="text-[11px] text-muted">{L(locale, "填写 Mathin 页面路径（以 /zh/ 开头），或已在公众平台配置为业务域名的 https 地址。", "A Mathin path starting with /zh/, or an https address on a configured business domain.")}</p></>}
+    {value?.type === "command" && <>
+      <select className={select} value={value.command} onChange={event => onChange({ ...value, command: event.target.value })}>
+        {!commands.some(row => row.value === value.command) && <option value={value.command}>{value.command}</option>}
+        {commands.map(row => <option key={row.value} value={row.value}>{row[locale]}</option>)}</select>
+      <TextField label={L(locale, "执行前确认（可留空）", "Confirm first (optional)")} value={value.confirm ?? { zh: "", en: "" }} locale={locale}
+        onChange={confirm => { const next = { ...value }; if (confirm.zh || confirm.en) next.confirm = confirm; else delete next.confirm; onChange(next); }} /></>}
+    {value?.type === "toast" && <TextField label={L(locale, "提示文字", "Message")} value={value.text} locale={locale} onChange={text => onChange({ ...value, text })} />}
+    {value?.type === "preview" && <ImageField label={L(locale, "图片", "Image")} value={value.images[0] ?? ""} locale={locale} onChange={image => onChange({ ...value, images: [image] })} />}
+    {value?.type === "save" && <ImageField label={L(locale, "图片", "Image")} value={value.image} locale={locale} onChange={image => onChange({ ...value, image })} />}
+    {value?.type === "document" && <Input value={value.url} placeholder="/zh/..." onChange={event => onChange({ ...value, url: event.target.value.trim() })} />}
+    {value?.type === "location" && <>
+      <div className="grid grid-cols-2 gap-2"><Input type="number" step="0.000001" value={value.latitude} onChange={event => onChange({ ...value, latitude: Number(event.target.value) || 0 })} aria-label={L(locale, "纬度", "Latitude")} />
+        <Input type="number" step="0.000001" value={value.longitude} onChange={event => onChange({ ...value, longitude: Number(event.target.value) || 0 })} aria-label={L(locale, "经度", "Longitude")} /></div>
+      <TextField label={L(locale, "地点名称", "Place")} value={value.name} locale={locale} onChange={name => onChange({ ...value, name })} />
+      <TextField label={L(locale, "地址", "Address")} value={value.address} locale={locale} onChange={address => onChange({ ...value, address })} /></>}
+    {value?.type === "subscribe" && <Field label={L(locale, "订阅消息模板编号（公众平台中获取，最多 3 个，用逗号分隔）", "Template ids (up to 3, comma separated)")}>
+      <Input value={value.templates.join(",")} onChange={event => { const templates = event.target.value.split(/[,，\s]+/).filter(Boolean).slice(0, 3); if (templates.length) onChange({ ...value, templates }); }} /></Field>}
   </div></Field>;
 }
 
@@ -108,7 +142,7 @@ export function ShownField({ label, hidden, locale, disabledReason, onChange }: 
   </div>;
 }
 
-function ImageField({ label, value, locale, onChange }: { label: string; value: string; locale: Locale; onChange: (value: string) => void }) {
+export function ImageField({ label, value, locale, onChange }: { label: string; value: string; locale: Locale; onChange: (value: string) => void }) {
   const input = useRef<HTMLInputElement>(null), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const upload = async (file: File) => {
     setBusy(true); setError("");
@@ -166,12 +200,17 @@ function EntriesField({ items, screens, meta, locale, onChange }: { items: Runti
 const sourceNames: Record<string, { zh: string; en: string }> = {
   "activities.catalog": { zh: "公开活动（公开）", en: "Public activities" }, "account.bookings": { zh: "我的预约（需登录）", en: "My bookings (signed in)" },
   "account.tasks": { zh: "我的任务（需登录）", en: "My tasks (signed in)" }, "account.reports": { zh: "学习报告（需登录）", en: "Reports (signed in)" },
+  "account.requests": { zh: "我的申请与留言（需登录）", en: "My requests (signed in)" }, "account.events": { zh: "我的打卡记录（需登录）", en: "My check-ins (signed in)" },
 };
+const templates: { value: string; zh: string; en: string }[] = [
+  { value: "card", zh: "图文卡片", en: "Card" }, { value: "row", zh: "简洁行", en: "Row" }, { value: "timeline", zh: "时间线", en: "Timeline" },
+  { value: "message", zh: "对话气泡", en: "Messages" }, { value: "tile", zh: "双列宫格", en: "Two columns" }, { value: "carousel", zh: "横向滑动", en: "Carousel" },
+];
 /** Fields for the selected block. Every change returns a complete block to the caller. */
 export function BlockInspector({ block, screens, meta, locale, onChange }: { block: RuntimeBlockSpec; screens: RuntimeScreenSpec[]; meta: InspectorMeta; locale: Locale; onChange: (block: RuntimeBlockSpec) => void }) {
   const set = (change: Partial<RuntimeBlockSpec>) => onChange({ ...block, ...change } as RuntimeBlockSpec);
   const omit = (key: string) => { const next = { ...block } as Record<string, unknown>; delete next[key]; onChange(next as RuntimeBlockSpec); };
-  const optional = (key: "action" | "more" | "trailing", value: unknown) => value ? set({ [key]: value } as Partial<RuntimeBlockSpec>) : omit(key);
+  const optional = (key: "action" | "more" | "trailing" | "source" | "after", value: unknown) => value ? set({ [key]: value } as Partial<RuntimeBlockSpec>) : omit(key);
   const fields: ReactNode[] = [];
   switch (block.type) {
     case "section":
@@ -202,12 +241,16 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
       break;
     case "list":
       fields.push(<TextField key="title" label={L(locale, "标题", "Title")} value={block.title} locale={locale} onChange={title => set({ title })} />,
-        <Field key="source" label={L(locale, "数据来源", "Data")} hint={L(locale, "数据由 Mathin 按当前账号和所选孩子读取。", "Mathin reads it for the current account and child.")}><select className={select} value={block.source} onChange={event => set({ source: event.target.value as typeof block.source, facets: event.target.value === "activities.catalog" ? block.facets : [] })}>
+        <Field key="source" label={L(locale, "数据来源", "Data")} hint={L(locale, "数据由 Mathin 按当前账号和所选孩子读取。", "Mathin reads it for the current account and child.")}><select className={select} value={block.source} onChange={event => { const next = { ...block, source: event.target.value as typeof block.source, facets: event.target.value === "activities.catalog" ? block.facets : [] }; delete next.params; onChange(next); }}>
           {runtimeSources.map(source => <option key={source} value={source}>{sourceNames[source][locale]}</option>)}</select></Field>,
-        <Field key="template" label={L(locale, "条目样式", "Item style")}><select className={select} value={block.template} onChange={event => set({ template: event.target.value as "card" | "row" })}><option value="card">{L(locale, "图文卡片", "Card")}</option><option value="row">{L(locale, "简洁行", "Row")}</option></select></Field>,
+        ...(block.source === "account.requests" ? [<Field key="form" label={L(locale, "只显示这个表单的提交", "Only this form")}><select className={select} value={block.params?.form ?? ""}
+          onChange={event => { const next = { ...block }; if (event.target.value) next.params = { form: event.target.value }; else delete next.params; onChange(next); }}>
+          <option value="">{L(locale, "全部表单", "All forms")}</option>{meta.forms.map(form => <option key={form.id} value={form.id}>{form.title}</option>)}</select></Field>] : []),
+        <Field key="template" label={L(locale, "条目样式", "Item style")}><select className={select} value={block.template} onChange={event => set({ template: event.target.value as typeof block.template })}>
+          {templates.map(row => <option key={row.value} value={row.value}>{row[locale]}</option>)}</select></Field>,
         <Field key="limit" label={L(locale, "最多显示", "Show at most")}><Input type="number" min={1} max={30} value={block.limit} onChange={event => set({ limit: Math.max(1, Math.min(30, Number(event.target.value) || 1)) })} /></Field>,
-        ...(block.source === "activities.catalog" ? [<Field key="facets" label={L(locale, "筛选", "Filters")}><div className="flex gap-3 text-sm">{(["stage", "topic"] as const).map(facet =>
-          <label key={facet} className="flex items-center gap-1.5"><input type="checkbox" checked={block.facets.includes(facet)} onChange={event => set({ facets: event.target.checked ? [...block.facets, facet] : block.facets.filter(row => row !== facet) })} />{facet === "stage" ? L(locale, "参与者阶段", "Stage") : L(locale, "活动标签", "Tag")}</label>)}</div></Field>] : []),
+        ...(block.source === "activities.catalog" ? [<Field key="facets" label={L(locale, "筛选", "Filters")}><div className="flex flex-wrap gap-3 text-sm">{(["stage", "topic", "q"] as const).map(facet =>
+          <label key={facet} className="flex items-center gap-1.5"><input type="checkbox" checked={block.facets.includes(facet)} onChange={event => set({ facets: event.target.checked ? [...block.facets, facet] : block.facets.filter(row => row !== facet) })} />{facet === "stage" ? L(locale, "参与者阶段", "Stage") : facet === "topic" ? L(locale, "活动标签", "Tag") : L(locale, "搜索框", "Search")}</label>)}</div></Field>] : []),
         <TextField key="action" label={L(locale, "条目按钮文字", "Item button")} value={block.actionLabel} locale={locale} onChange={actionLabel => set({ actionLabel })} />,
         <TextField key="empty" label={L(locale, "没有内容时", "When empty")} value={block.empty} locale={locale} onChange={empty => set({ empty })} />,
         <LinkField key="more" label={L(locale, "标题右侧链接", "Heading link")} value={block.more} screens={screens} locale={locale} onChange={value => optional("more", value)} />);
@@ -250,6 +293,7 @@ export function BlockInspector({ block, screens, meta, locale, onChange }: { blo
         <SettingsLink key="stages" label={L(locale, "阶段名称（学习阶段）", "Stage labels")} target={{ kind: "stages" }} locale={locale} />);
       break;
     case "divider": break;
+    default: fields.push(...MoreBlockFields({ block, screens, meta, locale, set, optional }));
   }
   return <div className="space-y-4">
     <p className="text-xs text-muted">{blockNames[block.type][locale]} · <span className="font-mono">{block.id}</span></p>
@@ -269,6 +313,12 @@ export function ScreenInspector({ screen, tab, tabs, screens, meta, locale, onSc
     <Field label={L(locale, "顶部标题", "Top bar")}><select className={select} value={screen.navigation} onChange={event => onScreen({ ...screen, navigation: event.target.value as "brand" | "title" })}>
       <option value="title">{L(locale, "居中显示页面标题", "Centered page title")}</option><option value="brand">{L(locale, "左侧显示机构名称", "Brand name at left")}</option></select></Field>
     {screen.navigation === "brand" && <SettingsLink label={L(locale, "机构名称与主题", "Name & theme")} target={{ kind: "brand" }} locale={locale} />}
+    <div className="space-y-2 rounded-lg border border-line p-3">
+      <label className="flex items-center gap-2 text-sm"><Checkbox checked={!!screen.share} onCheckedChange={value => { const next = { ...screen }; if (value === true) next.share = { title: screen.title, image: "" }; else delete next.share; onScreen(next); }} />
+        {L(locale, "允许分享这个页面", "Allow sharing this page")}</label>
+      {screen.share && <><TextField label={L(locale, "分享标题", "Share title")} value={screen.share.title} locale={locale} onChange={title => onScreen({ ...screen, share: { ...screen.share!, title } })} />
+        <ImageField label={L(locale, "分享图片（建议 5:4）", "Share image (5:4)")} value={screen.share.image} locale={locale} onChange={image => onScreen({ ...screen, share: { ...screen.share!, image } })} /></>}
+    </div>
     {tab && <div className="space-y-3 rounded-lg border border-line p-3">
       <p className="text-xs font-medium">{L(locale, `底部导航第 ${tab.slot} 项`, `Tab ${tab.slot}`)}</p>
       <ShownField label={L(locale, "在底部导航显示", "Show in the tab bar")} hidden={!!tab.hidden} locale={locale} onChange={hidden => onTab(withHidden(tab, hidden))}

@@ -1,0 +1,10 @@
+<view class="runtime-card style-{{block.style}}" bindtap="act">
+  <view wx:if="{{block.state === 'signedOut'}}" class="inline-signin"><text class="small muted">{{block.message}}</text><button class="primary" catchtap="login">{{strings.signIn}}</button></view>
+  <view wx:elif="{{block.state === 'error'}}" class="notice" role="alert">{{block.message}}</view>
+  <block wx:else>
+    <view class="runtime-card-head"><view class="runtime-card-copy"><text class="runtime-card-title">{{block.title}}</text><text wx:if="{{block.subtitle}}" class="runtime-card-subtitle">{{block.subtitle}}</text></view>
+      <text wx:if="{{block.stamp}}" class="runtime-card-stamp">{{block.stamp}}</text></view>
+    <view wx:if="{{block.fields.length}}" class="runtime-card-fields"><view wx:for="{{block.fields}}" wx:key="label" class="runtime-card-field"><text class="runtime-card-label">{{item.label}}</text><text class="runtime-card-value" user-select>{{item.value}}</text></view></view>
+    <image wx:if="{{block.image}}" class="runtime-card-image" src="{{block.image}}" mode="aspectFit" catchtap="preview" />
+  </block>
+</view>

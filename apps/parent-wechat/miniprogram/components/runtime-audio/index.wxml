@@ -1,0 +1,16 @@
+<view class="surface runtime-audio">
+  <view wx:if="{{block.title}}" class="card-heading"><text class="section-title">{{block.title}}</text></view>
+  <view wx:if="{{block.state === 'signedOut'}}" class="inline-signin"><text class="small muted">{{block.message}}</text><button class="primary" bindtap="login">{{strings.signIn}}</button></view>
+  <view wx:elif="{{block.state === 'error'}}" class="notice" role="alert">{{block.message}}</view>
+  <block wx:else>
+    <button wx:for="{{block.tracks}}" wx:key="id" class="runtime-track {{current === item.id ? 'current' : ''}}" data-id="{{item.id}}" bindtap="play">
+      <text class="runtime-track-mark">{{current === item.id && playing ? '❚❚' : '▶'}}</text>
+      <view class="runtime-track-copy"><text class="runtime-track-title">{{item.title}}</text><text wx:if="{{item.subtitle}}" class="runtime-track-subtitle">{{item.subtitle}}</text></view>
+    </button>
+    <view wx:if="{{block.tracks.length}}" class="runtime-audio-controls">
+      <button class="runtime-audio-step" bindtap="previous" aria-label="{{strings.previous}}">⏮</button>
+      <button class="runtime-audio-main" bindtap="toggle" aria-label="{{playing ? strings.pause : strings.play}}">{{playing ? '❚❚' : '▶'}}</button>
+      <button class="runtime-audio-step" bindtap="next" aria-label="{{strings.next}}">⏭</button>
+    </view>
+  </block>
+</view>

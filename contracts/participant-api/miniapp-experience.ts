@@ -42,10 +42,12 @@ export type ContentDocument = {
 
 export type FormCondition = { fieldId: string; operator: "equals" | "notEquals" | "answered" | "includes"; value: string };
 export type ExperienceField = {
-  id: string; type: "text" | "textarea" | "phone" | "email" | "number" | "date" | "select" | "multiselect" | "consent";
+  id: string; type: "text" | "textarea" | "phone" | "email" | "number" | "date" | "time" | "select" | "multiselect" | "rating" | "address" | "media" | "consent";
   label: ExperienceText; help: ExperienceText; placeholder: ExperienceText; required: boolean;
   options: { id: string; label: ExperienceText }[];
   visibleWhen?: FormCondition; min?: number; max?: number;
+  /** Choices as a picker row or as pills; files accepted by a media question. */
+  display?: "picker" | "pills"; accept?: ("image" | "video" | "file")[];
 };
 export type ExperienceFormGroup = {
   id: string; title: ExperienceText; description: ExperienceText;
@@ -151,11 +153,19 @@ export function experienceAnswerErrors(form: ExperienceForm, answers: Experience
           if (!Array.isArray(answer) || answer.length > 30 || new Set(answer).size !== answer.length || answer.some(a => !field.options.some(o => o.id === a))) errors.push(path);
           continue;
         }
+        // Files are referenced by upload id; the server checks that they belong to the account.
+        if (field.type === "media") {
+          if (!Array.isArray(answer) || answer.length > Math.min(9, field.max ?? 9) || new Set(answer).size !== answer.length
+            || answer.some(a => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(a))) errors.push(path);
+          continue;
+        }
         if (typeof answer !== "string" || answer.length > (field.type === "textarea" ? 4000 : 500)) { errors.push(path); continue; }
         if (field.type === "select" && !field.options.some(o => o.id === answer)
           || field.type === "consent" && answer !== "yes"
           || field.type === "phone" && !/^\+?[0-9 ()-]{6,30}$/.test(answer)
           || field.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(answer)
+          || field.type === "time" && !/^(?:[01][0-9]|2[0-3]):[0-5][0-9]$/.test(answer)
+          || field.type === "rating" && (!/^[0-9]{1,2}$/.test(answer) || Number(answer) < 1 || Number(answer) > (field.max ?? 5))
           || field.type === "date" && (!/^\d{4}-\d{2}-\d{2}$/.test(answer) || !Number.isFinite(Date.parse(answer)) || new Date(answer).toISOString().slice(0, 10) !== answer)
           || field.type === "number" && (!Number.isFinite(Number(answer)) || field.min !== undefined && Number(answer) < field.min || field.max !== undefined && Number(answer) > field.max)) errors.push(path);
       }

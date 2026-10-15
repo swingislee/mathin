@@ -8,7 +8,7 @@ export type AssemblyTarget = { kind: "native"; id: NativeScreenId } | { kind: "p
 export type AssemblyFocus = { tab: string; id: string; part: string };
 export type AssemblyNode = AssemblyFocus & { key: string; label: string; kind: string; visible?: boolean; children?: AssemblyNode[] };
 type Locale = "zh" | "en";
-const fieldKinds: Record<ExperienceField["type"], [string, string]> = { text: ["单行文字", "Short text"], textarea: ["多行说明", "Long text"], phone: ["联系电话", "Phone"], email: ["电子邮箱", "Email"], number: ["数字", "Number"], date: ["日期", "Date"], select: ["单项选择", "Single choice"], multiselect: ["多项选择", "Multiple choice"], consent: ["确认同意", "Confirmation"] };
+const fieldKinds: Record<ExperienceField["type"], [string, string]> = { text: ["单行文字", "Short text"], textarea: ["多行说明", "Long text"], phone: ["联系电话", "Phone"], email: ["电子邮箱", "Email"], number: ["数字", "Number"], date: ["日期", "Date"], time: ["时间", "Time"], select: ["单项选择", "Single choice"], multiselect: ["多项选择", "Multiple choice"], rating: ["评分", "Rating"], address: ["收货地址", "Address"], media: ["照片 / 文件", "Photos / files"], consent: ["确认同意", "Confirmation"] };
 export function blockTitle(block: ContentBlock, locale: Locale) {
   return localText("title" in block ? block.title : "text" in block ? block.text : block.kind === "action" ? block.action.label : undefined, locale).slice(0, 60) || localText(contentKindNames[block.kind], locale);
 }

@@ -6,10 +6,15 @@ import { nativeScreenPresentation } from "../../lib/miniapp-native";
 import { pageData, syncPage, currentLocale, errorText } from "../../lib/page";
 import { configuration, openConfiguredAction } from "../../lib/miniapp-configuration";
 configuredPage("web")({
-  data: { ...pageData("discover"), id: "", title: "", url: "", copyUrl: "", failed: false, message: "", returnPageId: "" },
+  data: { ...pageData("discover"), id: "", title: "", url: "", copyUrl: "", failed: false, message: "", returnPageId: "", direct: false },
   generation: 0,
-  onLoad(q: Record<string, string>) { this.setData({ id: q.id || "" }); },
-  onShow() { syncPage(this, "discover"); void this.load(); },
+  /** `src` comes from a runtime web action: a Mathin page, possibly carrying a one-time sign-in ticket, or a business-domain page. */
+  onLoad(q: Record<string, string>) {
+    const src = q.src ? decodeURIComponent(q.src) : "";
+    if (/^https?:\/\/[^\s"'<>]+$/.test(src)) this.setData({ direct: true, url: src, copyUrl: src.replace(/[?&]ticket=[^&]*/, "") });
+    else this.setData({ id: q.id || "" });
+  },
+  onShow() { syncPage(this, "discover"); if (!this.data.direct) void this.load(); },
   onUnload() { this.generation++; },
   async load() { const generation = ++this.generation; this.setData({ loading: true, error: "" });
     try { const result = await experienceRead<ExperienceWeb>("web", this.data.id, "&locale=" + currentLocale()); if (generation !== this.generation) return;

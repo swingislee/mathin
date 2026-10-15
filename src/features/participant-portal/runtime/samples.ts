@@ -1,4 +1,5 @@
 import type { RuntimeDay, RuntimeItem, RuntimeLocale, RuntimeSource } from "../../../../contracts/participant-api/runtime";
+import type { DisplayData } from "./display";
 
 /** Clearly labelled example records for staff previews; no family data is read for the signed-in preview. */
 export const sampleParticipants = [
@@ -36,4 +37,20 @@ export function sampleWeek(days: RuntimeDay[], locale: RuntimeLocale): { days: R
     meta: [zh ? "三年级秋季班 | 示例老师" : "Grade 3 autumn | Example teacher"], date: day.date, start: index === 2 ? "09:00" : "18:30", end: index === 2 ? "10:30" : "20:00",
     phase: "upcoming", status: { label: zh ? "未开始" : "Upcoming", tone: "neutral" } }));
   return { days: days.map(day => ({ ...day, count: items.filter(row => row.date === day.date).length })), items };
+}
+
+/** Example content for display blocks bound to personal data. */
+export function sampleDisplay(source: string, locale: RuntimeLocale): DisplayData {
+  const zh = locale === "zh";
+  switch (source) {
+    case "account.participant": return { card: { title: sampleParticipants[0].name, subtitle: zh ? "三年级" : "Grade 3", fields: [
+      { label: zh ? "下次上课" : "Next class", value: "10.18 18:30" }, { label: zh ? "星星" : "Stars", value: "36" }] } };
+    case "account.summary": return { metrics: [
+      { label: zh ? "星星" : "Stars", value: "36", unit: "", hint: "" }, { label: zh ? "本周课次" : "This week", value: "2", unit: zh ? "次" : "", hint: "" },
+      { label: zh ? "待完成任务" : "To do", value: "1", unit: zh ? "项" : "", hint: "" }, { label: zh ? "近 30 天出勤" : "Attendance", value: "96", unit: "%", hint: "" }] };
+    case "account.checkins": return { progress: [
+      { label: zh ? "本周打卡" : "This week", value: 4, max: 7, caption: zh ? "4 / 7 天" : "4 / 7 days" },
+      { label: zh ? "近 30 天打卡" : "30 days", value: 18, max: 30, caption: zh ? "18 天" : "18 days" }] };
+    default: return {};
+  }
 }
