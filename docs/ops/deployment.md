@@ -15,6 +15,10 @@
 
 服务根当前为 `/home/swing/services/mathin`，网站监听 3131，Caddy 提供域名访问。凭据与环境文件在私有配置中。发布脚本使用 `scripts/ops/deploy-mathin-linux.sh`，保留构建失败不切换、切换失败恢复 previous 的技术能力。
 
+## HTTPS 证书
+
+`mathin.club` 与 `supabase.mathin.club` 的权威 DNS 为阿里云。2026-10-16 已将生产容器 `caddy-supabase` 切换到 AliDNS 提供方并成功续期；Caddy 为 2.11.7，配置目录 `/home/swing/services/caddy-supabase`，私有 `.env` 使用 `ALIYUN_ACCESS_KEY_ID` 与 `ALIYUN_ACCESS_KEY_SECRET`。专用 RAM 权限用于读取域名列表及管理 `mathin.club` 的解析记录。后续 DNS 提供方变化时同步更新续期配置，并核对两个公网域名的证书验证结果。旧配置与镜像保留在本次发布恢复记录中。
+
 ## 数据与恢复
 
 代码发布和数据库迁移分别核对。涉及删除、不可逆 schema 或破坏性重建时，按 [数据操作](data-operations.md) 和 [备份恢复](backup-recovery.md) 确定具体措施。普通增量无需重复一套恢复演练。
