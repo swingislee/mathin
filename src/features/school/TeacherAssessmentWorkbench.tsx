@@ -47,6 +47,7 @@ import {
 } from "./LearningCheckMatrixEntry";
 import type { LearningCheckStatus } from "./session-learning-contract";
 import { LEARNING_CHECK_STATUS_STYLE } from "./session-learning-visual";
+import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 import {
   DashboardCommandActions,
   DashboardCommandFilters,
@@ -559,6 +560,7 @@ function QuestionWorkbench({
                   }
                   setSummary(result.data);
                   toast.success(t("completeSuccess"));
+                  window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));
                 });
               }}
             >

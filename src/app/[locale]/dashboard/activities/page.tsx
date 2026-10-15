@@ -5,6 +5,11 @@ import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { loadPublicClassRegistration } from "@/features/school/public-class-registration-data";
 import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
+import { DashboardRevisitFreshness } from "@/features/school/dashboard-page/DashboardRevisitFreshness";
+import { newId } from "@/lib/uuid";
+
+// 30 秒内回到本页直接复用浏览器里的名单；本机保存过数据时由 DashboardRevisitFreshness 在后台重新读取。
+export const unstable_dynamicStaleTime = 30;
 
 const ACTIVITY_WORKSPACE_PERMISSIONS = ["activity.manage", "activity.register", "review.write", "followup.view"] as const;
 
@@ -23,7 +28,7 @@ export default async function ActivitiesPage({ params, searchParams }: { params:
   if (assigned?.error) throw new Error(assigned.error.message);
   const initialRegistrationData = rows.some((row) => row.id === query.activity && row.kind === "public_class")
     ? await loadPublicClassRegistration(query.activity!) : undefined;
-  return <ActivitiesManager
+  return <><DashboardRevisitFreshness renderId={newId()} /><ActivitiesManager
     title={t("title")}
     activities={rows}
     canManage={permissions.has("activity.manage")}
@@ -32,5 +37,5 @@ export default async function ActivitiesPage({ params, searchParams }: { params:
     initialRegistrationData={initialRegistrationData}
     initialQuery={query.q?.slice(0,100)}
     initialRecordState={businessRecordStateFilter(query.view==='history'?'historical':query.state)}
-  />;
+  /></>;
 }

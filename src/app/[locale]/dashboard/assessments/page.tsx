@@ -7,6 +7,11 @@ import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { getOrganizationTimezoneV2 } from "@/features/school/organization-locations";
 import { assessmentPageStage, type AssessmentPageQuery } from "@/features/school/assessment-workbench-page";
 import { assessmentTableFields } from "@/features/school/assessment-table-fields";
+import { DashboardRevisitFreshness } from "@/features/school/dashboard-page/DashboardRevisitFreshness";
+import { newId } from "@/lib/uuid";
+
+// 30 秒内回到本页直接复用浏览器里的名单；本机保存过数据时由 DashboardRevisitFreshness 在后台重新读取。
+export const unstable_dynamicStaleTime = 30;
 
 export default async function AssessmentsPage({
   params,
@@ -34,7 +39,8 @@ export default async function AssessmentsPage({
   const fields = assessmentTableFields({ locale, timeZone, tableT, assessmentT, t, teacherT, quickT, stageFor: assessmentPageStage });
   const data = await loadAssessmentWorkbenchPage(fields, query, { locale, timeZone, now: now.getTime() });
 
-  return (
+  return (<>
+    <DashboardRevisitFreshness renderId={newId()} />
     <AssessmentPagedWorkbench
       data={data}
       assessors={assessors}
@@ -47,5 +53,5 @@ export default async function AssessmentsPage({
       canManageAvailability={canAssess || canManageAssessor || permissions.has("schedule.manage")}
       canQuickEntry={canAssess || permissions.has("followup.write")}
     />
-  );
+  </>);
 }

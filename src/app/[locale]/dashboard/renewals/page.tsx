@@ -7,6 +7,11 @@ import { getOrganizationTimezoneV2 } from "@/features/school/organization-locati
 import { getMyPerms, requirePerm } from "@/lib/auth";
 import { loadStudentBusinessHistory } from "@/features/school/student-business-history-data";
 import { businessRecordStateFilter } from '@/features/school/business-record-state-contract';
+import { DashboardRevisitFreshness } from "@/features/school/dashboard-page/DashboardRevisitFreshness";
+import { newId } from "@/lib/uuid";
+
+// 30 秒内回到本页直接复用浏览器里的名单；本机保存过数据时由 DashboardRevisitFreshness 在后台重新读取。
+export const unstable_dynamicStaleTime = 30;
 
 export default async function RenewalsPage({
   params,
@@ -36,7 +41,7 @@ async function RenewalsContent({
     getOrganizationTimezoneV2(),
     loadStudentBusinessHistory(locale, { kind: 'renewal', projection: 'workbench' }),
   ]);
-  return <RenewalStudentPool
+  return <><DashboardRevisitFreshness renderId={newId()} /><RenewalStudentPool
     key={`${data.selectedCycleId ?? "none"}:${typeof raw.tab === "string" ? raw.tab : "pool"}:${raw.samples === "1"}`}
     data={data}
     timeZone={timeZone}
@@ -51,7 +56,7 @@ async function RenewalsContent({
     history={history}
     initialQuery={typeof raw.q==='string'?raw.q.slice(0,100):undefined}
     initialRecordState={businessRecordStateFilter(raw.view==='history'?'historical':raw.state)}
-  />;
+  /></>;
 }
 
 function RenewalsSkeleton() {

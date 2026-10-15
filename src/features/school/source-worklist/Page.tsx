@@ -14,6 +14,8 @@ import { showsMultiplePeriods } from './period-selection';
 import { Workspace } from './Workspace';
 import { loadWorklistPage } from './data';
 import { WorklistSelectionProvider } from './Selection';
+import { DashboardRevisitFreshness } from '../dashboard-page/DashboardRevisitFreshness';
+import { newId } from '@/lib/uuid';
 
 export default async function SourceWorklistPage({ params, searchParams, firstContact = false }: {
   params: Promise<{ locale: string }>; searchParams: Promise<Record<string,string | string[] | undefined>>; firstContact?: boolean;
@@ -70,7 +72,7 @@ export default async function SourceWorklistPage({ params, searchParams, firstCo
         canManageIdentity={permissions.has('followup.write') && permissions.has('student.edit')} timeZone={timeZone} now={now.getTime()} />
     </CommunicationWorkSelectionProvider>;
   }
-  return <WorklistSelectionProvider key={JSON.stringify(query)}><Workspace data={page} query={{ ...query, page: page.page, periodField: page.periodField, period: page.period, group: page.group }} locale={locale}
+  return <WorklistSelectionProvider key={JSON.stringify(query)}><DashboardRevisitFreshness renderId={newId()} /><Workspace data={page} query={{ ...query, page: page.page, periodField: page.periodField, period: page.period, group: page.group }} locale={locale}
     currentUserId={user.id} canEnroll={permissions.has('enrollment.manage')}
     canAssess={permissions.has('review.write')} firstContactContent={firstContactContent}
     canAssign={canAssign} canImport={permissions.has('student.import')} assignees={assignees}

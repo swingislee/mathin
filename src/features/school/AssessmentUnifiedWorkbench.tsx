@@ -72,6 +72,7 @@ import { SourceGroupedRows } from './source-worklist/SourceGroupedRows';
 import { SourceLayoutFilters } from './source-worklist/SourceLayoutFilters';
 import type { SourceLayout } from './source-worklist/contract';
 import { showsMultiplePeriods } from './source-worklist/period-selection';
+import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
 
 interface SupportDraft {
   route: ActivityRouteKind | null;
@@ -238,6 +239,7 @@ export function AssessmentUnifiedWorkbench({
           ...candidate, assessorId, assessorName: option.displayName, assessorSource: "assigned", updatedAt: new Date().toISOString(),
         } : candidate));
         toast.success(t("reassignSuccess", { assessor: option.displayName }));
+        window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));
         return;
       }
       toast.error(t("reassignFailed"));
