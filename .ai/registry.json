@@ -3,6 +3,20 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "RELEASE-V060-20261016",
+      "title": "三个 Claude 会话与近期增量统一发布 v0.6.0",
+      "agent": "codex",
+      "threadId": "01a14068-4b2b-7f01-964e-23620af410d3",
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/RELEASE-V060-20261016.md",
+      "writePaths": [".ai/tasks/RELEASE-V060-20261016.md", "docs/releases/v0.6.0.md", ".tmp/release-20261016/"],
+      "sharedPaths": [".ai/registry.json", "docs/current.md", "CHANGELOG.md", "package.json", "apps/parent-wechat/package.json"],
+      "checkpoint": "128bb9676499ad64244174091f9f2121e1c14fcf",
+      "next": "生产 15 项迁移、BASE 来源与五阶段数据已完成，5787 主体校准通过，9 类保护表保持；Linux 网站候选已构建。生产证书过期，负责人指定切换阿里云，候选已准备、待私有凭据。续期后检查并切换网站，再上传小程序 0.2.0；不要重跑已完成导入。"
+    },
+    {
       "id": "WECHAT-IDENTITY-ENTRY-20261016",
       "title": "微信身份与开户规则、未关联微信页",
       "agent": "claude",
@@ -25,8 +39,8 @@
         "messages/en.json",
         "docs/current.md"
       ],
-      "checkpoint": null,
-      "next": "网页侧规则与未关联微信页已在开发代码实现，未部署生产；后续为小程序开户匹配原学生档案（手机号+孩子姓名，学情开关默认关）与“号码已有账号”提示，小程序目录需与 MINI-RUNTIME-PLAN-20261013 协调。"
+      "checkpoint": "b2bcce17",
+      "next": "网页侧已合入 v0.6.0 候选并完成 Linux 构建；生产切换待阿里云 DNS 证书修复，统一见 RELEASE-V060-20261016。手机号＋孩子姓名自动匹配与提示调整仍未实现。"
     },
     {
       "id": "WECHAT-ADMIN-SESSION-20261015",
@@ -576,7 +590,7 @@
         ".ai/registry.json"
       ],
       "checkpoint": "2b63309331847bb0796747dad0d7aad42aa269c0",
-      "next": "2026-10-15 运行时能力补全已提交 c39bbc15 并在本机开发库演练通过；生产候选 .tmp/miniapp-runtime-20261015/candidate（分支 claude/miniapp-runtime-production-20261015，生产 e1df192e + 小程序 31 提交、23 迁移）待负责人授权执行生产迁移与发布，随后上传 0.2.0、补隐私指引、真机验收、提审。"
+      "next": "已合入 v0.6.0 候选并构建通过；23 项生产迁移经账本核实此前已执行，旧未执行状态已更正。待生产证书恢复后切换网站并上传 0.2.0，隐私指引、真机、提审与正式发布分别待办；统一见 RELEASE-V060-20261016。"
     },
     {
       "id": "LEAD-COMMUNICATION-REPAIR-20261013",
@@ -2675,8 +2689,8 @@
         "docs/workflows/school-operations.md",
         "src/lib/database.types.ts"
       ],
-      "checkpoint": null,
-      "next": "两条迁移（20261015100000、20261015110000）已应用开发库并跑完 10-14 导入（待首联1238/待测评2455/待报名338/待续报169/已停课244）；current/historical 前后端舍弃、名单按带年份月份；待报名/已停课 100 行 RPC 2.2→0.54s，活动页元素 9803→1617。未提交；生产待本次授权。"
+      "checkpoint": "6fd33cc3",
+      "next": "源码已提交并合入 v0.6.0；生产依赖与两条五阶段迁移、来源更新、日期修复及校准完成，5787 主体重算无差异，9 类保护表保持。网站切换待证书修复；人工复核和业务验收保留。统一见 RELEASE-V060-20261016。"
     }
   ]
 }
