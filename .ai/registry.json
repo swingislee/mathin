@@ -25,8 +25,8 @@
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": null,
-      "next": "微信回调和管理员会话判断已实现，定向鉴权、类型与静态检查通过，3130 可加载；生产尚未发布，需从现有生产基线仅加入本修复，真实微信往返待验收。"
+      "checkpoint": "e1df192e7b3b30cdcfb92756e558eb47cb775df8",
+      "next": "已按授权部署生产 20261015-141320，仅更新三个微信登录运行文件；定向鉴权、Linux 构建与生产健康通过，微信配置仍启用。待本人退出旧会话并重新微信登录验收，密码登录仍需 MFA。"
     },
     {
       "id": "WECHAT-OFFICIAL-CONFIG-LOAD-20261015",
