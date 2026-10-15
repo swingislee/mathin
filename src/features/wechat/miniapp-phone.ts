@@ -65,6 +65,19 @@ export async function miniappGuardianCode(config: MiniappWechatConfig, scene: st
   return miniappPageCode(config, scene, "pages/guardian-binding/index", environment);
 }
 
+let entryCode: { key: string; src: string | null; expires: number } | undefined;
+/** Shown on the web page for an unlinked WeChat to continue in "我的". A failure is remembered briefly so the page falls back to text. */
+export async function miniappEntryCode(config: MiniappWechatConfig) {
+  const requested = process.env.WECHAT_MINIPROGRAM_ENTRY_CODE_ENV;
+  const environment = requested === "trial" || requested === "develop" ? requested : "release";
+  const key = config.appId + ":" + environment;
+  if (entryCode?.key === key && entryCode.expires > Date.now()) return entryCode.src;
+  const src = await miniappPageCode(config, "web", "pages/account/index", environment)
+    .then(code => `data:${code.mime};base64,${Buffer.from(code.bytes).toString("base64")}`, () => null);
+  entryCode = { key, src, expires: Date.now() + (src ? 86_400_000 : 600_000) };
+  return src;
+}
+
 async function miniappPageCode(config: MiniappWechatConfig, scene: string, page: string, environment: "release" | "trial" | "develop") {
   const url = new URL("https://api.weixin.qq.com/wxa/getwxacodeunlimit");
   url.searchParams.set("access_token", await accessToken(config));

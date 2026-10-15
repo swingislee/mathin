@@ -3,6 +3,32 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WECHAT-IDENTITY-ENTRY-20261016",
+      "title": "微信身份与开户规则、未关联微信页",
+      "agent": "claude",
+      "threadId": null,
+      "status": "in_progress",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-IDENTITY-ENTRY-20261016.md",
+      "writePaths": [
+        ".ai/tasks/WECHAT-IDENTITY-ENTRY-20261016.md",
+        "src/app/[locale]/auth/wechat/guest/page.tsx",
+        "src/features/wechat/WechatLoginButton.tsx",
+        "src/features/wechat/miniapp-phone.ts",
+        "docs/ops/wechat-oauth.md",
+        ".env.example"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "messages/zh.json",
+        "messages/en.json",
+        "docs/current.md"
+      ],
+      "checkpoint": null,
+      "next": "网页侧规则与未关联微信页已在开发代码实现，未部署生产；后续为小程序开户匹配原学生档案（手机号+孩子姓名，学情开关默认关）与“号码已有账号”提示，小程序目录需与 MINI-RUNTIME-PLAN-20261013 协调。"
+    },
+    {
       "id": "WECHAT-ADMIN-SESSION-20261015",
       "title": "管理员微信登录免重复 MFA",
       "agent": "codex",
@@ -101,7 +127,7 @@
         "messages/en.json",
         "docs/ops/wechat-oauth.md"
       ],
-      "checkpoint": "0cd2f7cb",
+      "checkpoint": "0cd2f7cb1328cf514b16376d525b0ddcd5318b1a",
       "next": "10 月 15 日登录呈现已调整：账号密码表单直接显示，微信作为下方同屏入口，取消登录方式页签。修改文件静态检查通过，待使用确认；本任务未发布生产。"
     },
     {
