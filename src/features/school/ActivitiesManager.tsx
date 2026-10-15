@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import type { ActionResult } from "@/lib/action-result";
 import {
   createActivityAction,
@@ -30,6 +30,7 @@ import { ActivityGradesDialog } from "./ActivityGradesDialog";
 import { businessDisplayDate } from './business-source-contract';
 import { BusinessRecordRevisionButton } from './BusinessRecordRevisionButton';
 import { inputClass } from "./controls";
+import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 import { FollowupInlineDetails } from "./dashboard-page/FollowupInlineDetails";
 import type { PublicClassRegistrationData } from "./public-class-registration-contract";
 import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
@@ -238,9 +239,9 @@ export function ActivitiesManager({
                   {businessDisplayDate(activity.scheduledAt,activity.occurredOn,locale)}
                 </TableCell>
                 <TableCell mobileSpan="primary">
-                  {canRegister ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : current ? <Link href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
+                  {canRegister ? <Button size="sm" variant="ghost" className="h-auto justify-start gap-1 p-0 text-left text-ink" onClick={(event) => { event.stopPropagation(); toggleActivity(activity.id); }}>{expanded ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}{activity.title}</Button> : current ? <DashboardIntentLink href={`/dashboard/activities/${activity.id}`} className="font-medium text-ink hover:underline">
                     {activity.title}
-                  </Link> : <span className="font-medium text-ink">{activity.title}</span>}
+                  </DashboardIntentLink> : <span className="font-medium text-ink">{activity.title}</span>}
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted">
                     <Badge variant="outline">{t(`kind_${activity.kind}`)}</Badge>
                     {(activity.tags ?? []).map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
@@ -258,15 +259,15 @@ export function ActivitiesManager({
                     {current && canManage ? <>
                       <Button size="sm" variant="ghost" onClick={() => setEditing(activity)}>{t("edit")}</Button>
                       <Button size="sm" variant="ghost" onClick={() => setGradeTarget(activity)}>{gradeT("title")}</Button>
-                      <Link href={`/dashboard/activities/${activity.id}/registration`} className={buttonVariants({ variant: "ghost", size: "sm" })}>{locale === "en" ? "Public listing / pre-registration" : "对外展示 / 预报名"}</Link>
+                      <DashboardIntentLink href={`/dashboard/activities/${activity.id}/registration`} className={buttonVariants({ variant: "ghost", size: "sm" })}>{locale === "en" ? "Public listing / pre-registration" : "对外展示 / 预报名"}</DashboardIntentLink>
                       <Button size="sm" variant="ghost" className="text-rose" aria-label={t("delete")} disabled={pending} onClick={() => setDeleteTarget(activity)}><Trash2 size={15} /></Button>
                     </> : null}
                     {canRegister ? <Button size="sm" variant="secondary" onClick={() => toggleActivity(activity.id)}>{t("inlineRegistration")}</Button> : null}
-                    {current && canRegister && !canManage ? <Link href={`/dashboard/activities/${activity.id}/registration`} className={buttonVariants({ variant: "ghost", size: "sm" })}>{locale === "en" ? "Pre-registrations" : "预报名"}</Link> : null}
+                    {current && canRegister && !canManage ? <DashboardIntentLink href={`/dashboard/activities/${activity.id}/registration`} className={buttonVariants({ variant: "ghost", size: "sm" })}>{locale === "en" ? "Pre-registrations" : "预报名"}</DashboardIntentLink> : null}
                     {!current ? activity.registrations.map(row => <BusinessRecordRevisionButton key={row.id} kind="activity" recordId={row.id} subject={row.studentName} label={activity.registrations.length > 1 ? `${row.studentName} · ${locale==='zh'?'修订':'Revise'}` : undefined}/>) : null}
-                    {current && (!publicClass || teachingActivityIds.includes(activity.id)) ? <Link href={`/dashboard/activities/${activity.id}${publicClass ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
+                    {current && (!publicClass || teachingActivityIds.includes(activity.id)) ? <DashboardIntentLink href={`/dashboard/activities/${activity.id}${publicClass ? "?view=teaching" : ""}`} className={buttonVariants({ size: "sm", variant: "secondary" })}>
                       {t(publicClass ? "teacherWorkspace" : "openWorkspace")}<ArrowRight size={15} />
-                    </Link> : !current ? activity.registrations.map(row => row.studentId ? <Link key={row.id} href={`/dashboard/students/${row.studentId}?tab=history`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{recordM.viewStudent}<ArrowRight size={15} /></Link> : null) : null}
+                    </DashboardIntentLink> : !current ? activity.registrations.map(row => row.studentId ? <DashboardIntentLink key={row.id} href={`/dashboard/students/${row.studentId}?tab=history`} className={buttonVariants({ size: "sm", variant: "secondary" })}>{recordM.viewStudent}<ArrowRight size={15} /></DashboardIntentLink> : null) : null}
                   </div>
                 </TableCell>
               </TableRow>{canRegister ? <FollowupInlineDetails open={expanded} onOpenChange={open => setActiveActivityId(open ? activity.id : null)} colSpan={6} flush title={activity.title} closeLabel={t("closeRegistration")}>

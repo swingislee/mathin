@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Link } from "@/i18n/navigation";
+import { DashboardIntentLink } from "./DashboardIntentLink";
 import { leadPaginationTokens } from "../lead-pagination";
 
 /** 学服已使用的紧凑分页外观；调用方只决定翻页是路由导航还是本地更新。 */
@@ -19,10 +19,11 @@ export function DashboardTablePagination({ currentPage, totalPages, totalCount, 
   const t = useTranslations("school.leads");
   const blocked = disabled || pending;
   const target = (page: number, children: ReactNode) => hrefFor
-    ? <Link aria-disabled={blocked || undefined} href={hrefFor(page)} onClick={event => {
+    // 页码按悬停或聚焦预取；不随列表一起为每个页码发起服务端请求。
+    ? <DashboardIntentLink aria-disabled={blocked || undefined} href={hrefFor(page)} onClick={event => {
       if (blocked) { event.preventDefault(); return; }
       if (onPageChange) { event.preventDefault(); onPageChange(page); }
-    }}>{children}</Link>
+    }}>{children}</DashboardIntentLink>
     : <button type="button" disabled={blocked} onClick={() => onPageChange?.(page)}>{children}</button>;
   return <div data-followup-pagination data-page={currentPage} data-page-size={pageSize} aria-busy={pending}
     className="flex w-full min-w-0 flex-wrap items-center justify-end gap-x-1.5 gap-y-1 text-[11px] leading-4 text-muted">
