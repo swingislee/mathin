@@ -14,14 +14,14 @@
       "writePaths": [".ai/tasks/RELEASE-V060-20261016.md", "docs/releases/v0.6.0.md", ".tmp/release-20261016/"],
       "sharedPaths": [".ai/registry.json", "docs/current.md", "CHANGELOG.md", "package.json", "apps/parent-wechat/package.json"],
       "checkpoint": "128bb9676499ad64244174091f9f2121e1c14fcf",
-      "next": "生产 15 项迁移、BASE 来源与五阶段数据已完成，5787 主体校准通过，9 类保护表保持；阿里云 DNS 证书续期与候选公开接口、权限检查通过。网站切换被自动审批要求具体授权，确认已发出；授权后切换网站并上传小程序 0.2.0。不要重跑已完成导入。"
+      "next": "v0.6.0 已上线，current 20261015-165027（128bb967），网站与任务进程同版，公网与权限检查通过。生产 15 项迁移、五阶段数据校准和 AliDNS 续期已完成。小程序 0.2.0 已发起上传，待开发者工具确认；收到继续后查原 taskId，不重发上传或导入。"
     },
     {
       "id": "WECHAT-IDENTITY-ENTRY-20261016",
       "title": "微信身份与开户规则、未关联微信页",
       "agent": "claude",
       "threadId": null,
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/WECHAT-IDENTITY-ENTRY-20261016.md",
@@ -40,7 +40,7 @@
         "docs/current.md"
       ],
       "checkpoint": "b2bcce17",
-      "next": "网页侧已合入 v0.6.0 候选并完成 Linux 构建；证书修复与候选检查通过，生产切换待自动审批要求的具体授权，统一见 RELEASE-V060-20261016。手机号＋孩子姓名自动匹配与提示调整仍未实现。"
+      "next": "本任务网页范围已随 v0.6.0（128bb967）上线，构建、类型和生产公开入口检查通过。真实扫码接力待验收；手机号＋孩子姓名自动匹配与提示调整作为后续业务保留。统一见 RELEASE-V060-20261016。"
     },
     {
       "id": "WECHAT-ADMIN-SESSION-20261015",
@@ -590,7 +590,7 @@
         ".ai/registry.json"
       ],
       "checkpoint": "2b63309331847bb0796747dad0d7aad42aa269c0",
-      "next": "已合入 v0.6.0 候选并构建通过；23 项生产迁移经账本核实此前已执行，旧未执行状态已更正。证书和候选检查通过，网站切换及上传 0.2.0 待具体授权；隐私指引、真机、提审与正式发布分别待办，统一见 RELEASE-V060-20261016。"
+      "next": "网站与后端已随 v0.6.0（128bb967）上线，23 项生产迁移此前已执行且内容一致。小程序 0.2.0 已发起上传、待开发者工具确认；隐私指引、真机、提审与正式发布分别待办，统一见 RELEASE-V060-20261016。"
     },
     {
       "id": "LEAD-COMMUNICATION-REPAIR-20261013",
@@ -2667,7 +2667,7 @@
       "title": "BASE 生产数据重写、五阶段拆分与名单读取改写",
       "agent": "claude",
       "threadId": "2026-07-mathin-89",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/BASE-LIFECYCLE-REBUILD-20261015.md",
@@ -2690,7 +2690,7 @@
         "src/lib/database.types.ts"
       ],
       "checkpoint": "6fd33cc3",
-      "next": "源码已提交并合入 v0.6.0；生产依赖与两条五阶段迁移、来源更新、日期修复及校准完成，5787 主体重算无差异，9 类保护表保持。证书和候选检查通过，网站切换待具体授权；人工复核和业务验收保留。统一见 RELEASE-V060-20261016。"
+      "next": "已随 v0.6.0（128bb967）上线；生产依赖与五阶段迁移、来源更新、日期修复及校准完成，5787 主体重算无差异，9 类保护表保持。人工复核和业务验收保留；已完成导入不要重跑。统一见 RELEASE-V060-20261016。"
     }
   ]
 }
