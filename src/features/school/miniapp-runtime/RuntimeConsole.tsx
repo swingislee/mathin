@@ -22,7 +22,7 @@ import { defaultMiniappSettings, type MiniappSettings } from "../../../../contra
 import { runtimeTabSlots, type RuntimeBlockType, type RuntimeScreen, type RuntimeSpec, type RuntimeTab, type RuntimeTabSpec } from "../../../../contracts/participant-api/runtime";
 import { loadMiniappRuntime, previewMiniappRuntime, restoreMiniappRuntime, saveMiniappRuntime, type RuntimeWorkbench } from "./actions";
 import { BlockInspector, OpenLibrary, ScreenInspector } from "./Inspector";
-import { Breadcrumb, LibraryEditor, LibraryList, LibraryPreview, type ContactOptions, type LibraryUpload } from "./Library";
+import { Breadcrumb, LibraryCanvas, LibraryInsert, LibraryInspector, LibraryList, partTitle, type ContactOptions, type LibraryUpload } from "./Library";
 import { RuntimePhone } from "./RuntimeRenderer";
 import {
   blockNames, blockSummary, canHideTab, changes, findBlock, insertBlock, libraryItems, libraryNames, moveBlock, newBlock, newScreen, outline, removeBlock, settingsChanges,
@@ -71,7 +71,7 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
   const [saveState, setSaveState] = useState<SaveState>("saved"), [savedEdits, setSavedEdits] = useState(0);
   const [publishOpen, setPublishOpen] = useState(false), [notice, setNotice] = useState("");
   const [side, setSide] = useState<"pages" | "library">("pages");
-  const [library, setLibrary] = useState<LibraryTarget | null>(null), [trail, setTrail] = useState<string[]>([]);
+  const [library, setLibrary] = useState<LibraryTarget | null>(null), [trail, setTrail] = useState<string[]>([]), [part, setPart] = useState("");
   const [previewHost, setPreviewHost] = useState<HTMLElement | null>(null);
   const [pending, startTransition] = useTransition();
   const runtimeRevision = useRef(initial.revision), settingsRevision = useRef(initialSettings.revision);
@@ -158,13 +158,15 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
   };
 
   /** Opens a library object; `from` names where on the canvas it was opened from. */
+  // Pages, forms and reports open their first item, so the preview always shows something to click.
+  const withFirst = (target: LibraryTarget): LibraryTarget => target.id ? target : { ...target, id: libraryItems(doc.settings, target.kind)?.[0]?.id };
   const openLibrary = (target: LibraryTarget, from: string[] = []) => {
-    setLibrary(target); setSide("library"); setTrail([...from, libraryNames[target.kind][locale]]);
+    setLibrary(withFirst(target)); setPart(""); setSide("library"); setTrail([...from, libraryNames[target.kind][locale]]);
     // Name and theme show on pages with the brand top bar.
     if (target.kind === "brand" && screen?.navigation !== "brand") { const first = spec.screens.find(row => row.navigation === "brand"); if (first) setScreenId(first.id); }
   };
-  const moveInLibrary = (target: LibraryTarget) => { if (target.kind !== library?.kind) setTrail([libraryNames[target.kind][locale]]); setLibrary(target); };
-  const backToCanvas = () => { setLibrary(null); setSide("pages"); };
+  const moveInLibrary = (target: LibraryTarget) => { if (target.kind !== library?.kind) setTrail([libraryNames[target.kind][locale]]); setLibrary(withFirst(target)); setPart(""); };
+  const backToCanvas = () => { setLibrary(null); setPart(""); setSide("pages"); };
   const openFromInspector = (target: LibraryTarget) => openLibrary(target, [screenTitle(screen), ...(block ? [blockSummary(block, locale) || blockNames[block.type][locale]] : [])]);
   const libraryItem = library?.id ? libraryItems(doc.settings, library.kind)?.find(row => row.id === library.id) : null;
 
@@ -258,7 +260,8 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
               {side === "pages" && <Button size="sm" variant="ghost" className="size-8 p-0" title={L("新建页面", "New page")} aria-label={L("新建页面", "New page")} onClick={() => addScreen()}><Plus className="size-4" /></Button>}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {side === "library" ? <LibraryList settings={doc.settings} target={library} locale={locale} onOpen={target => library ? moveInLibrary(target) : openLibrary(target)} /> : <div className="py-2">
+              {side === "library" ? <LibraryList settings={doc.settings} target={library} part={part} options={contactOptions} locale={locale} onPart={setPart} onChange={setSettings}
+                onOpen={target => library ? moveInLibrary(target) : openLibrary(target)} /> : <div className="py-2">
                 <p className="px-3 pb-1 text-[11px] font-medium text-muted">{L("底部导航", "Tab bar")}</p>
                 {runtimeTabSlots.map(slot => {
                   const row = spec.tabs.find(item => item.slot === slot), target = row && spec.screens.find(item => item.id === row.screen);
@@ -294,9 +297,11 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
               {saveStatus}
               <Button size="sm" variant="secondary" className="shrink-0" onClick={backToCanvas}>{L("返回画布", "Back to canvas")}</Button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-              <LibraryEditor target={library} settings={doc.settings} contactOptions={contactOptions} activities={activities} locale={locale} previewHost={ownPreview ? previewHost : null}
-                upload={upload} onChange={setSettings} onOpen={moveInLibrary} />
+            <div className="flex shrink-0 items-center gap-2 border-b border-line px-3 py-1.5">
+              <LibraryInsert target={library} settings={doc.settings} part={part} options={contactOptions} locale={locale} onChange={setSettings} onPart={setPart} />
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto bg-moon/10 p-4">
+              <LibraryCanvas target={library} settings={doc.settings} part={part} options={contactOptions} locale={locale} canvas={phone} onPart={setPart} previewHost={setPreviewHost} />
             </div>
           </div> : <div className="flex size-full min-h-0 flex-col">
             <div role="toolbar" aria-label={L("插入组件", "Insert")} className={cn(header, "flex items-center gap-1 px-2")}>
@@ -321,10 +326,13 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
         <ResizableHandle />
         <ResizablePanel id="inspector" minSize={280} defaultSize={330} maxSize="45%" groupResizeBehavior="preserve-pixel-size" className="overflow-hidden">
           {library ? <div className="flex size-full min-h-0 flex-col">
-            <div className={cn(header, "flex items-center px-3")}><span className="text-sm font-medium">{L("在小程序里的样子", "In the Mini Program")}</span></div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-moon/10 p-3">
-              {ownPreview ? <div ref={setPreviewHost} className="overflow-hidden rounded-[28px] border border-line bg-paper" />
-                : <LibraryPreview target={library} settings={doc.settings} locale={locale} canvas={phone} />}
+            <div className={cn(header, "flex items-center gap-1 px-3")}>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{partTitle(doc.settings, library, part, contactOptions, locale)}</span>
+              {part && <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setPart("")}>{L("整体设置", "Overall")}</Button>}
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <LibraryInspector target={library} part={part} settings={doc.settings} options={contactOptions} activities={activities} locale={locale}
+                previewHost={ownPreview ? previewHost : null} upload={upload} onChange={setSettings} onOpen={moveInLibrary} onPart={setPart} />
             </div>
           </div> : <div className="flex size-full min-h-0 flex-col">
             <div className={cn(header, "flex items-center gap-1 px-3")}>
