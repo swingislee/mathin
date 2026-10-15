@@ -3,6 +3,25 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WECHAT-OFFICIAL-CONFIG-LOAD-20261015",
+      "title": "服务号登录生产配置加载",
+      "agent": "codex",
+      "threadId": "01a13e17-ff3e-76a0-9cce-bbf84f9029d9",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-OFFICIAL-CONFIG-LOAD-20261015.md",
+      "writePaths": [
+        ".ai/tasks/WECHAT-OFFICIAL-CONFIG-LOAD-20261015.md",
+        ".tmp/wechat-official-config-load-20261015/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "生产旧进程未加载用户新增的服务号设置，已重启当前应用并确认三项配置生效；公网健康、登录页和小程序状态正常，待本人在微信内重新登录确认。"
+    },
+    {
       "id": "WECHAT-DOMAIN-VERIFY-20261015",
       "title": "微信网站应用与公众号域名校验文件",
       "agent": "codex",
