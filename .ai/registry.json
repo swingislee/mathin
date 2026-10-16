@@ -7,14 +7,14 @@
       "title": "三个 Claude 会话与近期增量统一发布 v0.6.0",
       "agent": "codex",
       "threadId": "01a14068-4b2b-7f01-964e-23620af410d3",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/RELEASE-V060-20261016.md",
       "writePaths": [".ai/tasks/RELEASE-V060-20261016.md", "docs/releases/v0.6.0.md", ".tmp/release-20261016/"],
       "sharedPaths": [".ai/registry.json", "docs/current.md", "CHANGELOG.md", "package.json", "apps/parent-wechat/package.json"],
       "checkpoint": "128bb9676499ad64244174091f9f2121e1c14fcf",
-      "next": "v0.6.0 已上线，current 20261015-165027（128bb967），网站与任务进程同版，公网与权限检查通过。生产 15 项迁移、五阶段数据校准和 AliDNS 续期已完成。小程序 0.2.0 已发起上传，待开发者工具确认；收到继续后查原 taskId，不重发上传或导入。"
+      "next": "v0.6.0 已上线，current 20261015-165027（128bb967），网站与任务进程同版，公网与权限检查通过。生产迁移、五阶段校准和 AliDNS 续期完成；小程序 0.2.0 官方回执上传成功（698605 字节）。版本与团队说明已更新，平台与真机验收接续 MINI-REVIEW-SUBMIT-20261009。"
     },
     {
       "id": "WECHAT-IDENTITY-ENTRY-20261016",
@@ -563,7 +563,7 @@
       "title": "小程序运行时 1.0 规划",
       "agent": "claude",
       "threadId": null,
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/MINI-RUNTIME-PLAN-20261013.md",
@@ -590,7 +590,7 @@
         ".ai/registry.json"
       ],
       "checkpoint": "2b63309331847bb0796747dad0d7aad42aa269c0",
-      "next": "网站与后端已随 v0.6.0（128bb967）上线，23 项生产迁移此前已执行且内容一致。小程序 0.2.0 已发起上传、待开发者工具确认；隐私指引、真机、提审与正式发布分别待办，统一见 RELEASE-V060-20261016。"
+      "next": "已实现范围的网站与后端随 v0.6.0（128bb967）上线，23 项生产迁移此前已执行且内容一致。小程序 0.2.0 上传成功（698605 字节）；体验版、隐私指引、真机、提审及正式发布接续 MINI-REVIEW-SUBMIT-20261009。发布事实见 RELEASE-V060-20261016。"
     },
     {
       "id": "LEAD-COMMUNICATION-REPAIR-20261013",
@@ -1687,7 +1687,7 @@
         "apps/parent-wechat/docs/portal.md"
       ],
       "checkpoint": "eaef65950b2eebfcf8ec97c5a3822132d08d8567",
-      "next": "定位接口申请已通过；客户端 0.1.5 已上传，生产支持已绑定微信登录及普通登记参与人预约。首次提审文本已准备，真实时段与活动待发布，手机业务验收、平台提审和正式发布分别办理。"
+      "next": "最新客户端 0.2.0 已上传成功（698605 字节），配套后端已随 v0.6.0 上线。需在平台选择新体验版、核实四项隐私声明和实际保留期限，完成手机业务验收、提审与正式发布；定位接口此前已获批。事实见 RELEASE-V060-20261016。"
     },
     {
       "id": "MINI-LEAD-FIRST-CONTACT-20261009",
