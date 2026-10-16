@@ -46,7 +46,7 @@ export async function getClassRosterSessions(classroomIds: string[]): Promise<Cl
       .order("classroom_id").order("responsibility").range(start, end)
       .returns<Array<{ classroom_id: string; responsibility: StaffResponsibility }>>()),
     readSchoolQueryBatches(ids, (batch, start, end) => supabase.from("class_sessions")
-      .select("id,classroom_id,teacher_override,started_at,ended_at,deleted_at,cancelled_by,voided_at")
+      .select("id,classroom_id,teacher_override,scheduled_at,duration_min,started_at,ended_at,deleted_at,cancelled_by,voided_at")
       .in("id", batch).order("id").range(start, end)),
     getMyPerms(user.id),
   ]);
@@ -84,8 +84,11 @@ export async function getClassRosterSessions(classroomIds: string[]): Promise<Cl
         state: deriveSessionState({ startedAt: current.started_at, endedAt: current.ended_at,
           deletedAt: current.deleted_at, cancelledBy: current.cancelled_by, voidedAt: current.voided_at }),
       })) : undefined;
-    return { ...session, attendanceCount: marked.get(session.id) ?? 0, reviewCount: reviewed.get(session.id) ?? 0,
-      capabilities: capabilities ? { canOpenManagement: capabilities.canOpenManagement, canPrepare: capabilities.canPrepare, canEnterLive: capabilities.canEnterLive } : undefined };
+    return { ...session, scheduledAt: current?.scheduled_at ?? session.scheduledAt, durationMin: current?.duration_min ?? null,
+      startedAt: current?.started_at ?? session.startedAt, endedAt: current?.ended_at ?? session.endedAt,
+      attendanceCount: marked.get(session.id) ?? 0, reviewCount: reviewed.get(session.id) ?? 0,
+      capabilities: capabilities ? { canOpenManagement: capabilities.canOpenManagement, canPrepare: capabilities.canPrepare,
+        canEnterLive: capabilities.canEnterLive, canRehearse: capabilities.canEditPreparationArchive } : undefined };
   });
 }
 
@@ -93,6 +96,7 @@ export async function getClassSessionDetail(sessionId: string, classroomId: stri
   const quick = await getSessionQuickRow(sessionId);
   if (!quick || quick.classroomId !== classroomId || quick.deletedAt || !quick.capabilities.canOpenManagement || ["cancelled", "voided"].includes(quick.state)) throw new Error("SESSION_NOT_FOUND");
   if (quick.state === "scheduled") return classSessionDetailSchema.parse({ stage: "pre",
+    scheduledAt: quick.scheduledAt, durationMin: quick.durationMin,
     canPrepare: quick.capabilities.canPrepare, canEnterLive: quick.capabilities.canEnterLive, canMarkAttendance: quick.capabilities.canMarkAttendance });
   // 先由现有 RPC 核对课次可见范围，再读取编辑能力；客户端传入的班级不能改变授权范围。
   const records = await getTeachingRecords(sessionId, 1);

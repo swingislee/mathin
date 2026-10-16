@@ -16,6 +16,8 @@ import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
 import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
 import { classRosterScope, myRosterClassroomIds } from "./class-workspace-preferences";
 import { ClassRosterSessionRow } from "./ClassRosterSessionRow";
+import { ClassRosterEntryLink, useClassRosterEntryNow } from "./ClassRosterEntryLink";
+import { classRosterEntry } from "./class-roster-entry";
 import { classSessionMessages, orderedClassSessions, type ClassRosterSession } from "./class-roster-session-contract";
 import { ClassRosterWorkspace } from "./ClassRosterWorkspace";
 import { ClassRosterTermPicker } from "./ClassRosterTermPicker";
@@ -131,6 +133,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
   const teachingT = useTranslations("school.teachingWorkbench");
   const groupBy = teachingGrouping(workspaceQuery.group);
   const [clockNow] = useState(() => now ?? Date.now());
+  const entryNow = useClassRosterEntryNow(clockNow);
   const [openSessionRow, setOpenSessionRow] = useState<string | null>();
   const [mobileRosters, setMobileRosters] = useState<Record<string, boolean>>({});
   const [activeRecordKey, setActiveRecordKey] = useState<string | null>(null);
@@ -623,6 +626,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                 || row.sourceEnrollments?.some(fact => fact.student_id === focusStudentId))));
               const lessonsOpen = expandedSessionRow === `${group}:${classroom?.id}`;
               const classSessions = classroom ? orderedClassSessions(sessions, classroom.id) : [];
+              const entry = canTeach && !sessionsFailed ? classRosterEntry(classSessions, entryNow) : null;
               const slots = classroom ? placementRosterSeats(classroom, row.students) : [];
               if(classroom&&classroom.capacity===null){
                 const lastReservation=Math.max(0,...(board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom.id).map(t=>t.seat));
@@ -647,7 +651,8 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
               const classCells = (disclosure?: ReactNode) => <>
                 <TableCell data-class-sticky="1" mobileSpan="full" {...classCell("campus")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1")}>
                   <ClassRosterClassSummary row={row} locale={locale} className={className} courseTitle={courseTitle} time={time} teacher={teacher} showTeacher={identityColumn === "teacher"}
-                    grade={gradeLabel} level={level} disclosure={disclosure} rosterId={rosterId} rosterOpen={rosterOpen} disabled={pending || hasSessionDraft}
+                    grade={gradeLabel} level={level} disclosure={disclosure}
+                    entryAction={entry ? <ClassRosterEntryLink entry={entry} locale={locale} context={className} canChange={canChangeSession} /> : undefined} rosterId={rosterId} rosterOpen={rosterOpen} disabled={pending || hasSessionDraft}
                     contentLabel={progressMode ? progressM.title : undefined} contentCount={progressMode ? progressSessions.filter(session => session.classroomId === classroom?.id).length : undefined}
                     onRosterToggle={() => { if (canChangeSession()) {
                       if (!rosterOpen) setOpenSessionRow(null);
@@ -674,7 +679,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                   </div>;
                 }) : null}<span data-class-desktop data-class-roster-count className="flex min-h-9 items-center justify-center px-1 text-center text-[10px] tabular-nums text-muted">{classroom ? `${classroom.activeCount}/${classroom.capacity ?? "∞"}` : row.sourceEnrollments?.length}</span></div>}</TableCell>
               </>;
-              return <Fragment key={row.key}>{classroom && canTeach && !sessionsFailed ? <ClassRosterSessionRow classroomId={classroom.id} classroomName={className} rowProps={classRowProps} sessions={classSessions} locale={locale} timeZone={timeZone} now={clockNow}
+              return <Fragment key={row.key}>{classroom && canTeach && !sessionsFailed ? <ClassRosterSessionRow classroomId={classroom.id} classroomName={className} rowProps={classRowProps} sessions={classSessions} locale={locale} timeZone={timeZone} now={entryNow}
                 recordKey={`class:${group}:${classroom.id}`} activeKey={activeRecordKey} onActivate={setActiveRecordKey}
                 requestedId={focusSessionId} expanded={expandedSessionRow === `${group}:${classroom.id}`} canChange={canChangeSession}
                 onExpandedChange={value => { setProgressLesson(null); if (value) setMobileRosters({}); setOpenSessionRow(value ? `${group}:${classroom.id}` : null); }} onDirtyChange={onSessionDirtyChange} inlineDetails={progressMode && progressLesson && progressSessions.some(session => session.id === progressLesson && session.classroomId === classroom.id)

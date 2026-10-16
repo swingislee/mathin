@@ -10,6 +10,8 @@ import { DashboardRowDisclosure } from "./dashboard-page/DashboardRowDisclosure"
 import { FollowupRecordRow } from "./dashboard-page/FollowupRecordRow";
 import { CLASS_SESSION_OBSERVATION_BATCH_SIZE, classSessionMessages, classSessionObservationsSchema, hasClassSessionStarted, type ClassRosterSession } from "./class-roster-session-contract";
 import { readClassSessionResource } from "./class-session-resource";
+import { classSessionEntry } from "./class-roster-entry";
+import { ClassRosterEntryLink } from "./ClassRosterEntryLink";
 import { Link, usePathname } from "@/i18n/navigation";
 import { withReturnTo } from "./object-workspace/return-target";
 import { TeachingCoverage, TeachingPerformance } from "./teaching-workbench/TeachingObservationCells";
@@ -124,13 +126,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
                     onClick={event => { event.stopPropagation(); if (!canChange()) event.preventDefault(); }}>
                     {session.capabilities.canPrepare ? m.prepare : m.viewPreparation}
                   </Link>
-                  {session.capabilities.canEnterLive && <Link data-class-session-enter prefetch={false}
-                    href={"/classroom/" + classroomId + "/session/" + session.id + "/live" + (started ? "" : "?entry=prep")}
-                    className={buttonVariants({ size: "sm", className: "min-h-9 px-2 text-xs" })}
-                    aria-label={(started ? m.resume : m.enter) + " · " + (session.title || m.untitled)}
-                    onClick={event => { event.stopPropagation(); if (!canChange()) event.preventDefault(); }}>
-                    {started ? m.resume : m.enter}
-                  </Link>}
+                  <ClassRosterEntryLink entry={classSessionEntry(session, now)} locale={locale} canChange={canChange} />
                 </div>}
               </TableCell>
             </>}>

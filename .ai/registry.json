@@ -15,13 +15,19 @@
         "src/features/school/class-roster-session-contract.ts",
         "src/features/school/class-roster-session-read.ts",
         "src/features/school/ClassRosterSessionRow.tsx",
+        "src/features/school/ClassRosterSessionDetail.tsx",
+        "src/features/school/ClassRosterClassSummary.tsx",
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "src/features/school/class-roster-entry.ts",
+        "src/features/school/ClassRosterEntryLink.tsx",
+        ".tmp/teacher-classroom-entry-20261016/",
         ".ai/tasks/TEACHER-CLASSROOM-ENTRY-20261016.md"
       ],
       "sharedPaths": [
         ".ai/registry.json"
       ],
-      "checkpoint": "edf73037ba84694ebfb6800642f87c344d1d548f",
-      "next": "开发端已实现班级展开后直接备课/进入课堂；三个文件 ESLint、定向 TypeScript 语法与语义通过。3130 监听及局域网登录跳转正常；未登录课堂操作和视觉由负责人确认，未部署生产。"
+      "checkpoint": "ddb17c42",
+      "next": "班级行提供试讲/进入课堂，不显示下一课信息；用户确认提前30分钟切换，摘要/详情共用规则。开发库3个常规班已新增6节验收课及白板；静态、时间边界、权限缺失和写后核对通过，等待真实使用反馈，未部署生产。"
     },
     {
       "id": "RELEASE-V060-20261016",

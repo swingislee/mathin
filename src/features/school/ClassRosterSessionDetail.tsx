@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { readClassSessionResource } from "./class-session-resource";
+import { classSessionEntry } from "./class-roster-entry";
+import { ClassRosterEntryLink, useClassRosterEntryNow } from "./ClassRosterEntryLink";
 import { FollowupDetailLoading } from "./dashboard-page/FollowupInlineDetails";
 import { classSessionDetailSchema, classSessionMessages, classSessionStudentWork, type ClassSessionDetail } from "./class-roster-session-contract";
 import { SessionStudentPostworkTable } from "./SessionStudentPostworkTable";
@@ -22,6 +24,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
   returnTo?: string;
 }) {
   const m = classSessionMessages(locale);
+  const entryNow = useClassRosterEntryNow(now);
   const [data, setData] = useState<ClassSessionDetail | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -63,7 +66,9 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
     <DashboardCommandActions>
       <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={preserveReturnTo(`/dashboard/sessions/${sessionId}?stage=pre`, returnTo)}>{data.canPrepare ? m.prepare : m.viewPreparation}</Link>
       {data.canMarkAttendance && <AttendanceDrawer sessionId={sessionId} appearance="secondary" />}
-      {data.canEnterLive && <Link className={buttonVariants({ size: "sm" })} href={`/classroom/${classroomId}/session/${sessionId}/live?entry=prep`}>{m.enter}</Link>}
+      <ClassRosterEntryLink locale={locale} entry={classSessionEntry({ id: sessionId, classroomId, title: "",
+        scheduledAt: data.scheduledAt, durationMin: data.durationMin, startedAt: null, endedAt: null,
+        capabilities: { canOpenManagement: true, canPrepare: data.canPrepare, canEnterLive: data.canEnterLive } }, entryNow)} />
     </DashboardCommandActions>
   </DashboardCommandPanel>{materials}</div>;
   const work = classSessionStudentWork(data.records);
