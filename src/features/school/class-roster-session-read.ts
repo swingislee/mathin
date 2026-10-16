@@ -1,5 +1,9 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser, getMyPerms } from "@/lib/auth";
+import { resolveSessionCapabilities } from "./teaching-operations/capabilities";
+import { deriveSessionState, resolveSessionCapabilityContext } from "./teaching-operations/scopes";
+import type { StaffResponsibility } from "./teaching-operations/types";
 import { getClassroomWorkSessions } from "./classroom-workbench-read";
 import { readSchoolQueryBatches } from "./school-query-pages";
 import { getTeachingRecords, getTeachingSessionRecords } from "./teaching-workbench/teaching-records-read";
@@ -26,23 +30,63 @@ export async function getClassSessionObservations(classroomId: string, sessionId
 }
 
 export async function getClassRosterSessions(classroomIds: string[]): Promise<ClassRosterSession[]> {
-  const sessions = await getClassroomWorkSessions(classroomIds);
+  const [sessions, user] = await Promise.all([getClassroomWorkSessions(classroomIds), getAuthUser()]);
+  if (!user || !sessions.length) return [];
   const ids = sessions.map(session => session.id);
+  const visibleClassroomIds = [...new Set(sessions.map(session => session.classroomId))];
   const supabase = await createClient();
-  const [attendance, reviews] = await Promise.all([
+  const [attendance, reviews, assignments, lifecycle, permissions] = await Promise.all([
     readSchoolQueryBatches(ids, (batch, start, end) => supabase.from("session_attendance").select("session_id")
       .in("session_id", batch).order("session_id").order("student_id").range(start, end)),
     readSchoolQueryBatches(ids, (batch, start, end) => supabase.from("session_reviews").select("session_id")
       .in("session_id", batch).order("session_id").order("student_id").range(start, end)),
+    // 与课次详情复用同一能力公式；批量读取责任关系和代课人，不为每一课请求完整详情。
+    readSchoolQueryBatches(visibleClassroomIds, (batch, start, end) => supabase.from("classroom_staff_assignments")
+      .select("classroom_id,responsibility").in("classroom_id", batch).eq("user_id", user.id)
+      .order("classroom_id").order("responsibility").range(start, end)
+      .returns<Array<{ classroom_id: string; responsibility: StaffResponsibility }>>()),
+    readSchoolQueryBatches(ids, (batch, start, end) => supabase.from("class_sessions")
+      .select("id,classroom_id,teacher_override,started_at,ended_at,deleted_at,cancelled_by,voided_at")
+      .in("id", batch).order("id").range(start, end)),
+    getMyPerms(user.id),
   ]);
-  if (attendance.error || reviews.error) throw new Error("CLASS_SESSION_SUMMARY_UNAVAILABLE");
+  if (attendance.error || reviews.error || assignments.error || lifecycle.error) throw new Error("CLASS_SESSION_SUMMARY_UNAVAILABLE");
   const counts = (rows: { session_id: string }[]) => {
     const values = new Map<string, number>();
     for (const row of rows) values.set(row.session_id, (values.get(row.session_id) ?? 0) + 1);
     return values;
   };
   const marked = counts(attendance.data ?? []), reviewed = counts(reviews.data ?? []);
-  return sessions.map(session => ({ ...session, attendanceCount: marked.get(session.id) ?? 0, reviewCount: reviewed.get(session.id) ?? 0 }));
+  const responsibilities = new Map<string, StaffResponsibility[]>();
+  for (const row of assignments.data ?? []) {
+    const values = responsibilities.get(row.classroom_id) ?? [];
+    values.push(row.responsibility);
+    responsibilities.set(row.classroom_id, values);
+  }
+  const currentSessions = new Map((lifecycle.data ?? []).map(row => [row.id, row]));
+  const hasClassViewAll = permissions.has("class.view.all");
+  return sessions.map(session => {
+    const current = currentSessions.get(session.id);
+    const roles = responsibilities.get(session.classroomId) ?? [];
+    const isTeaching = roles.includes("primary_teacher") || roles.includes("assistant_teacher");
+    const capabilities = current && current.classroom_id === session.classroomId && !current.deleted_at && !current.cancelled_by && !current.voided_at
+      ? resolveSessionCapabilities(resolveSessionCapabilityContext({
+        responsibilities: roles,
+        isTeacherOverride: current.teacher_override === user.id,
+        hasClassManageScope: permissions.has("class.manage") && (hasClassViewAll || isTeaching),
+        hasClassViewAll,
+        hasCourseManage: permissions.has("course.manage"),
+        hasSessionVoid: permissions.has("session.void"),
+        hasAttendanceMark: permissions.has("attendance.mark"),
+        hasReviewWrite: permissions.has("review.write"),
+        hasReviewVideo: permissions.has("video.review"),
+        hasPostworkManage: permissions.has("session.postwork.manage"),
+        state: deriveSessionState({ startedAt: current.started_at, endedAt: current.ended_at,
+          deletedAt: current.deleted_at, cancelledBy: current.cancelled_by, voidedAt: current.voided_at }),
+      })) : undefined;
+    return { ...session, attendanceCount: marked.get(session.id) ?? 0, reviewCount: reviewed.get(session.id) ?? 0,
+      capabilities: capabilities ? { canOpenManagement: capabilities.canOpenManagement, canPrepare: capabilities.canPrepare, canEnterLive: capabilities.canEnterLive } : undefined };
+  });
 }
 
 export async function getClassSessionDetail(sessionId: string, classroomId: string, userId: string, canReview: boolean) {

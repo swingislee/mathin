@@ -3,6 +3,27 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "TEACHER-CLASSROOM-ENTRY-20261016",
+      "title": "教师班级课次直接备课与进入课堂",
+      "agent": "codex",
+      "threadId": "01a1436d-20bd-71e0-88a2-c1af2d5e8433",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/TEACHER-CLASSROOM-ENTRY-20261016.md",
+      "writePaths": [
+        "src/features/school/class-roster-session-contract.ts",
+        "src/features/school/class-roster-session-read.ts",
+        "src/features/school/ClassRosterSessionRow.tsx",
+        ".ai/tasks/TEACHER-CLASSROOM-ENTRY-20261016.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "edf73037ba84694ebfb6800642f87c344d1d548f",
+      "next": "开发端已实现班级展开后直接备课/进入课堂；三个文件 ESLint、定向 TypeScript 语法与语义通过。3130 监听及局域网登录跳转正常；未登录课堂操作和视觉由负责人确认，未部署生产。"
+    },
+    {
       "id": "RELEASE-V060-20261016",
       "title": "三个 Claude 会话与近期增量统一发布 v0.6.0",
       "agent": "codex",
