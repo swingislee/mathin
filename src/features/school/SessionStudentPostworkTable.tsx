@@ -38,12 +38,13 @@ const GROUP_KEY = "class";
 // 保留上一版已打开页面的提交引用；发布时核对新旧 Server Action manifest。
 const retainedCommunicationActions = { recordSessionCommunication, finishSessionCommunications };
 
-export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, resultStatus, canWriteReview, initialCommunications, locale, timeZone, today, onDirtyChange, onReviewsSaved, workspaceLink }: {
+export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, resultStatus, canWriteReview, initialCommunications, locale, timeZone, today, onDirtyChange, onReviewsSaved, workspaceLink, hidePrimaryActions = false }: {
   sessionId: string; rows: SessionStudentPostworkRow[]; initialReviews: ReviewRecord[]; resultStatus: LearningResultStatus;
   canWriteReview: boolean; initialCommunications: SessionCommunications; locale: string; timeZone: string; today: string;
   onDirtyChange?: (dirty: boolean) => void;
   onReviewsSaved?: (records: ReviewRecord[]) => void;
   workspaceLink?: ReactNode;
+  hidePrimaryActions?: boolean;
 }) {
   const t = useTranslations("school.session");
   const reviewT = useTranslations("school.reviews");
@@ -151,7 +152,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
           {reviewSaveState === "error" || Object.values(entries).some(entry => entry.error) ? m.needsAttention : hasDrafts ? m.saving : m.autosaved}</span>}
       </DashboardCommandState>
       <DashboardCommandActions>
-        {canWriteReview && <PostclassLearningEditor sessionId={sessionId} disabled={hasDrafts || pendingReviews} onSaved={data => {
+        {canWriteReview && !hidePrimaryActions && <PostclassLearningEditor sessionId={sessionId} disabled={hasDrafts || pendingReviews} onSaved={data => {
           setLearningEdit(data); setReviews(data.reviews); reviewsRef.current = data.reviews; savedReviewsRef.current = data.reviews;
           onReviewsSavedRef.current?.(data.reviews.filter(review => review.comment.trim() || [review.entryScore, review.exitScore, review.focus, review.participation, review.mastery].some(value => value !== null)));
           setStatus(current => current === "published" ? "revised" : current); router.refresh();
@@ -163,7 +164,7 @@ export function SessionStudentPostworkTable({ sessionId, rows, initialReviews, r
             dirtyReviewsRef.current.clear(); sequenceRef.current = savedSequenceRef.current;
             reviewsRef.current = savedReviewsRef.current; setReviews(savedReviewsRef.current); setReviewSaveState("saved");
           }}>{locale.startsWith("en") ? "Discard unsaved feedback" : "放弃未保存课评"}</Button></>}
-        {canWriteReview && <Button size="sm" disabled={pendingReviews} onClick={() => publishReviews.run()}>{t(["published", "withdrawn", "revised"].includes(status) ? "republish" : "publishStudentReviews")}</Button>}
+        {canWriteReview && !hidePrimaryActions && <Button size="sm" disabled={pendingReviews} onClick={() => publishReviews.run()}>{t(["published", "withdrawn", "revised"].includes(status) ? "republish" : "publishStudentReviews")}</Button>}
         {workspaceLink}
       </DashboardCommandActions>
     </DashboardCommandPanel>

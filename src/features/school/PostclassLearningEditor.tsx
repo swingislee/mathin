@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -14,7 +14,10 @@ import { postclassLearningChanges, type PostclassLearning } from "./postclass-le
 import { LearningCheckMatrixEntry, type LearningCheckMatrixOrientation } from "./LearningCheckMatrixEntry";
 import { DashboardCommandActions, DashboardCommandPanel } from "./dashboard-page";
 
-export function PostclassLearningEditor({ sessionId, disabled, onSaved }: { sessionId: string; disabled?: boolean; onSaved: (data: PostclassLearning) => void }) {
+export function PostclassLearningEditor({ sessionId, disabled, onSaved, trigger, className, beforeOpen }: {
+  sessionId: string; disabled?: boolean; onSaved: (data: PostclassLearning) => void;
+  trigger?: ReactNode; className?: string; beforeOpen?: () => boolean;
+}) {
   const en = useLocale() === "en";
   const reviewT = useTranslations("school.reviews");
   const [open, setOpen] = useState(false);
@@ -51,7 +54,8 @@ export function PostclassLearningEditor({ sessionId, disabled, onSaved }: { sess
   }
   const review = draft?.reviews.find(row => row.studentId === studentId);
   return <>
-    <Button size="sm" variant="secondary" disabled={disabled} onClick={() => { setOpen(true); void load(); }}>{title}</Button>
+    <Button size="sm" variant="secondary" disabled={disabled} className={className} title={title} aria-label={title}
+      onClick={event => { event.stopPropagation(); if (beforeOpen && !beforeOpen()) return; setOpen(true); void load(); }}>{trigger ?? title}</Button>
     <Dialog open={open} onOpenChange={value => { if (!pending && !dirty) setOpen(value); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-5xl">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>

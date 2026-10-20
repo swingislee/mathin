@@ -18,10 +18,11 @@ import { DashboardCommandActions, DashboardCommandPanel } from "./dashboard-page
 import { SessionMaterialsReader } from "./SessionMaterialsReader";
 import { preserveReturnTo } from "./object-workspace/return-target";
 
-export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZone, now, onDirtyChange, onReviewCountChange, returnTo }: {
+export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZone, now, onDirtyChange, onReviewCountChange, returnTo, actionsInSummary = false }: {
   sessionId: string; classroomId: string; locale: string; timeZone: string; now: number; onDirtyChange: (value: boolean) => void;
   onReviewCountChange?: (count: number) => void;
   returnTo?: string;
+  actionsInSummary?: boolean;
 }) {
   const m = classSessionMessages(locale);
   const entryNow = useClassRosterEntryNow(now);
@@ -62,7 +63,7 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
   }, [locale, sessionId, page, pageSize, attempt, contactRequested]);
   if (!data) return failed ? <div role="alert" className="flex items-center gap-3 text-xs text-muted">{m.failed}<Button variant="ghost" size="sm" onClick={() => setAttempt(value => value + 1)}>{m.retry}</Button></div> : <FollowupDetailLoading>{m.loading}</FollowupDetailLoading>;
   const materials = <SessionMaterialsReader key={sessionId} sessionId={sessionId} classroomId={classroomId} locale={locale} timeZone={timeZone} onDirtyChange={onMaterialsDirtyChange} />;
-  if (!("records" in data)) return <div className="space-y-3"><DashboardCommandPanel>
+  if (!("records" in data)) return <div className="space-y-3">{!actionsInSummary && <DashboardCommandPanel>
     <DashboardCommandActions>
       <Link className={buttonVariants({ size: "sm", variant: "secondary" })} href={preserveReturnTo(`/dashboard/sessions/${sessionId}?stage=pre`, returnTo)}>{data.canPrepare ? m.prepare : m.viewPreparation}</Link>
       {data.canMarkAttendance && <AttendanceDrawer sessionId={sessionId} appearance="secondary" />}
@@ -70,10 +71,10 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
         scheduledAt: data.scheduledAt, durationMin: data.durationMin, startedAt: null, endedAt: null,
         capabilities: { canOpenManagement: true, canPrepare: data.canPrepare, canEnterLive: data.canEnterLive } }, entryNow)} />
     </DashboardCommandActions>
-  </DashboardCommandPanel>{materials}</div>;
+  </DashboardCommandPanel>}{materials}</div>;
   const work = classSessionStudentWork(data.records);
   return <div className="space-y-3">
-    {data.canEnterLive && <DashboardCommandPanel><DashboardCommandActions>
+    {!actionsInSummary && data.canEnterLive && <DashboardCommandPanel><DashboardCommandActions>
       <Link className={buttonVariants({ size: "sm" })} href={`/classroom/${classroomId}/session/${sessionId}/live`}>{m.resume}</Link>
     </DashboardCommandActions></DashboardCommandPanel>}
     {materials}
@@ -81,9 +82,10 @@ export function ClassRosterSessionDetail({ sessionId, classroomId, locale, timeZ
     <TeachingSessionRecords data={contacts ? { ...data.records, contacts: contacts.contacts, contactPage: contacts.contactPage, contactTotal: contacts.contactTotal } : data.records} locale={locale} timeZone={timeZone} returnTo="" currentHref="" pageSize={pageSize}
       inline={{ onPageChange: value => { setContactRequested(true); setPage(value); }, onPageSizeChange: value => { setContactRequested(true); setPageSize(value); setPage(1); } }}
       studentWork={<SessionStudentPostworkTable sessionId={sessionId} rows={work.rows} initialReviews={work.reviews} resultStatus={data.resultStatus}
+        hidePrimaryActions={actionsInSummary && Boolean(data.records.session.endedAt)}
         canWriteReview={data.canWriteReview} initialCommunications={data.records.sessionCommunications ?? { canRead: false, canWrite: false, completed: false, records: [] }}
         locale={locale} timeZone={timeZone} today={calendarDayKey(new Date(now), timeZone)} onDirtyChange={onRecordsDirtyChange}
-        workspaceLink={<Link href={preserveReturnTo(`/dashboard/sessions/${sessionId}?stage=${data.records.session.endedAt ? "post" : "live"}`, returnTo)} className="text-xs underline underline-offset-4">{m.workspace}</Link>}
+        workspaceLink={!actionsInSummary && <Link href={preserveReturnTo(`/dashboard/sessions/${sessionId}?stage=${data.records.session.endedAt ? "post" : "live"}`, returnTo)} className="text-xs underline underline-offset-4">{m.workspace}</Link>}
         onReviewsSaved={reviews => { for (const review of reviews) reviewedStudents.current.add(review.studentId); onReviewCountChange?.(reviewedStudents.current.size); }} />}
     />
   </div>;

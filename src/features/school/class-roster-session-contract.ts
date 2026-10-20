@@ -5,12 +5,15 @@ import type { ClassroomWorkSession } from "./classroom-workbench-contract";
 import { teachingRecordsSchema, type TeachingRecords } from "./teaching-workbench/teaching-records-contract";
 import { teachingObservationSchema } from "./teaching-workbench/teaching-learning-summary";
 import type { SessionCapabilities } from "./teaching-operations/types";
+import type { LearningResultStatus } from "./learning-results";
 
 export type ClassRosterSession = ClassroomWorkSession & {
   attendanceCount: number;
   reviewCount: number;
+  reviewStatus?: LearningResultStatus;
   durationMin?: number | null;
-  capabilities?: Pick<SessionCapabilities, "canOpenManagement" | "canPrepare" | "canEnterLive"> & { canRehearse?: boolean };
+  capabilities?: Pick<SessionCapabilities, "canOpenManagement" | "canPrepare" | "canEnterLive">
+    & Partial<Pick<SessionCapabilities, "canMarkAttendance" | "canWriteReview">> & { canRehearse?: boolean };
 };
 export const classSessionDetailSchema = z.union([z.object({
   stage: z.literal("pre"),

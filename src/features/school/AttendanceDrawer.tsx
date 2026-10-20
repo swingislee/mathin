@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
@@ -25,12 +25,18 @@ export function AttendanceDrawer({
   mode = "initial",
   onSaved,
   className,
+  trigger,
+  beforeOpen,
+  disabled,
 }: {
   sessionId: string;
   appearance?: "link" | "secondary" | "primary";
   mode?: "initial" | "amend";
   onSaved?: () => void;
   className?: string;
+  trigger?: ReactNode;
+  beforeOpen?: () => boolean;
+  disabled?: boolean;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
@@ -41,6 +47,7 @@ export function AttendanceDrawer({
   const label = mode === "amend" ? t("amendAttendance") : t("markAttendance");
 
   const openDrawer = () => {
+    if (beforeOpen && !beforeOpen()) return;
     setOpen(true);
     setLoading(true);
     setError(null);
@@ -70,13 +77,15 @@ export function AttendanceDrawer({
     <>
       <button
         type="button"
-        onClick={openDrawer}
+        onClick={event => { event.stopPropagation(); openDrawer(); }}
+        disabled={disabled}
         title={label}
+        aria-label={label}
         className={appearance === "link"
           ? cn("shrink-0 text-xs text-muted underline underline-offset-2 hover:text-ink", className)
           : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0", className)}
       >
-        {label}
+        {trigger ?? label}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>

@@ -35,7 +35,7 @@ export async function getClassRosterSessions(classroomIds: string[]): Promise<Cl
   const ids = sessions.map(session => session.id);
   const visibleClassroomIds = [...new Set(sessions.map(session => session.classroomId))];
   const supabase = await createClient();
-  const [attendance, reviews, assignments, lifecycle, permissions] = await Promise.all([
+  const [attendance, reviews, assignments, lifecycle, permissions, reviewHeads] = await Promise.all([
     readSchoolQueryBatches(ids, (batch, start, end) => supabase.from("session_attendance").select("session_id")
       .in("session_id", batch).order("session_id").order("student_id").range(start, end)),
     readSchoolQueryBatches(ids, (batch, start, end) => supabase.from("session_reviews").select("session_id")
@@ -49,14 +49,24 @@ export async function getClassRosterSessions(classroomIds: string[]): Promise<Cl
       .select("id,classroom_id,teacher_override,scheduled_at,duration_min,started_at,ended_at,deleted_at,cancelled_by,voided_at")
       .in("id", batch).order("id").range(start, end)),
     getMyPerms(user.id),
+    readSchoolQueryBatches(ids, (batch, start, end) => supabase.from("learning_result_heads")
+      .select("session_id,status").in("session_id", batch).eq("kind", "session_review")
+      .order("session_id").order("id").range(start, end)),
   ]);
-  if (attendance.error || reviews.error || assignments.error || lifecycle.error) throw new Error("CLASS_SESSION_SUMMARY_UNAVAILABLE");
+  if (attendance.error || reviews.error || assignments.error || lifecycle.error || reviewHeads.error) throw new Error("CLASS_SESSION_SUMMARY_UNAVAILABLE");
   const counts = (rows: { session_id: string }[]) => {
     const values = new Map<string, number>();
     for (const row of rows) values.set(row.session_id, (values.get(row.session_id) ?? 0) + 1);
     return values;
   };
   const marked = counts(attendance.data ?? []), reviewed = counts(reviews.data ?? []);
+  const reviewStatuses = new Map<string, Set<string>>();
+  for (const row of reviewHeads.data ?? []) {
+    if (!row.session_id) continue;
+    const statuses = reviewStatuses.get(row.session_id) ?? new Set<string>();
+    statuses.add(row.status);
+    reviewStatuses.set(row.session_id, statuses);
+  }
   const responsibilities = new Map<string, StaffResponsibility[]>();
   for (const row of assignments.data ?? []) {
     const values = responsibilities.get(row.classroom_id) ?? [];
@@ -87,8 +97,10 @@ export async function getClassRosterSessions(classroomIds: string[]): Promise<Cl
     return { ...session, scheduledAt: current?.scheduled_at ?? session.scheduledAt, durationMin: current?.duration_min ?? null,
       startedAt: current?.started_at ?? session.startedAt, endedAt: current?.ended_at ?? session.endedAt,
       attendanceCount: marked.get(session.id) ?? 0, reviewCount: reviewed.get(session.id) ?? 0,
+      reviewStatus: (["revised", "withdrawn", "published", "review"] as const).find(status => reviewStatuses.get(session.id)?.has(status)) ?? "draft",
       capabilities: capabilities ? { canOpenManagement: capabilities.canOpenManagement, canPrepare: capabilities.canPrepare,
-        canEnterLive: capabilities.canEnterLive, canRehearse: capabilities.canEditPreparationArchive } : undefined };
+        canEnterLive: capabilities.canEnterLive, canRehearse: capabilities.canEditPreparationArchive,
+        canMarkAttendance: capabilities.canMarkAttendance, canWriteReview: capabilities.canWriteReview } : undefined };
   });
 }
 

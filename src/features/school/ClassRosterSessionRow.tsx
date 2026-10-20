@@ -1,26 +1,24 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { DashboardRowDisclosure } from "./dashboard-page/DashboardRowDisclosure";
 import { FollowupRecordRow } from "./dashboard-page/FollowupRecordRow";
 import { CLASS_SESSION_OBSERVATION_BATCH_SIZE, classSessionMessages, classSessionObservationsSchema, hasClassSessionStarted, type ClassRosterSession } from "./class-roster-session-contract";
 import { readClassSessionResource } from "./class-session-resource";
-import { classSessionEntry } from "./class-roster-entry";
-import { ClassRosterEntryLink } from "./ClassRosterEntryLink";
-import { Link, usePathname } from "@/i18n/navigation";
-import { withReturnTo } from "./object-workspace/return-target";
+import { ClassRosterSessionActions } from "./ClassRosterSessionActions";
+import { usePathname } from "@/i18n/navigation";
 import { TeachingCoverage, TeachingPerformance } from "./teaching-workbench/TeachingObservationCells";
 import type { TeachingObservations } from "./teaching-workbench/teaching-learning-summary";
 
 const loadSessionDetail = () => import("./ClassRosterSessionDetail");
 const ClassRosterSessionDetail = dynamic(() => loadSessionDetail().then(module => module.ClassRosterSessionDetail));
 
-/** 班级展开后即可备课或进入课堂；课次的第二层展开用于查看与连续登记。 */
+/** 课次首行直接操作课前、课堂与课后；第二层展开用于查看材料与连续登记。 */
 export function ClassRosterSessionRow({ classroomId, classroomName, sessions, locale, timeZone, now, requestedId, expanded, canChange, onExpandedChange, onDirtyChange, rowProps, children, recordKey, activeKey, onActivate, inlineDetails }: {
   classroomId: string; classroomName: string; sessions: ClassRosterSession[]; locale: string; timeZone: string; now: number; requestedId?: string;
   expanded: boolean; canChange: () => boolean; onExpandedChange: (value: boolean) => void; onDirtyChange: (value: boolean) => void;
@@ -42,6 +40,18 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
   const detailId = useId();
   const [expandedSession, setExpandedSession] = useState<string | null>(() => sessions.find(row => row.id === requestedId)?.id ?? null);
   const [reviewCounts, setReviewCounts] = useState<Record<string, number>>({});
+  const [recordVersions, setRecordVersions] = useState<Record<string, number>>({});
+  const [publishingSession, setPublishingSession] = useState<string | null>(null);
+  const dirtyParts = useRef({ records: false, publishing: false });
+  const onRecordsDirtyChange = useCallback((value: boolean) => {
+    dirtyParts.current.records = value;
+    onDirtyChange(value || dirtyParts.current.publishing);
+  }, [onDirtyChange]);
+  const onPublishingChange = (sessionId: string, value: boolean) => {
+    dirtyParts.current.publishing = value;
+    setPublishingSession(value ? sessionId : null);
+    onDirtyChange(value || dirtyParts.current.records);
+  };
   const [observations, setObservations] = useState<Record<string, TeachingObservations | null>>({});
   const observationCache = useRef<typeof observations>({});
   const [attempt, setAttempt] = useState(0);
@@ -76,6 +86,11 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
     const next = { ...observationCache.current };
     delete next[id]; observationCache.current = next; setObservations(next); setAttempt(value => value + 1);
   };
+  const recordsChanged = (sessionId: string, reviewCount?: number) => {
+    if (reviewCount !== undefined) setReviewCounts(current => ({ ...current, [sessionId]: reviewCount }));
+    setRecordVersions(current => ({ ...current, [sessionId]: (current[sessionId] ?? 0) + 1 }));
+    retryObservation(sessionId);
+  };
   const date = (value: string | null) => value ? new Intl.DateTimeFormat(locale, { timeZone, month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(value)) : m.noDate;
   const sessionKey = (id: string) => `${recordKey}/session:${id}`;
   const changeClass = (open: boolean) => {
@@ -94,8 +109,8 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
     summary={children(<DashboardRowDisclosure expanded={expanded} controls={detailId}
       label={t(expanded ? "overview.collapseClass" : "overview.expandClass", { name: classroomName })} onToggle={() => changeClass(!expanded)} />)}>
     {() => inlineDetails ?? (sessions.length ? <Table mobileLayout="records" data-class-session-list={classroomId} aria-label={t("overview.classLessons", { name: classroomName })} className="table-fixed text-xs" containerClassName="overflow-visible">
-      <colgroup><col /><col className="w-24" /><col className="w-56" /><col className="w-32" /><col className="w-56" /></colgroup>
-      <TableHeader className="sr-only"><TableRow><TableHead>{m.session}</TableHead><TableHead>{t("observations.sessionState")}</TableHead><TableHead>{t("observations.performance")}</TableHead><TableHead>{t("observations.coverageTitle")}</TableHead><TableHead>{m.actions}</TableHead></TableRow></TableHeader>
+      <colgroup><col /><col className="w-24" /><col className="w-56" /><col className="w-32" /></colgroup>
+      <TableHeader className="sr-only"><TableRow><TableHead>{m.session} / {m.actions}</TableHead><TableHead>{t("observations.sessionState")}</TableHead><TableHead>{t("observations.performance")}</TableHead><TableHead>{t("observations.coverageTitle")}</TableHead></TableRow></TableHeader>
       <TableBody>
         {sessions.map(session => {
           const id = `${detailId}-${session.id}`;
@@ -105,10 +120,15 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
           const started = hasClassSessionStarted(session);
           return <FollowupRecordRow key={session.id} rowKey={sessionKey(session.id)} rowProps={{ "data-class-session-row": session.id, className: "cursor-pointer [&>td]:px-2 [&>td]:py-1.5" }}
             active={activeKey === sessionKey(session.id)} expanded={isOpen} onActivate={() => onActivate(sessionKey(session.id))} loadingLabel={m.loading}
-            onExpandedChange={open => changeSession(session.id, open)} detailsId={id} title={`${session.title || m.untitled} · ${date(session.scheduledAt)}`} colSpan={5} hideTitle
+            onExpandedChange={open => changeSession(session.id, open)} detailsId={id} title={`${session.title || m.untitled} · ${date(session.scheduledAt)}`} colSpan={4} hideTitle
             summary={<>
-              <TableCell><div className="flex min-w-0 items-center gap-1"><DashboardRowDisclosure expanded={isOpen} controls={id} label={m.open} onToggle={() => changeSession(session.id, !isOpen)} />
-                <div className="min-w-0"><p className="truncate leading-5">{session.title || m.untitled}</p><p className="text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
+              <TableCell mobileSpan="full"><div className="flex min-w-0 items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-1 lg:max-w-64"><DashboardRowDisclosure expanded={isOpen} controls={id} label={m.open} onToggle={() => changeSession(session.id, !isOpen)} />
+                  <div className="min-w-0"><p className="truncate leading-5" title={session.title || m.untitled}>{session.title || m.untitled}</p><p className="text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
+                </div>
+                <ClassRosterSessionActions session={session} locale={locale} now={now} returnTo={returnToSession(session.id)}
+                  canChange={canChange} onRecordsChanged={count => recordsChanged(session.id, count)}
+                  onPublishingChange={value => onPublishingChange(session.id, value)} />
               </div></TableCell>
               <TableCell className="text-muted"><p>{t(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p><p className="mt-0.5 text-[11px]">{m.attendance} {session.attendanceCount}</p>
               </TableCell>
@@ -117,21 +137,10 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
                 : <span role="status" className="text-[11px] text-muted">{m.observationsLoading}</span>}</TableCell>
               <TableCell className="text-muted">{observation ? <TeachingCoverage value={observation} reviewCount={reviewCount} /> : <span>{m.reviews} {reviewCount}</span>}</TableCell></>
                 : <TableCell mobileHidden colSpan={2} className="text-right text-muted">{m.preparation}</TableCell>}
-              <TableCell mobileSpan="full" className="text-right">
-                {session.capabilities?.canOpenManagement && <div data-class-session-actions className="flex flex-wrap items-center justify-end gap-1.5">
-                  <Link data-class-session-prepare prefetch={false}
-                    href={withReturnTo("/dashboard/sessions/" + session.id + "?stage=pre", returnToSession(session.id))}
-                    className={buttonVariants({ size: "sm", variant: "secondary", className: "min-h-9 px-2 text-xs" })}
-                    aria-label={(session.capabilities.canPrepare ? m.prepare : m.viewPreparation) + " · " + (session.title || m.untitled)}
-                    onClick={event => { event.stopPropagation(); if (!canChange()) event.preventDefault(); }}>
-                    {session.capabilities.canPrepare ? m.prepare : m.viewPreparation}
-                  </Link>
-                  <ClassRosterEntryLink entry={classSessionEntry(session, now)} locale={locale} canChange={canChange} />
-                </div>}
-              </TableCell>
             </>}>
-            {() => <div data-class-session-editor data-session-id={session.id}>
-              <ClassRosterSessionDetail sessionId={session.id} classroomId={classroomId} locale={locale} timeZone={timeZone} now={now} onDirtyChange={onDirtyChange}
+            {() => <div data-class-session-editor data-session-id={session.id} inert={publishingSession !== null || undefined}>
+              <ClassRosterSessionDetail key={recordVersions[session.id] ?? 0} sessionId={session.id} classroomId={classroomId} locale={locale} timeZone={timeZone} now={now} onDirtyChange={onRecordsDirtyChange}
+                actionsInSummary={session.capabilities?.canOpenManagement} returnTo={returnToSession(session.id)}
                 onReviewCountChange={count => setReviewCounts(current => ({ ...current, [session.id]: count }))} />
             </div>}
           </FollowupRecordRow>;

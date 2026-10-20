@@ -3,6 +3,32 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "LESSON-ROW-ACTIONS-20261021",
+      "title": "课次首行直接操作课前与课后",
+      "agent": "codex",
+      "threadId": "01a15a0f-d144-7332-bc04-b18e502c402e",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md",
+      "writePaths": [
+        "src/features/school/ClassRosterSessionActions.tsx",
+        "src/features/school/ClassRosterSessionRow.tsx",
+        "src/features/school/ClassRosterSessionDetail.tsx",
+        "src/features/school/class-roster-session-contract.ts",
+        "src/features/school/class-roster-session-read.ts",
+        "src/features/school/AttendanceDrawer.tsx",
+        "src/features/school/PostclassLearningEditor.tsx",
+        "src/features/school/SessionStudentPostworkTable.tsx",
+        ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "首行课前/课后操作已完成，8 个相关源码静态检查通过，开发入口响应正常；待实际使用确认，生产未更新。"
+    },
+    {
       "id": "TEACHER-CLASSROOM-ENTRY-20261016",
       "title": "教师班级课次直接备课与进入课堂",
       "agent": "codex",
