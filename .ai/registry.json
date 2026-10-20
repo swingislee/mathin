@@ -7,7 +7,7 @@
       "title": "微信恢复登录会话时保留管理员验证",
       "agent": "codex",
       "threadId": "01a13e17-ff3e-76a0-9cce-bbf84f9029d9",
-      "status": "in_review",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/WECHAT-SESSION-RESTORE-20261021.md",
@@ -26,8 +26,8 @@
         ".ai/registry.json",
         "src/lib/database.types.ts"
       ],
-      "checkpoint": null,
-      "next": "服务端会话证明与兼容迁移已实现，定向鉴权、隔离 SQL 权限/撤销与静态检查通过；开发库已应用，生产待本次迁移和发布授权，真机恢复待验收。"
+      "checkpoint": "93e77576f22059fbd070a4bd4b373048a78b2b83",
+      "next": "开发版已提交，定向鉴权、隔离 SQL 权限/撤销与静态检查通过，开发库已应用。用户选择暂不部署；生产候选 c5faa780 已备好，后续授权上线后由本人验收微信恢复。"
     },
     {
       "id": "LOAD-READ-BOUNDARY-20261021",
