@@ -5,16 +5,16 @@ import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 import { miniappAssetPath } from "@/features/school/miniapp-settings/contract";
 import { miniappPublicClient, readPublishedSettings } from "../settings-server";
 import { defaultRuntimeSpec, runtimeStrings } from "./defaults";
-import { runtimeMediaPath, tolerantRuntimeSpec } from "./spec";
+import { runtimeMediaPath, runtimeParamsSchema, tolerantRuntimeSpec } from "./spec";
 import { readSource, readWeek, shanghaiDate, validDate, type RuntimeIdentity, type SourceInput } from "./sources";
 import { readDisplay, type DisplayData } from "./display";
 import { chartImage, chartColors, segment } from "./chart";
 import { runtimeFormGroups } from "./forms";
 import { sampleDisplay, sampleItems, sampleParticipants, sampleWeek } from "./samples";
 import {
-  runtimeBlockVersions, runtimeChildren, runtimeClientVersion, runtimeIcons, runtimeLocalText, runtimePageFilters, runtimeStringKeys,
+  runtimeBlockVersions, runtimeChildren, runtimeClientVersion, runtimeCompatibleBlocks, runtimeIcons, runtimeLocalText, runtimePageFilters, runtimeRequestVersion, runtimeStringKeys,
   type RuntimeAction, type RuntimeApp, type RuntimeTab, type RuntimeBlockSpec, type RuntimeBlockView, type RuntimeLinkSpec,
-  type RuntimeLocale, type RuntimeRule, type RuntimeScreen, type RuntimeScreenSpec, type RuntimeSpec,
+  type RuntimeLocale, type RuntimeParams, type RuntimeRule, type RuntimeScreen, type RuntimeScreenSpec, type RuntimeSpec,
 } from "../../../../contracts/participant-api/runtime";
 import { defaultMiniappSettings, type MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
 import type { ExperienceForm } from "../../../../contracts/participant-api/miniapp-experience";
@@ -24,6 +24,7 @@ import { defaultMiniappExperience } from "../../../../contracts/participant-api/
 export type Published = { revision: string; spec: RuntimeSpec; settings: MiniappSettings; settingsRevision: number };
 export type Context = { published: Published; identity: RuntimeIdentity; locale: RuntimeLocale; client: number; now: number;
   filters: Record<string, Record<string, string>>; anchor: string; cursor: string;
+  screenParams?: RuntimeParams;
   /** Staff preview: personal sources show example records instead of reading any family data. */
   sample?: boolean;
   /** Staff preview of a draft: forms come from the draft settings. */
@@ -59,7 +60,13 @@ export async function readPublishedRuntime(): Promise<Published> {
 function query(request: Request) {
   const params = new URL(request.url).searchParams;
   const locale: RuntimeLocale = params.get("locale") === "en" ? "en" : "zh";
-  const client = Math.max(1, Math.min(99, Number.parseInt(request.headers.get("x-mathin-runtime") || "1", 10) || 1));
+  const client = runtimeRequestVersion(request);
+  let screenParams: RuntimeParams = {};
+  const context = params.get("context");
+  if (context) {
+    if (context.length > 4096) throw new PortalError("VALIDATION");
+    try { screenParams = runtimeParamsSchema.parse(JSON.parse(context)); } catch { throw new PortalError("VALIDATION"); }
+  }
   let filters: Context["filters"] = {};
   const rawFilters = params.get("filters");
   if (rawFilters) {
@@ -72,7 +79,7 @@ function query(request: Request) {
   if (anchor && !validDate(anchor)) throw new PortalError("VALIDATION");
   const cursor = params.get("cursor") || "";
   if (cursor.length > 64) throw new PortalError("VALIDATION");
-  return { params, locale, client, filters, participant, anchor, cursor };
+  return { params, locale, client, filters, participant, anchor, cursor, screenParams };
 }
 
 /** Visitors browse without a session; a supplied session must be valid and still goes through account and consent checks. */
@@ -140,7 +147,8 @@ const message = (state: "signedOut" | "error", context: Context) => text(state =
 
 function sourceInput(block: RuntimeBlockSpec, context: Context): SourceInput {
   return { identity: context.identity, locale: context.locale, settings: context.published.settings, now: context.now, cursor: context.cursor,
-    filters: { ...context.filters[runtimePageFilters], ...context.filters[block.id] }, params: block.type === "list" ? block.params : undefined };
+    filters: { ...context.filters[runtimePageFilters], ...context.filters[block.id] },
+    params: { ...context.screenParams, ...(block.type === "list" ? block.params : {}) } };
 }
 /** Reads a display block's source. Visitors get `null` for personal sources; failures are reported on the block. */
 async function display(block: RuntimeBlockSpec & { source?: string }, context: Context): Promise<{ data: DisplayData; state: "ready" | "signedOut" | "error" }> {
@@ -292,7 +300,8 @@ async function view(block: RuntimeBlockSpec, context: Context): Promise<RuntimeB
 export async function runtimeContext(request: Request): Promise<Context & { params: URLSearchParams }> {
   const input = query(request);
   const [published, identity] = await Promise.all([readPublishedRuntime(), loadIdentity(request, input.participant)]);
-  return { published, identity, locale: input.locale, client: input.client, now: Date.now(), filters: input.filters, anchor: input.anchor || "", cursor: input.cursor, params: input.params };
+  return { published, identity, locale: input.locale, client: input.client, now: Date.now(), filters: input.filters, anchor: input.anchor || "", cursor: input.cursor,
+    params: input.params, screenParams: input.screenParams };
 }
 const privateHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 
@@ -304,8 +313,9 @@ export async function runtimeAppGet(request: Request) {
   const value = await runtimeContext(request);
   const tabs = tabsFor(value);
   const result: RuntimeApp = { protocol: 1, revision: value.published.revision, locale: value.locale, signedIn: value.identity.signedIn,
+    participant: value.identity.participant,
     theme: value.published.settings.brand.theme, brandName: text(value.published.settings.brand.name, value),
-    tabs: tabs.length >= 2 ? tabs : [], strings: Object.fromEntries(runtimeStringKeys.map(key => [key, text(runtimeStrings[key], value)])) as RuntimeApp["strings"] };
+    tabs, strings: Object.fromEntries(runtimeStringKeys.map(key => [key, text(runtimeStrings[key], value)])) as RuntimeApp["strings"] };
   return Response.json(result, { headers: privateHeaders });
 }
 
@@ -335,7 +345,8 @@ async function screenView(value: Context, id: string | null): Promise<RuntimeScr
   const blocks = placeFilters(await children(screen.blocks, value));
   return { id: screen.id, revision: value.published.revision, signedIn: value.identity.signedIn, participant: value.identity.participant,
     title: screen.navigation === "brand" ? text(screen.title, value) || text(value.published.settings.brand.name, value) : text(screen.title, value),
-    navigation: screen.navigation, blocks, participants: value.identity.participants.map(row => ({ id: row.id, name: row.name })), share: screen.share ? { title: text(screen.share.title, value) || text(screen.title, value), image: image(screen.share.image) } : null };
+    navigation: screen.navigation, blocks: runtimeCompatibleBlocks(blocks, value.client, value.locale),
+    participants: value.identity.participants.map(row => ({ id: row.id, name: row.name })), share: screen.share ? { title: text(screen.share.title, value) || text(screen.title, value), image: image(screen.share.image) } : null };
 }
 export async function runtimeScreenGet(request: Request) {
   const value = await runtimeContext(request);
@@ -370,6 +381,7 @@ export async function runtimeBlockGet(request: Request) {
   const value = await runtimeContext(request);
   const block = findBlock(findScreen(value.published.spec, value.params.get("screen")).blocks, value.params.get("block") || "");
   if (!block) throw new PortalError("NOT_FOUND");
-  return Response.json({ revision: value.published.revision, block: await view(block, value) }, { headers: privateHeaders });
+  const result = await view(block, value);
+  return Response.json({ revision: value.published.revision, block: result ? runtimeCompatibleBlocks([result], value.client, value.locale)[0] : null }, { headers: privateHeaders });
 }
 export { findBlock as findRuntimeBlock, findScreen as findRuntimeScreen };

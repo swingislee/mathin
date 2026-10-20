@@ -64,6 +64,24 @@ const actionKinds: { kind: ActionKind; zh: string; en: string }[] = [
 ];
 /** Commands Mathin runs today; new ones are added on the server and appear here. */
 const commands = [{ value: "checkin", zh: "每日打卡", en: "Daily check-in" }];
+function ParamsField({ value = {}, locale, onChange }: { value?: Record<string, string>; locale: Locale; onChange: (value: Record<string, string> | undefined) => void }) {
+  const rows = Object.entries(value);
+  const change = (index: number, key: string, text: string) => onChange(Object.fromEntries(rows.map((row, i) => i === index ? [key, text] : row)));
+  return <div className="space-y-1.5">
+    <span className="text-xs text-muted">{L(locale, "对象参数", "Object parameters")}</span>
+    {rows.map(([key, text], index) => <div key={index} className="flex items-center gap-1">
+      <Input className="w-28" aria-label={L(locale, "参数名", "Parameter name")} value={key} maxLength={32} onChange={event => change(index, event.target.value, text)} />
+      <Input className="min-w-0 flex-1" aria-label={L(locale, "参数值", "Parameter value")} value={text} maxLength={200} onChange={event => change(index, key, event.target.value)} />
+      <Button type="button" variant="ghost" size="icon" aria-label={L(locale, "移除参数", "Remove parameter")} onClick={() => {
+        const next = Object.fromEntries(rows.filter((_, i) => i !== index)); onChange(Object.keys(next).length ? next : undefined);
+      }}><Trash2 className="size-3.5" /></Button>
+    </div>)}
+    {rows.length < 12 && <Button type="button" variant="ghost" size="sm" onClick={() => {
+      let key = "id"; for (let i = 1; key in value; i++) key = `param${i}`;
+      onChange({ ...value, [key]: "" });
+    }}><Plus className="mr-1 size-3.5" />{L(locale, "添加参数", "Add parameter")}</Button>}
+  </div>;
+}
 export function ActionField({ label, value, screens, locale, onChange, allowNone = true }: { label: string; value?: RuntimeAction; screens: RuntimeScreenSpec[]; locale: Locale; onChange: (value: RuntimeAction | undefined) => void; allowNone?: boolean }) {
   const kind: ActionKind = value?.type ?? "none";
   return <Field label={label}><div className="space-y-2">
@@ -73,7 +91,8 @@ export function ActionField({ label, value, screens, locale, onChange, allowNone
       <select className={select} value={value.screen} onChange={event => onChange({ ...value, screen: event.target.value })}>
         {screens.map(screen => <option key={screen.id} value={screen.id}>{screen.title[locale] || screen.title.zh || screen.id}</option>)}</select>
       <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={value.sheet === true} onChange={event => { const next = { ...value }; if (event.target.checked) next.sheet = true; else delete next.sheet; onChange(next); }} />
-        {L(locale, "从底部弹出，不离开当前页", "Open as a bottom sheet")}</label></>}
+        {L(locale, "从底部弹出，不离开当前页", "Open as a bottom sheet")}</label>
+      <ParamsField value={value.params} locale={locale} onChange={params => onChange({ ...value, params })} /></>}
     {value?.type === "tab" && <select className={select} value={value.slot} onChange={event => onChange({ type: "tab", slot: Number(event.target.value) as RuntimeTabSpec["slot"] })}>
       {runtimeTabSlots.map(slot => <option key={slot} value={slot}>{L(locale, `第 ${slot} 项`, `Tab ${slot}`)}</option>)}</select>}
     {value?.type === "route" && <>
@@ -95,6 +114,7 @@ export function ActionField({ label, value, screens, locale, onChange, allowNone
       <select className={select} value={value.command} onChange={event => onChange({ ...value, command: event.target.value })}>
         {!commands.some(row => row.value === value.command) && <option value={value.command}>{value.command}</option>}
         {commands.map(row => <option key={row.value} value={row.value}>{row[locale]}</option>)}</select>
+      <ParamsField value={value.params} locale={locale} onChange={params => onChange({ ...value, params })} />
       <TextField label={L(locale, "执行前确认（可留空）", "Confirm first (optional)")} value={value.confirm ?? { zh: "", en: "" }} locale={locale}
         onChange={confirm => { const next = { ...value }; if (confirm.zh || confirm.en) next.confirm = confirm; else delete next.confirm; onChange(next); }} /></>}
     {value?.type === "toast" && <TextField label={L(locale, "提示文字", "Message")} value={value.text} locale={locale} onChange={text => onChange({ ...value, text })} />}

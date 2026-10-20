@@ -1,10 +1,11 @@
-import { ApiError, session } from "../../lib/api";
+import { ApiError } from "../../lib/api";
 import {
   cachedScreen, commandEffects, currentApp, findBlock, loadBlock, loadScreen, onAppChange, prepareBlocks, refreshApp, replaceBlock,
-  resolveCode, runAction, runtimeImage, setBlockFilter, setParticipant, tabScreen, takeLaunchScene,
+  resolveCode, runAction, runtimeContextMarker, runtimeImage, setBlockFilter, setParticipant, tabScreen, takeLaunchScene,
 } from "../../lib/runtime";
 import {
-  runtimePageFilters, runtimeTabRoutes, type RuntimeAction, type RuntimeBlockView, type RuntimeEffect, type RuntimeFacet, type RuntimeScreen, type RuntimeTabSlot,
+  runtimePageFilters, runtimeParams, runtimeParamsKey, runtimeTabRoutes, type RuntimeAction, type RuntimeBlockView, type RuntimeEffect, type RuntimeFacet,
+  type RuntimeParams, type RuntimeScreen, type RuntimeTabSlot,
 } from "../../lib/runtime-contract";
 
 type Reveal = { style: string; title: string; body: string; image: string; tag: string; action: RuntimeAction | null };
@@ -12,7 +13,7 @@ type Sheet =
   | { kind: "facet"; block: string; page: boolean; facet: RuntimeFacet; groups: { group: string; options: RuntimeFacet["options"] }[] }
   | { kind: "account"; name: string }
   | { kind: "participants"; rows: { id: string; name: string }[] }
-  | { kind: "screen"; id: string; title: string; blocks: RuntimeBlockView[]; loading: boolean }
+  | { kind: "screen"; id: string; params: RuntimeParams; title: string; blocks: RuntimeBlockView[]; loading: boolean; generation: number }
   | null;
 function tabBar(hidden: boolean | null, slot?: number) {
   const page = getCurrentPages().slice(-1)[0] as unknown as { getTabBar?: () => WechatMiniprogram.Component.TrivialInstance | null } | undefined;
@@ -24,13 +25,14 @@ const subscriptions = new WeakMap<object, () => void>();
 // Hosts one published screen. Tab pages pass their slot; other pages pass the screen id from the link.
 Component({
   options: { styleIsolation: "apply-shared", pureDataPattern: /^_/ },
-  properties: { tab: { type: Number, value: 0 }, screenId: { type: String, value: "" } },
+  properties: { tab: { type: Number, value: 0 }, screenId: { type: String, value: "" }, screenParams: { type: Object, value: {} } },
   data: {
     strings: currentApp().strings, theme: currentApp().theme, locale: currentApp().locale, title: "", navigation: "title" as "brand" | "title", pageClass: "",
     blocks: [] as RuntimeBlockView[], loading: false, error: "", missing: false, sheet: null as Sheet, reveal: null as Reveal | null, back: false, current: "",
     share: null as RuntimeScreen["share"], _participants: [] as { id: string; name: string }[],
-    _screen: "", _generation: 0, _session: "", _visible: false,
+    _screen: "", _generation: 0, _sheetGeneration: 0, _session: "", _paramsKey: "", _visible: false,
   },
+  observers: { "screenId, screenParams"() { if (this.data._visible) this.show(false); } },
   lifetimes: {
     attached() {
       this.setData({ back: !this.data.tab && getCurrentPages().length > 1 });
@@ -40,21 +42,25 @@ Component({
   },
   pageLifetimes: {
     show() { this.setData({ _visible: true }); this.show(true); },
-    hide() { this.setData({ _visible: false, sheet: null, reveal: null }); },
+    hide() { this.setData({ _visible: false, sheet: null, reveal: null, _generation: this.data._generation + 1, _sheetGeneration: this.data._sheetGeneration + 1 }); },
   },
   methods: {
     /** Shows the cached copy first, then reads the current publication for this account. */
     show(refreshShell: boolean) {
       const app = currentApp();
+      if (this.data.tab && app.revision !== "built-in" && !app.tabs.some(tab => tab.slot === this.data.tab)) {
+        wx.switchTab({ url: runtimeTabRoutes[app.tabs[0].slot] }); return;
+      }
       if (this.data.tab) tabBar(false, this.data.tab);
       const screen = this.data.tab ? tabScreen(this.data.tab as RuntimeTabSlot) : this.data.screenId;
-      const sessionMarker = session()?.refreshToken || "";
-      const changed = screen !== this.data._screen || sessionMarker !== this.data._session;
+      const sessionMarker = runtimeContextMarker(), paramsKey = runtimeParamsKey(this.data.screenParams);
+      const changed = screen !== this.data._screen || sessionMarker !== this.data._session || paramsKey !== this.data._paramsKey;
       // The original tab pages keep their page-level background and spacing.
       const pageClass = ({ discover: "discover-page", calendar: "calendar-page", account: "account-page" } as Record<string, string>)[screen] || "";
-      this.setData({ strings: app.strings, theme: app.theme, locale: app.locale, missing: !screen, pageClass, current: screen, _screen: screen, _session: sessionMarker });
+      this.setData({ strings: app.strings, theme: app.theme, locale: app.locale, missing: !screen, pageClass, current: screen, _screen: screen,
+        _session: sessionMarker, _paramsKey: paramsKey, ...(changed ? { blocks: [], title: "", sheet: null, reveal: null, error: "", share: null, _participants: [] } : {}) });
       if (screen) {
-        const cached = cachedScreen(screen);
+        const cached = cachedScreen(screen, this.data.screenParams);
         if (cached) this.apply(cached);
         else if (changed) this.setData({ blocks: [], title: "" });
         void this.load();
@@ -74,10 +80,13 @@ Component({
       if (!id) return;
       this.setData({ _generation: generation, loading: !this.data.blocks.length });
       try {
-        const screen = await loadScreen(id);
+        const screen = await loadScreen(id, this.data.screenParams);
         if (generation === this.data._generation) this.apply(screen);
-      } catch {
-        if (generation === this.data._generation) this.setData({ error: this.data.strings.unavailable });
+      } catch (error) {
+        if (generation === this.data._generation) {
+          if (error instanceof ApiError && error.code === "CONTEXT_CHANGED") this.show(false);
+          else this.setData({ error: this.data.strings.unavailable });
+        }
       } finally {
         if (generation === this.data._generation) this.setData({ loading: false });
       }
@@ -86,8 +95,9 @@ Component({
     async refreshBlock(block: string, extra: Record<string, string> = {}) {
       const id = this.data._screen;
       try {
-        const result = await loadBlock(id, block, extra);
-        if (id !== this.data._screen) return;
+        const generation = this.data._generation;
+        const result = await loadBlock(id, block, extra, this.data.screenParams);
+        if (id !== this.data._screen || generation !== this.data._generation) return;
         this.setData({ blocks: replaceBlock(this.data.blocks, block, result.block ? prepareBlocks([result.block])[0] : null) });
       } catch { wx.showToast({ title: this.data.strings.unavailable, icon: "none" }); }
     },
@@ -101,15 +111,17 @@ Component({
       else if (kind === "command") {
         const screen = origin === "sheet" && this.data.sheet?.kind === "screen" ? this.data.sheet.id : this.data._screen;
         try {
-          const effects = await commandEffects(action, { screen, block: "" });
+          const params = origin === "sheet" && this.data.sheet?.kind === "screen" ? this.data.sheet.params : this.data.screenParams;
+          const effects = await commandEffects(action, { screen, block: "", params });
           if (effects) this.runEffects(effects, origin);
         } catch (error) {
-          wx.showToast({ title: error instanceof ApiError && error.code === "NOT_FOUND" ? this.data.strings.updateRequired : this.data.strings.unavailable, icon: "none" });
+          if (error instanceof ApiError && error.code === "CONTEXT_CHANGED") return;
+          wx.showToast({ title: error instanceof ApiError && ["NOT_FOUND", "UPDATE_REQUIRED"].includes(error.code) ? this.data.strings.updateRequired : this.data.strings.unavailable, icon: "none" });
         }
       }
     },
     /** Effects decided by Mathin, run in order. */
-    runEffects(effects: RuntimeEffect[], origin: "page" | "sheet") {
+    async runEffects(effects: RuntimeEffect[], origin: "page" | "sheet") {
       for (const effect of effects) {
         switch (effect.type) {
           case "toast": wx.showToast({ title: effect.text, icon: effect.icon === "success" ? "success" : "none" }); break;
@@ -122,31 +134,41 @@ Component({
               tag: effect.tag || "", action: effect.action || null } });
             if (this.data.tab) tabBar(true);
             break;
-          case "action": void this.handle(effect.action, origin); break;
+          case "action": await this.handle(effect.action, origin); break;
           case "refresh":
             if (origin === "sheet") void this.reloadSheet();
             if (effect.blocks?.length) effect.blocks.forEach(id => { if (findBlock(this.data.blocks, id)) void this.refreshBlock(id); });
             else void this.load();
             break;
-          case "app": void refreshApp(true); break;
-          default: break;
+          case "app": await refreshApp(true); break;
+          case "reset": break;
+          default: wx.showToast({ title: this.data.strings.updateRequired, icon: "none" }); break;
         }
       }
     },
     action(e: WechatMiniprogram.CustomEvent<{ action: RuntimeAction }>) { void this.handle(e.detail.action, "page"); },
     sheetAction(e: WechatMiniprogram.CustomEvent<{ action: RuntimeAction }>) { void this.handle(e.detail.action, "sheet"); },
-    effects(e: WechatMiniprogram.CustomEvent<{ effects: RuntimeEffect[]; after: RuntimeAction | null }>) {
-      this.runEffects(e.detail.effects || [], "page");
+    async effects(e: WechatMiniprogram.CustomEvent<{ effects: RuntimeEffect[]; after: RuntimeAction | null }>) {
+      await this.runEffects(e.detail.effects || [], "page");
       if (e.detail.after) void this.handle(e.detail.after, "page");
     },
-    sheetEffects(e: WechatMiniprogram.CustomEvent<{ effects: RuntimeEffect[]; after: RuntimeAction | null }>) {
-      this.runEffects(e.detail.effects || [], "sheet");
+    async sheetEffects(e: WechatMiniprogram.CustomEvent<{ effects: RuntimeEffect[]; after: RuntimeAction | null }>) {
+      await this.runEffects(e.detail.effects || [], "sheet");
       if (e.detail.after) void this.handle(e.detail.after, "sheet");
+    },
+    async selectChild(id: string, open?: RuntimeTabSlot) {
+      if (!this.data._participants.some(row => row.id === id)) return;
+      setParticipant(id);
+      this.setData({ blocks: [], sheet: null, reveal: null, share: null, _generation: this.data._generation + 1 });
+      const marker = runtimeContextMarker(), app = await refreshApp(true);
+      if (marker !== runtimeContextMarker()) return;
+      const target = open && app.tabs.find(tab => tab.slot === open);
+      if (target) wx.switchTab({ url: runtimeTabRoutes[target.slot] });
+      else this.show(false);
     },
     participant(e: WechatMiniprogram.CustomEvent<{ id: string; open?: RuntimeTabSlot }>) {
       if (!e.detail.id) return;
-      setParticipant(String(e.detail.id));
-      if (e.detail.open && runtimeTabRoutes[e.detail.open]) wx.switchTab({ url: runtimeTabRoutes[e.detail.open] }); else void this.load();
+      void this.selectChild(String(e.detail.id), e.detail.open);
     },
     account(e: WechatMiniprogram.CustomEvent<{ name: string }>) { this.openSheet({ kind: "account", name: e.detail.name }); },
     sheet(e: WechatMiniprogram.CustomEvent<{ kind: string; block: string }>) {
@@ -156,26 +178,32 @@ Component({
     chooseParticipant(e: WechatMiniprogram.TouchEvent) {
       const id = String(e.currentTarget.dataset.id || "");
       this.close();
-      if (id) { setParticipant(id); if (this.data.tab) void this.load(); else wx.switchTab({ url: runtimeTabRoutes[2] }); }
+      if (id) void this.selectChild(id);
     },
     async signOut() { this.close(); await this.handle({ type: "logout" }, "page"); },
     openSheet(sheet: NonNullable<Sheet>) { this.setData({ sheet }); if (this.data.tab) tabBar(true); },
     /** Opens another published screen in a bottom sheet over this page. */
     async openScreen(id: string, params?: Record<string, string>) {
-      void params;
-      this.openSheet({ kind: "screen", id, title: "", blocks: [], loading: true });
+      const generation = this.data._sheetGeneration + 1, context = runtimeParams(params);
+      this.setData({ _sheetGeneration: generation });
+      this.openSheet({ kind: "screen", id, params: context, title: "", blocks: [], loading: true, generation });
       try {
-        const screen = await loadScreen(id);
-        if (this.data.sheet?.kind === "screen" && this.data.sheet.id === id) this.setData({ sheet: { kind: "screen", id, title: screen.title, blocks: prepareBlocks(screen.blocks), loading: false } });
-      } catch { this.close(); wx.showToast({ title: this.data.strings.unavailable, icon: "none" }); }
+        const screen = await loadScreen(id, context);
+        if (this.data.sheet?.kind === "screen" && this.data.sheet.generation === generation)
+          this.setData({ sheet: { kind: "screen", id, params: context, title: screen.title, blocks: prepareBlocks(screen.blocks), loading: false, generation } });
+      } catch {
+        if (this.data.sheet?.kind === "screen" && this.data.sheet.generation === generation) {
+          this.close(); wx.showToast({ title: this.data.strings.unavailable, icon: "none" });
+        }
+      }
     },
-    async reloadSheet() { const sheet = this.data.sheet; if (sheet?.kind === "screen") await this.openScreen(sheet.id); },
+    async reloadSheet() { const sheet = this.data.sheet; if (sheet?.kind === "screen") await this.openScreen(sheet.id, sheet.params); },
     week(e: WechatMiniprogram.CustomEvent<{ block: string; anchor: string }>) { void this.refreshBlock(e.detail.block, { anchor: e.detail.anchor }); },
     facet(e: WechatMiniprogram.CustomEvent<{ block: string; facet: string; clear?: boolean }>) {
       const block = findBlock(this.data.blocks, e.detail.block);
       if (e.detail.clear) {
         const facets = block?.type === "filters" ? block.facets.map(row => row.id) : ["stage", "topic", "q"];
-        facets.forEach(id => setBlockFilter(this.data._screen, runtimePageFilters, id, ""));
+        facets.forEach(id => setBlockFilter(this.data._screen, runtimePageFilters, id, "", this.data.screenParams));
         void this.load();
         return;
       }
@@ -192,22 +220,23 @@ Component({
     choose(e: WechatMiniprogram.TouchEvent) {
       const sheet = this.data.sheet;
       if (sheet?.kind !== "facet") return;
-      setBlockFilter(this.data._screen, sheet.page ? runtimePageFilters : sheet.block, sheet.facet.id, String(e.currentTarget.dataset.value || ""));
+      setBlockFilter(this.data._screen, sheet.page ? runtimePageFilters : sheet.block, sheet.facet.id, String(e.currentTarget.dataset.value || ""), this.data.screenParams);
       this.close();
       // A page filter bar changes every list on the screen, so the whole screen is read again.
       if (sheet.page) void this.load(); else void this.refreshBlock(sheet.block);
     },
     search(e: WechatMiniprogram.CustomEvent<{ block: string; facet: string; value: string }>) {
-      setBlockFilter(this.data._screen, e.detail.block, e.detail.facet, e.detail.value);
+      setBlockFilter(this.data._screen, e.detail.block, e.detail.facet, e.detail.value, this.data.screenParams);
       void this.refreshBlock(e.detail.block);
     },
     /** Appends the next page of a list. */
     async more(e: WechatMiniprogram.CustomEvent<{ block: string; cursor: string }>) {
       const id = this.data._screen;
       try {
-        const result = await loadBlock(id, e.detail.block, { cursor: e.detail.cursor });
+        const generation = this.data._generation;
+        const result = await loadBlock(id, e.detail.block, { cursor: e.detail.cursor }, this.data.screenParams);
         const before = findBlock(this.data.blocks, e.detail.block), next = result.block ? prepareBlocks([result.block])[0] : null;
-        if (id !== this.data._screen || !next || next.type !== "list" || before?.type !== "list") return;
+        if (id !== this.data._screen || generation !== this.data._generation || !next || next.type !== "list" || before?.type !== "list") return;
         const seen = new Set(before.items.map(row => row.id));
         this.setData({ blocks: replaceBlock(this.data.blocks, e.detail.block, { ...next, items: [...before.items, ...next.items.filter(row => !seen.has(row.id))] }) });
       } catch { wx.showToast({ title: this.data.strings.unavailable, icon: "none" }); }

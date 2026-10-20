@@ -11,14 +11,15 @@ import { findWechatUser, issueTicket } from "@/features/wechat/store";
 import { experienceAnswersSchema } from "../experience-requests-server";
 import { loadIdentity, readForm } from "./server";
 import { shanghaiDate } from "./sources";
-import type { RuntimeEffect, RuntimeLocale } from "../../../../contracts/participant-api/runtime";
+import { runtimeCompatibleEffects, runtimeLocalText, runtimeRequestVersion, runtimeUpdateText, type RuntimeEffect, type RuntimeLocale } from "../../../../contracts/participant-api/runtime";
+import { runtimeParamsSchema } from "./spec";
 import type { ExperienceForm } from "../../../../contracts/participant-api/miniapp-experience";
 import type { RuntimeIdentity } from "./sources";
 
 const id = z.string().uuid();
 const commandSchema = z.object({
   id, command: z.string().regex(/^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*){0,3}$/).max(64),
-  params: z.record(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/), z.string().max(200)).refine(v => Object.keys(v).length <= 12).default({}),
+  params: runtimeParamsSchema.default({}), context: runtimeParamsSchema.default({}),
   values: experienceAnswersSchema.optional(), screen: z.string().max(64).default(""), block: z.string().max(64).default(""),
   participant: z.union([id, z.literal("")]).default(""), locale: z.enum(["zh", "en"]).default("zh"),
 }).strict();
@@ -77,15 +78,23 @@ const handlers: Record<string, Handler> = {
     return accepted.length ? [{ type: "toast", text: t(input.locale, "已开启提醒", "Reminders on"), icon: "success" }] : [];
   },
 };
+/** Declare before enabling a new command: an older client must be rejected before any write. */
+const commandVersions: Record<string, number> = { "form.submit": 1, checkin: 1, "subscriptions.record": 1 };
 
 export async function runtimeCommandPost(request: Request) {
   const input = commandSchema.parse(await readJson(request));
   const handler = Object.hasOwn(handlers, input.command) ? handlers[input.command] : null;
   if (!handler) throw new PortalError("NOT_FOUND");
+  const client = runtimeRequestVersion(request);
+  if (!commandVersions[input.command] || commandVersions[input.command] > client) return response({
+    accepted: false, effects: [{ type: "toast", text: runtimeLocalText(runtimeUpdateText(), input.locale) }],
+  });
   const { user } = await authorize(request);
   const identity = await loadIdentity(request, input.participant || null);
   if (!identity.db) throw new PortalError("UNAUTHENTICATED");
-  return response({ effects: await handler(input, { ...identity, db: identity.db }, user.id) });
+  // Reading can reconcile an unlinked saved choice; a write must never silently move to another child.
+  if (input.participant && !identity.participants.some(row => row.id === input.participant)) throw new PortalError("FORBIDDEN");
+  return response({ accepted: true, effects: runtimeCompatibleEffects(await handler(input, { ...identity, db: identity.db }, user.id), client, input.locale) });
 }
 
 /** Scanned codes and launch scenes. Mathin addresses open as signed-in web pages; other codes are explained. */
@@ -98,7 +107,7 @@ export async function runtimeResolveGet(request: Request) {
     if (url.origin === site && /^\/(?:zh|en)(?:\/|$)/.test(url.pathname)) effects = [{ type: "action", action: { type: "web", url: url.pathname + url.search, signIn: true } }];
   } catch { /* Not an address. */ }
   if (!effects.length && params.get("kind") === "scan") effects = [{ type: "toast", text: t(locale, "无法识别这个码", "This code is not recognised") }];
-  return response({ effects });
+  return response({ effects: runtimeCompatibleEffects(effects, runtimeRequestVersion(request), locale) });
 }
 
 /** A one-minute ticket that signs the web page in as this account. A fresh WeChat code proves the same person is present. */

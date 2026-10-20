@@ -8,6 +8,7 @@ Component({
     inCard: Boolean, layout: { type: String, value: "column" },
     /** The screen these blocks belong to, for commands sent from forms. */
     screen: { type: String, value: "" },
+    screenParams: { type: Object, value: {} },
   },
   data: { tabIndex: {} as Record<string, number>, opened: {} as Record<string, boolean> },
   observers: {

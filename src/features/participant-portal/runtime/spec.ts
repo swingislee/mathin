@@ -7,8 +7,9 @@ import {
 
 const id = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const text = (limit: number) => z.object({ zh: z.string().max(limit), en: z.string().max(limit) }).strict();
-const param = z.string().regex(/^[a-zA-Z0-9_.:-]{0,128}$/);
-const params = z.record(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/), param).refine(v => Object.keys(v).length <= 8);
+export const runtimeParamsSchema = z.record(z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,31}$/)
+  .refine(key => !["constructor", "prototype", "__proto__"].includes(key)), z.string().max(200)).refine(v => Object.keys(v).length <= 12);
+const params = runtimeParamsSchema;
 /** Uploaded Mini Program images, or a bundled asset such as `asset:appointment`. */
 export const runtimeImage = z.string().refine(v => !v || miniappAssetPath.test(v) || /^asset:[a-z0-9/-]{1,60}$/.test(v));
 /** Uploaded Mini Program media files (audio and video), or an HTTPS address. */

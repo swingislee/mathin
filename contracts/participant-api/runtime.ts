@@ -1,7 +1,22 @@
 /** Mini Program runtime protocol 1: Mathin composes screens for the current identity; clients render views and run actions. */
 export const runtimeProtocol = 1;
 /** Highest view protocol understood by this client build. The server replaces newer blocks with their fallback. */
-export const runtimeClientVersion = 1;
+export const runtimeClientVersion = 2;
+
+/** Object parameters travel separately from locale, selected child and list controls. */
+export type RuntimeParams = Record<string, string>;
+export function runtimeParams(value: unknown): RuntimeParams {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const entries = Object.entries(value).filter(([key, item]) =>
+    /^[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(key) && !["__proto__", "constructor", "prototype"].includes(key)
+    && typeof item === "string" && item.length <= 200).slice(0, 12);
+  const result: RuntimeParams = {};
+  entries.forEach(([key, item]) => { result[key] = item as string; });
+  return result;
+}
+export function runtimeParamsKey(value: RuntimeParams = {}): string {
+  return JSON.stringify(Object.entries(runtimeParams(value)).sort(([a], [b]) => a.localeCompare(b)));
+}
 
 export const runtimeTabSlots = [1, 2, 3, 4, 5] as const;
 export type RuntimeTabSlot = typeof runtimeTabSlots[number];
@@ -59,6 +74,22 @@ export type RuntimeAction =
   | { type: "clearCache" } | { type: "update" }
   | { type: "login" } | { type: "logout" } | { type: "back" } | { type: "refresh" };
 export type RuntimeActionType = RuntimeAction["type"];
+/** Increment a capability's version when its semantics require a newer client. */
+export const runtimeActionVersions: Readonly<Record<RuntimeActionType, number>> = {
+  screen: 1, tab: 1, route: 1, web: 1, phone: 1, copy: 1, command: 1, toast: 1, preview: 1, save: 1, document: 1,
+  location: 1, subscribe: 1, scan: 1, contact: 1, share: 1, participant: 1, clearCache: 1, update: 1, login: 1, logout: 1, back: 1, refresh: 1,
+};
+export function runtimeActionSupported(action: RuntimeAction, client: number): boolean {
+  const version = runtimeActionVersions[action.type];
+  if (typeof version !== "number" || version > client) return false;
+  if (action.type === "screen" && Object.keys(action.params || {}).length && client < 2) return false;
+  if (action.type === "route" && !(runtimeRoutes as readonly string[]).includes(action.route)) return false;
+  return action.type !== "tab" || (runtimeTabSlots as readonly number[]).includes(action.slot);
+}
+export const runtimeUpdateText = (): RuntimeText => ({ zh: "此内容需要更新小程序后查看", en: "Update the Mini Program to view this content" });
+export function runtimeCompatibleAction(action: RuntimeAction, client: number): RuntimeAction {
+  return runtimeActionSupported(action, client) ? action : { type: "toast", text: runtimeUpdateText() };
+}
 
 /** What a command returns. Clients run the effects in order. */
 export type RuntimeEffect =
@@ -76,8 +107,24 @@ export type RuntimeEffect =
 export type RuntimeCommandRequest = {
   id: string; command: string; params: Record<string, string>; values?: RuntimeAnswers;
   screen: string; block: string; participant: string; locale: RuntimeLocale;
+  context?: RuntimeParams;
 };
-export type RuntimeCommandResult = { effects: RuntimeEffect[] };
+export type RuntimeCommandResult = { effects: RuntimeEffect[]; accepted?: boolean };
+export function runtimeRequestVersion(request: { headers: { get(name: string): string | null } }): number {
+  const version = Number(request.headers.get("x-mathin-runtime") || 1);
+  return Number.isInteger(version) && version >= 1 && version <= 99 ? version : 1;
+}
+export const runtimeEffectVersions: Readonly<Record<RuntimeEffect["type"], number>> = {
+  toast: 1, dialog: 1, reveal: 1, action: 1, refresh: 1, reset: 1, app: 1,
+};
+export function runtimeCompatibleEffects(effects: RuntimeEffect[], client: number, locale: RuntimeLocale): RuntimeEffect[] {
+  return effects.map(effect => {
+    const version = runtimeEffectVersions[effect.type];
+    if (typeof version !== "number" || version > client) return { type: "toast", text: runtimeLocalText(runtimeUpdateText(), locale) };
+    if ("action" in effect && effect.action) return { ...effect, action: runtimeCompatibleAction(effect.action, client) };
+    return effect;
+  });
+}
 export type RuntimeUpload = { id: string; kind: "image" | "video" | "file"; name: string; bytes: number };
 
 export const runtimeSources = ["activities.catalog", "account.bookings", "account.tasks", "account.reports", "account.requests", "account.events"] as const;
@@ -161,6 +208,9 @@ export type RuntimeFacet = { id: string; kind?: "choice" | "search"; label: stri
 export type RuntimeDay = { date: string; day: string; weekday: number; today: boolean; count: number };
 export type RuntimeDataState = "ready" | "signedOut" | "error";
 export type RuntimeFieldKind = "text" | "textarea" | "number" | "phone" | "email" | "date" | "time" | "select" | "multiselect" | "rating" | "address" | "media" | "consent";
+export const runtimeFieldVersions: Readonly<Record<RuntimeFieldKind, number>> = {
+  text: 1, textarea: 1, number: 1, phone: 1, email: 1, date: 1, time: 1, select: 1, multiselect: 1, rating: 1, address: 1, media: 1, consent: 1,
+};
 export type RuntimeFieldOption = { value: string; label: string; hint: string; badge: string; disabled: boolean };
 export type RuntimeField = {
   id: string; kind: RuntimeFieldKind; label: string; help: string; placeholder: string; required: boolean; options: RuntimeFieldOption[];
@@ -215,6 +265,7 @@ export type RuntimeStringKey = typeof runtimeStringKeys[number];
 export type RuntimeTab = { slot: RuntimeTabSlot; label: string; icon: string; activeIcon: string; screen: string; badge?: string };
 export type RuntimeApp = {
   protocol: 1; revision: string; locale: RuntimeLocale; signedIn: boolean;
+  participant?: string | null;
   theme: "paper" | "leaf" | "rose"; brandName: string; tabs: RuntimeTab[]; strings: Record<RuntimeStringKey, string>;
 };
 export type RuntimeScreen = {
@@ -227,3 +278,34 @@ export type RuntimeBlockResult = { revision: string; block: RuntimeBlockView | n
 export type RuntimeResolveResult = { effects: RuntimeEffect[] };
 /** A short-lived address that signs the web page in as the current account. */
 export type RuntimeWebTicket = { url: string };
+
+/** Normalize every outgoing view, including actions produced by data sources. */
+export function runtimeCompatibleBlocks(blocks: RuntimeBlockView[], client: number, locale: RuntimeLocale): RuntimeBlockView[] {
+  const update = runtimeLocalText(runtimeUpdateText(), locale);
+  const action = (value: RuntimeAction | null) => value ? runtimeCompatibleAction(value, client) : null;
+  return blocks.map(block => {
+    if (block.type === "unsupported") return block;
+    const version = runtimeBlockVersions[block.type];
+    if (typeof version !== "number" || version > client) return { id: block.id, type: "unsupported", fallback: update };
+    switch (block.type) {
+      case "section": case "collapse": return { ...block, blocks: runtimeCompatibleBlocks(block.blocks, client, locale),
+        ...("more" in block && block.more ? { more: { ...block.more, action: runtimeCompatibleAction(block.more.action, client) } } : {}) };
+      case "tabs": return { ...block, tabs: block.tabs.map(tab => ({ ...tab, blocks: runtimeCompatibleBlocks(tab.blocks, client, locale) })) };
+      case "entries": return { ...block, items: block.items.map(item => ({ ...item, action: runtimeCompatibleAction(item.action, client) })) };
+      case "list": return { ...block, items: block.items.map(item => ({ ...item, action: action(item.action) })),
+        more: block.more ? { ...block.more, action: runtimeCompatibleAction(block.more.action, client) } : null };
+      case "calendar": return { ...block, items: block.items.map(item => ({ ...item, action: action(item.action) })),
+        more: block.more ? { ...block.more, action: runtimeCompatibleAction(block.more.action, client) } : null };
+      case "badges": return { ...block, items: block.items.map(item => ({ ...item, action: action(item.action) })) };
+      case "account": return { ...block, trailing: block.trailing ? { ...block.trailing, action: runtimeCompatibleAction(block.trailing.action, client) } : null };
+      case "button": return { ...block, action: runtimeCompatibleAction(block.action, client) };
+      case "bar": return { ...block, buttons: block.buttons.map(button => ({ ...button, action: runtimeCompatibleAction(button.action, client) })) };
+      case "image": case "feature": case "card": return { ...block, action: action(block.action) };
+      case "form":
+        if (block.groups.some(group => group.fields.some(field => typeof runtimeFieldVersions[field.kind] !== "number" || runtimeFieldVersions[field.kind] > client)))
+          return { id: block.id, type: "unsupported", fallback: update };
+        return { ...block, after: action(block.after) };
+      default: return block;
+    }
+  });
+}

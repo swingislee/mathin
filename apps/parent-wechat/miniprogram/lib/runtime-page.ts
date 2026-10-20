@@ -1,3 +1,4 @@
+import { runtimeParams, type RuntimeParams } from "./runtime-contract";
 // Every runtime page is a thin shell around runtime-host; pull-to-refresh reads the screen again and sharing uses the screen's share card.
 type Host = { reload?: () => Promise<void>; data?: { share: { title: string; image: string } | null; title: string } };
 const queryString = (options: Record<string, string | undefined>) => Object.entries(options).filter(([, value]) => value !== undefined)
@@ -5,8 +6,17 @@ const queryString = (options: Record<string, string | undefined>) => Object.entr
 
 export function registerRuntimePage() {
   Page({
-    data: { id: "" },
-    onLoad(query: Record<string, string | undefined>) { if (query.id) this.setData({ id: decodeURIComponent(query.id) }); },
+    data: { id: "", params: {} as RuntimeParams },
+    onLoad(query: Record<string, string | undefined>) {
+      const { id, params: encoded, ...legacy } = query;
+      let params = runtimeParams(legacy);
+      if (encoded) {
+        // WeChat versions may hand over decoded query values. Parse before decoding so literal % values survive.
+        try { params = runtimeParams(JSON.parse(encoded)); }
+        catch { try { params = runtimeParams(JSON.parse(decodeURIComponent(encoded))); } catch { params = {}; } }
+      }
+      this.setData({ id: id || "", params });
+    },
     onPullDownRefresh() {
       const host = this.selectComponent("#host") as unknown as Host | null;
       const stop = () => wx.stopPullDownRefresh();

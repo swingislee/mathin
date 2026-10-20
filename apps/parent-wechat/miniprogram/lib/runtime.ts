@@ -3,8 +3,9 @@ import { ApiError, apiOrigin, logout, requestId, runtimeDownload, runtimePost, r
 import { clearNavigation, openPage, requestLogin, selectParticipant, selectedParticipant } from "./navigation";
 import { resolveLocale } from "./locale";
 import {
-  runtimeLocalText, runtimeTabRoutes, type RuntimeAction, type RuntimeAnswers, type RuntimeApp, type RuntimeBlockResult, type RuntimeBlockView, type RuntimeCommandResult,
-  type RuntimeEffect, type RuntimeResolveResult, type RuntimeScreen, type RuntimeTabSlot,
+  runtimeClientVersion, runtimeCompatibleAction, runtimeCompatibleBlocks, runtimeCompatibleEffects, runtimeLocalText, runtimeParams, runtimeParamsKey,
+  runtimeTabRoutes, type RuntimeAction, type RuntimeAnswers, type RuntimeApp, type RuntimeBlockResult, type RuntimeBlockView, type RuntimeCommandResult,
+  type RuntimeEffect, type RuntimeParams, type RuntimeResolveResult, type RuntimeScreen, type RuntimeTabSlot,
 } from "./runtime-contract";
 
 type Locale = "zh" | "en";
@@ -40,34 +41,42 @@ const builtIn: Record<Locale, RuntimeApp> = {
       next: "Next", previous: "Previous", done: "Done" } },
 };
 
-let app: RuntimeApp | null = null, appCheckedAt = 0, appPending: Promise<RuntimeApp> | null = null;
+let app: RuntimeApp | null = null, appCheckedAt = 0, appMarker = "";
+let appPending: { marker: string; promise: Promise<RuntimeApp> } | null = null;
 const appListeners = new Set<(value: RuntimeApp) => void>();
 const validApp = (value: unknown): value is RuntimeApp => !!value && typeof value === "object" && (value as RuntimeApp).protocol === 1
   && Array.isArray((value as RuntimeApp).tabs) && !!(value as RuntimeApp).strings && typeof (value as RuntimeApp).revision === "string";
 
 /** The last published app shell for this language and sign-in state, or the built-in shell before the first successful read. */
 export function currentApp(): RuntimeApp {
-  const locale = runtimeLocale(), signedIn = Boolean(session());
-  if (app && app.locale === locale && app.signedIn === signedIn) return app;
-  const stored = read<RuntimeApp>(storageKey("app-" + locale + (signedIn ? "-member" : "-visitor")));
-  app = validApp(stored) && stored.tabs.length >= 2 ? stored : builtIn[locale];
+  const locale = runtimeLocale(), marker = runtimeContextMarker();
+  if (app && appMarker === marker) return app;
+  // Personalized navigation stays in memory; a different account never inherits a cached member shell.
+  const stored = session() ? null : read<RuntimeApp>(storageKey("app-" + locale + "-visitor"));
+  app = validApp(stored) && stored.tabs.length >= 1 ? stored : builtIn[locale];
+  appMarker = marker; appCheckedAt = 0;
   return app;
 }
 export function onAppChange(listener: (value: RuntimeApp) => void) { appListeners.add(listener); return () => { appListeners.delete(listener); }; }
 export async function refreshApp(force = false): Promise<RuntimeApp> {
   const before = currentApp();
-  if (appPending) return appPending;
+  const marker = runtimeContextMarker();
+  if (appPending?.marker === marker) return appPending.promise;
   if (!force && before.revision !== "built-in" && Date.now() - appCheckedAt < 30_000) return before;
-  const locale = runtimeLocale(), signedIn = Boolean(session());
-  const pending = runtimeRead<RuntimeApp>("app?locale=" + locale).then(value => {
-    if (!validApp(value) || value.tabs.length < 2) return currentApp();
+  const locale = runtimeLocale(), participant = currentParticipant();
+  const pending = runtimeRead<RuntimeApp>("app?locale=" + locale + (participant ? "&participant=" + encodeURIComponent(participant) : "")).then(value => {
+    if (marker !== runtimeContextMarker() || !validApp(value) || value.tabs.length < 1) return currentApp();
+    if (value.participant && value.participant !== currentParticipant()) setParticipant(value.participant);
     appCheckedAt = Date.now();
     const changed = !app || app.revision !== value.revision || app.signedIn !== value.signedIn || app.locale !== value.locale || JSON.stringify(app.tabs) !== JSON.stringify(value.tabs);
-    if (value.locale === locale && value.signedIn === Boolean(session())) { app = value; write(storageKey("app-" + locale + (signedIn ? "-member" : "-visitor")), value); }
+    if (value.locale === locale && value.signedIn === Boolean(session())) {
+      app = value; appMarker = runtimeContextMarker();
+      if (!value.signedIn) write(storageKey("app-" + locale + "-visitor"), value);
+    }
     if (changed) appListeners.forEach(listener => listener(currentApp()));
     return currentApp();
-  }).catch(() => currentApp()).then(value => { appPending = null; return value; });
-  appPending = pending;
+  }).catch(() => currentApp()).then(value => { if (appPending?.promise === pending) appPending = null; return value; });
+  appPending = { marker, promise: pending };
   return pending;
 }
 export function tabScreen(slot: RuntimeTabSlot) { return currentApp().tabs.find(row => row.slot === slot)?.screen || ""; }
@@ -77,41 +86,75 @@ export function currentParticipant(): string {
   const value = selectedParticipant() || read<string>(storageKey("participant")) || "";
   return /^[0-9a-f-]{36}$/.test(value) ? value : "";
 }
-export function setParticipant(id: string) { selectParticipant(id); write(storageKey("participant"), id); }
+export function setParticipant(id: string) {
+  if (id === currentParticipant()) return;
+  selectParticipant(id); write(storageKey("participant"), id);
+  screens.clear(); app = null; appCheckedAt = 0;
+}
+/** Only used in memory, never sent or stored. Late responses must match the initiating identity and child. */
+let accountToken = "", accountFingerprint = "", accountVersion = 0;
+function sessionMarker() {
+  const value = session();
+  if (!value) { accountToken = ""; accountFingerprint = ""; return ""; }
+  if (accountToken === value.accessToken) return String(accountVersion);
+  accountToken = value.accessToken;
+  let fingerprint = value.refreshToken;
+  try {
+    const encoded = value.accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const bytes = new Uint8Array(wx.base64ToArrayBuffer(encoded + "=".repeat((4 - encoded.length % 4) % 4)));
+    const claims = JSON.parse(Array.from(bytes, byte => String.fromCharCode(byte)).join("")) as { sub?: string; session_id?: string };
+    if (claims.sub && claims.session_id) fingerprint = claims.sub + ":" + claims.session_id;
+  } catch { /* Opaque sessions use their in-memory refresh identity. */ }
+  if (fingerprint !== accountFingerprint) { accountFingerprint = fingerprint; accountVersion++; }
+  return String(accountVersion);
+}
+export function runtimeContextMarker() {
+  return [safeOrigin(), sessionMarker(), runtimeLocale(), currentParticipant()].join("|");
+}
 
 type Filters = Record<string, Record<string, string>>;
-function filters(screen: string): Record<string, Record<string, string>> { return read<Filters>(storageKey("filters-" + screen)) || {}; }
-export function setBlockFilter(screen: string, block: string, facet: string, value: string) {
-  const all = filters(screen), current = { ...(all[block] || {}) };
+function filters(screen: string, params: RuntimeParams = {}): Record<string, Record<string, string>> {
+  return read<Filters>(storageKey("filters-" + screen + "-" + runtimeParamsKey(params))) || {};
+}
+export function setBlockFilter(screen: string, block: string, facet: string, value: string, params: RuntimeParams = {}) {
+  const all = filters(screen, params), current = { ...(all[block] || {}) };
   if (value) current[facet] = value; else delete current[facet];
   all[block] = current;
-  write(storageKey("filters-" + screen), all);
+  write(storageKey("filters-" + screen + "-" + runtimeParamsKey(params)), all);
 }
 
 const screens = new Map<string, RuntimeScreen>();
 let screensSession = "";
 function screenCache() {
-  const marker = session()?.refreshToken || "";
+  const marker = runtimeContextMarker();
   if (marker !== screensSession) { screens.clear(); screensSession = marker; }
   return screens;
 }
-export function cachedScreen(id: string): RuntimeScreen | null { return screenCache().get(id + ":" + runtimeLocale()) || null; }
-function query(screen: string, extra: Record<string, string> = {}) {
-  const parts = ["locale=" + runtimeLocale()], participant = currentParticipant(), chosen = filters(screen);
+const screenKey = (id: string, params: RuntimeParams) => id + ":" + runtimeParamsKey(params) + ":" + JSON.stringify(filters(id, params));
+export function cachedScreen(id: string, params: RuntimeParams = {}): RuntimeScreen | null { return screenCache().get(screenKey(id, params)) || null; }
+function query(screen: string, extra: Record<string, string> = {}, params: RuntimeParams = {}) {
+  const parts = ["locale=" + runtimeLocale()], participant = currentParticipant(), chosen = filters(screen, params);
   if (participant) parts.push("participant=" + participant);
   if (Object.keys(chosen).length) parts.push("filters=" + encodeURIComponent(JSON.stringify(chosen)));
+  if (Object.keys(params).length) parts.push("context=" + encodeURIComponent(JSON.stringify(runtimeParams(params))));
   Object.entries(extra).forEach(([key, value]) => { if (value) parts.push(encodeURIComponent(key) + "=" + encodeURIComponent(value)); });
   return parts.join("&");
 }
-export async function loadScreen(id: string): Promise<RuntimeScreen> {
-  const value = await runtimeRead<RuntimeScreen>("screen?id=" + encodeURIComponent(id) + "&" + query(id));
+export async function loadScreen(id: string, params: RuntimeParams = {}): Promise<RuntimeScreen> {
+  const marker = runtimeContextMarker();
+  const value = await runtimeRead<RuntimeScreen>("screen?id=" + encodeURIComponent(id) + "&" + query(id, {}, params));
+  if (marker !== runtimeContextMarker()) throw new ApiError("CONTEXT_CHANGED");
   if (!value || !Array.isArray(value.blocks)) throw new Error("INVALID_SCREEN");
   if (value.participant && value.participant !== currentParticipant()) setParticipant(value.participant);
-  screenCache().set(id + ":" + runtimeLocale(), value);
+  value.blocks = runtimeCompatibleBlocks(value.blocks, runtimeClientVersion, runtimeLocale());
+  screenCache().set(screenKey(id, params), value);
   return value;
 }
-export async function loadBlock(screen: string, block: string, extra: Record<string, string> = {}): Promise<RuntimeBlockResult> {
-  return runtimeRead<RuntimeBlockResult>("block?screen=" + encodeURIComponent(screen) + "&block=" + encodeURIComponent(block) + "&" + query(screen, extra));
+export async function loadBlock(screen: string, block: string, extra: Record<string, string> = {}, params: RuntimeParams = {}): Promise<RuntimeBlockResult> {
+  const marker = runtimeContextMarker();
+  const result = await runtimeRead<RuntimeBlockResult>("block?screen=" + encodeURIComponent(screen) + "&block=" + encodeURIComponent(block) + "&" + query(screen, extra, params));
+  if (marker !== runtimeContextMarker()) throw new ApiError("CONTEXT_CHANGED");
+  return { ...result, block: result.block ? runtimeCompatibleBlocks([result.block], runtimeClientVersion, runtimeLocale())[0] : null };
 }
 /** Replaces one block in the tree; a hidden result removes it. */
 export function replaceBlock(rows: RuntimeBlockView[], id: string, next: RuntimeBlockView | null): RuntimeBlockView[] {
@@ -180,7 +223,7 @@ function currentPath() {
   return "/" + page.route + (search ? "?" + search : "");
 }
 export function openLogin() { requestLogin(currentPath()); wx.navigateTo({ url: "/pages/login/index" }); }
-export function clearRuntimeSession() { screens.clear(); app = null; appCheckedAt = 0; }
+export function clearRuntimeSession() { screens.clear(); app = null; appCheckedAt = 0; appPending = null; }
 
 const text = (value: { zh: string; en: string } | undefined) => runtimeLocalText(value, runtimeLocale());
 const fail = (error?: unknown) => {
@@ -220,14 +263,17 @@ async function saveImage(url: string) {
 }
 
 /** Runs a command from a button or form and returns the effects Mathin decided. */
-export async function runCommand(command: string, params: Record<string, string>, context: { screen: string; block: string; values?: RuntimeAnswers }): Promise<RuntimeEffect[]> {
+export async function runCommand(command: string, params: Record<string, string>, context: { screen: string; block: string; values?: RuntimeAnswers; params?: RuntimeParams }): Promise<RuntimeEffect[]> {
+  const marker = runtimeContextMarker();
   const result = await runtimePost<RuntimeCommandResult>("command", { id: requestId(), command, params, values: context.values, screen: context.screen,
-    block: context.block, participant: currentParticipant(), locale: runtimeLocale() });
-  return Array.isArray(result?.effects) ? result.effects : [];
+    block: context.block, context: runtimeParams(context.params), participant: currentParticipant(), locale: runtimeLocale() });
+  if (marker !== runtimeContextMarker()) throw new ApiError("CONTEXT_CHANGED");
+  if (result.accepted === false) throw new ApiError("UPDATE_REQUIRED");
+  return Array.isArray(result?.effects) ? runtimeCompatibleEffects(result.effects, runtimeClientVersion, runtimeLocale()) : [];
 }
 export async function resolveCode(code: string, kind: "scan" | "scene"): Promise<RuntimeEffect[]> {
   const result = await runtimeRead<RuntimeResolveResult>("resolve?kind=" + kind + "&locale=" + runtimeLocale() + "&code=" + encodeURIComponent(code));
-  return Array.isArray(result?.effects) ? result.effects : [];
+  return Array.isArray(result?.effects) ? runtimeCompatibleEffects(result.effects, runtimeClientVersion, runtimeLocale()) : [];
 }
 
 /** Launch scenes from Mini Program codes are offered to Mathin once, by the first screen that appears. */
@@ -268,10 +314,11 @@ function clearCache() {
 /** Runs a published action. `reload` asks the caller to read its screen again; host-only actions return their kind. */
 export async function runAction(action: RuntimeAction | null | undefined): Promise<"reload" | "none" | "sheet" | "command" | "participant"> {
   if (!action) return "none";
+  action = runtimeCompatibleAction(action, runtimeClientVersion);
   switch (action.type) {
     case "screen":
       if (action.sheet) return "sheet";
-      wx.navigateTo({ url: "/pages/screen/index?id=" + encodeURIComponent(action.screen) + (action.params ? "&" + encode(action.params) : "") }); return "none";
+      wx.navigateTo({ url: "/pages/screen/index?id=" + encodeURIComponent(action.screen) + (action.params ? "&params=" + encodeURIComponent(JSON.stringify(runtimeParams(action.params))) : "") }); return "none";
     case "tab": wx.switchTab({ url: runtimeTabRoutes[action.slot] }); return "none";
     case "route": { const search = encode(action.query); openPage(`/pages/${action.route}/index` + (search ? "?" + search : "")); return "none"; }
     case "web": await openWeb(action.url, action.signIn === true); return "none";
@@ -301,7 +348,8 @@ export async function runAction(action: RuntimeAction | null | undefined): Promi
 }
 
 /** Commands, subscriptions and scans talk to Mathin; the effects that come back are run by the host. */
-export async function commandEffects(action: RuntimeAction, context: { screen: string; block: string }): Promise<RuntimeEffect[] | null> {
+export async function commandEffects(action: RuntimeAction, context: { screen: string; block: string; params?: RuntimeParams }): Promise<RuntimeEffect[] | null> {
+  const marker = runtimeContextMarker();
   if (action.type === "scan") {
     const code = await new Promise<string>(resolve => wx.scanCode({ success: result => resolve(result.result || ""), fail: () => resolve("") }));
     return code ? resolveCode(code, "scan") : null;
@@ -319,5 +367,6 @@ export async function commandEffects(action: RuntimeAction, context: { screen: s
       success: result => resolve(result.confirm), fail: () => resolve(false) }));
     if (!confirmed) return null;
   }
+  if (marker !== runtimeContextMarker()) return null;
   return runCommand(action.command, action.params || {}, context);
 }

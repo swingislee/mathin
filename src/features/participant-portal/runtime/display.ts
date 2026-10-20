@@ -26,7 +26,7 @@ async function summary(input: SourceInput): Promise<Summary | null> {
   const db = input.identity.db;
   if (!db) return null;
   const rows = (requireResult(await db.rpc("get_my_learning_summary")) ?? []) as Summary[];
-  return rows.find(row => row.student_id === input.identity.participant) ?? rows[0] ?? null;
+  return rows.find(row => row.student_id === input.identity.participant) ?? null;
 }
 const stageLabel = (input: SourceInput, stage: number | null | undefined) => {
   const row = input.settings.stages.flatMap(group => group.stages).find(value => value.stageNumber === stage);

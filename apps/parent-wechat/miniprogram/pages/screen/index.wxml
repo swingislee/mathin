@@ -1,1 +1,1 @@
-<runtime-host id="host" screen-id="{{id}}" />
+<runtime-host id="host" screen-id="{{id}}" screen-params="{{params}}" />
