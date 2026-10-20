@@ -85,6 +85,16 @@ describe("runtime object and child context", () => {
     expect(runtime.currentApp().tabs[0].label).toBe("B");
     expect([...storage.keys()].some(key => key.includes("-member"))).toBe(false);
   });
+  it("refreshes navigation when the first screen establishes the initial child", async () => {
+    runtime.setParticipant("");
+    const shell = runtime.currentApp();
+    api.read.mockResolvedValueOnce(view(childA)).mockResolvedValueOnce({ ...shell, signedIn: true, participant: childA, revision: "first-child" });
+    await runtime.loadScreen("detail");
+    await runtime.refreshApp();
+    expect(runtime.currentParticipant()).toBe(childA);
+    expect(runtime.currentApp().revision).toBe("first-child");
+    expect(api.read.mock.calls[1][0]).toContain("participant=" + childA);
+  });
 
   it("keeps unknown and known URL values intact when opening a screen", async () => {
     await runtime.runAction({ type: "screen", screen: "detail", params: { id: "object", note: "100% & 中文" } });

@@ -14,7 +14,7 @@ import { sampleDisplay, sampleItems, sampleParticipants, sampleWeek } from "./sa
 import {
   runtimeBlockVersions, runtimeChildren, runtimeClientVersion, runtimeCompatibleBlocks, runtimeIcons, runtimeLocalText, runtimePageFilters, runtimeRequestVersion, runtimeStringKeys,
   type RuntimeAction, type RuntimeApp, type RuntimeTab, type RuntimeBlockSpec, type RuntimeBlockView, type RuntimeLinkSpec,
-  type RuntimeLocale, type RuntimeParams, type RuntimeRule, type RuntimeScreen, type RuntimeScreenSpec, type RuntimeSpec,
+  type RuntimeAccountRole, type RuntimeLocale, type RuntimeParams, type RuntimeRule, type RuntimeScreen, type RuntimeScreenSpec, type RuntimeSpec,
 } from "../../../../contracts/participant-api/runtime";
 import { defaultMiniappSettings, type MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
 import type { ExperienceForm } from "../../../../contracts/participant-api/miniapp-experience";
@@ -92,13 +92,13 @@ export async function loadIdentity(request: Request, requested: string | null): 
     .map(row => ({ id: row.id, name: row.name, stage: grades.find(grade => grade.student_id === row.id)?.grade ?? null }));
   const participant = participants.find(row => row.id === requested)?.id ?? participants[0]?.id ?? null;
   const stage = participants.find(row => row.id === participant)?.stage ?? null;
-  return { signedIn: true, db, participants, participant, stage, name: (profile.display_name as string | null) || "" };
+  return { signedIn: true, db, participants, participant, stage, name: (profile.display_name as string | null) || "", role: profile.role as RuntimeAccountRole };
 }
 
 /** Hidden objects are never sent; the rest are sent when their rule matches the requesting account. */
 function shown(row: { visibleWhen?: RuntimeRule; hidden?: boolean }, context: Context) { return !row.hidden && allows(row.visibleWhen, context); }
 
-function allows(rule: RuntimeRule | undefined, context: Context): boolean {
+function allows(rule: RuntimeRule | undefined, context: Pick<Context, "identity" | "now">): boolean {
   if (!rule) return true;
   const { identity } = context;
   switch (rule.kind) {
@@ -106,6 +106,7 @@ function allows(rule: RuntimeRule | undefined, context: Context): boolean {
     case "signedOut": return !identity.signedIn;
     case "hasParticipants": return identity.participants.length > 0;
     case "noParticipants": return identity.signedIn && identity.participants.length === 0;
+    case "role": return identity.signedIn && !!identity.role && rule.roles.includes(identity.role);
     case "stage": return identity.stage !== null && rule.stages.includes(identity.stage);
     case "between": { const today = shanghaiDate(context.now); return (!rule.from || today >= rule.from) && (!rule.to || today <= rule.to); }
     case "all": return rule.rules.every(row => allows(row, context));
@@ -361,7 +362,7 @@ export async function previewRuntimeScreen(spec: RuntimeSpec, screenId: string, 
   const settings: MiniappSettings = draft ? { ...published, ...(draft.brand ? { brand: draft.brand } : {}), ...(draft.stages ? { stages: draft.stages } : {}),
     ...(draft.forms ? { experience: { ...(published.experience ?? defaultMiniappExperience(published)), forms: draft.forms } } : {}) } : published;
   const identity: RuntimeIdentity = mode === "member"
-    ? { signedIn: true, db: null, name: locale === "zh" ? "示例家长" : "Example parent", participants: sampleParticipants, participant: sampleParticipants[0].id, stage: 3 }
+    ? { signedIn: true, db: null, name: locale === "zh" ? "示例家长" : "Example parent", participants: sampleParticipants, participant: sampleParticipants[0].id, stage: 3, role: "parent" }
     : { signedIn: false, db: null, name: "", participants: [], participant: null, stage: null };
   const value: Context = { published: { revision: "draft", spec, settings, settingsRevision: live.settingsRevision }, identity, locale, client: runtimeClientVersion,
     now: Date.now(), filters: {}, anchor: "", cursor: "", sample: mode === "member", draft: true };
@@ -384,4 +385,4 @@ export async function runtimeBlockGet(request: Request) {
   const result = await view(block, value);
   return Response.json({ revision: value.published.revision, block: result ? runtimeCompatibleBlocks([result], value.client, value.locale)[0] : null }, { headers: privateHeaders });
 }
-export { findBlock as findRuntimeBlock, findScreen as findRuntimeScreen };
+export { allows as runtimeAllows, findBlock as findRuntimeBlock, findScreen as findRuntimeScreen };

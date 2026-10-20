@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { miniappAssetPath } from "@/features/school/miniapp-settings/contract";
 import {
-  runtimeChildren, runtimeIcons, runtimeRoutes, runtimeSources, runtimeTabSlots,
+  runtimeAccountRoles, runtimeChildren, runtimeIcons, runtimeRoutes, runtimeSources, runtimeTabSlots,
   type RuntimeAction, type RuntimeBlockSpec, type RuntimeRule, type RuntimeScreenSpec, type RuntimeSpec, type RuntimeTabSpec,
 } from "../../../../contracts/participant-api/runtime";
 
@@ -26,6 +26,7 @@ const source = z.string().regex(/^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*){1,3}$
 export const runtimeRuleSchema: z.ZodType<RuntimeRule> = z.lazy(() => z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("signedIn") }).strict(), z.object({ kind: z.literal("signedOut") }).strict(),
   z.object({ kind: z.literal("hasParticipants") }).strict(), z.object({ kind: z.literal("noParticipants") }).strict(),
+  z.object({ kind: z.literal("role"), roles: z.array(z.enum(runtimeAccountRoles)).min(1).max(4) }).strict(),
   z.object({ kind: z.literal("stage"), stages: z.array(z.number().int().min(-1).max(12)).min(1).max(14) }).strict(),
   z.object({ kind: z.literal("between"), from: date, to: date }).strict(),
   z.object({ kind: z.literal("all"), rules: z.array(runtimeRuleSchema).min(1).max(8) }).strict(),

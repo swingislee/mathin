@@ -6,7 +6,7 @@ import { activityPageImageUrl } from "../../../../contracts/participant-api/acti
 import type { ActivityOffer, ActivityTask, Booking } from "../../../../contracts/participant-api/portal";
 import type { MiniappSettings } from "../../../../contracts/participant-api/miniapp-settings";
 import type { ExperienceRequest } from "../../../../contracts/participant-api/experience-runtime";
-import type { RuntimeDay, RuntimeFacet, RuntimeItem, RuntimeLocale, RuntimeSource } from "../../../../contracts/participant-api/runtime";
+import type { RuntimeAccountRole, RuntimeDay, RuntimeFacet, RuntimeItem, RuntimeLocale, RuntimeSource } from "../../../../contracts/participant-api/runtime";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 
 const hour = 3_600_000, day = 24 * hour, shanghai = 8 * hour;
@@ -18,6 +18,7 @@ export const validDate = (value: string | null) => !!value && /^\d{4}-\d{2}-\d{2
 export type RuntimeIdentity = {
   signedIn: boolean; db: SupabaseClient | null; name: string; participants: { id: string; name: string; stage?: number | null }[];
   participant: string | null; stage: number | null;
+  role?: RuntimeAccountRole | null;
 };
 /** Filters are keyed by facet id; `cursor` continues a list and `params` come from the block. */
 export type SourceInput = { identity: RuntimeIdentity; locale: RuntimeLocale; settings: MiniappSettings; filters: Record<string, string>; now: number;

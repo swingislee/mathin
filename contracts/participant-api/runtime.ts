@@ -37,11 +37,14 @@ export type RuntimeText = { zh: string; en: string };
 export type RuntimeLocale = "zh" | "en";
 export const runtimeText = (zh = "", en = ""): RuntimeText => ({ zh, en });
 export const runtimeLocalText = (value: RuntimeText | undefined, locale: RuntimeLocale) => value?.[locale] || value?.zh || value?.en || "";
+export const runtimeAccountRoles = ["student", "parent", "staff", "admin"] as const;
+export type RuntimeAccountRole = typeof runtimeAccountRoles[number];
 
 /** Visibility is always evaluated by Mathin for the requesting account; commands are checked again when executed. */
 export type RuntimeRule =
   | { kind: "signedIn" } | { kind: "signedOut" }
   | { kind: "hasParticipants" } | { kind: "noParticipants" }
+  | { kind: "role"; roles: RuntimeAccountRole[] }
   | { kind: "stage"; stages: number[] }
   | { kind: "between"; from: string; to: string }
   | { kind: "all"; rules: RuntimeRule[] } | { kind: "any"; rules: RuntimeRule[] } | { kind: "not"; rule: RuntimeRule };

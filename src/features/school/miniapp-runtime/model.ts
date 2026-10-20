@@ -132,10 +132,12 @@ export function canHideTab(tabs: RuntimeTabSpec[], slot: RuntimeTabSpec["slot"])
 }
 
 /** Visibility presets offered in the inspector; other combinations are kept as published. */
-export type RulePreset = "all" | "signedIn" | "signedOut" | "hasParticipants" | "stage" | "between" | "custom";
+export type RulePreset = "all" | "signedIn" | "signedOut" | "hasParticipants" | "role" | "stage" | "between" | "allRules" | "anyRules" | "custom";
 export function rulePreset(rule: RuntimeRule | undefined): RulePreset {
   if (!rule) return "all";
-  if (["signedIn", "signedOut", "hasParticipants", "stage", "between"].includes(rule.kind)) return rule.kind as RulePreset;
+  if (["signedIn", "signedOut", "hasParticipants", "role", "stage", "between"].includes(rule.kind)) return rule.kind as RulePreset;
+  if (rule.kind === "all") return "allRules";
+  if (rule.kind === "any") return "anyRules";
   return "custom";
 }
 export function presetRule(preset: RulePreset, current?: RuntimeRule): RuntimeRule | undefined {
@@ -143,6 +145,9 @@ export function presetRule(preset: RulePreset, current?: RuntimeRule): RuntimeRu
     case "all": return undefined;
     case "signedIn": case "signedOut": case "hasParticipants": return { kind: preset };
     case "stage": return current?.kind === "stage" ? current : { kind: "stage", stages: [1] };
+    case "role": return current?.kind === "role" ? current : { kind: "role", roles: ["parent"] };
+    case "allRules": case "anyRules": return { kind: preset === "allRules" ? "all" : "any",
+      rules: current?.kind === "all" || current?.kind === "any" ? current.rules : [current ?? { kind: "signedIn" }] };
     case "between": return current?.kind === "between" ? current : { kind: "between", from: "", to: "" };
     case "custom": return current;
   }

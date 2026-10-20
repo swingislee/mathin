@@ -145,7 +145,10 @@ export async function loadScreen(id: string, params: RuntimeParams = {}): Promis
   const value = await runtimeRead<RuntimeScreen>("screen?id=" + encodeURIComponent(id) + "&" + query(id, {}, params));
   if (marker !== runtimeContextMarker()) throw new ApiError("CONTEXT_CHANGED");
   if (!value || !Array.isArray(value.blocks)) throw new Error("INVALID_SCREEN");
-  if (value.participant && value.participant !== currentParticipant()) setParticipant(value.participant);
+  if (value.participant && value.participant !== currentParticipant()) {
+    setParticipant(value.participant);
+    void refreshApp(true);
+  }
   value.blocks = runtimeCompatibleBlocks(value.blocks, runtimeClientVersion, runtimeLocale());
   screenCache().set(screenKey(id, params), value);
   return value;

@@ -4,7 +4,7 @@ import {
   runtimeCompatibleAction, runtimeCompatibleBlocks, runtimeCompatibleEffects, runtimeParams,
   type RuntimeAction, type RuntimeBlockView, type RuntimeEffect,
 } from "../contracts/participant-api/runtime";
-import { runtimeActionSchema, runtimeParamsSchema } from "../src/features/participant-portal/runtime/spec";
+import { runtimeActionSchema, runtimeParamsSchema, runtimeRuleSchema } from "../src/features/participant-portal/runtime/spec";
 
 const guard = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn() }));
 vi.mock("server-only", () => ({}));
@@ -62,6 +62,18 @@ describe("old runtime capability boundary", () => {
 });
 
 describe("child authority at runtime data and command boundaries", () => {
+  it("evaluates role and combined audience rules from the authorized identity", async () => {
+    const { runtimeAllows } = await vi.importActual<typeof import("../src/features/participant-portal/runtime/server")>("../src/features/participant-portal/runtime/server");
+    const context: Parameters<typeof runtimeAllows>[1] = {
+      identity: { signedIn: true, role: "parent", stage: 2, participants: [], participant: null, db: null, name: "" }, now: 0,
+    };
+    const rule = runtimeRuleSchema.parse({ kind: "all", rules: [{ kind: "role", roles: ["parent"] }, { kind: "stage", stages: [2, 3] }] });
+    expect(runtimeAllows(rule, context)).toBe(true);
+    expect(runtimeAllows(rule, { ...context, identity: { ...context.identity, stage: 4 } })).toBe(false);
+    expect(runtimeAllows({ kind: "role", roles: ["admin"] }, context)).toBe(false);
+    expect(runtimeAllows(rule, { ...context, identity: { ...context.identity, signedIn: false } })).toBe(false);
+    expect(runtimeRuleSchema.safeParse({ kind: "role", roles: ["forged"] }).success).toBe(false);
+  });
   it("rejects an explicitly unlinked child before a command can write for the default child", async () => {
     const { runtimeCommandPost } = await import("../src/features/participant-portal/runtime/commands");
     const request = new Request("http://fixture.invalid/command", { method: "POST", body: JSON.stringify({

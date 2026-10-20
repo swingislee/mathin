@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { newId } from "@/lib/uuid";
 import { uploadMiniappImage } from "@/features/school/miniapp-settings/actions";
 import {
-  runtimeIcons, runtimeRoutes, runtimeSources, runtimeTabSlots,
+  runtimeAccountRoles, runtimeIcons, runtimeRoutes, runtimeSources, runtimeTabSlots,
   type RuntimeAction, type RuntimeBlockSpec, type RuntimeEntrySpec, type RuntimeLinkSpec, type RuntimeRule, type RuntimeScreenSpec, type RuntimeTabSpec, type RuntimeText,
 } from "../../../../contracts/participant-api/runtime";
 import { blockNames, canHideTab, defaultAction, libraryNames, presetRule, routeSettings, rulePreset, withHidden, type ActionKind, type LibraryTarget, type Locale, type RulePreset } from "./model";
@@ -72,7 +72,7 @@ function ParamsField({ value = {}, locale, onChange }: { value?: Record<string, 
     {rows.map(([key, text], index) => <div key={index} className="flex items-center gap-1">
       <Input className="w-28" aria-label={L(locale, "参数名", "Parameter name")} value={key} maxLength={32} onChange={event => change(index, event.target.value, text)} />
       <Input className="min-w-0 flex-1" aria-label={L(locale, "参数值", "Parameter value")} value={text} maxLength={200} onChange={event => change(index, key, event.target.value)} />
-      <Button type="button" variant="ghost" size="icon" aria-label={L(locale, "移除参数", "Remove parameter")} onClick={() => {
+      <Button type="button" variant="ghost" size="sm" className="size-8 shrink-0 p-0" aria-label={L(locale, "移除参数", "Remove parameter")} onClick={() => {
         const next = Object.fromEntries(rows.filter((_, i) => i !== index)); onChange(Object.keys(next).length ? next : undefined);
       }}><Trash2 className="size-3.5" /></Button>
     </div>)}
@@ -135,6 +135,9 @@ const rulePresets: { preset: RulePreset; zh: string; en: string }[] = [
   { preset: "all", zh: "所有人", en: "Everyone" }, { preset: "signedIn", zh: "仅已登录", en: "Signed in" }, { preset: "signedOut", zh: "仅未登录访客", en: "Visitors only" },
   { preset: "hasParticipants", zh: "已关联孩子的家庭", en: "Families with a linked child" }, { preset: "stage", zh: "指定学习阶段", en: "Selected stages" },
   { preset: "between", zh: "指定日期范围", en: "Date range" },
+  { preset: "role", zh: "指定账号角色", en: "Account role" },
+  { preset: "allRules", zh: "同时满足多个条件", en: "All conditions" },
+  { preset: "anyRules", zh: "满足任一条件", en: "Any condition" },
 ];
 export function RuleField({ value, meta, locale, onChange }: { value?: RuntimeRule; meta: InspectorMeta; locale: Locale; onChange: (value: RuntimeRule | undefined) => void }) {
   const preset = rulePreset(value);
@@ -149,6 +152,26 @@ export function RuleField({ value, meta, locale, onChange }: { value?: RuntimeRu
     })}</div>}
     {value?.kind === "between" && <div className="grid grid-cols-2 gap-2"><Input type="date" value={value.from} onChange={event => onChange({ ...value, from: event.target.value })} />
       <Input type="date" value={value.to} onChange={event => onChange({ ...value, to: event.target.value })} /></div>}
+    {value?.kind === "role" && <div className="flex flex-wrap gap-2">{runtimeAccountRoles.map(role => <label key={role} className="flex items-center gap-1 text-xs">
+      <Checkbox checked={value.roles.includes(role)} onCheckedChange={checked => {
+        const roles = checked ? [...value.roles, role] : value.roles.filter(item => item !== role);
+        if (roles.length) onChange({ kind: "role", roles });
+      }} />{({ student: L(locale, "学生", "Student"), parent: L(locale, "家长", "Parent"), staff: L(locale, "员工", "Staff"), admin: L(locale, "管理员", "Admin") })[role]}
+    </label>)}</div>}
+    {(value?.kind === "all" || value?.kind === "any") && <div className="space-y-3 border-l border-line pl-3">
+      {value.rules.map((rule, index) => <div key={index} className="space-y-1">
+        <RuleField value={rule} meta={meta} locale={locale} onChange={next => {
+          const rules = value.rules.flatMap((item, i) => i === index ? next ? [next] : [] : [item]);
+          onChange(rules.length ? { ...value, rules } : undefined);
+        }} />
+        {value.rules.length > 1 && <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ ...value, rules: value.rules.filter((_, i) => i !== index) })}>
+          {L(locale, "移除条件", "Remove condition")}
+        </Button>}
+      </div>)}
+      {value.rules.length < 8 && <Button type="button" variant="secondary" size="sm" onClick={() => onChange({ ...value, rules: [...value.rules, { kind: "stage", stages: [1] }] })}>
+        <Plus className="mr-1 size-3.5" />{L(locale, "添加条件", "Add condition")}
+      </Button>}
+    </div>}
   </div></Field>;
 }
 
