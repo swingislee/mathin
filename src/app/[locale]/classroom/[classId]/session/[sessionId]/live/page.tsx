@@ -26,6 +26,33 @@ export default async function LiveClassPage({
   const user = await requireUser(locale);
   if (!UUID_PATTERN.test(classId) || !UUID_PATTERN.test(sessionId)) notFound();
 
+  const classroomTask = getClassroom(classId, sessionId, { includeInvite: false });
+  const sessionTask = getClassSession(sessionId);
+  const rosterTask = getSessionRoster(sessionId);
+  const layoutTask = isFeatureEnabled("teaching.classroom_layout_v2");
+  // 确认课次关系和教师身份后就读取课堂所需内容，不等待事件/板书基线或模板解析。
+  const teachingTask = Promise.all([classroomTask, sessionTask, layoutTask]).then(async ([classroom, session, layoutV2Enabled]) => {
+    if (!classroom || !session || session.classroomId !== classId) return null;
+    const teacher = classroom.myRole === "teacher";
+    const rehearsal = mode === "rehearsal" && teacher;
+    const offlineDrill = mode === "offline-drill" && teacher;
+    const attendanceSuggested = !rehearsal && !offlineDrill && teacher && !session.startedAt;
+    const attendanceInLearningPanel = teacher && (layoutV2Enabled || (process.env.NODE_ENV !== "production" && rehearsal));
+    const [template, attendanceResult, learningSetup] = await Promise.all([
+      // 未冻结的教师课次解析模板+覆盖层；学生与已冻结课次保持原有快照规则。
+      teacher && !session.coursewareFrozenAt ? getSessionCoursewareTemplate(sessionId) : Promise.resolve(null),
+      attendanceSuggested || attendanceInLearningPanel ? getAttendanceDrawerData(sessionId) : Promise.resolve(null),
+      teacher ? getSessionLearningSetup(sessionId, rosterTask) : Promise.resolve(null),
+    ]);
+    return {
+      effectiveSession: template === null ? session : {
+        ...session,
+        courseware: resolveCourseware(template, (session.coursewareOverlay as OverlaySlot[]) ?? []) as CoursewarePage[],
+      },
+      rehearsal, offlineDrill, attendanceSuggested, attendanceResult, learningSetup,
+    };
+  });
+
   // 全量类型：P4-5 起晚加入者要还原板书快照/游戏镜像/视频进度/临时插页等一切基线
   const [
     classroom,
@@ -37,44 +64,21 @@ export default async function LiveClassPage({
     inputV2Enabled,
     h5PointerEnabled,
     layoutV2Enabled,
+    teaching,
   ] = await Promise.all([
-    getClassroom(classId, sessionId),
-    getClassSession(sessionId),
+    classroomTask,
+    sessionTask,
     listSessionEvents(sessionId),
     listSessionBoardCheckpoints(sessionId),
-    getSessionRoster(sessionId),
+    rosterTask,
     isFeatureEnabled("teaching.classroom_board_checkpoint_v2"),
     isFeatureEnabled("teaching.classroom_input_v2"),
     isFeatureEnabled("teaching.classroom_h5_pointer_v1"),
-    isFeatureEnabled("teaching.classroom_layout_v2"),
+    layoutTask,
+    teachingTask,
   ]);
-  if (!classroom || !session || session.classroomId !== classId) notFound();
-
-  // 教师进入未冻结课次时，试讲/候课都先用「模板+覆盖层」解析当前页面，
-  // 与正式开课时冻结的结果保持一致（10-§5.4）。自由课次会由同一模板
-  // RPC 投影当前“本节使用”的教师/教研方案；没有方案时才是空模板。
-  // 学生等待页仍保持空数组，直到正式开课后再读取冻结快照。
-  let effectiveSession = session;
-  if (classroom.myRole === "teacher" && !session.coursewareFrozenAt) {
-    const template = await getSessionCoursewareTemplate(sessionId);
-    effectiveSession = {
-      ...session,
-      courseware: resolveCourseware(template, (session.coursewareOverlay as OverlaySlot[]) ?? []) as CoursewarePage[],
-    };
-  }
-
-  // 教师试讲使用独立的临时事件流，可连接本人设备，正式课次状态保持不变。
-  const rehearsal = mode === "rehearsal" && classroom.myRole === "teacher";
-  const offlineDrill = mode === "offline-drill" && classroom.myRole === "teacher";
-  const attendanceSuggested = !rehearsal && !offlineDrill && classroom.myRole === "teacher" && !session.startedAt;
-  const attendanceInLearningPanel = classroom.myRole === "teacher"
-    && (layoutV2Enabled || (process.env.NODE_ENV !== "production" && rehearsal));
-  const [attendanceResult, learningSetup] = await Promise.all([
-    attendanceSuggested || attendanceInLearningPanel
-      ? getAttendanceDrawerData(sessionId)
-      : Promise.resolve(null),
-    classroom.myRole === "teacher" ? getSessionLearningSetup(sessionId) : Promise.resolve(null),
-  ]);
+  if (!classroom || !session || !teaching) notFound();
+  const { effectiveSession, rehearsal, offlineDrill, attendanceSuggested, attendanceResult, learningSetup } = teaching;
   const initialAttendanceComplete = Boolean(
     attendanceResult?.ok && attendanceResult.data.length > 0 && attendanceResult.data.every((row) => row.marked),
   );

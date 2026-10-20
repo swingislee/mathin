@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
-import { getSessionWorkspaceDetail } from "@/features/school/classes";
+import { getSessionWorkspaceSummary } from "@/features/school/classes";
 import { parseReturnTo } from "@/features/school/object-workspace";
 import { parseSessionStage, SessionWorkspaceBody } from "@/features/school/SessionWorkspaceBody";
 import { requireDashboardEnvironment } from "@/lib/auth";
@@ -58,7 +58,7 @@ async function SessionWorkspaceContent({
   const [{ sessionId }, rawSearchParams] = await Promise.all([params, searchParams]);
   if (!UUID_PATTERN.test(sessionId)) notFound();
 
-  const detail = await getSessionWorkspaceDetail(sessionId);
+  const detail = await getSessionWorkspaceSummary(sessionId);
   if (!detail) notFound();
 
   // §18：课次从班级详情、课表、今日工作三处进入，返回必须回到来的地方；

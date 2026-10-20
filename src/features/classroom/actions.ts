@@ -76,7 +76,7 @@ export async function joinClassroom(code: string): Promise<string | null> {
   return (data as string | null) ?? null;
 }
 
-export async function getClassroom(id: string, sessionId?: string): Promise<ClassroomRecord | null> {
+export async function getClassroom(id: string, sessionId?: string, options: { includeInvite?: boolean } = {}): Promise<ClassroomRecord | null> {
   const { supabase, user } = await authenticatedClient();
   const { data, error } = await supabase
     .from("classrooms")
@@ -129,7 +129,7 @@ export async function getClassroom(id: string, sessionId?: string): Promise<Clas
   if (!myRole) return null;
 
   let inviteCode: string | null = null;
-  if (myRole === "teacher" && !sessionSubstitute) {
+  if (myRole === "teacher" && !sessionSubstitute && options.includeInvite !== false) {
     const { data: code } = await supabase.rpc("get_classroom_invite", { cid: id });
     inviteCode = (code as string | null) ?? null;
   }

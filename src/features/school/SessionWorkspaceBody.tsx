@@ -1,9 +1,10 @@
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { SectionLoading } from "@/components/section-loading";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import type { SessionWorkspaceDetail } from "./classes";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { getSessionPreparationDetail, getSessionWorkspaceDetail, type SessionWorkspaceSummary } from "./classes";
 import { SessionLivePanel } from "./SessionLivePanel";
 import { SessionPostworkPanel } from "./SessionPostworkPanel";
 import { SessionPrepPanel } from "./SessionPrepPanel";
@@ -17,7 +18,7 @@ import {
   type ObjectContextItem,
 } from "./object-workspace";
 import { cn } from "@/lib/utils";
-import { Link } from "@/i18n/navigation";
+import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 import { Presentation } from "lucide-react";
 import { MicrocourseWorkspaceButton } from "@/features/teacher-microcourses/MicrocourseWorkspaceButton";
 import { NotificationFocus } from "@/features/events/NotificationFocus";
@@ -35,7 +36,7 @@ export type SessionStage = (typeof STAGES)[number];
  * 固定落"课前"会让一节已经上完的课打开时停在一个无事可做的空面板上，
  * 而右边的 Rail 正写着"下一步：处理课后"。
  */
-export function parseSessionStage(value: string | undefined, state?: SessionWorkspaceDetail["state"]): SessionStage {
+export function parseSessionStage(value: string | undefined, state?: SessionWorkspaceSummary["state"]): SessionStage {
   if (STAGES.includes(value as SessionStage)) return value as SessionStage;
   if (state === "started") return "live";
   if (state === "ended") return "post";
@@ -47,7 +48,7 @@ export function parseSessionStage(value: string | undefined, state?: SessionWork
  * （只审阅，doc §14.8）不显示；否则按事件状态 + 工作状态挑一个下一步。
  */
 function resolvePrimaryAction(
-  detail: SessionWorkspaceDetail,
+  detail: SessionWorkspaceSummary,
   stageHref: (stage: SessionStage) => string,
   t: (key: string, values?: Record<string, string | number>) => string,
 ) {
@@ -85,7 +86,7 @@ export async function SessionWorkspaceBody({
   initialPrepStep,
   initialPrepPageId,
 }: {
-  detail: SessionWorkspaceDetail;
+  detail: SessionWorkspaceSummary;
   stage: SessionStage;
   /** 已过 resolveReturnTarget 校验的来源地址（默认班级详情）。 */
   backHref: string;
@@ -157,7 +158,7 @@ export async function SessionWorkspaceBody({
             </span>
           )}
           primaryAction={primaryAction && (
-            <Link href={primaryAction.href} className={cn(buttonVariants({ size: "sm" }))}>{primaryAction.label}</Link>
+            <DashboardIntentLink href={primaryAction.href} className={cn(buttonVariants({ size: "sm" }))}>{primaryAction.label}</DashboardIntentLink>
           )}
         />
       }
@@ -176,10 +177,10 @@ export async function SessionWorkspaceBody({
               />
             ) : null}
             {detail.capabilities.canEnterLive && detail.state !== "cancelled" && detail.state !== "voided" && primaryAction?.label !== t("enterCandidate") && (
-              <Link href={`/classroom/${detail.classroomId}/session/${detail.id}/live?entry=prep`}
+              <DashboardIntentLink href={`/classroom/${detail.classroomId}/session/${detail.id}/live?entry=prep`}
                 className={buttonVariants({ size: "sm", variant: "secondary" })}>
                 {tPreparation("entry")}
-              </Link>
+              </DashboardIntentLink>
             )}
           </div>
             {stage === "pre" && detail.state === "scheduled" && (detail.capabilities.canPrepare || canAuthorMicrocourse) ? (
@@ -191,18 +192,18 @@ export async function SessionWorkspaceBody({
                 />
               ) : null}
               {detail.capabilities.canPrepare ? <>
-                <Link
+                <DashboardIntentLink
                   href={"/classroom/" + detail.classroomId + "/session/" + detail.id + "/live?mode=rehearsal"}
                   className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-2")}
                 >
                   <Presentation size={15} />
                   {t("rehearse")}
-                </Link>
-                <SessionPrepCompleteAction
-                  sessionId={detail.id}
-                  prepStatus={detail.prepStatus}
-                  hasUnpublishedChanges={detail.hasUnpublishedChanges}
-                />
+                </DashboardIntentLink>
+                <Suspense fallback={<Button size="sm" disabled aria-busy="true">
+                  {t(detail.prepStatus === "ready" ? "updateRelease" : "completePrep")}
+                </Button>}>
+                  <SessionPreparationComplete sessionId={detail.id} />
+                </Suspense>
               </> : null}
             </div>
           ) : null}
@@ -229,21 +230,42 @@ export async function SessionWorkspaceBody({
           >
             <NotificationFocus target={focusTarget} />
             {/* 标题栏与候课、试讲等操作先可用；面板数据单独加载，并写明正在等待的内容。 */}
-            <Suspense key={stage} fallback={<SectionLoading label={t(`panelLoading_${stage}`)} hint={detail.capabilities.canEnterLive || detail.capabilities.canPrepare ? t("panelLoadingHint") : undefined} className="min-h-64 flex-1" />}>
+            <Suspense key={`${detail.id}:${stage}`} fallback={<SectionLoading label={t(`panelLoading_${stage}`)} hint={detail.capabilities.canEnterLive || detail.capabilities.canPrepare ? t("panelLoadingHint") : undefined} className="min-h-64 flex-1" />}>
               {stage === "pre" && (
-                <SessionPrepPanel
-                  detail={detail}
+                <SessionPreparationContent
+                  sessionId={detail.id}
                   canAuthorMicrocourseProposal={canAuthorMicrocourse}
                   initialStep={initialPrepStep}
                   initialPageId={initialPrepPageId}
                 />
               )}
               {stage === "live" && <SessionLivePanel detail={detail} />}
-              {stage === "post" && <SessionPostworkPanel detail={detail} />}
+              {stage === "post" && <SessionPostworkContent sessionId={detail.id} />}
             </Suspense>
           </WorkspaceMain>
         }
       />
     </ObjectWorkspace>
   );
+}
+
+async function SessionPreparationComplete({ sessionId }: { sessionId: string }) {
+  const detail = await getSessionPreparationDetail(sessionId);
+  if (!detail) notFound();
+  return <SessionPrepCompleteAction sessionId={detail.id} prepStatus={detail.prepStatus}
+    hasUnpublishedChanges={detail.hasUnpublishedChanges} />;
+}
+
+async function SessionPreparationContent({ sessionId, ...props }: {
+  sessionId: string; canAuthorMicrocourseProposal: boolean; initialStep?: "study" | "design" | "rehearsal"; initialPageId?: string;
+}) {
+  const detail = await getSessionPreparationDetail(sessionId);
+  if (!detail) notFound();
+  return <SessionPrepPanel detail={detail} {...props} />;
+}
+
+async function SessionPostworkContent({ sessionId }: { sessionId: string }) {
+  const detail = await getSessionWorkspaceDetail(sessionId);
+  if (!detail) notFound();
+  return <SessionPostworkPanel detail={detail} />;
 }

@@ -3,6 +3,34 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "TEACHER-ENTRY-LOAD-20261021",
+      "title": "教师班级到课次与教室的加载等待",
+      "agent": "codex",
+      "threadId": "01a13df2-453a-7261-aa65-b50e17ead19b",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/TEACHER-ENTRY-LOAD-20261021.md",
+      "writePaths": [
+        ".ai/tasks/TEACHER-ENTRY-LOAD-20261021.md",
+        ".tmp/teacher-entry-load-20261021/",
+        "src/features/school/classes.ts",
+        "src/features/school/SessionWorkspaceBody.tsx",
+        "src/features/school/SessionPrepPanel.tsx",
+        "src/features/school/SessionLivePanel.tsx",
+        "src/features/school/ClassRosterEntryLink.tsx",
+        "src/features/school/session-learning.ts",
+        "src/features/classroom/actions.ts",
+        "src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx",
+        "src/app/[locale]/classroom/[classId]/session/[sessionId]/live/page.tsx"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "开发端已生效：课次摘要先显示、课前不读课后数据、课堂读取并行并复用名单、教室入口按意图预取。静态检查与开发管理员课次的只读响应通过；慢网、旧设备体感待人工验收，未部署生产。"
+    },
+    {
       "id": "MINI-RUNTIME-BASELINE-20261021",
       "title": "小程序页面上下文、长期兼容与后台业务流程",
       "agent": "codex",

@@ -1,7 +1,7 @@
 import { getSessionAssetUrls, getSessionH5BindingUrls, getSessionPageDocs } from "@/features/classroom/courseware/session-assets";
 import { LockKeyhole } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import type { SessionWorkspaceDetail } from "./classes";
+import type { SessionPreparationDetail } from "./classes";
 import { getSessionCoursewareTemplate } from "./courses";
 import { CoursewareOverlayEditor } from "./CoursewareOverlayEditor";
 import { coursewareEditorStateFromFrozenSnapshot } from "./courseware-overlay";
@@ -22,7 +22,7 @@ export async function SessionPrepPanel({
   initialStep,
   initialPageId,
 }: {
-  detail: SessionWorkspaceDetail;
+  detail: SessionPreparationDetail;
   canAuthorMicrocourseProposal?: boolean;
   initialStep?: "study" | "design" | "rehearsal";
   initialPageId?: string;

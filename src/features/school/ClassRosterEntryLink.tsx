@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { Link } from "@/i18n/navigation";
+import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 import { classSessionMessages } from "./class-roster-session-contract";
 import type { ClassRosterEntry } from "./class-roster-entry";
 
@@ -29,10 +29,10 @@ export function ClassRosterEntryLink({ entry, locale, canChange, context }: {
   const m = classSessionMessages(locale);
   const label = entry.mode === "rehearse" ? m.rehearse : entry.mode === "resume" ? m.resume : m.enter;
   const description = [label, context, entry.session.title || m.untitled].filter(Boolean).join(" · ");
-  return <Link data-class-entry-mode={entry.mode} data-class-entry-session={entry.session.id} prefetch={false}
+  return <DashboardIntentLink data-class-entry-mode={entry.mode} data-class-entry-session={entry.session.id}
     href={entry.href} title={description} aria-label={description}
     className={buttonVariants({ size: "sm", variant: entry.mode === "rehearse" ? "secondary" : "primary", className: "min-h-9 px-2 text-xs" })}
     onClick={event => { event.stopPropagation(); if (canChange && !canChange()) event.preventDefault(); }}>
     {label}
-  </Link>;
+  </DashboardIntentLink>;
 }

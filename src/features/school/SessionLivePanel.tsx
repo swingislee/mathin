@@ -1,14 +1,14 @@
 import { getTranslations } from "next-intl/server";
 import { buttonVariants } from "@/components/ui/button";
-import type { SessionWorkspaceDetail } from "./classes";
-import { Link } from "@/i18n/navigation";
+import type { SessionWorkspaceSummary } from "./classes";
+import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 import { cn } from "@/lib/utils";
 
 /**
  * 课堂（doc19 §14.8）：课堂本体仍是 `/classroom/.../live`（真实白板/实时频道），
  * 本页只展示状态卡片；主管/教务/学服在这里只审阅状态，不获得实时频道或课堂资产权限。
  */
-export async function SessionLivePanel({ detail }: { detail: SessionWorkspaceDetail }) {
+export async function SessionLivePanel({ detail }: { detail: SessionWorkspaceSummary }) {
   const t = await getTranslations("school.session");
   const tPreparation = await getTranslations("classroom.preparation");
   const liveHref = `/classroom/${detail.classroomId}/session/${detail.id}/live`;
@@ -21,12 +21,12 @@ export async function SessionLivePanel({ detail }: { detail: SessionWorkspaceDet
         </p>
         {detail.capabilities.canEnterLive ? (
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Link href={`${liveHref}?entry=prep`} className={buttonVariants({ size: "sm", variant: detail.state === "started" ? "secondary" : "primary" })}>
+            <DashboardIntentLink href={`${liveHref}?entry=prep`} className={buttonVariants({ size: "sm", variant: detail.state === "started" ? "secondary" : "primary" })}>
               {tPreparation("entry")}
-            </Link>
-            {detail.state === "started" && <Link href={liveHref} className={cn(buttonVariants({ size: "sm" }))}>
+            </DashboardIntentLink>
+            {detail.state === "started" && <DashboardIntentLink href={liveHref} className={cn(buttonVariants({ size: "sm" }))}>
               {tPreparation("actions.resume")}
-            </Link>}
+            </DashboardIntentLink>}
           </div>
         ) : (
           <p className="mt-2 text-xs text-muted">{t("liveReviewOnly")}</p>

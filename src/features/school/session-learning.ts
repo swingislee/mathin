@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { collectPostgrestRowsInBatches } from "@/lib/supabase/postgrest-batches";
 import type { CoursewareTrack } from "@/features/courseware-studio/data";
 import { getSessionRoster } from "@/features/classroom/roster-server";
+import type { SessionRosterState } from "@/features/classroom/types";
 import { courseware_template_array_schema } from "./courseware-overlay";
 import type {
   CoursewareLearningCheckPage,
@@ -12,28 +13,28 @@ import type {
   SessionLearningSetup,
 } from "./session-learning-contract";
 
-export async function getSessionLearningSetup(sessionId: string): Promise<SessionLearningSetup> {
+export async function getSessionLearningSetup(
+  sessionId: string,
+  roster?: Promise<SessionRosterState>,
+): Promise<SessionLearningSetup> {
   const supabase = await createClient();
-  const { data: session, error: sessionError } = await supabase
-    .from("class_sessions")
-    .select("learning_checks_configured_at")
-    .eq("id", sessionId)
-    .maybeSingle<{ learning_checks_configured_at: string | null }>();
-  if (sessionError) throw new Error(sessionError.message);
-  if (!session) throw new Error("SESSION_NOT_FOUND");
-
   const [
+    { data: session, error: sessionError },
     { data: checkRows, error: checkError },
     rosterState,
   ] = await Promise.all([
+    supabase.from("class_sessions").select("learning_checks_configured_at")
+      .eq("id", sessionId).maybeSingle<{ learning_checks_configured_at: string | null }>(),
     supabase
       .from("session_learning_checks")
       .select("id,position,title,source_page_doc_id")
       .eq("session_id", sessionId)
       .order("position", { ascending: true })
       .returns<Array<{ id: string; position: number; title: string; source_page_doc_id: string | null }>>(),
-    getSessionRoster(sessionId),
+    roster ?? getSessionRoster(sessionId),
   ]);
+  if (sessionError) throw new Error(sessionError.message);
+  if (!session) throw new Error("SESSION_NOT_FOUND");
   if (checkError) throw new Error(checkError.message);
 
   const checkIds = (checkRows ?? []).map((row) => row.id);

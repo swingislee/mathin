@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { getLectureWorkspaceDetail } from "./curriculum/lecture-workspace-detail";
 import type { CoursewareTemplatePage, OverlaySlot } from "./courseware-overlay";
 import { getMyPerms, getAuthUser } from "@/lib/auth";
@@ -578,6 +579,19 @@ export interface SessionWorkspaceDetail {
   videoTask: SessionVideoTask | null;
 }
 
+/** 标题、阶段切换和课堂入口只依赖本课状态与当前用户能力。 */
+export type SessionWorkspaceSummary = Pick<SessionWorkspaceDetail,
+  | "viewerId" | "id" | "classroomId" | "classroomName" | "lectureId" | "no" | "name"
+  | "scheduledAt" | "durationMin" | "state" | "workState" | "statusLabelKey"
+  | "teacherOverrideName" | "primaryTeacherName" | "capabilities"
+  | "coursewareTrack" | "coursewareTrackOverride" | "coursewareFrozenAt"
+  | "prepStatus" | "prepAutoFrozen" | "prepPreparedAt" | "postworkCompletedAt"
+>;
+
+export type SessionPreparationDetail = SessionWorkspaceSummary & Pick<SessionWorkspaceDetail,
+  "courseware" | "coursewareOverlay" | "lectureObjectives" | "currentReleaseNo" | "hasUnpublishedChanges" | "pendingLeaveRequests"
+>;
+
 interface SessionWorkspaceQueryRow {
   id: string;
   classroom_id: string;
@@ -596,15 +610,13 @@ interface SessionWorkspaceQueryRow {
   teacher_override: string | null;
   courseware_track_override: CoursewareTrack | null;
   courseware_frozen_at: string | null;
-  courseware: CoursewareTemplatePage[] | null;
-  courseware_overlay: OverlaySlot[] | null;
   postwork_completed_at: string | null;
   classrooms: { name: string; courseware_track: CoursewareTrack } | null;
   profiles: { display_name: string } | null;
 }
 
-/** 单课次版的 `getClassroomDetailForScope`；RLS（sessions_select_*）已把无关用户挡在结果之外。 */
-export async function getSessionWorkspaceDetail(sessionId: string): Promise<SessionWorkspaceDetail | null> {
+/** 请求内复用权限和课次状态；摘要与面板不重复读取，也不跨请求保存身份。 */
+const readSessionWorkspaceCore = cache(async (sessionId: string) => {
   const supabase = await createClient();
   const user = await getAuthUser();
   if (!user) return null;
@@ -614,7 +626,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     .select(
       "id,classroom_id,lecture_id,lecture_no,title,scheduled_at,duration_min,started_at,ended_at,deleted_at," +
         "cancelled_by,cancel_reason,voided_at,void_reason,teacher_override,courseware_track_override," +
-        "courseware_frozen_at,courseware,courseware_overlay,postwork_completed_at,classrooms(name,courseware_track)," +
+        "courseware_frozen_at,postwork_completed_at,classrooms(name,courseware_track)," +
         "profiles!class_sessions_teacher_override_fkey(display_name)",
     )
     .eq("id", sessionId)
@@ -625,15 +637,6 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   const [
     { data: assignmentRows, error: assignmentError },
     { data: prepRow, error: prepError },
-    { data: leaveRows, error: leaveError },
-    { data: taskRows, error: taskError },
-    { data: briefRow, error: briefError },
-    { data: learningResultRows, error: learningResultError },
-    { data: rosterRows, error: rosterError },
-    { data: supportTaskRows, error: supportTaskError },
-    { count: pendingVideoCount, error: videoError },
-    { data: publicationRows, error: publicationError },
-    { data: videoTaskRow, error: videoTaskError },
     perms,
   ] = await Promise.all([
     supabase
@@ -646,12 +649,122 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       .select("status,auto_frozen,prepared_at")
       .eq("session_id", sessionId)
       .maybeSingle<{ status: SessionPrepStatus; auto_frozen: boolean; prepared_at: string | null }>(),
-    supabase
-      .from("session_leave_requests")
-      .select("id,reason,status,created_at,students(name)")
-      .eq("session_id", sessionId)
-      .eq("status", "pending")
+    getMyPerms(user.id),
+  ]);
+  if (assignmentError) throw new Error(assignmentError.message);
+  if (prepError) throw new Error(prepError.message);
+
+  const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
+  const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
+  const hasClassViewAll = perms.has("class.view.all");
+  const hasClassManageScope = perms.has("class.manage") && (hasClassViewAll || isTeaching);
+
+  const state = deriveSessionState({
+    startedAt: session.started_at,
+    endedAt: session.ended_at,
+    deletedAt: session.deleted_at,
+    cancelledBy: session.cancelled_by,
+    voidedAt: session.voided_at,
+  });
+  const context = resolveSessionCapabilityContext({
+    responsibilities: myResponsibilities,
+    isTeacherOverride: session.teacher_override === user.id,
+    hasClassManageScope,
+    hasClassViewAll,
+    hasCourseManage: perms.has("course.manage"),
+    hasSessionVoid: perms.has("session.void"),
+    hasAttendanceMark: perms.has("attendance.mark"),
+    hasReviewWrite: perms.has("review.write"),
+    hasReviewVideo: perms.has("video.review"),
+    hasPostworkManage: perms.has("session.postwork.manage"),
+    state,
+  });
+
+  const workState = deriveSessionWorkState(prepRow?.status ?? null, session.postwork_completed_at, state);
+  const summary: SessionWorkspaceSummary = {
+    viewerId: user.id,
+    id: session.id,
+    classroomId: session.classroom_id,
+    classroomName: session.classrooms?.name || "-",
+    lectureId: session.lecture_id,
+    no: session.lecture_no,
+    name: session.title,
+    scheduledAt: session.scheduled_at,
+    durationMin: session.duration_min,
+    state,
+    workState,
+    statusLabelKey: computeSessionStatusLabel(state, workState, session.scheduled_at),
+    teacherOverrideName: session.profiles?.display_name ?? null,
+    primaryTeacherName: (assignmentRows ?? []).find((row) => row.responsibility === "primary_teacher")?.profiles?.display_name ?? null,
+    capabilities: resolveSessionCapabilities(context),
+    coursewareTrack: session.courseware_track_override ?? session.classrooms?.courseware_track ?? "native-16x9",
+    coursewareTrackOverride: session.courseware_track_override,
+    coursewareFrozenAt: session.courseware_frozen_at,
+    prepStatus: prepRow?.status ?? "not_started",
+    prepAutoFrozen: prepRow?.auto_frozen ?? false,
+    prepPreparedAt: prepRow?.prepared_at ?? null,
+    postworkCompletedAt: session.postwork_completed_at,
+  };
+  return { session, summary };
+});
+
+export async function getSessionWorkspaceSummary(sessionId: string): Promise<SessionWorkspaceSummary | null> {
+  return (await readSessionWorkspaceCore(sessionId))?.summary ?? null;
+}
+
+/** 课前面板与完成备课按钮共用，进入备课不读取课后记录及同班历史总结。 */
+export const getSessionPreparationDetail = cache(async (sessionId: string): Promise<SessionPreparationDetail | null> => {
+  const core = await readSessionWorkspaceCore(sessionId);
+  if (!core) return null;
+  const { session, summary } = core;
+  const supabase = await createClient();
+  const [{ data: content, error: contentError }, { data: leaves, error: leaveError }, lecture] = await Promise.all([
+    // 冻结标记与内容同一次读取，保留冻结副本，不拿当前模板替换。
+    supabase.from("class_sessions").select("courseware,courseware_overlay,courseware_frozen_at")
+      .eq("id", sessionId).maybeSingle<{
+        courseware: CoursewareTemplatePage[] | null; courseware_overlay: OverlaySlot[] | null; courseware_frozen_at: string | null;
+      }>(),
+    supabase.from("session_leave_requests").select("id,reason,status,created_at,students(name)")
+      .eq("session_id", sessionId).eq("status", "pending")
       .returns<Array<{ id: string; reason: string; status: string; created_at: string; students: { name: string } | null }>>(),
+    session.lecture_id ? getLectureWorkspaceDetail(session.lecture_id).catch(() => null) : Promise.resolve(null),
+  ]);
+  if (contentError) throw new Error(contentError.message);
+  if (leaveError) throw new Error(leaveError.message);
+  if (!content) return null;
+  const trackState = lecture?.tracks.find((track) => track.track === summary.coursewareTrack);
+  return {
+    ...summary,
+    coursewareFrozenAt: content.courseware_frozen_at,
+    courseware: Array.isArray(content.courseware) ? content.courseware : [],
+    coursewareOverlay: content.courseware_overlay ?? [],
+    lectureObjectives: lecture?.lecture.objectives ?? "",
+    currentReleaseNo: trackState?.currentReleaseNo ?? null,
+    hasUnpublishedChanges: trackState?.hasUnpublishedChanges ?? false,
+    pendingLeaveRequests: (leaves ?? []).map(row => ({
+      id: row.id, studentName: row.students?.name ?? "-", reason: row.reason, status: row.status, createdAt: row.created_at,
+    })),
+  };
+});
+
+/** 课后面板单独读取完整记录；RLS 与摘要沿用同一当前用户。 */
+export const getSessionWorkspaceDetail = cache(async (sessionId: string): Promise<SessionWorkspaceDetail | null> => {
+  const core = await readSessionWorkspaceCore(sessionId);
+  if (!core) return null;
+  const { session } = core;
+  const supabase = await createClient();
+  const [
+    { data: taskRows, error: taskError },
+    { data: briefRow, error: briefError },
+    { data: learningResultRows, error: learningResultError },
+    { data: rosterRows, error: rosterError },
+    { data: supportTaskRows, error: supportTaskError },
+    { count: pendingVideoCount, error: videoError },
+    { data: publicationRows, error: publicationError },
+    { data: videoTaskRow, error: videoTaskError },
+    { data: siblingSessions, error: siblingError },
+    preparation,
+  ] = await Promise.all([
     supabase
       .from("session_completion_tasks")
       .select(
@@ -752,11 +865,12 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       .select("id,title,instructions,due_at,published_at")
       .eq("session_id", sessionId)
       .maybeSingle<{ id: string; title: string; instructions: string; due_at: string | null; published_at: string | null }>(),
-    getMyPerms(user.id),
+    // 同班历史总结和课程版本与本课记录独立，不排在整组读取之后。
+    supabase.from("class_sessions").select("id,title,scheduled_at")
+      .eq("classroom_id", session.classroom_id).neq("id", sessionId),
+    getSessionPreparationDetail(sessionId),
   ]);
-  if (assignmentError) throw new Error(assignmentError.message);
-  if (prepError) throw new Error(prepError.message);
-  if (leaveError) throw new Error(leaveError.message);
+  if (!preparation) return null;
   if (taskError) throw new Error(taskError.message);
   if (briefError) throw new Error(briefError.message);
   if (learningResultError) throw new Error(learningResultError.message);
@@ -767,11 +881,6 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
   if (videoTaskError) throw new Error(videoTaskError.message);
 
   // 先限定当前班级的课次，再读取简报，避免从全部简报关联课次时反复执行 RLS。
-  const { data: siblingSessions, error: siblingError } = await supabase
-    .from("class_sessions")
-    .select("id,title,scheduled_at")
-    .eq("classroom_id", session.classroom_id)
-    .neq("id", sessionId);
   if (siblingError) throw new Error(siblingError.message);
   const siblingById = new Map((siblingSessions ?? []).map((row) => [row.id, row]));
   const { data: knowledgeSourceRows, error: knowledgeSourceError } = siblingById.size
@@ -784,86 +893,12 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
     : { data: [], error: null };
   if (knowledgeSourceError) throw new Error(knowledgeSourceError.message);
 
-  const myResponsibilities = (assignmentRows ?? []).filter((row) => row.user_id === user.id).map((row) => row.responsibility);
-  const isTeaching = myResponsibilities.includes("primary_teacher") || myResponsibilities.includes("assistant_teacher");
-  const hasClassViewAll = perms.has("class.view.all");
-  const hasClassManageScope = perms.has("class.manage") && (hasClassViewAll || isTeaching);
-
-  const state = deriveSessionState({
-    startedAt: session.started_at,
-    endedAt: session.ended_at,
-    deletedAt: session.deleted_at,
-    cancelledBy: session.cancelled_by,
-    voidedAt: session.voided_at,
-  });
-  const context = resolveSessionCapabilityContext({
-    responsibilities: myResponsibilities,
-    isTeacherOverride: session.teacher_override === user.id,
-    hasClassManageScope,
-    hasClassViewAll,
-    hasCourseManage: perms.has("course.manage"),
-    hasSessionVoid: perms.has("session.void"),
-    hasAttendanceMark: perms.has("attendance.mark"),
-    hasReviewWrite: perms.has("review.write"),
-    hasReviewVideo: perms.has("video.review"),
-    hasPostworkManage: perms.has("session.postwork.manage"),
-    state,
-  });
-
-  const resolvedTrack: CoursewareTrack = session.courseware_track_override ?? session.classrooms?.courseware_track ?? "native-16x9";
-  const workState = deriveSessionWorkState(prepRow?.status ?? null, session.postwork_completed_at, state);
-  const statusLabelKey = computeSessionStatusLabel(state, workState, session.scheduled_at);
-  const primaryTeacherName = (assignmentRows ?? []).find((row) => row.responsibility === "primary_teacher")?.profiles?.display_name ?? null;
-
-  let currentReleaseNo: number | null = null;
-  let hasUnpublishedChanges = false;
-  let lectureObjectives = "";
-  if (session.lecture_id) {
-    const lecture = await getLectureWorkspaceDetail(session.lecture_id).catch(() => null);
-    const trackState = lecture?.tracks.find((track) => track.track === resolvedTrack);
-    currentReleaseNo = trackState?.currentReleaseNo ?? null;
-    hasUnpublishedChanges = trackState?.hasUnpublishedChanges ?? false;
-    lectureObjectives = lecture?.lecture.objectives ?? "";
-  }
-
   return {
-    viewerId: user.id,
-    id: session.id,
-    classroomId: session.classroom_id,
-    classroomName: session.classrooms?.name || "-",
-    lectureId: session.lecture_id,
-    lectureObjectives,
-    no: session.lecture_no,
-    name: session.title,
-    scheduledAt: session.scheduled_at,
-    durationMin: session.duration_min,
-    state,
-    workState,
-    statusLabelKey,
-    teacherOverrideName: session.profiles?.display_name ?? null,
-    primaryTeacherName,
-    capabilities: resolveSessionCapabilities(context),
-    coursewareTrack: resolvedTrack,
-    coursewareTrackOverride: session.courseware_track_override,
-    coursewareFrozenAt: session.courseware_frozen_at,
-    courseware: Array.isArray(session.courseware) ? session.courseware : [],
-    coursewareOverlay: session.courseware_overlay ?? [],
-    prepStatus: prepRow?.status ?? "not_started",
-    prepAutoFrozen: prepRow?.auto_frozen ?? false,
-    prepPreparedAt: prepRow?.prepared_at ?? null,
-    currentReleaseNo,
-    hasUnpublishedChanges,
+    ...preparation,
     rosterCount: (rosterRows ?? []).length,
     roster: (rosterRows ?? []).map((row) => ({
       studentId: row.student_id,
       studentName: row.students?.name ?? "-",
-    })),
-    pendingLeaveRequests: (leaveRows ?? []).map((row) => ({
-      id: row.id,
-      studentName: row.students?.name ?? "-",
-      reason: row.reason,
-      status: row.status,
-      createdAt: row.created_at,
     })),
     completionTasks: (taskRows ?? []).map((row) => ({
       id: row.id,
@@ -896,7 +931,6 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       })),
     })),
     pendingVideoCount: pendingVideoCount ?? 0,
-    postworkCompletedAt: session.postwork_completed_at,
     familyBrief: {
       lessonTitle: briefRow?.lesson_title ?? "",
       learningSummary: briefRow?.learning_summary ?? "",
@@ -940,7 +974,7 @@ export async function getSessionWorkspaceDetail(sessionId: string): Promise<Sess
       publishedAt: videoTaskRow.published_at,
     } : null,
   };
-}
+});
 
 // ---------------------------------------------------------------------------
 // 课次五分组、角色列信号、教学准备、运营记录（P4I-13 §13）
