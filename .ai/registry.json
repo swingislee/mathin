@@ -3,6 +3,31 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "LOAD-READ-BOUNDARY-20261021",
+      "title": "名单首屏读取范围与依据按需加载",
+      "agent": "codex",
+      "threadId": "01a13df2-453a-7261-aa65-b50e17ead19b",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/LOAD-READ-BOUNDARY-20261021.md",
+      "writePaths": [
+        ".ai/tasks/LOAD-READ-BOUNDARY-20261021.md",
+        ".tmp/load-read-boundary-20261021/",
+        "supabase/migrations/20261021001000_page_scoped_status_evidence.sql",
+        "src/features/school/record-status/",
+        "src/features/school/student-stage-contract.ts",
+        "src/features/school/source-worklist/data.ts",
+        "tests/record-status-deferred.test.ts",
+        "tests/record-status-evidence-action.test.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "d50bcda8",
+      "next": "开发库读取迁移与名单摘要已生效；400主体、四阶段名单一致，权限与异步读取检查通过。待报名100行gzip数据49.5→28.4KB，RPC约249→221ms。开发HTTP入口可用，真实慢网手感待验收，未部署生产。"
+    },
+    {
       "id": "LESSON-ROW-ACTIONS-20261021",
       "title": "课次首行直接操作课前与课后",
       "agent": "codex",

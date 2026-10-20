@@ -1,5 +1,5 @@
 import { STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
-import type { StatusEvidence, StoredStatus } from './record-status/contract';
+import type { RecordStatusSummary, StatusEvidence, StoredStatus } from './record-status/contract';
 import type { InvitationDraft } from "./invitation-contract";
 import type { InvitationActivityOption, InvitationAssessorOption } from "./invitation-contract";
 import type { Phase3EnrollmentOptions } from "./phase3-enrollment-contract";
@@ -24,6 +24,7 @@ export type StudentStageAssignee = { userId: string; displayName: string };
 
 export interface StudentStageRow {
   statusEvidence?: StatusEvidence[];
+  statusSummary?: RecordStatusSummary;
   lifecycle?: StoredStatus | null;
   communication?: {
     count: number; effectiveCount: number; latestNote: string;

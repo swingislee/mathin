@@ -6,6 +6,7 @@ import { parseFollowupFieldQuery } from '../followup-table-page';
 import { studentListFacets, studentListFieldLabels, studentListRpcQuery } from '../student-list-query-contract';
 import { markerSchema, placementSchema, PERIOD_FIELDS, type WorkQuery, type WorkPage } from './contract';
 import { worklistFields } from './fields';
+import { summarizeRecordStatus } from '../record-status/summary';
 
 const pageSchema = z.object({ rows: z.array(studentStageRowSchema.extend({ worklist: placementSchema })),
   scope: z.enum(['all','mine','group','unassigned']), channels: z.array(z.object({ key: z.string(), count: z.number() })),
@@ -28,5 +29,6 @@ export async function loadWorklistPage(client: Awaited<ReturnType<typeof createC
     p_locale: locale.startsWith('en') ? 'en' : 'zh', p_labels: studentListFieldLabels(fields), p_include_facets: includeFacets, p_facets_only: includeFacets,
     p_interest: query.interest ?? '', p_channel: query.channel ?? '',
   }));
-  return { ...page, fieldView: { query: fieldQuery, facets: studentListFacets(facets, fields, locale), facetsDeferred: !includeFacets } };
+  return { ...page, rows: page.rows.map(summarizeRecordStatus),
+    fieldView: { query: fieldQuery, facets: studentListFacets(facets, fields, locale), facetsDeferred: !includeFacets } };
 }

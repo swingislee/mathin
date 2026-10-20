@@ -41,6 +41,12 @@ export function statusTone(facet: StatusFacet, value: string, review: boolean): 
 /** 当前阶段的关注项以阶段表为准，与小状态同源：微信、意向、到访在阶段表没有记录时再看证据；
  *  测评等级只看阶段表（备注推断的等级只在依据里列出），没有等级即资料待补齐。tone 为空表示尚未记录。 */
 export function recordStatusFacets(row: StudentStageRow) {
+  if (row.statusSummary && !row.statusEvidence) {
+    return row.statusSummary.facets.map(({ facet, ...summary }) => ({
+      facet, status: { ...summary, facts: [], best: undefined },
+      tone: statusTone(facet, summary.value, summary.review),
+    }));
+  }
   return FACETS[row.stage].flatMap(facet => {
     const evidence = resolveStatusEvidence(row.statusEvidence ?? [],facet), stored = storedStatusValue(row.lifecycle,facet);
     const status = stored ? { ...evidence, value: stored, review: false, stored: true }

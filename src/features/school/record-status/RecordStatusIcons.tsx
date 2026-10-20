@@ -7,9 +7,11 @@ import { Student360Trigger } from '../Student360Sheet';
 import { WechatGlyph } from '../WechatStatusControl';
 import { RECORD_TONE_STYLE, RECORD_UNKNOWN_STYLE } from './tones';
 import type { StudentStageRow } from '../student-stage-contract';
-import type { StatusFacet } from './contract';
+import { resolveStatusEvidence, type StatusFacet } from './contract';
 import { recordStageFocus, recordStatusFacets, type ProgressGlyph } from './stage-focus';
-import { SourceCommunicationFacts } from './SourceCommunicationFacts';
+import { SourceCommunicationFacts, SourceCommunicationFactsContent } from './SourceCommunicationFacts';
+import { useRecordStatusEvidence } from './useRecordStatusEvidence';
+import { RecordStatusEvidenceContent } from './RecordStatusEvidenceContent';
 
 const PROGRESS_ICONS = { calendar: CalendarClock, calendarCheck: CalendarCheck, calendarX: CalendarX, teacher: GraduationCap, parent: UserRound,
   activity: Ticket, assessment: ClipboardList, message: MessageCircle, hourglass: Hourglass, payment: Wallet, check: Check, pause: CirclePause, class: UsersRound, book: BookOpen,
@@ -24,6 +26,8 @@ export function StatusGlyph({ facet }: { facet: StatusFacet }) {
 
 
 export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; locale: string }) {
+  const evidence = useRecordStatusEvidence(row);
+  const loadEvidence = evidence.onOpenChange;
   const { progress } = recordStageFocus(row,locale);
   const en = locale.startsWith('en');
   const labels = en ? { wechat: 'WeChat', interest: 'Interest', visit: 'Visit', assessment: 'Assessment' }
@@ -63,7 +67,7 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
     {visible.map(({ facet, status, tone }) => {
       const unknown = status.value === 'unknown' && !status.review;
       const label = `${labels[facet]} · ${status.review ? (en ? 'Needs review' : '待核对') : unknown ? unknownLabels[facet] : valueLabel(facet,status.value)}`;
-      return <Popover key={facet}><PopoverTrigger asChild><button type="button" aria-label={label} title={label}
+      return <Popover key={facet} onOpenChange={loadEvidence}><PopoverTrigger asChild><button type="button" aria-label={label} title={label}
         data-status-facet={facet} className={cn(buttonClass,
           tone ? RECORD_TONE_STYLE[tone] : RECORD_UNKNOWN_STYLE)}>
         <StatusGlyph facet={facet} />
@@ -72,16 +76,24 @@ export function RecordStatusIcons({ row, locale }: { row: StudentStageRow; local
         {unknown ? <p className="mb-3 text-xs leading-5 text-muted">{unknownHints[facet]}</p> : null}
         {status.stored ? <p className="mb-3 text-xs leading-5 text-muted">{facet === 'visit' && row.lifecycle?.visitOn
           ? `${en ? 'Latest visit' : '最近到访'} ${row.lifecycle.visitOn.slice(0,10)} · ` : ''}{storedBasis}</p> : null}
-        <div className="max-h-72 space-y-3 overflow-y-auto">
-          {status.facts.length ? status.facts.map((fact,index) => <div key={`${fact.recordId ?? fact.sourceId ?? ''}:${fact.field}:${index}`} className="border-t border-line pt-2">
+        <RecordStatusEvidenceContent evidence={evidence} locale={locale}>{facts => {
+          const visibleFacts = resolveStatusEvidence(facts, facet).facts;
+          return <div className="max-h-72 space-y-3 overflow-y-auto">
+          {visibleFacts.length ? visibleFacts.map((fact,index) => <div key={`${fact.recordId ?? fact.sourceId ?? ''}:${fact.field}:${index}`} className="border-t border-line pt-2">
             <p className="text-xs text-muted">{fact.field}{fact.date ? ` · ${fact.date.slice(0,10)}` : ''}{fact.certainty === 'review' ? ` · ${en ? 'Needs review' : '待核对'}` : ''}</p>
             <p className="my-1 font-medium">{valueLabel(fact.type,fact.value)}</p>
             {fact.excerpt ? <p className="whitespace-pre-wrap break-words text-xs leading-5">{fact.excerpt}</p> : null}
           </div>) : unknown || status.stored ? null : <p className="text-xs text-muted">{en ? 'No explicit fact has been recorded.' : '现有记录中没有明确填写这一项。'}</p>}
-        </div>
+        </div>;
+        }}</RecordStatusEvidenceContent>
         <div className="mt-3 border-t border-line pt-2"><Student360Trigger subject={{ studentId: row.studentId, leadId: row.leadId }} fallback={{ name: row.name, phone: row.phone, grade: row.grade }}>{en ? 'Open this student’s records' : '查看此人的全部记录'}</Student360Trigger></div>
       </PopoverContent></Popover>;
     })}
-    <SourceCommunicationFacts facts={row.statusEvidence??[]} locale={locale} />
+    <SourceCommunicationFacts facts={row.statusEvidence??[]} locale={locale}
+      tags={!row.statusEvidence ? row.statusSummary?.communicationTags : undefined} onOpenChange={loadEvidence}>
+      <RecordStatusEvidenceContent evidence={evidence} locale={locale}>
+        {facts => <SourceCommunicationFactsContent facts={facts} locale={locale} />}
+      </RecordStatusEvidenceContent>
+    </SourceCommunicationFacts>
   </div>;
 }
