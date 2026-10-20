@@ -3,6 +3,33 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "WECHAT-SESSION-RESTORE-20261021",
+      "title": "微信恢复登录会话时保留管理员验证",
+      "agent": "codex",
+      "threadId": "01a13e17-ff3e-76a0-9cce-bbf84f9029d9",
+      "status": "in_review",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/WECHAT-SESSION-RESTORE-20261021.md",
+      "writePaths": [
+        ".ai/tasks/WECHAT-SESSION-RESTORE-20261021.md",
+        ".tmp/wechat-session-restore-20261021/",
+        "src/features/wechat/trusted-session.ts",
+        "src/app/[locale]/auth/callback/route.ts",
+        "tests/wechat-trusted-session.test.ts",
+        "tests/wechat-callback.test.ts",
+        "supabase/migrations/20261021002000_wechat_trusted_sessions.sql",
+        "supabase/tests/wechat_trusted_sessions.sql",
+        "docs/ops/wechat-oauth.md"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": null,
+      "next": "服务端会话证明与兼容迁移已实现，定向鉴权、隔离 SQL 权限/撤销与静态检查通过；开发库已应用，生产待本次迁移和发布授权，真机恢复待验收。"
+    },
+    {
       "id": "LOAD-READ-BOUNDARY-20261021",
       "title": "名单首屏读取范围与依据按需加载",
       "agent": "codex",

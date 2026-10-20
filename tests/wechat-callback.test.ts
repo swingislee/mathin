@@ -73,6 +73,12 @@ describe("Supabase callback completion", () => {
     expect(h.remember).toHaveBeenCalledWith(user.id, "mathin:union-user");
     expect(h.remember.mock.invocationCallOrder[0]).toBeGreaterThan(h.save.mock.invocationCallOrder[0]);
   });
+  it("revokes the new login when its server proof cannot be persisted", async () => {
+    receipt(); h.receipt!.flow.mode = "login";
+    h.remember.mockRejectedValueOnce(new Error("unavailable"));
+    expect((await call("code=application-code&wechat=1")).headers.get("location")).toContain("wechatError=failed");
+    expect(h.signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
   it.each(["account", "binding"])("does not issue a trusted session after a failed %s check", async (kind) => {
     receipt();
     (kind === "account" ? h.active : h.save).mockRejectedValueOnce(new Error("failed"));

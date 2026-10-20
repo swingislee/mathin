@@ -34,7 +34,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ loca
       }
       await assertAccountActive(completion.userId);
       await saveWechatSnapshot(completion.userId, completion.identity);
-      await rememberWechatSession(completion.userId, completion.identity.subject);
+      try {
+        await rememberWechatSession(completion.userId, completion.identity.subject);
+      } catch (error) {
+        // 新登录未完成服务端登记时撤销它，避免留下会反复要求 MFA 的半完成会话。
+        if (completion.flow.mode === "login") await supabase.auth.signOut({ scope: "local" });
+        throw error;
+      }
       await setWechatCookie(WECHAT_FLOW_COOKIE, "", 0);
       await setWechatCookie(WECHAT_GUEST_COOKIE, "", 0);
       const destination = completion.flow.mode === "link"
