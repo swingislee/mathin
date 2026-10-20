@@ -109,8 +109,8 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
     summary={children(<DashboardRowDisclosure expanded={expanded} controls={detailId}
       label={t(expanded ? "overview.collapseClass" : "overview.expandClass", { name: classroomName })} onToggle={() => changeClass(!expanded)} />)}>
     {() => inlineDetails ?? (sessions.length ? <Table mobileLayout="records" data-class-session-list={classroomId} aria-label={t("overview.classLessons", { name: classroomName })} className="table-fixed text-xs" containerClassName="overflow-visible">
-      <colgroup><col /><col className="w-24" /><col className="w-56" /><col className="w-32" /></colgroup>
-      <TableHeader className="sr-only"><TableRow><TableHead>{m.session} / {m.actions}</TableHead><TableHead>{t("observations.sessionState")}</TableHead><TableHead>{t("observations.performance")}</TableHead><TableHead>{t("observations.coverageTitle")}</TableHead></TableRow></TableHeader>
+      <colgroup><col /><col className="w-24" /><col className="w-52" /><col className="w-28" /><col className={locale.startsWith("en") ? "w-[32rem]" : "w-[26rem]"} /></colgroup>
+      <TableHeader className="sr-only"><TableRow><TableHead>{m.session}</TableHead><TableHead>{t("observations.sessionState")}</TableHead><TableHead>{t("observations.performance")}</TableHead><TableHead>{t("observations.coverageTitle")}</TableHead><TableHead>{m.actions}</TableHead></TableRow></TableHeader>
       <TableBody>
         {sessions.map(session => {
           const id = `${detailId}-${session.id}`;
@@ -120,15 +120,11 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
           const started = hasClassSessionStarted(session);
           return <FollowupRecordRow key={session.id} rowKey={sessionKey(session.id)} rowProps={{ "data-class-session-row": session.id, className: "cursor-pointer [&>td]:px-2 [&>td]:py-1.5" }}
             active={activeKey === sessionKey(session.id)} expanded={isOpen} onActivate={() => onActivate(sessionKey(session.id))} loadingLabel={m.loading}
-            onExpandedChange={open => changeSession(session.id, open)} detailsId={id} title={`${session.title || m.untitled} · ${date(session.scheduledAt)}`} colSpan={4} hideTitle
+            onExpandedChange={open => changeSession(session.id, open)} detailsId={id} title={`${session.title || m.untitled} · ${date(session.scheduledAt)}`} colSpan={5} hideTitle
             summary={<>
-              <TableCell mobileSpan="full"><div className="flex min-w-0 items-center gap-2">
-                <div className="flex min-w-0 flex-1 items-center gap-1 lg:max-w-64"><DashboardRowDisclosure expanded={isOpen} controls={id} label={m.open} onToggle={() => changeSession(session.id, !isOpen)} />
-                  <div className="min-w-0"><p className="truncate leading-5" title={session.title || m.untitled}>{session.title || m.untitled}</p><p className="text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
-                </div>
-                <ClassRosterSessionActions session={session} locale={locale} now={now} returnTo={returnToSession(session.id)}
-                  canChange={canChange} onRecordsChanged={count => recordsChanged(session.id, count)}
-                  onPublishingChange={value => onPublishingChange(session.id, value)} />
+              <TableCell><div className="flex min-w-0 items-center gap-1">
+                <DashboardRowDisclosure expanded={isOpen} controls={id} label={m.open} onToggle={() => changeSession(session.id, !isOpen)} />
+                <div className="min-w-0"><p className="truncate leading-5" title={session.title || m.untitled}>{session.title || m.untitled}</p><p className="text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
               </div></TableCell>
               <TableCell className="text-muted"><p>{t(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p><p className="mt-0.5 text-[11px]">{m.attendance} {session.attendanceCount}</p>
               </TableCell>
@@ -137,6 +133,11 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
                 : <span role="status" className="text-[11px] text-muted">{m.observationsLoading}</span>}</TableCell>
               <TableCell className="text-muted">{observation ? <TeachingCoverage value={observation} reviewCount={reviewCount} /> : <span>{m.reviews} {reviewCount}</span>}</TableCell></>
                 : <TableCell mobileHidden colSpan={2} className="text-right text-muted">{m.preparation}</TableCell>}
+              <TableCell mobileSpan="full" className="text-right">
+                <ClassRosterSessionActions session={session} locale={locale} now={now} returnTo={returnToSession(session.id)}
+                  canChange={canChange} onRecordsChanged={count => recordsChanged(session.id, count)}
+                  onPublishingChange={value => onPublishingChange(session.id, value)} />
+              </TableCell>
             </>}>
             {() => <div data-class-session-editor data-session-id={session.id} inert={publishingSession !== null || undefined}>
               <ClassRosterSessionDetail key={recordVersions[session.id] ?? 0} sessionId={session.id} classroomId={classroomId} locale={locale} timeZone={timeZone} now={now} onDirtyChange={onRecordsDirtyChange}
