@@ -7,14 +7,21 @@ function isLoopbackHostname(hostname: string) {
 
 /**
  * Fixed development administrators may opt out of MFA only when all three
- * boundaries agree: Next is running in development mode, Supabase is loopback,
+ * boundaries agree: Next is running in development or explicit local preview
+ * mode, Supabase is loopback,
  * and trusted Auth app_metadata contains the explicit local exemption claim.
  */
 export function hasLocalDevelopmentMfaExemption(
   appMetadata: Record<string, unknown> | null | undefined,
-  options: { nodeEnv: string | undefined; supabaseUrl: string | undefined },
+  options: {
+    nodeEnv: string | undefined;
+    supabaseUrl: string | undefined;
+    localProductionPreview?: string;
+  },
 ) {
-  if (options.nodeEnv !== "development") return false;
+  const localRuntime = options.nodeEnv === "development"
+    || (options.nodeEnv === "production" && options.localProductionPreview === "1");
+  if (!localRuntime) return false;
   if (appMetadata?.[LOCAL_DEVELOPMENT_MFA_EXEMPT_CLAIM] !== true) return false;
   if (!options.supabaseUrl) return false;
   try {

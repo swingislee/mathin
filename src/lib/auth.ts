@@ -94,6 +94,7 @@ export async function requireUser(locale: string, options: { allowAccountRecover
   const localDevelopmentMfaExempt = hasLocalDevelopmentMfaExemption(user.app_metadata, {
     nodeEnv: process.env.NODE_ENV,
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    localProductionPreview: process.env.MATHIN_LOCAL_PRODUCTION_PREVIEW,
   });
   // 通过微信回调核验的当前会话可直接进入；密码登录仍按原生 AAL 要求 MFA。
   if (!options.allowAccountRecovery && account?.role === "admin" && !localDevelopmentMfaExempt && user.aal !== "aal2"

@@ -251,6 +251,7 @@ export async function resetStaffPasswordAction(target: string): Promise<ActionRe
     const localDevelopmentMfaExempt = hasLocalDevelopmentMfaExemption(user.app_metadata, {
       nodeEnv: process.env.NODE_ENV,
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      localProductionPreview: process.env.MATHIN_LOCAL_PRODUCTION_PREVIEW,
     });
     if (!localDevelopmentMfaExempt) {
       const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
