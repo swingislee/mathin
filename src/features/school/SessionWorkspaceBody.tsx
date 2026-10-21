@@ -85,6 +85,7 @@ export async function SessionWorkspaceBody({
   focusTarget,
   initialPrepStep,
   initialPrepPageId,
+  postworkFocus,
 }: {
   detail: SessionWorkspaceSummary;
   stage: SessionStage;
@@ -95,6 +96,7 @@ export async function SessionWorkspaceBody({
   focusTarget?: string;
   initialPrepStep?: "study" | "design" | "rehearsal";
   initialPrepPageId?: string;
+  postworkFocus?: "assignments";
 }) {
   const t = await getTranslations("school.session");
   const tPreparation = await getTranslations("classroom.preparation");
@@ -240,7 +242,7 @@ export async function SessionWorkspaceBody({
                 />
               )}
               {stage === "live" && <SessionLivePanel detail={detail} />}
-              {stage === "post" && <SessionPostworkContent sessionId={detail.id} />}
+              {stage === "post" && <SessionPostworkContent sessionId={detail.id} focus={postworkFocus} />}
             </Suspense>
           </WorkspaceMain>
         }
@@ -264,8 +266,8 @@ async function SessionPreparationContent({ sessionId, ...props }: {
   return <SessionPrepPanel detail={detail} {...props} />;
 }
 
-async function SessionPostworkContent({ sessionId }: { sessionId: string }) {
+async function SessionPostworkContent({ sessionId, focus }: { sessionId: string; focus?: "assignments" }) {
   const detail = await getSessionWorkspaceDetail(sessionId);
   if (!detail) notFound();
-  return <SessionPostworkPanel detail={detail} />;
+  return <SessionPostworkPanel detail={detail} focus={focus} />;
 }

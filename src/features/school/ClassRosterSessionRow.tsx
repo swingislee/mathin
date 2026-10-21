@@ -109,7 +109,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
     summary={children(<DashboardRowDisclosure expanded={expanded} controls={detailId}
       label={t(expanded ? "overview.collapseClass" : "overview.expandClass", { name: classroomName })} onToggle={() => changeClass(!expanded)} />)}>
     {() => inlineDetails ?? (sessions.length ? <Table mobileLayout="records" data-class-session-list={classroomId} aria-label={t("overview.classLessons", { name: classroomName })} className="table-fixed text-xs" containerClassName="overflow-visible">
-      <colgroup><col /><col className="w-24" /><col className="w-52" /><col className="w-28" /><col className={locale.startsWith("en") ? "w-[32rem]" : "w-[26rem]"} /></colgroup>
+      <colgroup><col /><col className="w-24" /><col className="w-52" /><col className="w-28" /><col className={locale.startsWith("en") ? "w-[30rem]" : "w-[22rem]"} /></colgroup>
       <TableHeader className="sr-only"><TableRow><TableHead>{m.session}</TableHead><TableHead>{t("observations.sessionState")}</TableHead><TableHead>{t("observations.performance")}</TableHead><TableHead>{t("observations.coverageTitle")}</TableHead><TableHead>{m.actions}</TableHead></TableRow></TableHeader>
       <TableBody>
         {sessions.map(session => {

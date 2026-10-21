@@ -16,8 +16,7 @@ import { ClassWorkspaceActions } from "./ClassWorkspaceActions";
 import { ClassWorkspaceMemory } from "./ClassWorkspaceMemory";
 import { classRosterScope, myRosterClassroomIds } from "./class-workspace-preferences";
 import { ClassRosterSessionRow } from "./ClassRosterSessionRow";
-import { ClassRosterEntryLink, useClassRosterEntryNow } from "./ClassRosterEntryLink";
-import { classRosterEntry } from "./class-roster-entry";
+import { useClassRosterEntryNow } from "./ClassRosterEntryLink";
 import { classSessionMessages, orderedClassSessions, type ClassRosterSession } from "./class-roster-session-contract";
 import { ClassRosterWorkspace } from "./ClassRosterWorkspace";
 import { ClassRosterTermPicker } from "./ClassRosterTermPicker";
@@ -626,7 +625,6 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                 || row.sourceEnrollments?.some(fact => fact.student_id === focusStudentId))));
               const lessonsOpen = expandedSessionRow === `${group}:${classroom?.id}`;
               const classSessions = classroom ? orderedClassSessions(sessions, classroom.id) : [];
-              const entry = canTeach && !sessionsFailed ? classRosterEntry(classSessions, entryNow) : null;
               const slots = classroom ? placementRosterSeats(classroom, row.students) : [];
               if(classroom&&classroom.capacity===null){
                 const lastReservation=Math.max(0,...(board.sessionTransfers??[]).filter(t=>t.toClassroomId===classroom.id).map(t=>t.seat));
@@ -652,7 +650,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
                 <TableCell data-class-sticky="1" mobileSpan="full" {...classCell("campus")} className={cn(PLACEMENT_CELL_HOVER,"relative z-10 border-r border-line bg-card px-2 py-1")}>
                   <ClassRosterClassSummary row={row} locale={locale} className={className} courseTitle={courseTitle} time={time} teacher={teacher} showTeacher={identityColumn === "teacher"}
                     grade={gradeLabel} level={level} disclosure={disclosure}
-                    entryAction={entry ? <ClassRosterEntryLink entry={entry} locale={locale} context={className} canChange={canChangeSession} /> : undefined} rosterId={rosterId} rosterOpen={rosterOpen} disabled={pending || hasSessionDraft}
+                    rosterId={rosterId} rosterOpen={rosterOpen} disabled={pending || hasSessionDraft}
                     contentLabel={progressMode ? progressM.title : undefined} contentCount={progressMode ? progressSessions.filter(session => session.classroomId === classroom?.id).length : undefined}
                     onRosterToggle={() => { if (canChangeSession()) {
                       if (!rosterOpen) setOpenSessionRow(null);

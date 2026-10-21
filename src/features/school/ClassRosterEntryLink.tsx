@@ -22,12 +22,12 @@ export function useClassRosterEntryNow(initialNow: number) {
   return now;
 }
 
-export function ClassRosterEntryLink({ entry, locale, canChange, context }: {
-  entry: ClassRosterEntry | null; locale: string; canChange?: () => boolean; context?: string;
+export function ClassRosterEntryLink({ entry, locale, canChange, context, label: customLabel }: {
+  entry: ClassRosterEntry | null; locale: string; canChange?: () => boolean; context?: string; label?: string;
 }) {
   if (!entry) return null;
   const m = classSessionMessages(locale);
-  const label = entry.mode === "rehearse" ? m.rehearse : entry.mode === "resume" ? m.resume : m.enter;
+  const label = customLabel ?? (entry.mode === "rehearse" ? m.rehearse : entry.mode === "resume" ? m.resume : m.enter);
   const description = [label, context, entry.session.title || m.untitled].filter(Boolean).join(" · ");
   return <DashboardIntentLink data-class-entry-mode={entry.mode} data-class-entry-session={entry.session.id}
     href={entry.href} title={description} aria-label={description}

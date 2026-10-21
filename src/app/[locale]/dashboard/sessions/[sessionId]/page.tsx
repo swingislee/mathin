@@ -22,6 +22,7 @@ export default async function SessionWorkspacePage({
   params: Promise<{ locale: string; sessionId: string }>;
   searchParams: Promise<{
     stage?: string;
+    work?: string;
     returnTo?: string | string[];
     focus?: string | string[];
     prepStep?: string | string[];
@@ -48,6 +49,7 @@ async function SessionWorkspaceContent({
   params: Promise<{ locale: string; sessionId: string }>;
   searchParams: Promise<{
     stage?: string;
+    work?: string;
     returnTo?: string | string[];
     focus?: string | string[];
     prepStep?: string | string[];
@@ -71,6 +73,7 @@ async function SessionWorkspaceContent({
       stage={parseSessionStage(rawSearchParams.stage, detail.state)}
       backHref={returnTo ?? `/dashboard/classes/${detail.classroomId}`}
       returnTo={returnTo}
+      postworkFocus={rawSearchParams.work === "assignments" ? "assignments" : undefined}
       focusTarget={typeof rawSearchParams.focus === "string" ? rawSearchParams.focus.slice(0, 160) : undefined}
       initialPrepStep={rawSearchParams.prepStep === "design" || rawSearchParams.prepStep === "rehearsal"
         ? rawSearchParams.prepStep : rawSearchParams.prepStep === "study" ? "study" : undefined}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button";
 import { useAction } from "@/components/action-form";
@@ -28,6 +28,8 @@ export function AttendanceDrawer({
   trigger,
   beforeOpen,
   disabled,
+  openInitially = false,
+  onClose,
 }: {
   sessionId: string;
   appearance?: "link" | "secondary" | "primary";
@@ -37,27 +39,36 @@ export function AttendanceDrawer({
   trigger?: ReactNode;
   beforeOpen?: () => boolean;
   disabled?: boolean;
+  openInitially?: boolean;
+  onClose?: () => void;
 }) {
   const t = useTranslations("school.classes");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<AttendanceDrawerRow[]>([]);
+  const [initialRows, setInitialRows] = useState<AttendanceDrawerRow[]>([]);
+  const openedInitially = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const label = mode === "amend" ? t("amendAttendance") : t("markAttendance");
 
-  const openDrawer = () => {
+  const openDrawer = useCallback(() => {
     if (beforeOpen && !beforeOpen()) return;
     setOpen(true);
     setLoading(true);
     setError(null);
     void getAttendanceDrawerData(sessionId)
       .then((result) => {
-        if (result.ok) setRows(result.data);
+        if (result.ok) { setRows(result.data); setInitialRows(result.data); }
         else setError(t("actionFailed"));
       })
       .finally(() => setLoading(false));
-  };
+  }, [beforeOpen, sessionId, t]);
+  useEffect(() => {
+    if (openInitially && !openedInitially.current) { openedInitially.current = true; openDrawer(); }
+  }, [openInitially, openDrawer]);
+  const close = () => { setOpen(false); onClose?.(); };
+  const dirty = JSON.stringify(rows) !== JSON.stringify(initialRows);
 
   const updateRow = (studentId: string, patch: Partial<AttendanceDrawerRow>) => {
     setRows((prev) => prev.map((row) => (row.studentId === studentId ? { ...row, ...patch } : row)));
@@ -67,7 +78,7 @@ export function AttendanceDrawer({
     successMessage: t("attendanceSaved"),
     errorMessage: { default: t("actionFailed") },
     onSuccess: () => {
-      setOpen(false);
+      close();
       onSaved?.();
       router.refresh();
     },
@@ -75,7 +86,7 @@ export function AttendanceDrawer({
 
   return (
     <>
-      <button
+      {!openInitially && <button
         type="button"
         onClick={event => { event.stopPropagation(); openDrawer(); }}
         disabled={disabled}
@@ -86,9 +97,9 @@ export function AttendanceDrawer({
           : cn(buttonVariants({ size: "sm", variant: appearance === "secondary" ? "secondary" : "primary" }), "shrink-0", className)}
       >
         {trigger ?? label}
-      </button>
+      </button>}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={value => { if (!pending && !dirty) { if (value) setOpen(true); else close(); } }}>
         <DialogContent className="max-h-dvh overflow-hidden sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{label}</DialogTitle>
@@ -142,7 +153,7 @@ export function AttendanceDrawer({
           )}
 
           <DialogFooter>
-            <button type="button" onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
+            <button type="button" disabled={pending} onClick={close} className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}>
               {t("cancel")}
             </button>
             <button type="button" disabled={pending || loading || rows.length === 0} onClick={() => save(rows)} className={cn(buttonVariants({ size: "sm" }))}>

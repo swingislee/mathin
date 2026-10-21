@@ -5,6 +5,15 @@ type EntrySession = Omit<ClassRosterSession, "attendanceCount" | "reviewCount">;
 export type ClassRosterEntry = { session: EntrySession; mode: "enter" | "resume" | "rehearse"; href: string };
 export const CLASSROOM_ENTRY_LEAD_MS = 30 * 60_000;
 
+/** 时间只决定入口的侧重；超过计划结束时间不等于已经上课或下课。 */
+export function classSessionActionPhase(session: EntrySession, now: number) {
+  if (session.endedAt) return "ended";
+  if (session.startedAt) return "live";
+  const bounds = classroomScheduleBounds({ scheduledAt: session.scheduledAt, durationMin: session.durationMin ?? null });
+  if (!bounds || now < bounds.start - CLASSROOM_ENTRY_LEAD_MS) return "future";
+  return now < bounds.end ? "imminent" : "unconfirmed";
+}
+
 /** 只决定导航模式；授课权限与正式开课确认继续由现有服务端负责。 */
 export function classSessionEntry(session: EntrySession, now: number): ClassRosterEntry | null {
   const capabilities = session.capabilities;

@@ -139,13 +139,22 @@
         "src/features/school/AttendanceDrawer.tsx",
         "src/features/school/PostclassLearningEditor.tsx",
         "src/features/school/SessionStudentPostworkTable.tsx",
-        ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md"
+        ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md",
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "src/features/school/ClassRosterClassSummary.tsx",
+        "src/features/school/ReviewDrawer.tsx",
+        "src/features/school/review-actions.ts",
+        "src/features/school/SessionWorkspaceBody.tsx",
+        "src/features/school/SessionPostworkPanel.tsx",
+        "src/features/school/ClassRosterEntryLink.tsx",
+        "src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx",
+        "src/features/school/class-roster-entry.ts"
       ],
       "sharedPaths": [
         ".ai/registry.json"
       ],
       "checkpoint": null,
-      "next": "最右侧文字按钮与管理员 3 个班的 8 节验收课次已在开发端可用；静态检查、数据状态与管理员读取核对通过，待产品负责人确认操作与视觉。未部署生产。"
+      "next": "阶段操作已移到课次行右侧并直接打开；支持按学生登记学情和课评面板内保存发布，静态检查通过，待开发端人工验收。独立补课课次与名单流程仍为后续方案，未部署生产。"
     },
     {
       "id": "TEACHER-CLASSROOM-ENTRY-20261016",

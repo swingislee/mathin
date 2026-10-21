@@ -26,7 +26,7 @@ async function currentProfile() {
   return user ? getProfile(user.id) : null;
 }
 
-export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspaceDetail }) {
+export async function SessionPostworkPanel({ detail, focus }: { detail: SessionWorkspaceDetail; focus?: "assignments" }) {
   const t = await getTranslations("school.session");
   const tc = await getTranslations("school.classes");
   const pendingRequired = detail.completionTasks.filter((task) => task.required && task.status === "pending").length;
@@ -37,6 +37,17 @@ export async function SessionPostworkPanel({ detail }: { detail: SessionWorkspac
   const user = await getAuthUser();
   const homeworkPermission = user ? await homeworkClient.rpc("can_review_session", { cid: detail.classroomId, uid: user.id }) : null;
   const canPublishHomework = homeworkPermission?.data === true;
+
+  if (focus === "assignments") {
+    const items = await Promise.all(detail.publishedAssignments.map(async (assignment): Promise<SessionAssignmentReviewItem> => ({
+      assignment,
+      submissions: detail.capabilities.canWriteReview ? await listSubmissions(assignment.id) : [],
+    })));
+    return <div data-session-assignment-workspace className="flex flex-col gap-5 px-1">
+      {canPublishHomework && <SessionAssignmentPublisher sessionId={detail.id} assignments={detail.publishedAssignments} />}
+      <SessionAssignmentReviewPanel items={items} canGradeSubmissions={detail.capabilities.canWriteReview} />
+    </div>;
+  }
 
   const [sessionVideos, report, reviewData, assignmentReviewItems, communications, locale, timeZone] = await Promise.all([
     videoReviewTask && detail.capabilities.canReviewVideo ? listSessionVideos(detail.id) : Promise.resolve([]),
