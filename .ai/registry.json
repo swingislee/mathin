@@ -141,7 +141,7 @@
       "title": "小程序页面上下文、长期兼容与后台业务流程",
       "agent": "codex",
       "threadId": "01a15c03-d48b-75a3-9874-800b87d57df2",
-      "status": "done",
+      "status": "in_progress",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/MINI-RUNTIME-BASELINE-20261021.md",
@@ -188,14 +188,16 @@
         "apps/parent-wechat/miniprogram/assets/icons/headphones.png",
         "apps/parent-wechat/miniprogram/assets/icons/gift.png",
         "scripts/parent-wechat-app-icons.mjs",
-        "supabase/migrations/20261021150100_miniapp_first_edition.sql"
+        "supabase/migrations/20261021150100_miniapp_first_edition.sql",
+        ".tmp/miniapp-trial-20261021/",
+        "docs/current.md"
       ],
       "sharedPaths": [
         ".ai/registry.json",
         "src/lib/database.types.ts"
       ],
       "checkpoint": null,
-      "next": "开发r33已可验收：发现/日历/我的，消息隐藏；配置草稿/发布、五档概率与多档保底、错题历史和掌握策略接口已完成。原验收规则和下一次保底保留，等待人工验收；未生产部署或上传。"
+      "next": "本次后端d4dea84d和六项迁移已获准部署生产，页面r1发现/日历/我的已发布。0.3.0外网手机预览码可用；用户确认上传后CLI记录丢失，待核实平台版本并设为体验版。新业务规则默认关闭，真机及业务验收待办。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",
