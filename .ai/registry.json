@@ -190,14 +190,15 @@
         "scripts/parent-wechat-app-icons.mjs",
         "supabase/migrations/20261021150100_miniapp_first_edition.sql",
         ".tmp/miniapp-trial-20261021/",
-        "docs/current.md"
+        "docs/current.md",
+        ".tmp/miniapp-discover-config-20261021/"
       ],
       "sharedPaths": [
         ".ai/registry.json",
         "src/lib/database.types.ts"
       ],
       "checkpoint": null,
-      "next": "本次后端d4dea84d和六项迁移已获准部署生产，页面r1发现/日历/我的已发布。0.3.0外网手机预览码可用；用户确认上传后CLI记录丢失，待核实平台版本并设为体验版。新业务规则默认关闭，真机及业务验收待办。"
+      "next": "本次后端d4dea84d和六项迁移已获准部署生产；页面r2只改后端配置，将发现恢复为诊断预约/公益活动布局，接口返回3条活动，待手机验收。0.3.0预览可用，上传回执丢失仍待平台核实；新业务规则默认关闭。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",
