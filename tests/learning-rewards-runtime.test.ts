@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
-vi.mock("@/features/parent-portal/server", () => ({ requireResult: (r: { data: unknown; error?: unknown }) => { if (r.error) throw r.error; return r.data; } }));
+vi.mock("@/features/parent-portal/server", () => ({ PortalError: class extends Error {}, requireResult: (r: { data: unknown; error?: unknown }) => { if (r.error) throw r.error; return r.data; } }));
 vi.mock("@/features/participant-portal/runtime/sources", () => ({ item: (value: unknown) => value, dateTimeLabel: (value: string) => value }));
 import { addRewardScreens } from "../src/features/participant-portal/rewards/screens";
 import { pointsDisplay, pointsSource } from "../src/features/participant-portal/rewards/points";
+import { commerceSource, redeemCommand } from "../src/features/participant-portal/rewards/commerce";
 import { runtimeSpecSchema } from "../src/features/participant-portal/runtime/spec";
 import { runtimeCompatibleBlocks, type RuntimeSpec } from "../contracts/participant-api/runtime";
 import type { SourceInput } from "../src/features/participant-portal/runtime/sources";
@@ -16,7 +17,7 @@ describe("points in the existing runtime", () => {
       { id: "me", title: { zh: "我的", en: "Account" }, navigation: "title", blocks: [{ id: "account", type: "account" }] },
     ] };
     const added = addRewardScreens(spec);
-    expect(runtimeSpecSchema.safeParse(added).success).toBe(true);
+    expect(runtimeSpecSchema.parse(added)).toEqual(added);
     expect(added.screens[0]).toEqual(spec.screens[0]);
     expect(addRewardScreens(added)).toEqual(added);
   });
@@ -35,5 +36,23 @@ describe("points in the existing runtime", () => {
     const data = await pointsDisplay({ identity: { db: { rpc }, participant: "child" }, locale: "zh" } as unknown as SourceInput);
     expect(data?.metrics?.[0]).toMatchObject({ value: "0", hint: expect.stringContaining("4") });
     expect(runtimeCompatibleBlocks([{ id: "points", type: "metrics", title: "积分", columns: 2, items: data!.metrics!, state: "ready", message: "" }], 2, "zh")[0].type).toBe("metrics");
+  });
+  it("keeps a server-issued redemption intent across transport retries and rejects a changed child", async () => {
+    const prizeId = "10000000-0000-4000-8000-000000000001";
+    const rpc = vi.fn().mockResolvedValueOnce({ data: { items: [{ id: prizeId, title: { zh: "奖品", en: "Prize" }, description: { zh: "", en: "" }, points_cost: 20, stock: 2, kind: "physical", offer_version: 3, image: "" }], next: null } });
+    const input = { identity: { db: { rpc }, participant: "selected-child" }, locale: "zh" } as unknown as SourceInput;
+    const page = await commerceSource("rewards.catalog", input);
+    const action = page.items[0].action;
+    if (action?.type !== "command") throw new Error("Redemption action missing");
+    const response = { id: "order", status: "pending", pickup_code: "FIXTURE", snapshot: { title: { zh: "奖品", en: "Prize" }, kind: "physical", image: "", pickupInstructions: { zh: "领取说明", en: "Pickup" } } };
+    rpc.mockResolvedValue({ data: response });
+    const first = { participant: "selected-child", params: action.params!, locale: "zh" as const, id: "transport-one" };
+    await redeemCommand(first, input.identity);
+    const second = { ...first, id: "transport-two" };
+    await redeemCommand(second, input.identity);
+    expect(rpc.mock.calls[1][1]).toEqual(rpc.mock.calls[2][1]);
+    expect(rpc.mock.calls[1][1]).toMatchObject({ p_id: action.params!.intentId, p_prize: prizeId, p_student: "selected-child", p_offer_version: 3 });
+    await expect(redeemCommand({ ...first, participant: "other-child" }, input.identity)).rejects.toThrow();
+    expect(rpc).toHaveBeenCalledTimes(3);
   });
 });

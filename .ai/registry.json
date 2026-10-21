@@ -57,6 +57,8 @@
         "src/app/[locale]/dashboard/learning-rewards/",
         "supabase/migrations/20261021100000_learning_rewards_ledger.sql",
         "supabase/tests/learning_rewards_ledger.sql",
+        "supabase/migrations/20261021110000_learning_reward_redemption.sql",
+        "supabase/tests/learning_reward_redemption.sql",
         "tests/learning-rewards-runtime.test.ts",
         ".tmp/learning-rewards-20261021/",
         "tests/miniapp-runtime-context.test.ts",
@@ -65,7 +67,7 @@
       ],
       "sharedPaths": [".ai/registry.json", "src/lib/database.types.ts"],
       "checkpoint": null,
-      "next": "积分账本首批已在开发端：星星换算和原额撤销、作业首次达标奖励、独立发分与冲回、亲子积分页面；权限、幂等、流水及定向检查通过，待人工验收。接续兑换与领取、抽取与保底、六档学情错题；未授权生产发布或小程序上传。"
+      "next": "积分及兑换两批已开发可用：后台规则与账本、数字／实物奖品、库存、收藏及领取码核销，小程序 r29。权限、幂等、并发余额与库存检查通过，待人工验收。继续抽取与累计保底、六档学情错题；未授权生产发布或小程序上传。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",

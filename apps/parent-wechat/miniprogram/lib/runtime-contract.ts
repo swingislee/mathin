@@ -131,7 +131,7 @@ export function runtimeCompatibleEffects(effects: RuntimeEffect[], client: numbe
 }
 export type RuntimeUpload = { id: string; kind: "image" | "video" | "file"; name: string; bytes: number };
 
-export const runtimeSources = ["activities.catalog", "account.bookings", "account.tasks", "account.reports", "account.requests", "account.events", "rewards.ledger", "rewards.rules"] as const;
+export const runtimeSources = ["activities.catalog", "account.bookings", "account.tasks", "account.reports", "account.requests", "account.events", "rewards.ledger", "rewards.rules", "rewards.catalog", "rewards.orders", "rewards.collection"] as const;
 export type RuntimeSource = typeof runtimeSources[number];
 
 type BlockBase = { id: string; visibleWhen?: RuntimeRule; hidden?: boolean };

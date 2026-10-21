@@ -266,7 +266,7 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
         onChange={event => event.target.value && restore(Number(event.target.value))}>
         <option value="">{L("页面历史版本…", "Page history…")}</option>{bench.history.map(row => <option key={row.revision} value={row.revision}>{L(`第 ${row.revision} 版`, `Version ${row.revision}`)} · {new Date(row.publishedAt).toLocaleString(locale)}</option>)}</select>}
       <Button disabled={pending || shownState === "conflict" || shownState === "invalid"} onClick={() => setPublishOpen(true)}>{L("发布", "Publish")}</Button>
-      <Button variant="secondary" disabled={pending} onClick={() => { setSpec(addRewardScreens); setScreenId("learning-points"); setBlockId(""); setNotice(L("学习积分页面已加入草稿，发布后在「我的」显示入口。", "Points pages added to the draft. Publish to show the account entry.")); }}>{L("接入积分页面", "Add points pages")}</Button>
+      <Button variant="secondary" disabled={pending} onClick={() => { setSpec(addRewardScreens); setScreenId("learning-points"); setBlockId(""); setNotice(L("学习业务页面已加入草稿，发布后在「我的」显示入口。", "Learning pages added to the draft. Publish to show the account entries.")); }}>{L("接入学习页面", "Add learning pages")}</Button>
       <Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/learning-rewards">{L("积分规则与账本", "Points rules and ledger")}</Link>
     </DashboardCommandActions></DashboardCommandPanel>}>
     {notice && <p role="status" className="mb-2 text-sm">{notice}</p>}

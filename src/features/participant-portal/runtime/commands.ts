@@ -15,6 +15,7 @@ import { runtimeCompatibleEffects, runtimeLocalText, runtimeRequestVersion, runt
 import { runtimeParamsSchema } from "./spec";
 import type { ExperienceForm } from "../../../../contracts/participant-api/miniapp-experience";
 import type { RuntimeIdentity } from "./sources";
+import { redeemCommand } from "../rewards/commerce";
 
 const id = z.string().uuid();
 const commandSchema = z.object({
@@ -40,6 +41,7 @@ async function assertUploads(form: ExperienceForm, values: Command["values"], us
 
 /** Commands are registered here. Adding a command changes only Mathin; clients run the effects it returns. */
 const handlers: Record<string, Handler> = {
+  "rewards.redeem": (input, identity) => redeemCommand(input, identity),
   /** Submits a form from the form library. Staff see it in service requests; the family sees it in their requests list. */
   async "form.submit"(input, identity, userId) {
     const formId = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/).parse(input.params.formId);
@@ -79,7 +81,7 @@ const handlers: Record<string, Handler> = {
   },
 };
 /** Declare before enabling a new command: an older client must be rejected before any write. */
-const commandVersions: Record<string, number> = { "form.submit": 1, checkin: 1, "subscriptions.record": 1 };
+const commandVersions: Record<string, number> = { "form.submit": 1, checkin: 1, "subscriptions.record": 1, "rewards.redeem": 1 };
 
 export async function runtimeCommandPost(request: Request) {
   const input = commandSchema.parse(await readJson(request));

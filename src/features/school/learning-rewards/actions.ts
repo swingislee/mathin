@@ -3,7 +3,7 @@ import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 import { authorizedClient } from "../actions/guards";
-import { rewardRulesSchema, rewardErrors, type RewardAccount, type RewardRules, type RewardStudent } from "./contract";
+import { rewardRulesSchema, rewardErrors, rewardPrizeSchema, type RewardAccount, type RewardRules, type RewardStudent, type RewardPrize, type RewardPrizeInput, type RewardOrder, type RewardPage } from "./contract";
 
 const errors = Object.keys(rewardErrors);
 async function rpc(name: string, args: Record<string, unknown>) {
@@ -54,4 +54,23 @@ export async function reverseRewardPoints(entry: string, note: string): Promise<
     await rpc("reverse_learning_points", { p_entry: z.string().uuid().parse(entry), p_note: z.string().trim().min(1).max(500).parse(note) });
     return { ok: true };
   } catch (error) { return actionError(error, errors); }
+}
+
+export async function loadRewardPrizes(): Promise<ActionResult<RewardPrize[]>> {
+  try { return { ok: true, data: await rpc("learning_reward_catalog_admin", {}) as RewardPrize[] }; }
+  catch (error) { return actionError(error, errors); }
+}
+export async function saveRewardPrize(value: RewardPrizeInput): Promise<ActionResult<RewardPrize>> {
+  try {
+    const { id, version, ...config } = rewardPrizeSchema.parse(value);
+    return { ok: true, data: await rpc("save_learning_reward_prize", { p_id: id, p_version: version, p_config: config }) as RewardPrize };
+  } catch (error) { return actionError(error, errors); }
+}
+export async function loadRewardPickups(code = "", before?: string): Promise<ActionResult<RewardPage<RewardOrder>>> {
+  try { return { ok: true, data: await rpc("read_learning_reward_pickups", { p_code: z.string().trim().max(64).parse(code), p_before: before ? z.string().uuid().parse(before) : null }) as RewardPage<RewardOrder> }; }
+  catch (error) { return actionError(error, errors); }
+}
+export async function fulfilReward(order: string, code: string): Promise<ActionResult<RewardOrder>> {
+  try { return { ok: true, data: await rpc("fulfil_learning_reward", { p_order: z.string().uuid().parse(order), p_code: z.string().trim().min(1).max(64).parse(code) }) as RewardOrder }; }
+  catch (error) { return actionError(error, errors); }
 }
