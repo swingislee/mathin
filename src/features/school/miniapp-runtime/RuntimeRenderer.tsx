@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import {
   BarChart3, BookOpen, CalendarCheck, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, ClipboardList, Compass, FileText, ImageIcon, Music, Pause, Play,
-  Search, Shield, SkipBack, SkipForward, Sparkles, Star, Ticket, UploadCloud, UserRound, Users, Video, XCircle, type LucideIcon,
+  Search, Shield, SkipBack, SkipForward, Sparkles, Star, Ticket, UploadCloud, UserRound, Users, Video, XCircle, Gift, Headphones, MessageCircle, Settings, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RuntimeBlockView, RuntimeField, RuntimeItem, RuntimeListTemplate, RuntimeTab } from "../../../../contracts/participant-api/runtime";
@@ -11,6 +11,7 @@ import type { RuntimeBlockView, RuntimeField, RuntimeItem, RuntimeListTemplate, 
 const icons: Record<string, LucideIcon> = {
   discover: Compass, calendar: CalendarDays, account: UserRound, activity: Sparkles, book: BookOpen, report: BarChart3, task: ClipboardList,
   participants: Users, form: FileText, privacy: Shield, reservations: CalendarCheck, complete: CheckCircle2, ticket: Ticket, cancel: XCircle, appointment: BarChart3,
+  message: MessageCircle, settings: Settings, headphones: Headphones, gift: Gift,
 };
 export function RuntimeIcon({ value, className }: { value: string; className?: string }) {
   if (value.startsWith("/api/")) return <img src={value} alt="" className={cn("object-contain", className)} />; // eslint-disable-line @next/next/no-img-element
@@ -184,18 +185,20 @@ function Block({ block, strings, index, inCard, ...select }: Select & { block: R
   }
 }
 
-export function RuntimePhone({ title, brand, blocks, tabs, activeScreen, strings, selected, onSelect, onTab, onTitle, openTabs, onOpenTab }: Select & {
+export function RuntimePhone({ title, brand, blocks, tabs, activeScreen, strings, selected, onSelect, onTab, onTitle, openTabs, onOpenTab, presentation = "classic", tone = "default" }: Select & {
   title: string; brand: boolean; blocks: RuntimeBlockView[]; tabs: RuntimeTab[]; activeScreen: string; strings: Record<string, string>; onTab?: (screen: string) => void;
   /** Clicking the brand name opens its settings. */
   onTitle?: () => void;
+  presentation?: "classic" | "app"; tone?: "default" | "night";
 }) {
-  return <div className="mx-auto flex h-full max-h-[760px] w-[375px] max-w-full flex-col overflow-hidden rounded-[36px] border border-[#d9d4c6] bg-gradient-to-br from-[#e7ecd9] via-[#f4f2e7] to-[#f6efdc] text-[#29251f] shadow-sm">
+  return <div className={cn("mx-auto flex h-full max-h-[760px] w-[375px] max-w-full flex-col overflow-hidden rounded-[36px] border border-[#d9d4c6] text-[#29251f] shadow-sm", presentation === "app" ? "runtime-phone-app" : "bg-gradient-to-br from-[#e7ecd9] via-[#f4f2e7] to-[#f6efdc]", tone === "night" && "runtime-phone-night")}>
+    <style>{`.runtime-phone-app{background:linear-gradient(170deg,#e8e3ff 0,#f4f2fc 35%,#f7f7fa 65%)}.runtime-phone-app [data-runtime-block] .text-\\[\\#6f8b48\\]{color:#8064d9}.runtime-phone-app [data-runtime-block] .bg-\\[\\#6f8b48\\]{background:#8064d9}.runtime-phone-app [data-runtime-block] .bg-\\[\\#eef2e4\\]{background:#f0eaff}.runtime-phone-app [data-runtime-block] .bg-\\[\\#e6ecd8\\]{background:#eee7ff}.runtime-phone-night{background:linear-gradient(150deg,#302259,#17132e);color:#f8f3ff}.runtime-phone-night [data-runtime-block]{color:#29251f}`}</style>
     <div className={cn("flex h-14 shrink-0 items-end px-4 pb-2 text-base font-semibold", brand ? "justify-start" : "justify-center")}>
       {brand && onTitle ? <button type="button" onClick={onTitle} title={strings.brandSettings} className="-mx-1 rounded-md px-1 hover:bg-[#6f8b48]/10 hover:text-[#6f8b48]">{title}</button> : title}</div>
     <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4" onClick={() => onSelect?.("")}>
       <Blocks blocks={blocks} strings={strings} selected={selected} onSelect={onSelect} openTabs={openTabs} onOpenTab={onOpenTab} />
     </div>
-    {tabs.length > 0 && <div className="flex h-14 shrink-0 border-t border-[#ece8dc] bg-white">{tabs.map(tab => <button type="button" key={tab.slot} onClick={() => onTab?.(tab.screen)}
-      className={cn("flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px]", tab.screen === activeScreen ? "text-[#6f8b48]" : "text-[#766f65]")}><RuntimeIcon value={tab.icon} className="size-5" />{tab.label}</button>)}</div>}
+    {tabs.length > 0 && <div className="flex h-16 shrink-0 border-t border-[#ece8dc] bg-white">{tabs.map(tab => <button type="button" key={tab.slot} onClick={() => onTab?.(tab.screen)}
+      className={cn("flex flex-1 flex-col items-center justify-center text-[10px]", tab.screen === activeScreen ? presentation === "app" ? "text-[#8064d9]" : "text-[#6f8b48]" : "text-[#766f65]")}><span className={cn("mb-0.5 flex size-9 items-center justify-center rounded-full", presentation === "app" && tab.screen === activeScreen && "bg-[#8064d9] text-white")}><RuntimeIcon value={tab.icon} className="size-5" /></span>{tab.label}</button>)}</div>}
   </div>;
 }

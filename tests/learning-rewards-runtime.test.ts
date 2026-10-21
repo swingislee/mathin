@@ -15,6 +15,7 @@ import type { SourceInput } from "../src/features/participant-portal/runtime/sou
 describe("points in the existing runtime", () => {
   it("does not round an allowed nonzero chance down to zero", () => {
     expect(rewardProbability(1, 50_000_000)).toBe("0.000002%");
+    expect(rewardProbability(1 / 1_000_000 / 50_000_000, 1)).toBe("0.000000000002%");
     expect(rewardProbability(0, 1)).toBe("0.0000%");
     expect(rewardProbability(1, 1)).toBe("100.0000%");
   });

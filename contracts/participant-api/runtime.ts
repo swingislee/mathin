@@ -25,7 +25,7 @@ export const runtimeTabRoutes: Readonly<Record<RuntimeTabSlot, string>> = {
   1: "/pages/discover/index", 2: "/pages/calendar/index", 3: "/pages/account/index", 4: "/pages/tab-4/index", 5: "/pages/tab-5/index",
 };
 /** Icons bundled with the client. Uploaded images can be used anywhere an icon or image is accepted. */
-export const runtimeIcons = ["discover", "calendar", "account", "activity", "book", "report", "task", "participants", "form", "privacy", "reservations", "complete", "ticket", "cancel"] as const;
+export const runtimeIcons = ["discover", "calendar", "account", "activity", "book", "report", "task", "participants", "form", "privacy", "reservations", "complete", "ticket", "cancel", "message", "settings", "headphones", "gift"] as const;
 export type RuntimeIcon = typeof runtimeIcons[number];
 /** Existing native pages that runtime actions may open while their business flows are migrated. */
 export const runtimeRoutes = ["assessment", "activity-catalog", "activity-detail", "activity-requests", "agenda", "reservations", "reflections", "records", "register",
@@ -130,7 +130,7 @@ export function runtimeCompatibleEffects(effects: RuntimeEffect[], client: numbe
 }
 export type RuntimeUpload = { id: string; kind: "image" | "video" | "file"; name: string; bytes: number };
 
-export const runtimeSources = ["activities.catalog", "account.bookings", "account.tasks", "account.reports", "account.requests", "account.events", "rewards.ledger", "rewards.rules", "rewards.catalog", "rewards.orders", "rewards.collection", "rewards.draws", "rewards.drawDetail", "learning.mistakes", "learning.mistakeDetail"] as const;
+export const runtimeSources = ["activities.catalog", "account.bookings", "account.tasks", "account.reports", "account.requests", "account.events", "account.courses", "account.lessons", "account.notifications", "account.notice", "rewards.ledger", "rewards.rules", "rewards.catalog", "rewards.orders", "rewards.collection", "rewards.draws", "rewards.drawDetail", "learning.mistakes", "learning.mistakeDetail"] as const;
 export type RuntimeSource = typeof runtimeSources[number];
 
 type BlockBase = { id: string; visibleWhen?: RuntimeRule; hidden?: boolean };
@@ -192,10 +192,11 @@ export function runtimeChildren<T extends { type: string; blocks?: unknown; tabs
 }
 
 export type RuntimeScreenSpec = { id: string; title: RuntimeText; navigation: "brand" | "title"; blocks: RuntimeBlockSpec[];
+  /** Optional presentation and foreground refresh, editable in the page inspector. */ tone?: "default" | "night"; refreshSeconds?: number;
   /** Shown when this page is forwarded; without it the page cannot be shared. */ share?: { title: RuntimeText; image: string } };
 /** `hidden` keeps a tab, block or entry in the specification while Mathin stops sending it to every client. */
-export type RuntimeTabSpec = { slot: RuntimeTabSlot; screen: string; label: RuntimeText; icon: string; visibleWhen?: RuntimeRule; hidden?: boolean };
-export type RuntimeSpec = { version: 1; tabs: RuntimeTabSpec[]; screens: RuntimeScreenSpec[] };
+export type RuntimeTabSpec = { slot: RuntimeTabSlot; screen: string; label: RuntimeText; icon: string; order?: number; visibleWhen?: RuntimeRule; hidden?: boolean };
+export type RuntimeSpec = { version: 1; presentation?: "classic" | "app"; tabs: RuntimeTabSpec[]; screens: RuntimeScreenSpec[] };
 
 /* Views sent to clients: text is localized and data is already authorized. */
 export type RuntimeLink = { label: string; action: RuntimeAction };
@@ -268,11 +269,13 @@ export type RuntimeStringKey = typeof runtimeStringKeys[number];
 export type RuntimeTab = { slot: RuntimeTabSlot; label: string; icon: string; activeIcon: string; screen: string; badge?: string };
 export type RuntimeApp = {
   protocol: 1; revision: string; locale: RuntimeLocale; signedIn: boolean;
+  presentation?: "classic" | "app";
   participant?: string | null;
   theme: "paper" | "leaf" | "rose"; brandName: string; tabs: RuntimeTab[]; strings: Record<RuntimeStringKey, string>;
 };
 export type RuntimeScreen = {
   id: string; revision: string; title: string; navigation: "brand" | "title"; signedIn: boolean; participant: string | null; blocks: RuntimeBlockView[];
+  tone?: "default" | "night"; refreshSeconds?: number;
   /** The account's children, for the choose-child action. */ participants: { id: string; name: string }[];
   share: { title: string; image: string } | null;
 };

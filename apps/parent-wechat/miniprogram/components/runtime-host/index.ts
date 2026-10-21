@@ -22,11 +22,14 @@ function tabBar(hidden: boolean | null, slot?: number) {
 }
 
 const subscriptions = new WeakMap<object, () => void>();
+const refreshTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
+function stopRefresh(host: object) { const timer = refreshTimers.get(host); if (timer) clearTimeout(timer); refreshTimers.delete(host); }
 // Hosts one published screen. Tab pages pass their slot; other pages pass the screen id from the link.
 Component({
   options: { styleIsolation: "apply-shared", pureDataPattern: /^_/ },
   properties: { tab: { type: Number, value: 0 }, screenId: { type: String, value: "" }, screenParams: { type: Object, value: {} } },
   data: {
+    presentation: currentApp().presentation || "classic", tone: "default", _refreshSeconds: 0, _expandedList: false,
     strings: currentApp().strings, theme: currentApp().theme, locale: currentApp().locale, title: "", navigation: "title" as "brand" | "title", pageClass: "",
     blocks: [] as RuntimeBlockView[], loading: false, error: "", missing: false, sheet: null as Sheet, reveal: null as Reveal | null, back: false, current: "",
     share: null as RuntimeScreen["share"], _participants: [] as { id: string; name: string }[],
@@ -38,15 +41,16 @@ Component({
       this.setData({ back: !this.data.tab && getCurrentPages().length > 1 });
       subscriptions.set(this, onAppChange(() => { if (this.data._visible) this.show(false); }));
     },
-    detached() { subscriptions.get(this)?.(); subscriptions.delete(this); this.setData({ _generation: this.data._generation + 1 }); },
+    detached() { stopRefresh(this); subscriptions.get(this)?.(); subscriptions.delete(this); this.setData({ _generation: this.data._generation + 1 }); },
   },
   pageLifetimes: {
     show() { this.setData({ _visible: true }); this.show(true); },
-    hide() { this.setData({ _visible: false, sheet: null, reveal: null, _generation: this.data._generation + 1, _sheetGeneration: this.data._sheetGeneration + 1 }); },
+    hide() { stopRefresh(this); this.setData({ _visible: false, sheet: null, reveal: null, _generation: this.data._generation + 1, _sheetGeneration: this.data._sheetGeneration + 1 }); },
   },
   methods: {
     /** Shows the cached copy first, then reads the current publication for this account. */
     show(refreshShell: boolean) {
+      stopRefresh(this);
       const app = currentApp();
       if (this.data.tab && app.revision !== "built-in" && !app.tabs.some(tab => tab.slot === this.data.tab)) {
         wx.switchTab({ url: runtimeTabRoutes[app.tabs[0].slot] }); return;
@@ -57,7 +61,7 @@ Component({
       const changed = screen !== this.data._screen || sessionMarker !== this.data._session || paramsKey !== this.data._paramsKey;
       // The original tab pages keep their page-level background and spacing.
       const pageClass = ({ discover: "discover-page", calendar: "calendar-page", account: "account-page" } as Record<string, string>)[screen] || "";
-      this.setData({ strings: app.strings, theme: app.theme, locale: app.locale, missing: !screen, pageClass, current: screen, _screen: screen,
+      this.setData({ strings: app.strings, theme: app.theme, presentation: app.presentation || "classic", locale: app.locale, missing: !screen, pageClass, current: screen, _screen: screen,
         _session: sessionMarker, _paramsKey: paramsKey, ...(changed ? { blocks: [], title: "", sheet: null, reveal: null, error: "", share: null, _participants: [] } : {}) });
       if (screen) {
         const cached = cachedScreen(screen, this.data.screenParams);
@@ -71,6 +75,7 @@ Component({
       if (scene) resolveCode(scene, "scene").then(effects => this.runEffects(effects, "page"), () => undefined);
     },
     apply(screen: RuntimeScreen) {
+      this.setData({ tone: screen.tone || "default", _refreshSeconds: screen.refreshSeconds || 0, _expandedList: false });
       this.setData({ title: screen.title, navigation: screen.navigation, blocks: prepareBlocks(screen.blocks), error: "", share: screen.share ? { ...screen.share, image: runtimeImage(screen.share.image) } : null, _participants: screen.participants || [] });
       if (!this.data.tab) wx.setNavigationBarTitle({ title: screen.title });
       if (screen.share) wx.showShareMenu({ menus: ["shareAppMessage", "shareTimeline"] }); else wx.hideShareMenu({});
@@ -89,7 +94,18 @@ Component({
         }
       } finally {
         if (generation === this.data._generation) this.setData({ loading: false });
+        this.scheduleRefresh();
       }
+    },
+    scheduleRefresh() {
+      stopRefresh(this);
+      const seconds = this.data._refreshSeconds;
+      if (!this.data._visible || seconds < 15 || seconds > 300 || this.data._expandedList) return;
+      refreshTimers.set(this, setTimeout(() => {
+        refreshTimers.delete(this);
+        if (this.data._visible && !this.data.sheet && !this.data.reveal) void this.load();
+        else this.scheduleRefresh();
+      }, seconds * 1000));
     },
     reload() { return this.load(); },
     async refreshBlock(block: string, extra: Record<string, string> = {}) {
@@ -238,7 +254,8 @@ Component({
         const before = findBlock(this.data.blocks, e.detail.block), next = result.block ? prepareBlocks([result.block])[0] : null;
         if (id !== this.data._screen || generation !== this.data._generation || !next || next.type !== "list" || before?.type !== "list") return;
         const seen = new Set(before.items.map(row => row.id));
-        this.setData({ blocks: replaceBlock(this.data.blocks, e.detail.block, { ...next, items: [...before.items, ...next.items.filter(row => !seen.has(row.id))] }) });
+        stopRefresh(this);
+        this.setData({ _expandedList: true, blocks: replaceBlock(this.data.blocks, e.detail.block, { ...next, items: [...before.items, ...next.items.filter(row => !seen.has(row.id))] }) });
       } catch { wx.showToast({ title: this.data.strings.unavailable, icon: "none" }); }
     },
     refresh(e: WechatMiniprogram.CustomEvent<{ block: string }>) { if (this.data._visible) void this.refreshBlock(e.detail.block); },

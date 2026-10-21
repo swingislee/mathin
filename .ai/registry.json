@@ -175,14 +175,27 @@
         ".tmp/learning-rewards-20261021/",
         "tests/miniapp-runtime-context.test.ts",
         "tests/miniapp-runtime-compatibility.test.ts",
-        "apps/parent-wechat/docs/runtime-v1.md"
+        "apps/parent-wechat/docs/runtime-v1.md",
+        ".tmp/miniapp-v1-redesign-20261021/",
+        "apps/parent-wechat/miniprogram/custom-tab-bar/",
+        "apps/parent-wechat/miniprogram/app.wxss",
+        "src/app/api/v1/admin/learning/",
+        "supabase/migrations/20261021150000_learning_policy_configuration.sql",
+        "supabase/tests/learning_policy_configuration.sql",
+        "tests/miniapp-first-edition.test.ts",
+        "apps/parent-wechat/miniprogram/assets/icons/message.png",
+        "apps/parent-wechat/miniprogram/assets/icons/settings.png",
+        "apps/parent-wechat/miniprogram/assets/icons/headphones.png",
+        "apps/parent-wechat/miniprogram/assets/icons/gift.png",
+        "scripts/parent-wechat-app-icons.mjs",
+        "supabase/migrations/20261021150100_miniapp_first_edition.sql"
       ],
       "sharedPaths": [
         ".ai/registry.json",
         "src/lib/database.types.ts"
       ],
       "checkpoint": null,
-      "next": "完整开发验收数据已按用户要求启用：测试家长两名孩子210/60积分，数字20/实物50，10分奖池90/10及第3次保底（主学员下一抽必得），课堂/作业各4条复习记录。固定主管/老师/家长读回与页面接口通过；模拟器已登录固定家长、选中主学员，积分页210且ready。业务待人工验收；无生产写入、无上传。详细步骤与入口见任务卡。"
+      "next": "开发r33已可验收：发现/日历/我的，消息隐藏；配置草稿/发布、五档概率与多档保底、错题历史和掌握策略接口已完成。原验收规则和下一次保底保留，等待人工验收；未生产部署或上传。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",

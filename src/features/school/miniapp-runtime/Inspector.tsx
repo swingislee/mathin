@@ -241,6 +241,8 @@ function EntriesField({ items, screens, meta, locale, onChange }: { items: Runti
 }
 
 const sourceNames: Record<string, { zh: string; en: string }> = {
+  "account.courses": { zh: "当前孩子的课程", en: "Child’s courses" }, "account.lessons": { zh: "班级课次（classroomId）", en: "Class lessons (classroomId)" },
+  "account.notifications": { zh: "当前账号通知", en: "Account notifications" }, "account.notice": { zh: "通知详情（noticeId）", en: "Notification detail (noticeId)" },
   "rewards.ledger": { zh: "当前孩子积分流水", en: "Child's points ledger" }, "rewards.rules": { zh: "积分规则", en: "Points rules" },
   "rewards.catalog": { zh: "积分兑换奖品", en: "Prizes to redeem" }, "rewards.orders": { zh: "获得记录与领取码", en: "Rewards and pickup codes" }, "rewards.collection": { zh: "我的数字收藏", en: "Digital collection" },
   "learning.mistakes": { zh: "当前孩子错题与复习", en: "Child’s mistakes and review" }, "learning.mistakeDetail": { zh: "习题记录详情（recordId）", en: "Question record detail (recordId)" },
@@ -357,6 +359,9 @@ export function ScreenInspector({ screen, tab, tabs, screens, meta, locale, onSc
   return <div className="space-y-4">
     <p className="text-xs text-muted">{L(locale, "页面", "Page")} · <span className="font-mono">{screen.id}</span></p>
     <TextField label={L(locale, "页面标题", "Page title")} value={screen.title} locale={locale} onChange={title => onScreen({ ...screen, title })} />
+    <Field label={L(locale, "页面配色", "Page colors")}><select className={select} value={screen.tone || "default"} onChange={event => onScreen({ ...screen, tone: event.target.value as "default" | "night" })}>
+      <option value="default">{L(locale, "默认", "Default")}</option><option value="night">{L(locale, "深紫收藏页", "Deep purple collection")}</option></select></Field>
+    <Field label={L(locale, "自动更新间隔（秒，0 关闭）", "Refresh interval (seconds, 0 = off)")}><Input type="number" min={0} max={300} step={15} value={screen.refreshSeconds || 0} onChange={event => onScreen({ ...screen, refreshSeconds: Number(event.target.value) })} /></Field>
     <Field label={L(locale, "顶部标题", "Top bar")}><select className={select} value={screen.navigation} onChange={event => onScreen({ ...screen, navigation: event.target.value as "brand" | "title" })}>
       <option value="title">{L(locale, "居中显示页面标题", "Centered page title")}</option><option value="brand">{L(locale, "左侧显示机构名称", "Brand name at left")}</option></select></Field>
     {screen.navigation === "brand" && <SettingsLink label={L(locale, "机构名称与主题", "Name & theme")} target={{ kind: "brand" }} locale={locale} />}
@@ -371,6 +376,7 @@ export function ScreenInspector({ screen, tab, tabs, screens, meta, locale, onSc
       <ShownField label={L(locale, "在底部导航显示", "Show in the tab bar")} hidden={!!tab.hidden} locale={locale} onChange={hidden => onTab(withHidden(tab, hidden))}
         disabledReason={canHideTab(tabs, tab.slot) ? undefined : tab.slot === 1 ? L(locale, "第 1 项是打开小程序时的首页，不能隐藏。", "Tab 1 opens first and cannot be hidden.") : L(locale, "底部导航至少要显示两项。", "At least two tabs must stay shown.")} />
       <TextField label={L(locale, "导航名称（最多 4 字）", "Tab label")} value={tab.label} locale={locale} onChange={label => onTab({ ...tab, label: { zh: label.zh.slice(0, 8), en: label.en.slice(0, 8) } })} />
+      <Field label={L(locale, "显示顺序", "Display order")}><Input type="number" min={1} max={5} value={tab.order || tab.slot} onChange={event => onTab({ ...tab, order: Number(event.target.value) })} /></Field>
       <IconField value={tab.icon} locale={locale} onChange={icon => onTab({ ...tab, icon })} />
       <RuleField value={tab.visibleWhen} meta={meta} locale={locale} onChange={rule => { const next = { ...tab }; if (rule) next.visibleWhen = rule; else delete next.visibleWhen; onTab(next); }} />
     </div>}

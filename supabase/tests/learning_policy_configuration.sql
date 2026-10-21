@@ -1,0 +1,90 @@
+create function pg_temp.policy_expect_error(statement text, expected text) returns void language plpgsql as $$
+begin
+  begin execute statement; exception when others then if sqlerrm like '%'||expected||'%' then return; end if; raise; end;
+  raise exception 'EXPECTED_ERROR_%',expected;
+end $$;
+do $check$
+declare actor uuid; parent_id uuid; sid uuid:=gen_random_uuid(); other_id uuid:=gen_random_uuid(); cid uuid:=gen_random_uuid(); sess uuid:=gen_random_uuid();
+  check_key uuid:=gen_random_uuid(); aid uuid:=gen_random_uuid(); qid uuid:=gen_random_uuid(); unseen uuid:=gen_random_uuid();
+  r_prize uuid:=gen_random_uuid(); sr_prize uuid:=gen_random_uuid(); ssr_prize uuid:=gen_random_uuid(); sp_prize uuid:=gen_random_uuid(); ur_prize uuid:=gen_random_uuid();
+  pool uuid:=gen_random_uuid(); intent uuid:=gen_random_uuid(); cfg jsonb; prize jsonb; policy jsonb; original jsonb; result jsonb; draft_version integer; live_version integer;
+  count_before integer; balance_before bigint; total numeric; old_draft integer;
+begin
+  select p.id into actor from profiles p join auth.users u on u.id=p.id where u.email='test-admin@mathin.local' and p.purpose='test';
+  select p.id into parent_id from profiles p join auth.users u on u.id=p.id where u.email='test-parent@mathin.local' and p.purpose='test';
+  if actor is null or parent_id is null then raise exception 'FIXED_IDENTITIES_REQUIRED'; end if;
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated','aal','aal2')::text,true);
+  insert into students(id,name,bind_code,purpose,created_by) values(sid,'Policy transaction child',sid::text,'test',actor),(other_id,'Other policy child',other_id::text,'test',actor);
+  insert into student_guardians(student_id,guardian_id,relation,scope,is_primary) values(sid,parent_id,'监护人',array['grades'],true);
+  insert into classrooms(id,owner_id,name,invite_code,capacity,purpose,operational_status) values(cid,actor,'Policy transaction classroom',cid::text,20,'test','active');
+  insert into class_sessions(id,classroom_id,title,ended_at) values(sess,cid,'Policy lesson',now());
+  insert into session_learning_checks(id,session_id,position,title,created_by) values(check_key,sess,0,'Classroom question',actor),(unseen,sess,1,'Never marked',actor);
+  insert into session_learning_check_results(check_id,student_id,status,marked_by) values(check_key,sid,'prompted',actor);
+  insert into assignments(id,classroom_id,session_id,title,content,created_by) values(aid,cid,sess,'Homework','{}',actor);
+  insert into assignment_questions(id,assignment_id,position,title,created_by) values(qid,aid,0,'Homework question',actor);
+  insert into assignment_question_results(question_id,student_id,status,note,version,marked_by) values(qid,sid,'incomplete','Note',1,actor);
+  -- Prepare without publishing: live behavior and versions must stay unchanged.
+  policy:=read_learning_policy('mistakes'); live_version:=(policy->'published'->>'version')::int;
+  cfg:=policy->'published'||'{"enabled":true,"classroom_enabled":true,"homework_enabled":true,"statuses":["prompted","imitated","incomplete","unchecked"],"history_mode":"retain","mastered_statuses":["explained","independent"]}'::jsonb;
+  policy:=save_learning_policy_draft('mistakes',coalesce((policy->>'draftVersion')::int,0),live_version,cfg);
+  draft_version:=(policy->>'draftVersion')::int;
+  if (read_learning_mistake_rules()->>'version')::int<>live_version then raise exception 'DRAFT_CHANGED_LIVE'; end if;
+  perform pg_temp.policy_expect_error(format('select publish_learning_policy(''mistakes'',%s)',draft_version+1),'FORM_CHANGED');
+  policy:=publish_learning_policy('mistakes',draft_version);
+  if (policy->'published'->>'history_mode')<>'retain' or policy->'draft'<>'null'::jsonb then raise exception 'PUBLICATION'; end if;
+  if (select count(*) from learning_mistake_history where student_id=sid)<>2 then raise exception 'INITIAL_CAPTURE'; end if;
+  update session_learning_check_results set status='independent',marked_at=clock_timestamp() where check_id=check_key and student_id=sid;
+  update assignment_question_results set status='explained',version=version+1,marked_at=clock_timestamp() where question_id=qid and student_id=sid;
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',parent_id,'role','authenticated','aal','aal1')::text,true);
+  execute 'set local role authenticated';
+  result:=read_learning_mistakes(sid,null,null,'','mastered');
+  if jsonb_array_length(result->'items')<>2 or jsonb_array_length(read_learning_mistakes(sid)->'items')<>2 then raise exception 'HISTORY_MASTERY'; end if;
+  perform pg_temp.policy_expect_error(format('select read_learning_mistakes(%L)',other_id),'FORBIDDEN');
+  perform pg_temp.policy_expect_error('select read_learning_policy(''mistakes'')','FORBIDDEN');
+  perform pg_temp.policy_expect_error('select * from learning_mistake_history','permission denied');
+  perform pg_temp.policy_expect_error(format('select publish_learning_policy(''mistakes'',%s)',draft_version),'FORBIDDEN');
+  perform pg_temp.policy_expect_error(format('select save_learning_policy_draft(''mistakes'',0,%s,%L)',live_version,cfg),'FORBIDDEN');
+  if exists(select 1 from learning_policy_drafts) then raise exception 'DRAFT_LEAK'; end if;
+  execute 'reset role';
+  update session_learning_check_results set status='incomplete' where check_id=check_key and student_id=sid;
+  if jsonb_array_length(read_learning_mistakes(sid,null,null,'','review')->'items')<>1 then raise exception 'REOPEN_REVIEW'; end if;
+  delete from session_learning_check_results where check_id=check_key and student_id=sid;
+  if (read_learning_mistakes(sid,null,'classroom:'||check_key::text)->'items'->0->>'status')<>'unchecked' then raise exception 'EXPLICIT_RESET'; end if;
+  if exists(select 1 from learning_mistake_history where student_id=sid and record_id='classroom:'||unseen::text) then raise exception 'UNMARKED_INVENTED'; end if;
+  -- Rarity configuration and simultaneous guarantees, deterministic without sampling assumptions.
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated','aal','aal2')::text,true);
+  perform grant_learning_points(gen_random_uuid(),sid,100,'Policy fixture');
+  prize:='{"title":{"zh":"Policy prize","en":""},"description":{"zh":"","en":""},"pickup_instructions":{"zh":"","en":""},"kind":"digital","image":"","points_cost":1,"stock":null,"enabled":true,"redeem_enabled":false}';
+  perform save_learning_reward_prize(r_prize,0,prize); perform save_learning_reward_prize(sr_prize,0,prize);
+  perform save_learning_reward_prize(ssr_prize,0,prize); perform save_learning_reward_prize(sp_prize,0,prize); perform save_learning_reward_prize(ur_prize,0,prize);
+  cfg:=jsonb_build_object('id',pool,'version',0,'title',jsonb_build_object('zh','Policy pool','en',''),'description',jsonb_build_object('zh','','en',''),'enabled',true,'points_cost',10,'daily_limit',0,'total_limit',0,'pity_after',0,
+    'mechanism','{"mode":"rarity","rates":{"R":700000,"SR":200000,"SSR":70000,"SP":20000,"UR":10000},"pities":[{"minRarity":"SSR","after":3},{"minRarity":"UR","after":5}]}'::jsonb,
+    'entries',(select jsonb_agg(jsonb_build_object('prize_id',p,'weight',1,'tier',jsonb_build_object('zh','','en',''),'is_pity',false,'rarity',r)) from unnest(array[r_prize,sr_prize,ssr_prize,sp_prize,ur_prize],array['R','SR','SSR','SP','UR']) as x(p,r)));
+  perform pg_temp.policy_expect_error(format('select save_learning_reward_draw_pool(%L,0,%L)',pool,jsonb_set(cfg,'{mechanism,rates,R}','1')),'VALIDATION');
+  policy:=save_learning_policy_draft('draw:'||pool::text,0,0,cfg); draft_version:=(policy->>'draftVersion')::int; old_draft:=draft_version;
+  if exists(select 1 from learning_reward_draw_pools where id=pool) then raise exception 'NEW_DRAFT_WENT_LIVE'; end if;
+  policy:=publish_learning_policy('draw:'||pool::text,draft_version);
+  insert into learning_reward_draw_state(student_id,pool_id,total_draws,since_pity,rarity_counts) values(sid,pool,4,4,'{"SR":4,"SSR":2,"SP":4,"UR":4}');
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',parent_id,'role','authenticated','aal','aal1')::text,true);
+  execute 'set local role authenticated';
+  result:=read_learning_reward_draws(sid,pool)->'items'->0;
+  if (result->>'forced_rank')::int<>5 then raise exception 'HIGHEST_GUARANTEE'; end if;
+  select sum((e->>'base_probability')::numeric) into total from jsonb_array_elements(result->'entries') e;
+  if abs(total-1)>0.000000001 then raise exception 'BASE_PROBABILITY_TOTAL'; end if;
+  select sum((e->>'actual_probability')::numeric) into total from jsonb_array_elements(result->'entries') e;
+  if total<>1 or exists(select 1 from jsonb_array_elements(result->'entries') e where e->>'rarity'<>'UR' and (e->>'actual_probability')::numeric<>0) then raise exception 'GUARANTEE_PROBABILITIES'; end if;
+  balance_before:=(read_learning_points(sid)->>'balance')::bigint;
+  original:=draw_learning_reward(intent,sid,pool,1,4);
+  if (original->>'prize_id')::uuid<>ur_prize or original->'metadata'->'tier'->>'zh'<>'UR' then raise exception 'RARITY_SELECTION'; end if;
+  if draw_learning_reward(intent,sid,pool,1,4)<>original or (read_learning_points(sid)->>'balance')::bigint<>balance_before-10 then raise exception 'RETRY_ATOMICITY'; end if;
+  if exists(select 1 from jsonb_each_text(read_learning_reward_draws(sid,pool)->'items'->0->'rarity_counts') where value::int<>0) then raise exception 'ALL_MATCHING_GUARANTEES_RESET'; end if;
+  perform pg_temp.policy_expect_error(format('select draw_learning_reward(%L,%L,%L,1,0)',gen_random_uuid(),other_id,pool),'FORBIDDEN');
+  execute 'reset role';
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated','aal','aal2')::text,true);
+  policy:=save_learning_policy_draft('draw:'||pool::text,0,1,cfg); draft_version:=(policy->>'draftVersion')::int;
+  if draft_version=old_draft then raise exception 'DRAFT_VERSION_REUSED'; end if;
+  perform pg_temp.policy_expect_error(format('select publish_learning_policy(%L,%s)','draw:'||pool::text,old_draft),'FORM_CHANGED');
+  perform save_learning_reward_draw_pool(pool,1,cfg);
+  perform pg_temp.policy_expect_error(format('select publish_learning_policy(%L,%s)','draw:'||pool::text,draft_version),'FORM_CHANGED');
+  if (select total_draws from learning_reward_draw_state where student_id=sid and pool_id=pool)<>5 then raise exception 'CONFIG_RESET_CHILD_PROGRESS'; end if;
+end $check$;

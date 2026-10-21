@@ -100,8 +100,10 @@ export const runtimeBlockSchema: z.ZodType<RuntimeBlockSpec> = z.lazy(() => z.di
 ]));
 
 const screen: z.ZodType<RuntimeScreenSpec> = z.object({ id, title: text(40), navigation: z.enum(["brand", "title"]), blocks: z.array(runtimeBlockSchema).max(40),
+  tone: z.enum(["default", "night"]).optional(), refreshSeconds: z.union([z.literal(0), z.number().int().min(15).max(300)]).optional(),
   share: z.object({ title: text(40), image: runtimeImage }).strict().optional() }).strict();
 const tab: z.ZodType<RuntimeTabSpec> = z.object({ slot: z.union(runtimeTabSlots.map(slot => z.literal(slot))), screen: id, label: text(8), icon,
+  order: z.number().int().min(1).max(5).optional(),
   visibleWhen: runtimeRuleSchema.optional(), hidden: z.boolean().optional() }).strict();
 
 function blockIds(blocks: RuntimeBlockSpec[], seen: Set<string>): boolean {
@@ -116,7 +118,7 @@ function blockIds(blocks: RuntimeBlockSpec[], seen: Set<string>): boolean {
 
 /** Saving requires a complete, internally consistent specification. */
 export const runtimeSpecSchema: z.ZodType<RuntimeSpec> = z.object({
-  version: z.literal(1), tabs: z.array(tab).min(2).max(5), screens: z.array(screen).min(1).max(60),
+  version: z.literal(1), presentation: z.enum(["classic", "app"]).optional(), tabs: z.array(tab).min(2).max(5), screens: z.array(screen).min(1).max(60),
 }).strict().superRefine((value, ctx) => {
   const screens = new Set(value.screens.map(row => row.id));
   if (screens.size !== value.screens.length) ctx.addIssue({ code: "custom", path: ["screens"], message: "DUPLICATE_SCREEN" });
@@ -131,7 +133,7 @@ export const runtimeSpecSchema: z.ZodType<RuntimeSpec> = z.object({
 /** Reading keeps every valid screen and block, so one damaged item never removes the rest of a published app. */
 export function tolerantRuntimeSpec(value: unknown): RuntimeSpec | null {
   if (!value || typeof value !== "object") return null;
-  const raw = value as { version?: unknown; tabs?: unknown; screens?: unknown };
+  const raw = value as { version?: unknown; presentation?: unknown; tabs?: unknown; screens?: unknown };
   if (raw.version !== 1 || !Array.isArray(raw.tabs) || !Array.isArray(raw.screens)) return null;
   const blocks = (rows: unknown): RuntimeBlockSpec[] => Array.isArray(rows) ? rows.flatMap((row): RuntimeBlockSpec[] => {
     const type = row && typeof row === "object" ? (row as { type?: unknown }).type : undefined;
@@ -154,5 +156,5 @@ export function tolerantRuntimeSpec(value: unknown): RuntimeSpec | null {
     return parsed.success ? [{ ...parsed.data, blocks: blocks((row as { blocks?: unknown }).blocks) }] : [];
   });
   const tabs = raw.tabs.flatMap(row => { const parsed = tab.safeParse(row); return parsed.success ? [parsed.data] : []; });
-  return { version: 1, tabs, screens };
+  return { version: 1, ...(raw.presentation === "app" || raw.presentation === "classic" ? { presentation: raw.presentation } : {}), tabs, screens };
 }

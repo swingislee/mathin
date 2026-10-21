@@ -77,7 +77,14 @@ export async function fulfilReward(order: string, code: string): Promise<ActionR
 }
 
 export async function loadRewardDrawPools(): Promise<ActionResult<RewardDrawPool[]>> {
-  try { return { ok: true, data: await rpc("learning_reward_draw_pools_admin", {}) as RewardDrawPool[] }; }
+  try {
+    const { supabase } = await authorizedClient("organization.profile.manage");
+    const live = await rpc("learning_reward_draw_pools_admin", {}) as RewardDrawPool[];
+    const drafts = await supabase.from("learning_policy_drafts").select("key,config").like("key", "draw:%");
+    if (drafts.error) throw new Error(drafts.error.message);
+    const saved = (drafts.data ?? []) as unknown as { key: string; config: RewardDrawPool }[];
+    return { ok: true, data: [...live, ...saved.filter(d => !live.some(p => p.id === d.key.slice(5))).map(d => ({ ...d.config, version: 0, enabled: false }))] };
+  }
   catch (error) { return actionError(error, errors); }
 }
 export async function saveRewardDrawPool(value: RewardDrawPool): Promise<ActionResult<RewardDrawPool>> {

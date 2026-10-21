@@ -12,6 +12,9 @@ const item = (value: Partial<RuntimeItem> & Pick<RuntimeItem, "id" | "title">): 
 
 export function sampleItems(source: RuntimeSource, locale: RuntimeLocale): RuntimeItem[] {
   const zh = locale === "zh";
+  if (source === "account.courses") return [item({ id: "sample-course", title: zh ? "数学思维（示例）" : "Mathematical thinking (example)", subtitle: zh ? "下次课 10.24 10:00" : "Next lesson 10.24 10:00", image: "asset:icons/book" })];
+  if (source === "account.lessons") return [item({ id: "sample-lesson", title: zh ? "图形与推理（示例）" : "Shapes and reasoning (example)", date: "2026-10-24", start: "10:00" })];
+  if (source === "account.notifications" || source === "account.notice") return [item({ id: "sample-notice", title: zh ? "课程提醒（示例）" : "Class reminder (example)", summary: zh ? "下次上课时间已更新，请查看课表。" : "The next lesson time has changed. Please check your timetable." })];
   if (source === "rewards.ledger") return [item({ id: "sample-points", title: zh ? "课堂星星（示例）" : "Classroom star (example)", subtitle: "2026.10.21 10:00", status: { label: "+1", tone: "positive" }, meta: [zh ? "变动后余额 12" : "Balance after: 12"] })];
   if (["rewards.draws", "rewards.drawDetail"].includes(source)) return [item({ id: "sample-draw", title: zh ? "学习奖池（示例）" : "Learning pool (example)", summary: zh ? "每次 10 积分；展示每件奖品的概率、次数和保底规则。" : "10 points per draw; displays all prize probabilities, limits and guarantees." })];
   if (["learning.mistakes", "learning.mistakeDetail"].includes(source)) return [item({ id: "sample-mistake", title: zh ? "习题记录（示例）" : "Question record (example)", summary: zh ? "按老师登记的六档学情与后台规则收录。" : "Included from teachers’ learning records using configured statuses.", status: { label: zh ? "提示完成" : "With prompts", tone: "neutral" } })];

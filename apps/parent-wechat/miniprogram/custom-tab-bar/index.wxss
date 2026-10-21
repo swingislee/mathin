@@ -6,6 +6,13 @@
 .runtime-tab.selected { color: #6f8b48; }
 .runtime-tab-icon { width: 56rpx; height: 56rpx; }
 .runtime-tab:not(.selected) .runtime-tab-icon { opacity: 0.86; }
+.runtime-tab-content { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2rpx; }
+.runtime-tab-bar.presentation-app { height: 112rpx; border-top: 0; background: #fff; box-shadow: 0 -4rpx 18rpx rgba(66, 60, 136, .05); }
+.presentation-app .runtime-tab-content { width: 92rpx; height: 92rpx; border-radius: 50%; transition: background .18s, transform .18s; }
+.presentation-app .runtime-tab { color: #93929d; font-size: 21rpx; }
+.presentation-app .runtime-tab-icon { width: 38rpx; height: 38rpx; opacity: .58; }
+.presentation-app .selected .runtime-tab-content { background: #7268f2; color: #fff; transform: translateY(-7rpx); box-shadow: 0 0 0 8rpx #fff; }
+.presentation-app .selected .runtime-tab-icon { filter: brightness(0) invert(1); opacity: 1; }
 @media (prefers-color-scheme: dark) {
   .runtime-tab-bar { background: #212637; border-top-color: rgba(242, 237, 223, 0.1); }
   .runtime-tab { color: #9ba0b0; }

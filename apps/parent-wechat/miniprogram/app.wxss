@@ -176,6 +176,42 @@ button.secondary[disabled] { background: var(--primary-soft); color: var(--prima
 .configured-brand image { width: 88rpx; height: 88rpx; flex-shrink: 0; }
 .theme-rose { --primary: #a34854; --primary-soft: #f8e5e6; --primary-pale: #f1d5d9; }
 .theme-leaf { --primary: #486b38; --primary-soft: #e5eddd; --primary-pale: #d7e6c7; }
+/* App reference: lavender pages, compact white groups and a clear selected tab. */
+.portal-page.presentation-app {
+  --card: #fff; --paper: #f5f5fc;
+  --primary: #756cf0; --primary-soft: #efedff; --primary-pale: #dcd7ff; --portal-base: #efeffb;
+  --quiet: #f5f5fa; --line: #eeeef5; --ink: #262532; --muted: #9593a3; --accent: #f4bf50;
+  --empty-ink: #b7b2ec; --ended-bg: #eeeef1; --ended-ink: #a2a0ac;
+  background: linear-gradient(170deg, #e2dfff 0, #eeedff 340rpx, #f5f5fc 900rpx, #f5f5fc 100%);
+}
+.presentation-app .portal-content { padding: 22rpx 28rpx 42rpx; }
+.presentation-app .surface { border-radius: 28rpx; }
+.presentation-app .section-title { font-size: 28rpx; }
+.presentation-app .section-title::before { width: 6rpx; height: 23rpx; margin-right: 12rpx; }
+.presentation-app .service-grid { gap: 30rpx 12rpx; }
+.presentation-app .service-entry { font-size: 23rpx; gap: 14rpx; }
+.presentation-app .booking-shortcuts { padding: 28rpx 16rpx; }
+.presentation-app .booking-shortcuts button { font-size: 23rpx; gap: 14rpx; }
+.presentation-app .booking-shortcuts .line-icon { padding: 9rpx; border-radius: 12rpx; box-sizing: content-box; background: #e7f0ff; }
+.presentation-app .booking-shortcuts button:nth-child(2) .line-icon { background: #fff1db; }
+.presentation-app .booking-shortcuts button:nth-child(3) .line-icon { background: #e9e7ff; }
+.presentation-app .booking-shortcuts button:nth-child(4) .line-icon { background: #ebf4d6; }
+.presentation-app .feature-entry { background: linear-gradient(115deg, #d6d0ff, #eeebff); min-height: 164rpx; }
+.presentation-app .feature-title { font-size: 34rpx; }
+.presentation-app .feature-art { width: 100rpx; height: 100rpx; }
+.presentation-app .small-pill { background: #9388f6; color: #fff; }
+.presentation-app .account-header-action { background: #9a93f5; color: #fff; }
+.presentation-app .primary { border-radius: 999rpx; color: #fff; }
+.presentation-app .line-icon { filter: none; }
+.presentation-app.tone-night .line-icon { filter: brightness(0) invert(.9); }
+.presentation-app.tone-night {
+  --card: #39317c; --ink: #fff; --muted: #c2bdeb; --line: #5f559f; --quiet: #494087;
+  --primary: #ffd16c; --primary-soft: #50448a; --primary-pale: #6551ad; --accent: #ffd16c;
+  background: radial-gradient(ellipse at 85% 10%, #6455c1, transparent 52%), linear-gradient(155deg, #1c1a4a, #342468 75%);
+}
+.tone-night .feature-entry { min-height: 300rpx; background: linear-gradient(125deg, #7257c0, #493286); }
+.tone-night .feature-art { width: 160rpx; height: 160rpx; }
+.tone-night .small-pill { background: #ffd16c; color: #493167; }
 @media (prefers-color-scheme: dark) {
   .theme-rose { --primary: #f0a2ae; --primary-soft: #3c2b36; --primary-pale: #4b333c; }
   .theme-leaf { --primary: #a9c284; --primary-soft: #2c3829; --primary-pale: #3d4c34; }

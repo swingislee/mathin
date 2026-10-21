@@ -309,12 +309,13 @@ const privateHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-O
 
 function tabsFor(value: Context): RuntimeTab[] {
   return value.published.spec.tabs.filter(row => shown(row, value) && value.published.spec.screens.some(screen => screen.id === row.screen))
-    .sort((a, b) => a.slot - b.slot).map(row => ({ slot: row.slot, label: text(row.label, value), icon: icon(row.icon, true), activeIcon: icon(row.icon, true, true), screen: row.screen }));
+    .sort((a, b) => (a.order ?? a.slot) - (b.order ?? b.slot)).map(row => ({ slot: row.slot, label: text(row.label, value), icon: icon(row.icon, true), activeIcon: icon(row.icon, true, true), screen: row.screen }));
 }
 export async function runtimeAppGet(request: Request) {
   const value = await runtimeContext(request);
   const tabs = tabsFor(value);
   const result: RuntimeApp = { protocol: 1, revision: value.published.revision, locale: value.locale, signedIn: value.identity.signedIn,
+    presentation: value.published.spec.presentation,
     participant: value.identity.participant,
     theme: value.published.settings.brand.theme, brandName: text(value.published.settings.brand.name, value),
     tabs, strings: Object.fromEntries(runtimeStringKeys.map(key => [key, text(runtimeStrings[key], value)])) as RuntimeApp["strings"] };
@@ -347,12 +348,15 @@ async function screenView(value: Context, id: string | null): Promise<RuntimeScr
   const blocks = placeFilters(await children(screen.blocks, value));
   return { id: screen.id, revision: value.published.revision, signedIn: value.identity.signedIn, participant: value.identity.participant,
     title: screen.navigation === "brand" ? text(screen.title, value) || text(value.published.settings.brand.name, value) : text(screen.title, value),
-    navigation: screen.navigation, blocks: runtimeCompatibleBlocks(blocks, value.client, value.locale),
+    navigation: screen.navigation, tone: screen.tone, refreshSeconds: containsForm(screen.blocks) ? 0 : screen.refreshSeconds, blocks: runtimeCompatibleBlocks(blocks, value.client, value.locale),
     participants: value.identity.participants.map(row => ({ id: row.id, name: row.name })), share: screen.share ? { title: text(screen.share.title, value) || text(screen.title, value), image: image(screen.share.image) } : null };
 }
 export async function runtimeScreenGet(request: Request) {
   const value = await runtimeContext(request);
   return Response.json(await screenView(value, value.params.get("id")), { headers: privateHeaders });
+}
+function containsForm(blocks: RuntimeBlockSpec[]): boolean {
+  return blocks.some(block => block.type === "form" || containsForm(runtimeChildren(block)));
 }
 
 /** Renders a draft for the staff canvas: visitors see real public data, the signed-in view uses example records only.

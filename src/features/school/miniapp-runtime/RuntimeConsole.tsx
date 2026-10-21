@@ -7,6 +7,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { addRewardScreens } from "@/features/participant-portal/rewards/screens";
+import { appFirstEdition } from "@/features/participant-portal/runtime/first-edition";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -252,6 +253,7 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
     {saveState === "conflict" && <Button size="sm" variant="secondary" onClick={reload}>{L("重新读取", "Reload")}</Button>}
   </>;
   const phone = preview ? <RuntimePhone title={preview.screen.title} brand={preview.screen.navigation === "brand"} blocks={preview.screen.blocks} tabs={preview.tabs} activeScreen={screen?.id ?? ""}
+    presentation={spec.presentation} tone={preview.screen.tone}
     strings={editLocale === "zh" ? { signIn: "登录", today: "今", weekdays: "一,二,三,四,五,六,日", view: "查看", chooseParticipant: "选择参与人", signInNow: "点击登录", brandSettings: "点击修改名称与主题", more: "加载更多" }
       : { signIn: "Sign in", today: "Today", weekdays: "M,T,W,T,F,S,S", view: "View", chooseParticipant: "Choose participant", signInNow: "Sign in", brandSettings: "Edit name and theme", more: "Load more" }}
     selected={library ? "" : blockId} onSelect={library ? undefined : setBlockId} onTab={id => { setScreenId(id); setBlockId(""); }}
@@ -266,6 +268,7 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
         onChange={event => event.target.value && restore(Number(event.target.value))}>
         <option value="">{L("页面历史版本…", "Page history…")}</option>{bench.history.map(row => <option key={row.revision} value={row.revision}>{L(`第 ${row.revision} 版`, `Version ${row.revision}`)} · {new Date(row.publishedAt).toLocaleString(locale)}</option>)}</select>}
       <Button disabled={pending || shownState === "conflict" || shownState === "invalid"} onClick={() => setPublishOpen(true)}>{L("发布", "Publish")}</Button>
+      <Button variant="secondary" disabled={pending} onClick={() => { setSpec(appFirstEdition); setScreenId("course-home"); setBlockId(""); setNotice(L("App 首版已加入草稿：发现、日历、我的。消息入口隐藏；栏目、页面和功能名称均可继续编辑。", "App first edition added to the draft: Discover, Calendar and Me. Messages is hidden; all labels remain editable.")); }}>{L("使用 App 首版", "Use App first edition")}</Button>
       <Button variant="secondary" disabled={pending} onClick={() => { setSpec(addRewardScreens); setScreenId("learning-points"); setBlockId(""); setNotice(L("学习业务页面已加入草稿，发布后在「我的」显示入口。", "Learning pages added to the draft. Publish to show the account entries.")); }}>{L("接入学习页面", "Add learning pages")}</Button>
       <Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/learning-rewards">{L("积分规则与账本", "Points rules and ledger")}</Link>
     </DashboardCommandActions></DashboardCommandPanel>}>
@@ -283,12 +286,12 @@ export function MiniappRuntimeConsole({ initial, settings: initialSettings, live
               {side === "library" ? <LibraryList settings={doc.settings} target={library} part={part} options={contactOptions} locale={locale} onPart={setPart} onChange={setSettings}
                 onOpen={target => library ? moveInLibrary(target) : openLibrary(target)} /> : <div className="py-2">
                 <p className="px-3 pb-1 text-[11px] font-medium text-muted">{L("底部导航", "Tab bar")}</p>
-                {runtimeTabSlots.map(slot => {
+                {[...runtimeTabSlots].sort((a, b) => (spec.tabs.find(t => t.slot === a)?.order ?? a) - (spec.tabs.find(t => t.slot === b)?.order ?? b)).map(slot => {
                   const row = spec.tabs.find(item => item.slot === slot), target = row && spec.screens.find(item => item.id === row.screen);
                   return row && target ? <div key={"tab-" + slot} className={cn("flex items-center gap-1 pl-3 hover:bg-moon/20", !library && screen?.id === target.id && !blockId && "bg-moon/30 font-medium")}>
                     {shownBox(!!row.hidden, hidden => setTabHidden(slot, hidden), canHideTab(spec.tabs, slot) ? undefined : slot === 1 ? L("第 1 项是打开小程序时的首页，不能隐藏", "Tab 1 opens first") : L("底部导航至少显示两项", "Keep two tabs shown"))}
                     <button type="button" onClick={() => showScreen(target.id)} className={cn("flex min-w-0 flex-1 items-center gap-2 py-2 pl-1 pr-3 text-left text-sm", row.hidden && "opacity-45")}>
-                      <span className="min-w-0 flex-1 truncate">{`${slot} · ${row.label[locale] || row.label.zh}`}</span>
+                      <span className="min-w-0 flex-1 truncate">{`${row.order ?? slot} · ${row.label[locale] || row.label.zh}`}</span>
                       <span className="shrink-0 text-[11px] text-muted">{row.hidden ? L("已隐藏", "Hidden") : row.visibleWhen ? L("有条件", "Rule") : ""}</span></button></div>
                     : spec.tabs.length < 5 && <button type="button" key={"tab-" + slot} onClick={() => addScreen(slot)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-muted hover:bg-moon/20"><Plus className="size-3.5" />{L(`第 ${slot} 项：添加导航`, `Add tab ${slot}`)}</button>;
                 })}

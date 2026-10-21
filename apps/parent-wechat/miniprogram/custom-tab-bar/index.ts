@@ -7,9 +7,9 @@ const subscriptions = new WeakMap<object, () => void>();
 
 // The five tab routes are fixed in app.json; Mathin decides which slots appear, their labels and icons.
 Component({
-  data: { tabs: rows(), selected: 0, hidden: false },
+  data: { tabs: rows(), selected: 0, hidden: false, presentation: currentApp().presentation || "classic" },
   lifetimes: {
-    attached() { this.setData({ tabs: rows() }); subscriptions.set(this, onAppChange(() => this.setData({ tabs: rows() }))); },
+    attached() { this.setData({ tabs: rows(), presentation: currentApp().presentation || "classic" }); subscriptions.set(this, onAppChange(() => this.setData({ tabs: rows(), presentation: currentApp().presentation || "classic" }))); },
     detached() { subscriptions.get(this)?.(); subscriptions.delete(this); },
   },
   methods: {

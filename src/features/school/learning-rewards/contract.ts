@@ -43,19 +43,32 @@ export type RewardOrder = { id: string; origin: "redeem" | "draw"; points_spent:
   snapshot: { title: { zh: string; en: string }; description: { zh: string; en: string }; image: string; kind: "digital" | "physical"; pickupInstructions: { zh: string; en: string }; offerVersion: number; pointsCost: number } };
 export type RewardPage<T> = { items: T[]; next: string | null };
 
+export const rewardRarities = ["R", "SR", "SSR", "SP", "UR"] as const;
+export const drawMechanismSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("weighted") }),
+  z.object({ mode: z.literal("rarity"), rates: z.object({ R: z.number().int().min(0).max(1000000), SR: z.number().int().min(0).max(1000000), SSR: z.number().int().min(0).max(1000000), SP: z.number().int().min(0).max(1000000), UR: z.number().int().min(0).max(1000000) }),
+    pities: z.array(z.object({ minRarity: z.enum(["SR", "SSR", "SP", "UR"]), after: z.number().int().min(1).max(1000000) })).max(4) }),
+]);
 export const rewardDrawPoolSchema = z.object({
   id: z.string().uuid(), version: z.number().int().nonnegative(), title: prizeText(80, true), description: prizeText(1000), enabled: z.boolean(),
   points_cost: z.number().int().min(1).max(1000000), daily_limit: z.number().int().min(0).max(10000),
   total_limit: z.number().int().min(0).max(1000000), pity_after: z.number().int().min(0).max(1000000),
-  entries: z.array(z.object({ prize_id: z.string().uuid(), weight: z.number().int().min(1).max(1000000), tier: prizeText(40), is_pity: z.boolean() })).min(1).max(50),
-}).refine(v => new Set(v.entries.map(e => e.prize_id)).size === v.entries.length && (!v.pity_after || v.entries.some(e => e.is_pity)));
+  mechanism: drawMechanismSchema.optional(),
+  entries: z.array(z.object({ prize_id: z.string().uuid(), weight: z.number().int().min(1).max(1000000), tier: prizeText(40), is_pity: z.boolean(), rarity: z.enum(rewardRarities).optional() })).min(1).max(50),
+}).refine(v => new Set(v.entries.map(e => e.prize_id)).size === v.entries.length && (!v.pity_after || v.entries.some(e => e.is_pity)))
+  .refine(v => { const m = v.mechanism; return m?.mode !== "rarity" || (v.pity_after === 0 && Object.values(m.rates).reduce((a, b) => a + b, 0) === 1000000
+    && v.entries.every(e => e.rarity && m.rates[e.rarity] > 0) && rewardRarities.every(r => m.rates[r] === 0 || v.entries.some(e => e.rarity === r))
+    && new Set(m.pities.map(p => p.minRarity)).size === m.pities.length && m.pities.every(p => rewardRarities.some(r => rewardRarities.indexOf(r) >= rewardRarities.indexOf(p.minRarity) && m.rates[r] > 0))); });
 export type RewardDrawPool = z.infer<typeof rewardDrawPoolSchema>;
-/** Fifty entries with weights up to one million permit probabilities as small as 0.000002%. */
+/** Rarity selection followed by prize weights can produce very small, nonzero probabilities. */
 export function rewardProbability(weight: number, total: number): string {
   const percent = total > 0 ? weight / total * 100 : 0;
-  return `${percent.toFixed(percent > 0 && percent < 0.0001 ? 6 : 4)}%`;
+  const small = percent > 0 && percent < 0.0001;
+  const value = percent.toFixed(small ? Math.min(16, Math.max(6, Math.ceil(-Math.log10(percent)) + 2)) : 4);
+  return `${small ? value.replace(/0+$/, "") : value}%`;
 }
 export type RewardDrawView = Omit<RewardDrawPool, "entries"> & {
-  entries: (RewardDrawPool["entries"][number] & Pick<RewardPrize, "title" | "image" | "kind" | "stock" | "enabled">)[];
+  entries: (RewardDrawPool["entries"][number] & Pick<RewardPrize, "title" | "image" | "kind" | "stock" | "enabled"> & { base_probability?: number; actual_probability?: number })[];
   total_draws: number; since_pity: number; today_draws: number; guaranteed: boolean; blocked: string;
+  rarity_counts?: Partial<Record<typeof rewardRarities[number], number>>; forced_rank?: number;
 };

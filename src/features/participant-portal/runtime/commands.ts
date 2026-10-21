@@ -84,6 +84,12 @@ const handlers: Record<string, Handler> = {
 };
 /** Declare before enabling a new command: an older client must be rejected before any write. */
 const commandVersions: Record<string, number> = { "form.submit": 1, checkin: 1, "subscriptions.record": 1, "rewards.redeem": 1, "rewards.draw": 2 };
+commandVersions["notifications.read"] = 1;
+handlers["notifications.read"] = async (input, identity) => {
+  const notice = id.parse(input.params.noticeId);
+  if (!requireResult(await identity.db.rpc("mark_notification_read", { p_notification_id: notice }))) throw new PortalError("NOT_FOUND");
+  return [{ type: "toast", text: t(input.locale, "已读", "Read"), icon: "success" }, { type: "refresh" }];
+};
 
 export async function runtimeCommandPost(request: Request) {
   const input = commandSchema.parse(await readJson(request));

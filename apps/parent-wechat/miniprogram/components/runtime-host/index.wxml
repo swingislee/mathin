@@ -1,4 +1,4 @@
-<view class="portal-page runtime-page {{pageClass}} theme-{{theme}} {{tab ? 'with-tab-bar' : ''}}">
+<view class="portal-page runtime-page {{pageClass}} theme-{{theme}} presentation-{{presentation}} tone-{{tone}} {{tab ? 'with-tab-bar' : ''}}">
   <app-nav title="{{title}}" brand="{{navigation === 'brand'}}" back="{{back}}" />
   <view class="portal-content">
     <view wx:if="{{missing}}" class="runtime-state"><empty-state label="{{strings.unavailable}}" spacious /><button class="text-button" bindtap="firstTab">{{strings.retry}}</button></view>

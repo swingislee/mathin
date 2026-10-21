@@ -68,7 +68,7 @@ export async function refreshApp(force = false): Promise<RuntimeApp> {
     if (marker !== runtimeContextMarker() || !validApp(value) || value.tabs.length < 1) return currentApp();
     if (value.participant && value.participant !== currentParticipant()) setParticipant(value.participant);
     appCheckedAt = Date.now();
-    const changed = !app || app.revision !== value.revision || app.signedIn !== value.signedIn || app.locale !== value.locale || JSON.stringify(app.tabs) !== JSON.stringify(value.tabs);
+    const changed = !app || app.revision !== value.revision || app.signedIn !== value.signedIn || app.locale !== value.locale || app.presentation !== value.presentation || JSON.stringify(app.tabs) !== JSON.stringify(value.tabs);
     if (value.locale === locale && value.signedIn === Boolean(session())) {
       app = value; appMarker = runtimeContextMarker();
       if (!value.signedIn) write(storageKey("app-" + locale + "-visitor"), value);

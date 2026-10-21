@@ -12,6 +12,7 @@ import { pointsSource } from "../rewards/points";
 import { commerceSource } from "../rewards/commerce";
 import { drawsSource } from "../rewards/draws";
 import { mistakesSource } from "../rewards/mistakes";
+import { schoolSource } from "./school-sources";
 
 const hour = 3_600_000, day = 24 * hour, shanghai = 8 * hour;
 export const shanghaiDate = (ms: number) => new Date(ms + shanghai).toISOString().slice(0, 10);
@@ -85,7 +86,8 @@ async function bookings(input: SourceInput, db: SupabaseClient): Promise<SourceR
 async function tasks(input: SourceInput, db: SupabaseClient): Promise<SourceResult> {
   const rows = (requireResult(await db.rpc("miniapp_my_practices")) ?? []) as ActivityTask[];
   const w = words[input.locale];
-  return { facets: [], items: rows.filter(row => !input.identity.participant || row.participantId === input.identity.participant).map(row => item({
+  return { facets: [], items: rows.filter(row => row.participantId === input.identity.participant)
+    .filter(row => input.params?.status === "pending" ? !row.submittedAt : input.params?.status === "submitted" ? !!row.submittedAt : true).map(row => item({
     id: row.id + ":" + row.participantId, title: row.title, subtitle: row.dueAt ? `${w.due} ${dateTimeLabel(row.dueAt)}` : "", meta: [row.participantName],
     status: row.submittedAt ? { label: w.submitted, tone: "neutral" } : { label: w.pending, tone: "warning" },
     action: { type: "route", route: "task", query: { id: row.id, participant: row.participantId } } })) };
@@ -133,6 +135,7 @@ export async function readSource(source: RuntimeSource, input: SourceInput): Pro
     case "account.tasks": return tasks(input, db);
     case "account.requests": return requests(input, db);
     case "account.events": return events(input, db);
+    case "account.courses": case "account.lessons": case "account.notifications": case "account.notice": return schoolSource(source, input);
     case "rewards.ledger": case "rewards.rules": return pointsSource(source, input);
     case "rewards.catalog": case "rewards.orders": case "rewards.collection": return commerceSource(source, input);
     case "rewards.draws": case "rewards.drawDetail": return drawsSource(source, input);
