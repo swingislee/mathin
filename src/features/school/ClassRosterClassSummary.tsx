@@ -1,7 +1,11 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Link } from "@/i18n/navigation";
+import { LoaderCircle } from "lucide-react";
 import { classRosterLocation, classRosterMessages } from "./class-roster-presentation-contract";
 import type { PlacementRosterRow } from "./placement-table-fields";
 
@@ -13,6 +17,7 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
   lessonCount?: number; lessonsOpen: boolean; onLessonsToggle: () => void; disabled: boolean;
   contentLabel?: string; contentCount?: number;
 }) {
+  const ready = useHydrated();
   const m = classRosterMessages(locale);
   const location = classRosterLocation(row, locale);
   const count = row.classroom ? `${row.classroom.activeCount}/${row.classroom.capacity ?? "∞"}` : String(row.sourceEnrollments?.length ?? 0);
@@ -26,7 +31,7 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
         </div>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-5 text-muted"><span>{location.campus}</span><span>{grade}</span><span>{m.level} {level}</span>{showTeacher && teacher && <span>{teacher}</span>}</p>
       </div>
-      <span data-class-desktop><Popover><PopoverTrigger asChild><Button data-class-info variant="ghost" size="sm" className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left text-xs font-normal hover:bg-transparent hover:underline" aria-label={`${m.info} · ${className}`}>
+      <span data-class-desktop><Popover><PopoverTrigger asChild><Button data-class-info disabled={!ready} variant="ghost" size="sm" className="h-auto min-h-0 w-full justify-start whitespace-normal px-0 py-0 text-left text-xs font-normal hover:bg-transparent hover:underline" aria-label={`${m.info} · ${className}`}>
         <span className="min-w-0 break-words">
           <span className="block leading-5 text-ink">{location.campus}</span>
         </span>
@@ -42,11 +47,11 @@ export function ClassRosterClassSummary({ row, locale, className, courseTitle, t
       </Popover></span>
       <div data-class-mobile>
         <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Button variant={rosterOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled}
+          <Button variant={rosterOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled || !ready} aria-busy={!ready}
             data-class-roster-toggle={row.key} aria-expanded={rosterOpen} aria-controls={rosterId} aria-label={`${contentLabel ? `${locale.startsWith("en") ? rosterOpen ? "Hide" : "Show" : rosterOpen ? "收起" : "展开"}${locale.startsWith("en") ? " " : ""}${contentLabel}` : rosterOpen ? m.hideRoster : m.showRoster} · ${className}`}
             onClick={onRosterToggle}>{contentLabel ?? m.roster} <span className="tabular-nums">{contentCount ?? count}</span></Button>
-          {lessonCount !== undefined && <Button data-class-lessons-toggle variant={lessonsOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled}
-            aria-expanded={lessonsOpen} onClick={onLessonsToggle}>{m.lessons} <span className="tabular-nums">{lessonCount}</span></Button>}
+          {lessonCount !== undefined && <Button data-class-lessons-toggle variant={lessonsOpen ? "secondary" : "ghost"} size="sm" className="min-h-10 px-2 text-xs" disabled={disabled || !ready} aria-busy={!ready}
+            aria-expanded={lessonsOpen} onClick={onLessonsToggle}>{!ready && <LoaderCircle className="size-3 animate-spin motion-reduce:animate-none" />}{m.lessons} <span className="tabular-nums">{lessonCount}</span></Button>}
         </div>
       </div>
     </div>

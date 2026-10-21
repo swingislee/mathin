@@ -3,7 +3,8 @@
 import { useState, type MouseEvent } from "react";
 import dynamic from "next/dynamic";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Link, useRouter } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 import { ClassRosterEntryLink } from "./ClassRosterEntryLink";
 import { classSessionActionPhase, classSessionEntry } from "./class-roster-entry";
 import { classSessionMessages, type ClassRosterSession } from "./class-roster-session-contract";
@@ -39,10 +40,10 @@ export function ClassRosterSessionActions({ session, locale, now, returnTo, canC
   const saved = () => { onRecordsChanged(); router.refresh(); };
   return <div data-class-session-actions data-session-action-phase={phase} role="group" aria-label={m.actions + " · " + (session.title || m.untitled)}
     className="flex flex-wrap items-center justify-end gap-1.5 whitespace-nowrap lg:flex-nowrap" onClick={event => event.stopPropagation()}>
-    {!session.startedAt && !session.endedAt && <Link prefetch={false} data-class-session-prepare
+    {!session.startedAt && !session.endedAt && <DashboardIntentLink data-class-session-prepare
       href={withReturnTo("/dashboard/sessions/" + session.id + "?stage=pre", returnTo)}
       className={buttonVariants({ size: "sm", variant: "secondary", className: actionClass })}
-      onClick={navigate}>{en ? (capabilities.canPrepare ? "Prepare" : "Preparation") : prepareLabel}</Link>}
+      onClick={navigate}>{en ? (capabilities.canPrepare ? "Prepare" : "Preparation") : prepareLabel}</DashboardIntentLink>}
     {phase !== "future" && capabilities.canMarkAttendance && <Button size="sm" variant="secondary" className={actionClass}
       data-session-operation="attendance" onClick={() => open("attendance")}>{en ? "Attendance" : phase === "imminent" ? "点名" : "考勤"}</Button>}
     {["live", "ended", "unconfirmed"].includes(phase) && capabilities.canMarkAttendance && <Button size="sm" variant="secondary" className={actionClass}
@@ -50,8 +51,8 @@ export function ClassRosterSessionActions({ session, locale, now, returnTo, canC
     {phase === "ended" && capabilities.canWriteReview && <>
       <Button size="sm" variant="secondary" className={actionClass} data-session-operation="reviews"
         onClick={() => open("reviews")}>{en ? "Reviews" : "课评"}</Button>
-      <Link prefetch={false} data-session-operation="assignments" href={withReturnTo("/dashboard/sessions/" + session.id + "?stage=post&work=assignments", returnTo)}
-        className={buttonVariants({ size: "sm", variant: "secondary", className: actionClass })} onClick={navigate}>{en ? "Homework" : "作业"}</Link>
+      <DashboardIntentLink data-session-operation="assignments" href={withReturnTo("/dashboard/sessions/" + session.id + "?stage=post&work=assignments", returnTo)}
+        className={buttonVariants({ size: "sm", variant: "secondary", className: actionClass })} onClick={navigate}>{en ? "Homework" : "作业"}</DashboardIntentLink>
     </>}
     {entry && ["future", "imminent", "live"].includes(phase) && <ClassRosterEntryLink entry={entry} locale={locale}
       canChange={canChange} label={entry.mode === "rehearse" ? m.rehearse : m.enter} />}

@@ -3,6 +3,39 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "TEACHER-ENTRY-BROWSER-20261021",
+      "title": "慢网与旧设备模拟下的教师进入教室链路",
+      "agent": "codex",
+      "threadId": "01a13df2-453a-7261-aa65-b50e17ead19b",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/TEACHER-ENTRY-BROWSER-20261021.md",
+      "writePaths": [
+        ".ai/tasks/TEACHER-ENTRY-BROWSER-20261021.md",
+        ".tmp/teacher-entry-browser-20261021/",
+        "scripts/build-ui-font.py",
+        "public/fonts/lxgw-wenkai/lxgwwenkai-ui.css",
+        "public/fonts/lxgw-wenkai/files/lxgwwenkai-ui-0.woff2",
+        "public/fonts/lxgw-wenkai/files/lxgwwenkai-ui-1.woff2",
+        "public/fonts/lxgw-wenkai/files/lxgwwenkai-ui-2.woff2",
+        "public/fonts/lxgw-wenkai/files/lxgwwenkai-ui-3.woff2",
+        "public/fonts/lxgw-wenkai/files/ui/",
+        "src/app/globals.css",
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "src/features/school/ClassRosterSessionRow.tsx",
+        "src/features/school/ClassRosterSessionActions.tsx",
+        "src/features/school/ClassRosterClassSummary.tsx",
+        "src/features/school/dashboard-page/DashboardRowDisclosure.tsx",
+        "src/hooks/use-hydrated.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": "08b369e9",
+      "next": "本轮开发增量已完成：首访字体传输约减少30%，管理与详情按需加载，展开按钮显示事件就绪状态。桌面和手机尺寸慢网链路通过；冷首访仍有约23秒可操作前等待，下一轮从生产构建身份与客户端负载继续。未发布生产、待人工验收。"
+    },
+    {
       "id": "TEACHER-ENTRY-LOAD-20261021",
       "title": "教师班级到课次与教室的加载等待",
       "agent": "codex",

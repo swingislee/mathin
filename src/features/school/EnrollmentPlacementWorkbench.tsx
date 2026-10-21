@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { Fragment, Suspense, lazy, type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { GripVertical, LoaderCircle, Plus, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { STUDENT_360_REFRESH_EVENT } from "./student-360-contract";
@@ -42,10 +43,6 @@ import { canMovePlacement, classWeeklyScheduleLabel, enrollmentErrorKey, placeme
 import { moveEnrollmentSeatAction } from "./enrollment-workflow-actions";
 import { placementRosterSeats, placementSeatTargetError } from "./placement-roster";
 import { useTilePointerDrag } from "./tile-pointer-drag";
-import { SourceEnrollmentPlacementDialog } from './SourceEnrollmentPlacementDialog';
-import { SchoolSupportSeatEntry } from "./SchoolSupportInlineEntry";
-import { SchoolSupportPendingRows } from './SchoolSupportPendingRows';
-import { EnrollmentPlacementChangeDialog } from './EnrollmentPlacementChangeDialog';
 import { readClassSessionResource } from "./class-session-resource";
 import { TeachingProgressCells, TeachingProgressDetails, TeachingProgressHeader, TeachingProgressHelp } from "./teaching-workbench/TeachingProgressCells";
 import { teachingMatrixColumns, teachingMatrixMessages, type TeachingProgressMatrixData } from "./teaching-workbench/teaching-progress-matrix-contract";
@@ -54,6 +51,22 @@ import { StudentLabelControl } from "./StudentLabelControl";
 import { adjacentStudentLabel, focusStudentLabel, studentLabelDirection, studentLabelTriggers } from "./student-label-keyboard";
 import { studentLabelMessages } from "./student-labels-contract";
 import rosterStyles from "./class-roster-layout.module.css";
+
+// These editors are needed only for a specific management action. Teachers can
+// open their class and lesson without downloading the enrollment workflows.
+const SourceEnrollmentPlacementDialog = lazy(() => import("./SourceEnrollmentPlacementDialog").then(module => ({ default: module.SourceEnrollmentPlacementDialog })));
+const SchoolSupportSeatEntry = lazy(() => import("./SchoolSupportInlineEntry").then(module => ({ default: module.SchoolSupportSeatEntry })));
+const SchoolSupportPendingRows = lazy(() => import("./SchoolSupportPendingRows").then(module => ({ default: module.SchoolSupportPendingRows })));
+const EnrollmentPlacementChangeDialog = lazy(() => import("./EnrollmentPlacementChangeDialog").then(module => ({ default: module.EnrollmentPlacementChangeDialog })));
+
+function ManagementLoading({ onClose }: { onClose: () => void }) {
+  const en = useLocale().startsWith("en");
+  return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent className="sm:max-w-lg">
+    <DialogHeader><DialogTitle>{en ? "Loading…" : "正在加载…"}</DialogTitle>
+      <DialogDescription>{en ? "You can close this window and continue with the class." : "可以关闭窗口，继续查看班级。"}</DialogDescription></DialogHeader>
+    <p role="status" className="flex items-center gap-2 text-sm text-muted"><LoaderCircle size={16} className="animate-spin" />{en ? "Preparing the editor…" : "正在准备编辑内容…"}</p>
+  </DialogContent></Dialog>;
+}
 
 interface SeatTarget {
   classroom: PlacementClassroom | null;
@@ -592,7 +605,7 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
           <TableHead data-class-sticky="4" data-class-level-header className="sticky top-0 z-30 whitespace-nowrap border-r border-line bg-card px-1"><DashboardTableColumnHeader label={rosterM.level} {...table.columnProps("difficulty")} /></TableHead>
           <TableHead data-class-progress-heading={progressMode || undefined} className="sticky top-0 z-20 w-full bg-card">{progressMode ? <TeachingProgressHeader columns={progressColumns} locale={locale} /> : <DashboardTableColumnHeader label={t("student")} {...table.columnProps("health")} />}</TableHead>
         </TableRow></TableHeader>
-        <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{rosterScope === "all" && board.access?.canManageEnrollments!==false?<SchoolSupportPendingRows workspace="enrollments" colSpan={5} />:null}{sections.map((section) => {
+        <FollowupTableBody navigation="tree" onNavigate={key => { setActiveRecordKey(key); return true; }}>{rosterScope === "all" && board.access?.canManageEnrollments!==false?<Suspense fallback={<TableRow><TableCell colSpan={5}><span role="status" className="text-xs text-muted">{sessionM.loading}</span></TableCell></TableRow>}><SchoolSupportPendingRows workspace="enrollments" colSpan={5} /></Suspense>:null}{sections.map((section) => {
           const group = section.key;
           if (section.pending) return <Fragment key={group}>
             <TableRow data-class-roster-group={group} data-class-pending-section className="hover:bg-transparent"><TableCell colSpan={5} className="h-8 bg-paper px-2 py-1 font-medium">{rosterM.pendingRoster}<span className="ml-3 text-[11px] font-normal text-muted">{rosterM.studentCount(section.rows.reduce((count, row) => count + pendingStudentsFor(row).length, 0))}</span></TableCell></TableRow>
@@ -693,9 +706,9 @@ export function EnrollmentPlacementWorkbench({ initialBoard, initialTermId, focu
       {workspace === "classes" && canTeach && <div data-teaching-progress-scrollbar-shell className={cn(!progressMode && "invisible")} aria-hidden={!progressMode}>
         <div ref={progressScrollbar} data-teaching-progress-scrollbar tabIndex={progressMode ? 0 : -1} role="region" aria-label={locale.startsWith("en") ? "Scroll lesson progress" : "横向滚动课次进度"}><div data-teaching-progress-scroll-track /></div>
       </div>}
-      {placementChange?<EnrollmentPlacementChangeDialog {...placementChange} transfers={(board.sessionTransfers??[]).filter(t=>t.membershipId===placementChange.student.membershipId)} onClose={()=>setPlacementChange(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setPlacementChange(null);setSelectedKey(null);window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));router.refresh();}}/>:null}
-      {seatEntry?.classroom.courseId?<SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/>:null}
-      {sourceEnrollment?<SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/>:null}
+      {placementChange?<Suspense fallback={<ManagementLoading onClose={() => setPlacementChange(null)} />}><EnrollmentPlacementChangeDialog {...placementChange} transfers={(board.sessionTransfers??[]).filter(t=>t.membershipId===placementChange.student.membershipId)} onClose={()=>setPlacementChange(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setPlacementChange(null);setSelectedKey(null);window.dispatchEvent(new Event(STUDENT_360_REFRESH_EVENT));router.refresh();}}/></Suspense>:null}
+      {seatEntry?.classroom.courseId?<Suspense fallback={<ManagementLoading onClose={() => setSeatEntry(null)} />}><SchoolSupportSeatEntry open onClose={()=>setSeatEntry(null)} classroomName={seatEntry.classroom.name} classroomId={seatEntry.classroom.id} courseId={seatEntry.classroom.courseId} termId={seatEntry.classroom.termId} seat={seatEntry.seat}/></Suspense>:null}
+      {sourceEnrollment?<Suspense fallback={<ManagementLoading onClose={() => setSourceEnrollment(null)} />}><SourceEnrollmentPlacementDialog record={sourceEnrollment} name={history?.students[businessSubjectKey(sourceEnrollment)]??recordM.unknown} options={board.options} locale={locale} onClose={()=>setSourceEnrollment(null)} onSaved={value=>{setSavedBoard({base:initialBoard,value});setSourceEnrollment(null);router.refresh();}}/></Suspense>:null}
       {dragPreview()}
     </div>
   </ClassRosterWorkspace>;

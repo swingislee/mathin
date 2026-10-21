@@ -16,6 +16,7 @@ import { TeachingCoverage, TeachingPerformance } from "./teaching-workbench/Teac
 import type { TeachingObservations } from "./teaching-workbench/teaching-learning-summary";
 
 const loadSessionDetail = () => import("./ClassRosterSessionDetail");
+const warmSessionDetail = () => { void loadSessionDetail().catch(() => undefined); };
 const ClassRosterSessionDetail = dynamic(() => loadSessionDetail().then(module => module.ClassRosterSessionDetail));
 
 /** 课次首行直接操作课前、课堂与课后；第二层展开用于查看材料与连续登记。 */
@@ -56,8 +57,6 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
   const observationCache = useRef<typeof observations>({});
   const [attempt, setAttempt] = useState(0);
   const sessionIds = sessions.filter(hasClassSessionStarted).map(session => session.id).join(",");
-  // 展开班级时预取单课详情代码，点开某一课时只等待该课数据。
-  useEffect(() => { if (expanded && sessions.length) void loadSessionDetail().catch(() => undefined); }, [expanded, sessions.length]);
   useEffect(() => {
     if (!expanded || inlineDetails) return;
     const ids = sessionIds.split(",").filter(id => id && !Object.hasOwn(observationCache.current, id));
@@ -123,7 +122,7 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
             onExpandedChange={open => changeSession(session.id, open)} detailsId={id} title={`${session.title || m.untitled} · ${date(session.scheduledAt)}`} colSpan={5} hideTitle
             summary={<>
               <TableCell><div className="flex min-w-0 items-center gap-1">
-                <DashboardRowDisclosure expanded={isOpen} controls={id} label={m.open} onToggle={() => changeSession(session.id, !isOpen)} />
+                <DashboardRowDisclosure expanded={isOpen} controls={id} label={m.open} onIntent={warmSessionDetail} onToggle={() => changeSession(session.id, !isOpen)} />
                 <div className="min-w-0"><p className="truncate leading-5" title={session.title || m.untitled}>{session.title || m.untitled}</p><p className="text-[11px] text-muted">{date(session.scheduledAt)}</p></div>
               </div></TableCell>
               <TableCell className="text-muted"><p>{t(session.endedAt ? "records.ended" : session.startedAt ? "records.started" : "records.notStarted")}</p><p className="mt-0.5 text-[11px]">{m.attendance} {session.attendanceCount}</p>

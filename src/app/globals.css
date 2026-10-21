@@ -1,4 +1,5 @@
 @import "../../public/fonts/lxgw-wenkai/lxgwwenkai-regular.css";
+@import "../../public/fonts/lxgw-wenkai/lxgwwenkai-ui.css";
 /* Only website code and rendered articles supply utility classes. */
 @import "tailwindcss" source("..");
 @source "../../content";
