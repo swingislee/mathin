@@ -243,6 +243,7 @@ function EntriesField({ items, screens, meta, locale, onChange }: { items: Runti
 const sourceNames: Record<string, { zh: string; en: string }> = {
   "rewards.ledger": { zh: "当前孩子积分流水", en: "Child's points ledger" }, "rewards.rules": { zh: "积分规则", en: "Points rules" },
   "rewards.catalog": { zh: "积分兑换奖品", en: "Prizes to redeem" }, "rewards.orders": { zh: "获得记录与领取码", en: "Rewards and pickup codes" }, "rewards.collection": { zh: "我的数字收藏", en: "Digital collection" },
+  "learning.mistakes": { zh: "当前孩子错题与复习", en: "Child’s mistakes and review" }, "learning.mistakeDetail": { zh: "习题记录详情（recordId）", en: "Question record detail (recordId)" },
   "rewards.draws": { zh: "积分抽取奖池", en: "Points draw pools" }, "rewards.drawDetail": { zh: "奖池规则与抽取（poolId）", en: "Pool rules and draw (poolId)" },
   "activities.catalog": { zh: "公开活动（公开）", en: "Public activities" }, "account.bookings": { zh: "我的预约（需登录）", en: "My bookings (signed in)" },
   "account.tasks": { zh: "我的任务（需登录）", en: "My tasks (signed in)" }, "account.reports": { zh: "学习报告（需登录）", en: "Reports (signed in)" },

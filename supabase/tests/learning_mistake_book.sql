@@ -1,0 +1,72 @@
+create function pg_temp.mistake_expect_error(statement text, expected text) returns void language plpgsql as $$
+begin
+  begin execute statement; exception when others then if sqlerrm like '%'||expected||'%' then return; end if; raise; end;
+  raise exception 'EXPECTED_ERROR_%',expected;
+end $$;
+do $check$
+declare actor uuid; parent_id uuid; sid uuid:=gen_random_uuid(); other_id uuid:=gen_random_uuid(); cid uuid:=gen_random_uuid(); sess uuid:=gen_random_uuid();
+  check_key uuid:=gen_random_uuid(); unmarked uuid:=gen_random_uuid(); aid uuid:=gen_random_uuid(); qid uuid:=gen_random_uuid(); otherq uuid:=gen_random_uuid();
+  result jsonb; rule_version integer; record_id text; observed text;
+begin
+  select p.id into actor from profiles p join auth.users u on u.id=p.id where u.email='test-admin@mathin.local' and p.purpose='test';
+  select p.id into parent_id from profiles p join auth.users u on u.id=p.id where u.email='test-parent@mathin.local' and p.purpose='test';
+  if actor is null or parent_id is null then raise exception 'FIXED_IDENTITIES_REQUIRED'; end if;
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated','aal','aal2')::text,true);
+  insert into students(id,name,bind_code,purpose,created_by) values(sid,'Mistake transaction child',sid::text,'test',actor),(other_id,'Other mistake child',other_id::text,'test',actor);
+  insert into student_guardians(student_id,guardian_id,relation,scope,is_primary) values(sid,parent_id,'监护人',array['grades'],true);
+  insert into classrooms(id,owner_id,name,invite_code,capacity,purpose,operational_status) values(cid,actor,'Mistake transaction classroom',cid::text,20,'test','active');
+  insert into class_sessions(id,classroom_id,title,ended_at) values(sess,cid,'Mistake lesson',now());
+  insert into session_learning_checks(id,session_id,position,title,created_by) values(check_key,sess,0,'Classroom question',actor),(unmarked,sess,1,'Never marked question',actor);
+  insert into session_learning_check_results(check_id,student_id,status,marked_by) values(check_key,sid,'prompted',actor),(check_key,other_id,'incomplete',actor);
+  insert into assignments(id,classroom_id,session_id,title,content,created_by) values(aid,cid,sess,'Homework title','{"text":"Original homework instructions"}',actor);
+  insert into assignment_questions(id,assignment_id,position,title,created_by) values(qid,aid,0,'Homework question',actor),(otherq,aid,1,'Other child only',actor);
+  insert into assignment_question_results(question_id,student_id,status,note,version,marked_by) values(qid,sid,'incomplete','Teacher note',1,actor),(otherq,other_id,'incomplete','Other note',1,actor);
+  rule_version:=(read_learning_mistake_rules()->>'version')::integer;
+  perform save_learning_mistake_rules(rule_version,false,true,true,array['prompted','imitated','incomplete']); rule_version:=rule_version+1;
+  if jsonb_array_length(read_learning_mistakes(sid)->'items')<>2 then raise exception 'STAFF_PREVIEW'; end if;
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',parent_id,'role','authenticated','aal','aal1')::text,true);
+  execute 'set local role authenticated';
+  if jsonb_array_length(read_learning_mistakes(sid)->'items')<>0 then raise exception 'DISABLED_BOOK_VISIBLE'; end if;
+  perform pg_temp.mistake_expect_error(format('select read_learning_mistakes(%L)',other_id),'FORBIDDEN');
+  perform pg_temp.mistake_expect_error('select save_learning_mistake_rules(1,true,true,true,array[''incomplete''])','FORBIDDEN');
+  perform pg_temp.mistake_expect_error('select read_learning_mistake_rules()','FORBIDDEN');
+  perform pg_temp.mistake_expect_error('update learning_mistake_rules set enabled=true','permission denied');
+  execute 'reset role';
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated','aal','aal2')::text,true);
+  perform save_learning_mistake_rules(rule_version,true,true,true,array['prompted','imitated','incomplete']); rule_version:=rule_version+1;
+  perform pg_temp.mistake_expect_error(format('select save_learning_mistake_rules(%s,true,true,true,array[''incomplete''])',rule_version-1),'FORM_CHANGED');
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',parent_id,'role','authenticated','aal','aal1')::text,true);
+  execute 'set local role authenticated';
+  result:=read_learning_mistakes(sid);
+  if jsonb_array_length(result->'items')<>2 then raise exception 'BOTH_SOURCES_REQUIRED'; end if;
+  if jsonb_array_length(read_learning_mistakes(sid,null,null,'homework','incomplete')->'items')<>1 then raise exception 'SOURCE_STATUS_FILTER'; end if;
+  record_id:=result->'items'->0->>'id';
+  if jsonb_array_length(read_learning_mistakes(sid,record_id)->'items')<>1 then raise exception 'PAGINATION'; end if;
+  result:=read_learning_mistakes(sid,null,'homework:'||qid::text);
+  if result->'items'->0->>'instructions'<>'Original homework instructions' or result->'items'->0->>'note'<>'Teacher note' then raise exception 'SOURCE_DETAIL'; end if;
+  perform pg_temp.mistake_expect_error(format('select read_learning_mistakes(%L,null,%L)',sid,'homework:'||otherq::text),'NOT_FOUND');
+  execute 'reset role';
+  update assignment_question_results set status='independent',version=2 where question_id=qid and student_id=sid;
+  result:=read_learning_mistakes(sid);
+  if jsonb_array_length(result->'items')<>1 then raise exception 'REVISION_NOT_REMOVED'; end if;
+  if (read_learning_mistakes(sid,null,'homework:'||qid::text)->'items'->0->>'included')::boolean then raise exception 'OLD_DETAIL_STALE'; end if;
+  perform set_config('request.jwt.claims',jsonb_build_object('sub',actor,'role','authenticated','aal','aal2')::text,true);
+  perform save_learning_mistake_rules(rule_version,true,true,true,array['explained','independent','prompted','imitated','incomplete','unchecked']); rule_version:=rule_version+1;
+  delete from session_learning_check_results where session_learning_check_results.check_id=check_key and student_id=sid;
+  if jsonb_array_length(read_learning_mistakes(sid)->'items')<>2 then raise exception 'UNCHECKED_ADDED_UNOBSERVED'; end if;
+  if read_learning_mistakes(sid,null,'classroom:'||check_key::text)->'items'->0->>'status'<>'unchecked' then raise exception 'CLASSROOM_UNCHECKED_MISSING'; end if;
+  insert into session_learning_check_results(check_id,student_id,status,marked_by) values(check_key,sid,'explained',actor);
+  if exists(select 1 from learning_mistake_classroom_resets x where x.check_id=check_key and x.student_id=sid) then raise exception 'RESET_DUPLICATE'; end if;
+  update assignment_question_results set status='unchecked',version=3 where question_id=qid and student_id=sid;
+  if read_learning_mistakes(sid,null,'homework:'||qid::text)->'items'->0->>'status'<>'unchecked' then raise exception 'HOMEWORK_UNCHECKED_MISSING'; end if;
+  -- Any one of the six recorded statuses can be selected without rewriting the record.
+  foreach observed in array array['explained','independent','prompted','imitated','incomplete','unchecked'] loop
+    update assignment_question_results set status=observed,version=version+1 where question_id=qid and student_id=sid;
+    perform save_learning_mistake_rules(rule_version,true,false,true,array[observed]); rule_version:=rule_version+1;
+    if jsonb_array_length(read_learning_mistakes(sid)->'items')<>1 then raise exception 'SIX_STATUS_SELECTION_%',observed; end if;
+  end loop;
+  perform save_learning_mistake_rules(rule_version,true,true,true,array['explained','unchecked']);
+  update class_sessions set voided_at=now() where id=sess;
+  if jsonb_array_length(read_learning_mistakes(sid)->'items')<>0 then raise exception 'VOIDED_SESSION_VISIBLE'; end if;
+end $check$;
+select 'PASS: six statuses, source filters, current revisions, explicit unchecked, no inferred observations, child isolation, full detail and pagination';

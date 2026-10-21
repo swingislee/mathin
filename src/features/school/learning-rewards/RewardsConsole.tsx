@@ -57,7 +57,7 @@ export function RewardsConsole({ initial, locale }: { initial: RewardRules; loca
     } finally { setBusy(false); }
   }
   return <DashboardPage title={L("学习积分", "Learning rewards")} backHref="/dashboard/miniapp-runtime" backLabel={L("小程序画布", "Mini Program canvas")}
-    commandPanel={<DashboardCommandPanel><DashboardCommandActions><Link className={buttonVariants({ variant: "secondary" })} href="/dashboard/learning-rewards/prizes">{L("兑换与领取", "Prizes and pickups")}</Link><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/learning-rewards/draws">{L("抽取与保底", "Draws and guarantees")}</Link><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/miniapp-runtime">{L("小程序页面", "Mini Program pages")}</Link></DashboardCommandActions></DashboardCommandPanel>}>
+    commandPanel={<DashboardCommandPanel><DashboardCommandActions><Link className={buttonVariants({ variant: "secondary" })} href="/dashboard/learning-rewards/prizes">{L("兑换与领取", "Prizes and pickups")}</Link><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/learning-rewards/draws">{L("抽取与保底", "Draws and guarantees")}</Link><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/learning-mistakes">{L("错题收录", "Mistake book")}</Link><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/miniapp-runtime">{L("小程序页面", "Mini Program pages")}</Link></DashboardCommandActions></DashboardCommandPanel>}>
     {message && <p role="status" className="py-2 text-sm">{message}</p>}
     <section className="space-y-4 border-b border-line pb-5">
       <h2 className="text-base font-semibold">{L("奖励规则", "Reward rules")}</h2>

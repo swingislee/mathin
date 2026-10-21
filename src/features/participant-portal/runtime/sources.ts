@@ -11,6 +11,7 @@ import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 import { pointsSource } from "../rewards/points";
 import { commerceSource } from "../rewards/commerce";
 import { drawsSource } from "../rewards/draws";
+import { mistakesSource } from "../rewards/mistakes";
 
 const hour = 3_600_000, day = 24 * hour, shanghai = 8 * hour;
 export const shanghaiDate = (ms: number) => new Date(ms + shanghai).toISOString().slice(0, 10);
@@ -135,6 +136,7 @@ export async function readSource(source: RuntimeSource, input: SourceInput): Pro
     case "rewards.ledger": case "rewards.rules": return pointsSource(source, input);
     case "rewards.catalog": case "rewards.orders": case "rewards.collection": return commerceSource(source, input);
     case "rewards.draws": case "rewards.drawDetail": return drawsSource(source, input);
+    case "learning.mistakes": case "learning.mistakeDetail": return mistakesSource(source, input);
     default: return reports(input, db);
   }
 }

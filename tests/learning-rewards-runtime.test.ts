@@ -6,11 +6,25 @@ import { addRewardScreens } from "../src/features/participant-portal/rewards/scr
 import { pointsDisplay, pointsSource } from "../src/features/participant-portal/rewards/points";
 import { commerceSource, redeemCommand } from "../src/features/participant-portal/rewards/commerce";
 import { drawCommand, drawsSource } from "../src/features/participant-portal/rewards/draws";
+import { mistakesSource } from "../src/features/participant-portal/rewards/mistakes";
 import { runtimeSpecSchema } from "../src/features/participant-portal/runtime/spec";
 import { runtimeCompatibleBlocks, type RuntimeSpec } from "../contracts/participant-api/runtime";
 import type { SourceInput } from "../src/features/participant-portal/runtime/sources";
 
 describe("points in the existing runtime", () => {
+  it("keeps mistake detail tied to the selected child and identifies a corrected record", async () => {
+    const recordId = "homework:10000000-0000-4000-8000-000000000004";
+    const rpc = vi.fn().mockResolvedValue({ data: { enabled: true, next: null, items: [{ id: recordId, kind: "homework", title: "Question", status: "independent", marked_at: "2026-10-21", classroom_name: "Class", source_title: "Homework", note: "Rechecked", instructions: "Original instructions", included: false }] } });
+    const input = { identity: { db: { rpc }, participant: "selected-child" }, locale: "zh", filters: {}, params: { recordId, participant: "another-child" } } as unknown as SourceInput;
+    const result = await mistakesSource("learning.mistakeDetail", input);
+    expect(rpc.mock.calls[0][1]).toMatchObject({ p_student: "selected-child", p_item: recordId });
+    expect(result.items[0].summary).toContain("已不在当前收录范围");
+    expect(result.items[0].summary).toContain("Original instructions");
+    expect(result.items[0].subtitle).toContain("独立完成");
+    await mistakesSource("learning.mistakeDetail", { ...input, identity: { ...input.identity, participant: null } });
+    await mistakesSource("learning.mistakeDetail", { ...input, params: { recordId: "invalid" } });
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
   it("shows every probability in full before a guaranteed draw and binds its retry to the viewed child state", async () => {
     const poolId = "10000000-0000-4000-8000-000000000003";
     const rpc = vi.fn().mockResolvedValue({ data: { items: [{ id: poolId, version: 4, title: { zh: "奖池", en: "Pool" }, description: { zh: "", en: "" }, points_cost: 10,

@@ -68,7 +68,7 @@
       "title": "小程序页面上下文、长期兼容与后台业务流程",
       "agent": "codex",
       "threadId": "01a15c03-d48b-75a3-9874-800b87d57df2",
-      "status": "in_progress",
+      "status": "done",
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/MINI-RUNTIME-BASELINE-20261021.md",
@@ -94,6 +94,10 @@
         "supabase/tests/learning_reward_redemption.sql",
         "supabase/migrations/20261021120000_learning_reward_draws.sql",
         "supabase/tests/learning_reward_draws.sql",
+        "supabase/migrations/20261021130000_learning_mistake_book.sql",
+        "supabase/tests/learning_mistake_book.sql",
+        "src/features/school/learning-mistakes/",
+        "src/app/[locale]/dashboard/learning-mistakes/",
         "tests/learning-rewards-runtime.test.ts",
         ".tmp/learning-rewards-20261021/",
         "tests/miniapp-runtime-context.test.ts",
@@ -102,7 +106,7 @@
       ],
       "sharedPaths": [".ai/registry.json", "src/lib/database.types.ts"],
       "checkpoint": null,
-      "next": "积分、兑换及抽取三批已开发可用：规则账本、奖品库存、领取核销、公开概率、次数与跨天保底，小程序 r30。定向权限／幂等／并发检查通过，待人工验收。继续六档学情错题；未授权生产发布或小程序上传。"
+      "next": "积分、兑换、抽取与六档学情错题四批已开发可用，小程序 r31；定向权限、幂等、并发余额／库存、保底、学情修订及页面接口检查通过。规则默认关闭，待业务配置和人工验收；无独立题干的记录结合原材料复习，未包含拍照添加。未生产部署或小程序上传。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",
