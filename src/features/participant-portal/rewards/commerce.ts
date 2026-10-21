@@ -12,14 +12,15 @@ const text = (v: { zh: string; en: string }, locale: RuntimeLocale) => v[locale]
 
 export function rewardFailure(code: string, locale: RuntimeLocale): RuntimeEffect[] | null {
   const message = rewardErrors[code];
-  return message && ["INSUFFICIENT_POINTS", "OUT_OF_STOCK", "FORM_CHANGED", "NOT_FOUND"].includes(code)
+  return message && ["INSUFFICIENT_POINTS", "OUT_OF_STOCK", "FORM_CHANGED", "NOT_FOUND", "POOL_UNAVAILABLE", "DRAW_LIMIT"].includes(code)
     ? [{ type: "toast", text: message[locale] }, { type: "refresh" }] : null;
 }
 export function orderEffects(order: RewardOrder, locale: RuntimeLocale, style: "card" | "wheel" = "card"): RuntimeEffect[] {
   const zh = locale === "zh", physical = order.snapshot.kind === "physical";
+  const drawNote = [order.metadata?.tier && text(order.metadata.tier, locale), order.metadata?.guaranteed ? (zh ? "本次为保底抽取" : "Guaranteed draw") : ""].filter(Boolean).join(" · ");
   return [{ type: "reveal", style, title: text(order.snapshot.title, locale), image: order.snapshot.image || (physical ? "asset:icons/activity" : "asset:icons/complete"),
-    body: physical ? (zh ? `领取码 ${order.pickup_code}\n${text(order.snapshot.pickupInstructions, locale)}` : `Pickup code ${order.pickup_code}\n${text(order.snapshot.pickupInstructions, locale)}`)
-      : (zh ? "已加入我的收藏" : "Added to your collection"),
+    body: [drawNote, physical ? (zh ? `领取码 ${order.pickup_code}\n${text(order.snapshot.pickupInstructions, locale)}` : `Pickup code ${order.pickup_code}\n${text(order.snapshot.pickupInstructions, locale)}`)
+      : (zh ? "已加入我的收藏" : "Added to your collection")].filter(Boolean).join("\n"),
     action: { type: "screen", screen: physical ? "learning-rewards-history" : "learning-collection" } }, { type: "refresh" }];
 }
 export async function redeemCommand(input: RewardCommand, identity: RuntimeIdentity): Promise<RuntimeEffect[]> {
@@ -56,7 +57,7 @@ export async function commerceSource(source: string, input: SourceInput): Promis
     return item({ id: o.id, title: text(s.title, input.locale), subtitle: dateTimeLabel(o.created_at), image: s.image || (physical ? "asset:icons/activity" : "asset:icons/complete"),
       summary: physical ? text(s.pickupInstructions, input.locale) : text(s.description, input.locale),
       status: { label: status[o.status][zh ? 0 : 1], tone: o.status === "pending" ? "warning" : "positive" },
-      meta: [zh ? `使用 ${o.points_spent} 积分` : `${o.points_spent} points`, ...(o.status === "pending" ? [zh ? `领取码 ${o.pickup_code}` : `Pickup code ${o.pickup_code}`] : [])],
+      meta: [zh ? `使用 ${o.points_spent} 积分` : `${o.points_spent} points`, ...(o.origin === "draw" ? [zh ? "抽取获得" : "Won in a draw", ...(o.metadata?.tier ? [text(o.metadata.tier, input.locale)] : []), ...(o.metadata?.guaranteed ? [zh ? "保底" : "Guaranteed"] : [])] : []), ...(o.status === "pending" ? [zh ? `领取码 ${o.pickup_code}` : `Pickup code ${o.pickup_code}`] : [])],
       actionLabel: zh ? "复制领取码" : "Copy pickup code", action: o.status === "pending" && o.pickup_code ? { type: "copy", text: o.pickup_code } : null });
   }) };
 }

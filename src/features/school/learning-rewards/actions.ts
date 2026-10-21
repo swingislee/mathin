@@ -3,6 +3,7 @@ import { z } from "zod";
 import { actionError, type ActionResult } from "@/lib/action-result";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
 import { authorizedClient } from "../actions/guards";
+import { rewardDrawPoolSchema, type RewardDrawPool } from "./contract";
 import { rewardRulesSchema, rewardErrors, rewardPrizeSchema, type RewardAccount, type RewardRules, type RewardStudent, type RewardPrize, type RewardPrizeInput, type RewardOrder, type RewardPage } from "./contract";
 
 const errors = Object.keys(rewardErrors);
@@ -73,4 +74,15 @@ export async function loadRewardPickups(code = "", before?: string): Promise<Act
 export async function fulfilReward(order: string, code: string): Promise<ActionResult<RewardOrder>> {
   try { return { ok: true, data: await rpc("fulfil_learning_reward", { p_order: z.string().uuid().parse(order), p_code: z.string().trim().min(1).max(64).parse(code) }) as RewardOrder }; }
   catch (error) { return actionError(error, errors); }
+}
+
+export async function loadRewardDrawPools(): Promise<ActionResult<RewardDrawPool[]>> {
+  try { return { ok: true, data: await rpc("learning_reward_draw_pools_admin", {}) as RewardDrawPool[] }; }
+  catch (error) { return actionError(error, errors); }
+}
+export async function saveRewardDrawPool(value: RewardDrawPool): Promise<ActionResult<RewardDrawPool>> {
+  try {
+    const { id, version, ...config } = rewardDrawPoolSchema.parse(value);
+    return { ok: true, data: await rpc("save_learning_reward_draw_pool", { p_id: id, p_version: version, p_config: config }) as RewardDrawPool };
+  } catch (error) { return actionError(error, errors); }
 }

@@ -5,11 +5,31 @@ vi.mock("@/features/participant-portal/runtime/sources", () => ({ item: (value: 
 import { addRewardScreens } from "../src/features/participant-portal/rewards/screens";
 import { pointsDisplay, pointsSource } from "../src/features/participant-portal/rewards/points";
 import { commerceSource, redeemCommand } from "../src/features/participant-portal/rewards/commerce";
+import { drawCommand, drawsSource } from "../src/features/participant-portal/rewards/draws";
 import { runtimeSpecSchema } from "../src/features/participant-portal/runtime/spec";
 import { runtimeCompatibleBlocks, type RuntimeSpec } from "../contracts/participant-api/runtime";
 import type { SourceInput } from "../src/features/participant-portal/runtime/sources";
 
 describe("points in the existing runtime", () => {
+  it("shows every probability in full before a guaranteed draw and binds its retry to the viewed child state", async () => {
+    const poolId = "10000000-0000-4000-8000-000000000003";
+    const rpc = vi.fn().mockResolvedValue({ data: { items: [{ id: poolId, version: 4, title: { zh: "奖池", en: "Pool" }, description: { zh: "", en: "" }, points_cost: 10,
+      daily_limit: 2, total_limit: 0, pity_after: 3, total_draws: 8, since_pity: 2, today_draws: 0, guaranteed: true, blocked: "",
+      entries: [{ title: { zh: "普通", en: "Common" }, tier: { zh: "", en: "" }, weight: 99, is_pity: false }, { title: { zh: "稀有", en: "Rare" }, tier: { zh: "", en: "" }, weight: 1, is_pity: true }] }], next: null } });
+    const input = { identity: { db: { rpc }, participant: "selected-child" }, locale: "zh", params: { poolId, participant: "another-child" } } as unknown as SourceInput;
+    const page = await drawsSource("rewards.drawDetail", input);
+    expect(rpc.mock.calls[0][1]).toMatchObject({ p_student: "selected-child", p_pool: poolId });
+    expect(page.items[0].summary).toContain("普通: 基础 99.0000% · 本次 0.0000%");
+    expect(page.items[0].summary).toContain("稀有（保底奖）: 基础 1.0000% · 本次 100.0000%");
+    expect(page.items[0].action).toBeUndefined();
+    const action = page.items[1].action;
+    if (action?.type !== "command") throw new Error("Draw action missing");
+    rpc.mockResolvedValue({ error: { message: "DRAW_LIMIT" } });
+    const effects = await drawCommand({ participant: "selected-child", params: action.params!, locale: "zh" }, input.identity);
+    expect(effects[0].type).toBe("toast");
+    expect(rpc.mock.calls[1][1]).toMatchObject({ p_student: "selected-child", p_version: 4, p_expected_total: 8, p_id: action.params!.intentId });
+    await expect(drawCommand({ participant: "other-child", params: action.params!, locale: "zh" }, input.identity)).rejects.toThrow();
+  });
   it("adds editable pages without replacing published content or duplicating the account entry", () => {
     const spec: RuntimeSpec = { version: 1, tabs: [{ slot: 1, screen: "home", label: { zh: "首页", en: "Home" }, icon: "discover" },
       { slot: 3, screen: "me", label: { zh: "我的", en: "Account" }, icon: "account" }], screens: [

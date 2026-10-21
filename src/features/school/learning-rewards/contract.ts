@@ -25,6 +25,8 @@ export const rewardErrors: Record<string, { zh: string; en: string }> = {
   FORM_CHANGED: { zh: "规则已被其他人更新，请重新读取后编辑。", en: "Rules changed. Reload before editing." },
   CONFLICT: { zh: "这次操作已使用不同内容提交，请重新读取。", en: "This request was submitted with different content. Reload." },
   NOT_FOUND: { zh: "未找到这条记录。", en: "Record not found." },
+  POOL_UNAVAILABLE: { zh: "奖池中有奖品暂不可用，恢复后可继续抽取。", en: "A prize is unavailable. Draws will resume when it is restored." },
+  DRAW_LIMIT: { zh: "已达到本奖池的抽取次数限制。", en: "The draw limit for this pool has been reached." },
 };
 
 const prizeText = (max: number, required = false) => z.object({ zh: required ? z.string().trim().min(1).max(max) : z.string().max(max), en: z.string().max(max) }).strict();
@@ -37,5 +39,18 @@ export type RewardPrizeInput = z.infer<typeof rewardPrizeSchema>;
 export type RewardPrize = RewardPrizeInput & { offer_version: number; created_at: string };
 export type RewardOrder = { id: string; origin: "redeem" | "draw"; points_spent: number; status: "collected" | "pending" | "received";
   pickup_code: string | null; created_at: string; fulfilled_at: string | null; student_name?: string;
+  metadata?: { poolTitle?: { zh: string; en: string }; tier?: { zh: string; en: string }; guaranteed?: boolean; isPity?: boolean; drawNumber?: number };
   snapshot: { title: { zh: string; en: string }; description: { zh: string; en: string }; image: string; kind: "digital" | "physical"; pickupInstructions: { zh: string; en: string }; offerVersion: number; pointsCost: number } };
 export type RewardPage<T> = { items: T[]; next: string | null };
+
+export const rewardDrawPoolSchema = z.object({
+  id: z.string().uuid(), version: z.number().int().nonnegative(), title: prizeText(80, true), description: prizeText(1000), enabled: z.boolean(),
+  points_cost: z.number().int().min(1).max(1000000), daily_limit: z.number().int().min(0).max(10000),
+  total_limit: z.number().int().min(0).max(1000000), pity_after: z.number().int().min(0).max(1000000),
+  entries: z.array(z.object({ prize_id: z.string().uuid(), weight: z.number().int().min(1).max(1000000), tier: prizeText(40), is_pity: z.boolean() })).min(1).max(50),
+}).refine(v => new Set(v.entries.map(e => e.prize_id)).size === v.entries.length && (!v.pity_after || v.entries.some(e => e.is_pity)));
+export type RewardDrawPool = z.infer<typeof rewardDrawPoolSchema>;
+export type RewardDrawView = Omit<RewardDrawPool, "entries"> & {
+  entries: (RewardDrawPool["entries"][number] & Pick<RewardPrize, "title" | "image" | "kind" | "stock" | "enabled">)[];
+  total_draws: number; since_pity: number; today_draws: number; guaranteed: boolean; blocked: string;
+};

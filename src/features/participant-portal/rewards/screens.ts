@@ -3,6 +3,7 @@ import { runtimeText as t, type RuntimeBlockSpec, type RuntimeEntrySpec, type Ru
 const entries: RuntimeEntrySpec[] = [
   { id: "points-entry", label: t("我的积分", "My points"), icon: "complete", action: { type: "screen", screen: "learning-points" } },
   { id: "prizes-entry", label: t("积分兑换", "Redeem points"), icon: "activity", action: { type: "screen", screen: "learning-prizes" } },
+  { id: "draws-entry", label: t("积分抽取", "Points draws"), icon: "complete", action: { type: "screen", screen: "learning-draws" } },
   { id: "collection-entry", label: t("我的收藏", "My collection"), icon: "book", action: { type: "screen", screen: "learning-collection" } },
   { id: "reward-orders-entry", label: t("获得与领取", "Rewards and pickups"), icon: "ticket", action: { type: "screen", screen: "learning-rewards-history" } },
 ];
@@ -24,6 +25,8 @@ export const rewardScreens: RuntimeScreenSpec[] = [{
   ],
 }, ...([
   { id: "learning-prizes", title: t("积分兑换", "Redeem points"), source: "rewards.catalog", empty: t("暂未上架奖品", "No prizes available"), template: "card" },
+  { id: "learning-draws", title: t("积分抽取", "Points draws"), source: "rewards.draws", empty: t("暂无开放的奖池", "No pools available"), template: "card" },
+  { id: "learning-draw", title: t("规则与抽取", "Rules and draw"), source: "rewards.drawDetail", empty: t("请从奖池列表进入", "Choose a pool from the list"), template: "message" },
   { id: "learning-collection", title: t("我的收藏", "My collection"), source: "rewards.collection", empty: t("还没有收藏", "No collectibles yet"), template: "tile" },
   { id: "learning-rewards-history", title: t("获得与领取", "Rewards and pickups"), source: "rewards.orders", empty: t("还没有获得记录", "No rewards yet"), template: "row" },
 ] as const).map(s => ({ id: s.id, title: s.title, navigation: "title" as const, blocks: [

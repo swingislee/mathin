@@ -44,7 +44,7 @@ export function PrizeConsole({ initial, initialPickups, locale }: { initial: Rew
   }
   return <DashboardPage title={L("兑换与领取", "Prizes and pickups")} backHref="/dashboard/learning-rewards" backLabel={L("学习积分", "Learning rewards")}
     commandPanel={<DashboardCommandPanel><DashboardCommandActions><Button disabled={busy} onClick={() => setDraft(emptyPrize())}>{L("新增奖品", "New prize")}</Button>
-      <Button variant="ghost" disabled={busy} onClick={reload}>{L("刷新库存", "Refresh stock")}</Button><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/miniapp-runtime">{L("小程序页面", "Mini Program pages")}</Link>
+      <Button variant="ghost" disabled={busy} onClick={reload}>{L("刷新库存", "Refresh stock")}</Button><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/learning-rewards/draws">{L("抽取与保底", "Draws and guarantees")}</Link><Link className={buttonVariants({ variant: "ghost" })} href="/dashboard/miniapp-runtime">{L("小程序页面", "Mini Program pages")}</Link>
     </DashboardCommandActions></DashboardCommandPanel>}>
     {message && <p role="status" className="py-2 text-sm">{message}</p>}
     {draft && <form onSubmit={e => { e.preventDefault(); void save(); }} className="space-y-4 border-b border-line pb-5"><fieldset disabled={busy} className="grid gap-3 sm:grid-cols-2">

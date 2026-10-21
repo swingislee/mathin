@@ -63,7 +63,7 @@ const actionKinds: { kind: ActionKind; zh: string; en: string }[] = [
   { kind: "login", zh: "登录", en: "Sign in" }, { kind: "logout", zh: "退出登录", en: "Sign out" }, { kind: "back", zh: "返回", en: "Back" }, { kind: "refresh", zh: "刷新", en: "Refresh" },
 ];
 /** Commands Mathin runs today; new ones are added on the server and appear here. */
-const commands = [{ value: "checkin", zh: "每日打卡", en: "Daily check-in" }, { value: "rewards.redeem", zh: "兑换奖品（使用奖品数据源提供的参数）", en: "Redeem prize (use catalog parameters)" }];
+const commands = [{ value: "rewards.draw", zh: "积分抽取（使用奖池数据源提供的参数）", en: "Draw (use pool source parameters)" }, { value: "checkin", zh: "每日打卡", en: "Daily check-in" }, { value: "rewards.redeem", zh: "兑换奖品（使用奖品数据源提供的参数）", en: "Redeem prize (use catalog parameters)" }];
 function ParamsField({ value = {}, locale, onChange }: { value?: Record<string, string>; locale: Locale; onChange: (value: Record<string, string> | undefined) => void }) {
   const rows = Object.entries(value);
   const change = (index: number, key: string, text: string) => onChange(Object.fromEntries(rows.map((row, i) => i === index ? [key, text] : row)));
@@ -243,6 +243,7 @@ function EntriesField({ items, screens, meta, locale, onChange }: { items: Runti
 const sourceNames: Record<string, { zh: string; en: string }> = {
   "rewards.ledger": { zh: "当前孩子积分流水", en: "Child's points ledger" }, "rewards.rules": { zh: "积分规则", en: "Points rules" },
   "rewards.catalog": { zh: "积分兑换奖品", en: "Prizes to redeem" }, "rewards.orders": { zh: "获得记录与领取码", en: "Rewards and pickup codes" }, "rewards.collection": { zh: "我的数字收藏", en: "Digital collection" },
+  "rewards.draws": { zh: "积分抽取奖池", en: "Points draw pools" }, "rewards.drawDetail": { zh: "奖池规则与抽取（poolId）", en: "Pool rules and draw (poolId)" },
   "activities.catalog": { zh: "公开活动（公开）", en: "Public activities" }, "account.bookings": { zh: "我的预约（需登录）", en: "My bookings (signed in)" },
   "account.tasks": { zh: "我的任务（需登录）", en: "My tasks (signed in)" }, "account.reports": { zh: "学习报告（需登录）", en: "Reports (signed in)" },
   "account.requests": { zh: "我的申请与留言（需登录）", en: "My requests (signed in)" }, "account.events": { zh: "我的打卡记录（需登录）", en: "My check-ins (signed in)" },

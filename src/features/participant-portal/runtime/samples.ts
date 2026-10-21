@@ -13,6 +13,7 @@ const item = (value: Partial<RuntimeItem> & Pick<RuntimeItem, "id" | "title">): 
 export function sampleItems(source: RuntimeSource, locale: RuntimeLocale): RuntimeItem[] {
   const zh = locale === "zh";
   if (source === "rewards.ledger") return [item({ id: "sample-points", title: zh ? "课堂星星（示例）" : "Classroom star (example)", subtitle: "2026.10.21 10:00", status: { label: "+1", tone: "positive" }, meta: [zh ? "变动后余额 12" : "Balance after: 12"] })];
+  if (["rewards.draws", "rewards.drawDetail"].includes(source)) return [item({ id: "sample-draw", title: zh ? "学习奖池（示例）" : "Learning pool (example)", summary: zh ? "每次 10 积分；展示每件奖品的概率、次数和保底规则。" : "10 points per draw; displays all prize probabilities, limits and guarantees." })];
   if (source === "rewards.rules") return [item({ id: "sample-points-rules", title: zh ? "积分规则（示例）" : "Points rules (example)", summary: zh ? "规则保存后适用于后续奖励。历史流水保留原值。" : "Rules apply to future rewards. History keeps original amounts." })];
   if (["rewards.catalog", "rewards.collection", "rewards.orders"].includes(source)) return [item({ id: "sample-prize", title: zh ? "思考之星（示例）" : "Thinking star (example)", image: "asset:icons/complete", summary: zh ? "数字收藏" : "Digital collectible", meta: [zh ? "10 积分" : "10 points"] })];
   if (source === "account.tasks") return [
