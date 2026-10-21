@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { PortalError, requireResult } from "@/features/parent-portal/server";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
-import { rewardErrors, type RewardDrawView, type RewardOrder, type RewardPage } from "@/features/school/learning-rewards/contract";
+import { rewardErrors, rewardProbability, type RewardDrawView, type RewardOrder, type RewardPage } from "@/features/school/learning-rewards/contract";
 import type { RuntimeEffect } from "../../../../contracts/participant-api/runtime";
 import { item, type RuntimeIdentity, type SourceInput, type SourceResult } from "../runtime/sources";
 import { orderEffects, rewardFailure, type RewardCommand } from "./commerce";
@@ -39,8 +39,8 @@ export async function drawsSource(source: string, input: SourceInput): Promise<S
     zh ? "任一奖品缺货时整个奖池暂停。规则调整后累计次数保留，下一次使用当时公布的规则。" : "The pool pauses if any prize is unavailable. Counts survive rule changes; the next draw uses the published rules."];
   // The message template renders full text; ordinary row summaries clamp after two lines.
   const rates = p.entries.map(e => {
-    const base = `${(e.weight / sum * 100).toFixed(4)}%`, actual = `${(!p.guaranteed ? e.weight / sum : e.is_pity ? e.weight / guaranteedSum : 0) * 100}`;
-    return `${text(e.title)}${text(e.tier) ? ` · ${text(e.tier)}` : ""}${e.is_pity ? (zh ? "（保底奖）" : " (guaranteed prize)") : ""}: ${zh ? "基础" : "base"} ${base}${p.guaranteed ? ` · ${zh ? "本次" : "this draw"} ${Number(actual).toFixed(4)}%` : ""}`;
+    const base = rewardProbability(e.weight, sum), actual = rewardProbability(e.is_pity ? e.weight : 0, guaranteedSum);
+    return `${text(e.title)}${text(e.tier) ? ` · ${text(e.tier)}` : ""}${e.is_pity ? (zh ? "（保底奖）" : " (guaranteed prize)") : ""}: ${zh ? "基础" : "base"} ${base}${p.guaranteed ? ` · ${zh ? "本次" : "this draw"} ${actual}` : ""}`;
   });
   return { facets: [], items: [item({ id: p.id, title: text(p.title), summary: [text(p.description), ...rules, ...rates, p.blocked ? rewardErrors[p.blocked]?.[input.locale] : ""].filter(Boolean).join("\n"),
     subtitle: zh ? `已抽 ${p.total_draws} 次${p.guaranteed ? " · 本次触发保底" : ""}` : `${p.total_draws} draws completed${p.guaranteed ? " · Guaranteed draw" : ""}` }),

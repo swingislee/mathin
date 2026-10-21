@@ -50,6 +50,11 @@ export const rewardDrawPoolSchema = z.object({
   entries: z.array(z.object({ prize_id: z.string().uuid(), weight: z.number().int().min(1).max(1000000), tier: prizeText(40), is_pity: z.boolean() })).min(1).max(50),
 }).refine(v => new Set(v.entries.map(e => e.prize_id)).size === v.entries.length && (!v.pity_after || v.entries.some(e => e.is_pity)));
 export type RewardDrawPool = z.infer<typeof rewardDrawPoolSchema>;
+/** Fifty entries with weights up to one million permit probabilities as small as 0.000002%. */
+export function rewardProbability(weight: number, total: number): string {
+  const percent = total > 0 ? weight / total * 100 : 0;
+  return `${percent.toFixed(percent > 0 && percent < 0.0001 ? 6 : 4)}%`;
+}
 export type RewardDrawView = Omit<RewardDrawPool, "entries"> & {
   entries: (RewardDrawPool["entries"][number] & Pick<RewardPrize, "title" | "image" | "kind" | "stock" | "enabled">)[];
   total_draws: number; since_pity: number; today_draws: number; guaranteed: boolean; blocked: string;

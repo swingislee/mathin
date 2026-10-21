@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DashboardCommandActions, DashboardCommandPanel, DashboardPage } from "../dashboard-page";
 import { newId } from "@/lib/uuid";
 import { loadRewardDrawPools, saveRewardDrawPool } from "./actions";
-import { rewardErrors, type RewardDrawPool, type RewardPrize } from "./contract";
+import { rewardErrors, rewardProbability, type RewardDrawPool, type RewardPrize } from "./contract";
 
 const emptyPool = (): RewardDrawPool => ({ id: newId(), version: 0, title: { zh: "", en: "" }, description: { zh: "", en: "" }, enabled: false,
   points_cost: 10, daily_limit: 1, total_limit: 0, pity_after: 0, entries: [] });
@@ -46,7 +46,7 @@ export function DrawConsole({ initial, prizes, locale }: { initial: RewardDrawPo
             <label className="text-sm">{L("档位（英文）", "Tier (English)")}<Input maxLength={40} value={entry.tier.en} onChange={e => update({ tier: { ...entry.tier, en: e.target.value } })} /></label>
             <Button type="button" variant="ghost" onClick={() => setDraft({ ...draft, entries: draft.entries.filter((_, i) => i !== index) })}>{L("移除", "Remove")}</Button>
             <label className="flex items-center gap-2 text-sm sm:col-span-2"><input type="checkbox" checked={entry.is_pity} onChange={e => update({ is_pity: e.target.checked })} />{L("保底奖品", "Guaranteed prize")}</label>
-            <span className="text-sm sm:col-span-4">{L("基础", "Base")}: {weight ? (entry.weight / weight * 100).toFixed(4) : "0"}%{entry.is_pity && draft.pity_after > 0 ? ` · ${L("触发保底时", "On guarantee")}: ${pityWeight ? (entry.weight / pityWeight * 100).toFixed(4) : "0"}%` : ""}</span>
+            <span className="text-sm sm:col-span-4">{L("基础", "Base")}: {rewardProbability(entry.weight, weight)}{entry.is_pity && draft.pity_after > 0 ? ` · ${L("触发保底时", "On guarantee")}: ${rewardProbability(entry.weight, pityWeight)}` : ""}</span>
           </div>;
         })}
         <Button type="button" variant="secondary" disabled={draft.entries.length >= 50 || draft.entries.length >= prizes.length} onClick={() => setDraft({ ...draft, entries: [...draft.entries, { prize_id: "", weight: 1, tier: { zh: "", en: "" }, is_pity: false }] })}>{L("添加奖品", "Add prize")}</Button>

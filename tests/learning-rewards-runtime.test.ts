@@ -7,11 +7,17 @@ import { pointsDisplay, pointsSource } from "../src/features/participant-portal/
 import { commerceSource, redeemCommand } from "../src/features/participant-portal/rewards/commerce";
 import { drawCommand, drawsSource } from "../src/features/participant-portal/rewards/draws";
 import { mistakesSource } from "../src/features/participant-portal/rewards/mistakes";
+import { rewardProbability } from "../src/features/school/learning-rewards/contract";
 import { runtimeSpecSchema } from "../src/features/participant-portal/runtime/spec";
 import { runtimeCompatibleBlocks, type RuntimeSpec } from "../contracts/participant-api/runtime";
 import type { SourceInput } from "../src/features/participant-portal/runtime/sources";
 
 describe("points in the existing runtime", () => {
+  it("does not round an allowed nonzero chance down to zero", () => {
+    expect(rewardProbability(1, 50_000_000)).toBe("0.000002%");
+    expect(rewardProbability(0, 1)).toBe("0.0000%");
+    expect(rewardProbability(1, 1)).toBe("100.0000%");
+  });
   it("keeps mistake detail tied to the selected child and identifies a corrected record", async () => {
     const recordId = "homework:10000000-0000-4000-8000-000000000004";
     const rpc = vi.fn().mockResolvedValue({ data: { enabled: true, next: null, items: [{ id: recordId, kind: "homework", title: "Question", status: "independent", marked_at: "2026-10-21", classroom_name: "Class", source_title: "Homework", note: "Rechecked", instructions: "Original instructions", included: false }] } });
