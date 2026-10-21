@@ -13,8 +13,9 @@ import { withReturnTo } from "./object-workspace/return-target";
 const AttendanceDrawer = dynamic(() => import("./AttendanceDrawer").then(module => module.AttendanceDrawer));
 const PostclassLearningEditor = dynamic(() => import("./PostclassLearningEditor").then(module => module.PostclassLearningEditor));
 const ReviewDrawer = dynamic(() => import("./ReviewDrawer").then(module => module.ReviewDrawer));
+const SessionMakeupDialog = dynamic(() => import("./SessionMakeupDialog").then(module => module.SessionMakeupDialog));
 const actionClass = "min-h-9 shrink-0 whitespace-nowrap px-2 text-xs";
-type Operation = "attendance" | "learning" | "reviews";
+type Operation = "attendance" | "learning" | "reviews" | "makeup";
 
 /** 入口属于明确课次；只有选中的登记器才加载，进入后直接处理对应任务。 */
 export function ClassRosterSessionActions({ session, locale, now, returnTo, canChange, onRecordsChanged, onPublishingChange }: {
@@ -54,12 +55,15 @@ export function ClassRosterSessionActions({ session, locale, now, returnTo, canC
       <DashboardIntentLink data-session-operation="assignments" href={withReturnTo("/dashboard/sessions/" + session.id + "?stage=post&work=assignments", returnTo)}
         className={buttonVariants({ size: "sm", variant: "secondary", className: actionClass })} onClick={navigate}>{en ? "Homework" : "作业"}</DashboardIntentLink>
     </>}
+    {["live", "ended", "unconfirmed"].includes(phase) && capabilities.canMarkAttendance && <Button size="sm" variant="secondary" className={actionClass}
+      data-session-operation="makeup" onClick={() => open("makeup")}>{en ? "Makeup" : "补课"}</Button>}
     {entry && ["future", "imminent", "live"].includes(phase) && <ClassRosterEntryLink entry={entry} locale={locale}
       canChange={canChange} label={entry.mode === "rehearse" ? m.rehearse : m.enter} />}
     {operation === "attendance" && <AttendanceDrawer sessionId={session.id} openInitially onClose={close}
       mode={phase === "ended" || phase === "unconfirmed" ? "amend" : "initial"} onSaved={saved} />}
     {operation === "learning" && <PostclassLearningEditor sessionId={session.id} openInitially onClose={close} view="learning"
       onSaved={saved} />}
+    {operation === "makeup" && <SessionMakeupDialog sessionId={session.id} sessionTitle={session.title || m.untitled} onClose={close} />}
     {operation === "reviews" && <ReviewDrawer sessionId={session.id} openInitially onClose={close} showPublish
       resultStatus={session.reviewStatus} onPublishingChange={onPublishingChange} onSaved={rows => {
         onRecordsChanged(rows.filter(row => row.comment.trim() || [row.entryScore, row.exitScore, row.focus, row.participation, row.mastery].some(value => value !== null)).length);

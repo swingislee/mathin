@@ -3,6 +3,32 @@
   "coordinatorTaskId": null,
   "tasks": [
     {
+      "id": "TEACHER-MAKEUP-20261021",
+      "title": "老师直接记录部分学生补课",
+      "agent": "codex",
+      "threadId": "01a15a0f-d144-7332-bc04-b18e502c402e",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/TEACHER-MAKEUP-20261021.md",
+      "writePaths": [
+        ".ai/tasks/TEACHER-MAKEUP-20261021.md",
+        ".tmp/teacher-makeup-20261021/",
+        "src/features/school/ClassRosterSessionActions.tsx",
+        "src/features/school/SessionMakeupDialog.tsx",
+        "src/features/school/session-makeup-contract.ts",
+        "src/features/school/session-makeup-actions.ts",
+        "supabase/migrations/20261021140000_teacher_session_makeups.sql",
+        "supabase/tests/teacher_session_makeups.sql"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/lib/database.types.ts"
+      ],
+      "checkpoint": null,
+      "next": "老师可从原课右侧直接选择补课学生、保存安排及独立考勤学情；开发迁移、定向权限/数据隔离与静态检查通过，待人工验收。无需教务参与，未部署生产。"
+    },
+    {
       "id": "TEACHER-ENTRY-BROWSER-20261021",
       "title": "慢网与旧设备模拟下的教师进入教室链路",
       "agent": "codex",
