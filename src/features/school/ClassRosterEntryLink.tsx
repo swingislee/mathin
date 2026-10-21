@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
-import { classSessionMessages } from "./class-roster-session-contract";
+import { classSessionMessages } from "./class-roster-session-presentation";
 import type { ClassRosterEntry } from "./class-roster-entry";
 
 export function useClassRosterEntryNow(initialNow: number) {

@@ -1,10 +1,11 @@
 "use client";
 
 import { useId, useState } from "react";
+import dynamic from "next/dynamic";
+import { useLocale } from "next-intl";
 import { ArrowDown, ArrowUp, Check, ListFilter, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -16,6 +17,13 @@ import {
   type DashboardDateContext, type DashboardDateGrain,
 } from "./dashboard-table-date-contract";
 import type { DashboardFieldFilter, DashboardFieldOption } from "./dashboard-table-field-contract";
+
+function LoadingDatePicker() {
+  const en = useLocale().startsWith("en");
+  return <p role="status" className="h-8 text-xs text-muted">{en ? "Loading date picker…" : "正在加载日期选择器…"}</p>;
+}
+
+const DateTimePicker = dynamic(() => import("@/components/ui/date-time-picker").then(module => module.DateTimePicker), { loading: LoadingDatePicker });
 
 export interface DashboardFieldControl {
   id: string;

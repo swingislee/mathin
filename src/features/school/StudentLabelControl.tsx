@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useRouter } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import { setClassStudentLabelAction } from "./student-labels-actions";
-import { STUDENT_LABELS, studentLabelColors, studentLabelMessages, type StudentLabel, type StudentLabelState } from "./student-labels-contract";
+import { STUDENT_LABELS, studentLabelColors, studentLabelMessages, type StudentLabel, type StudentLabelState } from "./student-labels-presentation";
 import { adjacentStudentLabel, focusStudentLabel, openStudentLabelDetails, studentLabelDirection } from "./student-label-keyboard";
 
 /** A separate control beside the name preserves its existing profile and drag actions. */

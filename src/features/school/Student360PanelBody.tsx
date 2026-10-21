@@ -1,0 +1,568 @@
+"use client";
+
+import { SourceCompletionNotice } from "./SourceCompletionNotice";
+import { MiniappGuardianInvite } from "./MiniappGuardianInvite";
+import dynamic from "next/dynamic";
+import { ArrowRight, ArrowUpRight, LoaderCircle, PanelRightClose, RefreshCw, UserRoundSearch } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
+import { businessRecordMessages } from "./business-record-messages";
+import { SourceDateText } from "./SourceDateText";
+import { getStudentBusinessHistoryMessages } from "./student-business-history-messages";
+import { STUDENT_LIFECYCLE_ROADMAP, STUDENT_LIFECYCLE_STAGES } from "./student-lifecycle-contract";
+import { type Student360Event, type Student360Fact, type Student360FallbackIdentity, type Student360Phase, type Student360Snapshot } from "./student-360-contract";
+
+type TimelineFilter = "all" | "business" | "teaching" | "notes";
+const LeadIdentityControl = dynamic(() => import("./LeadIdentityControl").then((module) => module.LeadIdentityControl));
+const StudentMergePanel = dynamic(() => import("./StudentMergePanel").then(module => module.StudentMergePanel));
+const SchoolSupportProfileButton = dynamic(() => import("./SchoolSupportProfile").then((module) => module.SchoolSupportProfileButton));
+const SchoolRecordSourceReview = dynamic(() => import("./SchoolRecordSourceReview").then(module => module.SchoolRecordSourceReview));
+const WechatFamilyDetails = dynamic(() => import("./promotions/WechatFamilyDetails").then(module => module.WechatFamilyDetails));
+const Student360ProfileField = dynamic(() => import('./Student360ProfileField').then(module => module.Student360ProfileField));
+
+const BUSINESS_PHASES = new Set<Student360Phase>([
+  "source",
+  "contact",
+  "invitation",
+  "experience",
+  "assessment",
+]);
+
+const STATUS_KEYS: Record<string, string> = {
+  "lead.unassigned": "status_lead_unassigned",
+  "lead.uncontacted": "status_lead_uncontacted",
+  "lead.contacted": "status_lead_contacted",
+  "lead.nurture": "status_lead_nurture",
+  "lead.intent_confirmed": "status_lead_intent_confirmed",
+  "lead.invalid": "status_lead_invalid",
+  "lead.converted": "status_lead_converted",
+  "identity.student": "status_identity_student",
+  "contact.unreachable": "status_contact_unreachable",
+  "contact.connected": "status_contact_connected",
+  "contact.declined": "status_contact_declined",
+  "contact.invalid_number": "status_contact_invalid_number",
+  "next_action.open": "status_next_action_open",
+  "next_action.completed": "status_next_action_completed",
+  "next_action.cancelled": "status_next_action_cancelled",
+  "invitation.coordinating_time": "status_invitation_coordinating_time",
+  "invitation.awaiting_teacher": "status_invitation_awaiting_teacher",
+  "invitation.awaiting_parent": "status_invitation_awaiting_parent",
+  "invitation.confirmed": "status_invitation_confirmed",
+  "invitation.waiting_activity": "status_invitation_waiting_activity",
+  "invitation.completed": "status_invitation_completed",
+  "invitation.cancelled": "status_invitation_cancelled",
+  "registration.booked": "status_registration_booked",
+  "registration.attended": "status_registration_attended",
+  "registration.no_show": "status_registration_no_show",
+  "registration.cancelled": "status_registration_cancelled",
+  "assessment.below_a": "status_assessment_below_a",
+  "assessment.a": "status_assessment_a",
+  "assessment.a_plus": "status_assessment_a_plus",
+  "assessment.g_plus": "status_assessment_g_plus",
+  "assessment.s": "status_assessment_s",
+  "assessment.x_plus": "status_assessment_x_plus",
+  "assessment.needs_support": "status_assessment_needs_support",
+  "assessment.developing": "status_assessment_developing",
+  "assessment.on_track": "status_assessment_on_track",
+  "assessment.advanced": "status_assessment_advanced",
+  "route.continue_follow_up": "status_route_continue_follow_up",
+  "route.await_product": "status_route_await_product",
+  "route.closed": "status_route_closed",
+  "presence.expected": "status_presence_expected",
+  "presence.attended": "status_presence_attended",
+  "presence.late": "status_presence_late",
+  "presence.absent": "status_presence_absent",
+  "presence.not_applicable": "status_presence_not_applicable",
+  "followup.note": "status_followup_note",
+  "followup.call": "status_followup_call",
+  "followup.class": "status_followup_class",
+  "followup.visit": "status_followup_visit",
+  "followup.activity": "status_followup_activity",
+  "enrollment.active": "status_enrollment_active",
+  "enrollment.completed": "status_enrollment_completed",
+  "enrollment.transferred_out": "status_enrollment_transferred_out",
+  "enrollment.withdrawn": "status_enrollment_withdrawn",
+  "attendance.present": "status_attendance_present",
+  "attendance.absent": "status_attendance_absent",
+  "attendance.late": "status_attendance_late",
+  "attendance.leave": "status_attendance_leave",
+  "lesson.reviewed": "status_lesson_reviewed",
+};
+
+const POSITIVE_STATUSES = new Set([
+  "identity.student",
+  "contact.connected",
+  "invitation.confirmed",
+  "invitation.completed",
+  "registration.attended",
+  "presence.attended",
+  "enrollment.active",
+  "attendance.present",
+  "lesson.reviewed",
+]);
+const RISK_STATUSES = new Set([
+  "lead.invalid",
+  "contact.declined",
+  "contact.invalid_number",
+  "invitation.cancelled",
+  "registration.no_show",
+  "registration.cancelled",
+  "presence.absent",
+  "enrollment.withdrawn",
+  "attendance.absent",
+]);
+
+const CODE_KEYS: Partial<Record<Student360Fact["label"], Record<string, string>>> = {
+  channel: {
+    phone: "code_channel_phone",
+    wechat: "code_channel_wechat",
+    in_person: "code_channel_in_person",
+    other: "code_channel_other",
+  },
+  next_action_kind: {
+    initial_contact: "code_next_action_kind_initial_contact",
+    retry: "code_next_action_kind_retry",
+    wechat_followup: "code_next_action_kind_wechat_followup",
+    visit_confirmation: "code_next_action_kind_visit_confirmation",
+    invitation_followup: "code_next_action_kind_invitation_followup",
+    nurture: "code_next_action_kind_nurture",
+    other: "code_next_action_kind_other",
+  },
+  invitation_kind: {
+    assessment_1v1: "code_invitation_kind_assessment_1v1",
+    activity: "code_invitation_kind_activity",
+    waiting_activity: "code_invitation_kind_waiting_activity",
+  },
+  activity_kind: {
+    trial_class: "code_activity_kind_trial_class",
+    assessment_1v1: "code_activity_kind_assessment_1v1",
+    sanbanfu: "code_activity_kind_sanbanfu",
+    lecture: "code_activity_kind_lecture",
+    competition: "code_activity_kind_competition",
+    public_class: "code_activity_kind_public_class",
+  },
+  band: {
+    below_a: "status_assessment_below_a",
+    a: "status_assessment_a",
+    a_plus: "status_assessment_a_plus",
+    g_plus: "status_assessment_g_plus",
+    s: "status_assessment_s",
+    x_plus: "status_assessment_x_plus",
+    needs_support: "status_assessment_needs_support",
+    developing: "status_assessment_developing",
+    on_track: "status_assessment_on_track",
+    advanced: "status_assessment_advanced",
+  },
+  student_presence: {
+    expected: "status_presence_expected",
+    attended: "status_presence_attended",
+    late: "status_presence_late",
+    absent: "status_presence_absent",
+    not_applicable: "status_presence_not_applicable",
+  },
+  guardian_presence: {
+    expected: "status_presence_expected",
+    attended: "status_presence_attended",
+    late: "status_presence_late",
+    absent: "status_presence_absent",
+    not_applicable: "status_presence_not_applicable",
+  },
+};
+
+function errorKey(code: string): string {
+  if (code === "NOT_FOUND") return "error_not_found";
+  if (code === "FORBIDDEN" || code === "FORBIDDEN_SCOPE" || code === "UNAUTHENTICATED") return "error_forbidden";
+  if (code === "SUBJECT_MISMATCH") return "error_mismatch";
+  return "error_unknown";
+}
+
+export function Student360PanelBody({
+  snapshot,
+  fallback,
+  locale,
+  loading,
+  error,
+  retry,
+  refresh,
+  close,
+}: {
+  snapshot: Student360Snapshot | null;
+  fallback: Student360FallbackIdentity;
+  locale: string;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+  refresh: () => void;
+  close: () => void;
+}) {
+  const t = useTranslations("school.student360");
+  const recordM = businessRecordMessages(locale);
+  const [filter, setFilter] = useState<TimelineFilter>("all");
+  const dateTime = useMemo(() => new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Shanghai",
+  }), [locale]);
+  const month = useMemo(() => new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    month: "long",
+    timeZone: "Asia/Shanghai",
+  }), [locale]);
+  const day = useMemo(() => new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Shanghai",
+  }), [locale]);
+  const identity = snapshot?.identity;
+  const name = identity?.name || fallback.name;
+  const grade = identity?.grade ?? fallback.grade;
+  const gradeLabel = identity?.gradeText || fallback.gradeText || (grade ? t("gradeValue", { grade }) : t("gradePending"));
+  const phone = identity?.parentPhone || identity?.phone || fallback.phone || "";
+  const profileSubject = identity?.canEditBasicInfo ? { studentId: identity.studentId, leadId: identity.studentId ? null : identity.primaryLeadId } : null;
+  const editableField = (field: 'name' | 'grade' | 'phone' | 'parentPhone' | 'school' | 'remark', value: string) => profileSubject
+    ? <Student360ProfileField key={`${identity?.studentId ?? identity?.primaryLeadId}:${field}`} subject={profileSubject} field={field} value={value} onSaved={refresh} /> : value;
+  const visibleEvents = useMemo(() => {
+    if (!snapshot) return [];
+    if (filter === "business") return snapshot.events.filter((event) => BUSINESS_PHASES.has(event.phase));
+    if (filter === "teaching") return snapshot.events.filter((event) => !BUSINESS_PHASES.has(event.phase));
+    if (filter === "notes") return snapshot.events.filter((event) => event.notes.length > 0);
+    return snapshot.events;
+  }, [filter, snapshot]);
+  const groups = useMemo(() => {
+    const result: Array<{ key: string; label: string; events: Student360Event[] }> = [];
+    for (const event of visibleEvents) {
+      const label = event.occurredAt ? month.format(new Date(event.occurredAt))
+        : event.occurredMonth ? month.format(new Date(`${event.occurredMonth}-15T00:00:00+08:00`)) : recordM.dateUnknown;
+      const key = label;
+      const last = result[result.length - 1];
+      if (last?.key === key) last.events.push(event);
+      else result.push({ key, label, events: [event] });
+    }
+    return result;
+  }, [month, visibleEvents, recordM.dateUnknown]);
+
+  return (
+    <>
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/95 px-5 py-4 backdrop-blur sm:px-7">
+        <div className="flex items-start gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="-ml-5 mt-0.5 h-8 w-9 shrink-0 rounded-l-none rounded-r-md border-l-0 bg-moon/45 p-0 shadow-sm sm:-ml-7"
+            aria-label={t("close")}
+            title={t("close")}
+            onClick={close}
+          >
+            <PanelRightClose className="size-4" />
+          </Button>
+          <div className="min-w-0 flex-1 text-left">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 id="student-360-heading" className="font-display text-xl text-ink">{editableField('name', name)}</h2>
+              {identity ? <Badge variant={identity.identityState === "student" ? "secondary" : "outline"}>
+                {t(snapshot?.identityCreation?.contactEstablished ? "identity_review" : `identity_${identity.identityState}`)}
+              </Badge> : null}
+              {identity?.accessScope === "journey" ? <Badge variant="outline">{t("journeyScope")}</Badge> : null}
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {identity?.accessScope === "full" && identity.studentId ? <MiniappGuardianInvite key={`guardian:${identity.studentId}`} studentId={identity.studentId} compact /> : null}
+            {identity?.accessScope === "full" && identity.studentId ? <StudentMergePanel key={identity.studentId} studentId={identity.studentId} name={name} phone={identity.phone ?? ""} compact onSaved={refresh} /> : null}
+            {identity && (identity.accessScope === "full" || identity.canEditBasicInfo) ? <SchoolSupportProfileButton studentId={identity.studentId} leadId={identity.studentId ? null : identity.primaryLeadId} onSaved={refresh} label={locale.startsWith('en') ? 'Edit basic information' : '修改基础信息'} /> : null}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="size-9 rounded-full p-0"
+              aria-label={t("refresh")}
+              disabled={loading}
+              onClick={refresh}
+            >
+              <RefreshCw className={cn("size-4", loading && "animate-spin")} />
+            </Button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
+          <span>{editableField('grade', gradeLabel)}</span>
+          {profileSubject ? <span className="font-mono">{editableField(identity?.parentPhone ? 'parentPhone' : 'phone', phone)}</span> : phone ? <a href={`tel:${phone}`} className="font-mono hover:text-ink hover:underline">{phone}</a> : null}
+          {identity?.studentId ? <span>{editableField('school', identity.school || (locale.startsWith('en') ? 'School to add' : '学校待补充'))}</span> : null}
+          {identity?.assignedName ? <span>{t("ownerValue", { name: identity.assignedName })}</span> : null}
+          {identity?.nextActionAt ? <span className="font-medium text-rose">{t("nextActionValue", { time: dateTime.format(new Date(identity.nextActionAt)) })}</span> : null}
+        </div>
+      </header>
+
+      {loading && !snapshot ? <Student360Loading /> : null}
+      {error && !snapshot ? (
+        <div className="grid min-h-[55dvh] place-items-center px-6 py-16 text-center">
+          <div className="max-w-sm">
+            <UserRoundSearch className="mx-auto size-9 text-muted" />
+            <p className="mt-4 text-sm font-medium text-ink">{t(errorKey(error))}</p>
+            <Button type="button" variant="secondary" size="sm" className="mt-4" onClick={retry}>{t("retry")}</Button>
+          </div>
+        </div>
+      ) : null}
+      {snapshot ? (
+        <div>
+          {error ? (
+            <div role="alert" className="flex items-center justify-between gap-3 border-b border-line bg-rose/5 px-5 py-3 text-xs text-rose sm:px-7">
+              <span>{t(errorKey(error))}</span>
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={retry}>{t("retry")}</Button>
+            </div>
+          ) : null}
+          <Student360LifecycleRail snapshot={snapshot} />
+          {snapshot.sourceCompletion?<section className="px-5 pb-4 sm:px-7"><SourceCompletionNotice summary={snapshot.sourceCompletion} locale={locale}/></section>:null}
+          {snapshot.identity.accessScope === "full" && (snapshot.identity.studentId || snapshot.identity.primaryLeadId) ? <section className="px-5 pb-4 sm:px-7">
+            <SchoolRecordSourceReview key={snapshot.identity.studentId ?? snapshot.identity.primaryLeadId} locale={locale}
+              subject={{ studentId: snapshot.identity.studentId, leadId: snapshot.identity.studentId ? null : snapshot.identity.primaryLeadId }} />
+            <WechatFamilyDetails key={`wechat:${snapshot.identity.studentId ?? snapshot.identity.primaryLeadId}`} locale={locale}
+              studentId={snapshot.identity.studentId} leadId={snapshot.identity.studentId ? null : snapshot.identity.primaryLeadId} />
+          </section> : null}
+
+          {snapshot.identity.profileRemark || profileSubject ? (
+            <section className="border-y border-line bg-moon/10 px-5 py-4 sm:px-7" aria-labelledby="student-360-profile-remark">
+              <p id="student-360-profile-remark" className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted">{t("profileRemark")}</p>
+              <div className="mt-1 whitespace-pre-wrap text-sm leading-6 text-ink">{editableField('remark', snapshot.identity.profileRemark)}</div>
+            </section>
+          ) : null}
+
+          <section className="px-5 py-5 sm:px-7" aria-labelledby="student-360-history">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+              <div>
+                <h2 id="student-360-history" className="font-display text-base text-ink">{t("historyTitle")}</h2>
+                <p className="mt-0.5 text-xs text-muted">{t("historyCount", { count: snapshot.events.length })}</p>
+              </div>
+              <div className="flex flex-wrap gap-1" aria-label={t("filterLabel")}>
+                {(["all", "business", "teaching", "notes"] as const).map((item) => (
+                  <Button
+                    key={item}
+                    type="button"
+                    size="sm"
+                    variant={filter === item ? "secondary" : "ghost"}
+                    className="h-8 px-2.5 text-xs"
+                    aria-pressed={filter === item}
+                    onClick={() => setFilter(item)}
+                  >
+                    {t(`filter_${item}`)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {snapshot.truncated ? <p className="border-b border-line py-3 text-xs text-rose">{t("truncated")}</p> : null}
+            {groups.length ? (
+              <div className="mt-2" data-student-360-timeline>
+                {groups.map((group) => (
+                  <section key={group.key} className="grid gap-3 py-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                    <h3 className="text-xs font-medium text-muted sm:sticky sm:top-32 sm:self-start">{group.label}</h3>
+                    <ol className="relative before:absolute before:bottom-3 before:left-[0.4375rem] before:top-3 before:w-px before:bg-line">
+                      {group.events.map((event) => (
+                        <Student360TimelineEvent key={event.id} event={event} day={day} dateTime={dateTime} />
+                      ))}
+                    </ol>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="py-16 text-center text-sm text-muted">{t(filter === "all" ? "empty" : "filteredEmpty")}</div>
+            )}
+          </section>
+
+          <footer className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-line bg-paper/95 px-5 py-3 backdrop-blur sm:px-7">
+            <p className="text-xs text-muted">{t(snapshot.identityCreation ? snapshot.identityCreation.contactEstablished ? "profileNeedsReview" : "profilePendingContact" : snapshot.identity.accessScope === "full" ? "fullScopeHint" : "journeyScopeHint")}</p>
+            {snapshot.identityCreation?.contactEstablished && snapshot.identityCreation.canManage ? (
+              <LeadIdentityControl key={snapshot.identityCreation.lead.id} lead={snapshot.identityCreation.lead} label={t("reviewProfile")} />
+            ) : null}
+            {snapshot.identity.studentId && snapshot.identity.accessScope === "full" ? (
+              <Link href={`/dashboard/students/${snapshot.identity.studentId}`} className={buttonVariants({ size: "sm", variant: "secondary" })} onClick={close}>
+                {t("openFullProfile")}<ArrowUpRight className="size-3.5" />
+              </Link>
+            ) : null}
+          </footer>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function Student360LifecycleRail({ snapshot }: { snapshot: Student360Snapshot }) {
+  const t = useTranslations("school.student360");
+  const workspaceT = useTranslations("school.followupWorkspace");
+  const currentIndex = STUDENT_LIFECYCLE_STAGES.indexOf(snapshot.lifecycleStage);
+  return (
+    <section className="px-5 py-5 sm:px-7" aria-label={t("lifecycleLabel")} data-student-lifecycle={snapshot.lifecycleStage}>
+      {snapshot.lifecycleStage === "former_student" ? <Badge variant="outline" className="mb-3">{t("lifecycle_former_student")}</Badge> : null}
+      <ol className="grid grid-cols-5 grid-rows-[auto_auto] gap-y-2">
+        {STUDENT_LIFECYCLE_ROADMAP.map(({ table, stage }, index) => {
+          const current = stage === snapshot.lifecycleStage;
+          const previous = index < currentIndex;
+          const traversed = index <= currentIndex;
+          return (
+            <li key={table} className="row-span-2 grid min-w-0 grid-rows-subgrid">
+              <div className="relative flex min-w-0 items-center justify-center px-3">
+                <span
+                  aria-hidden="true"
+                  data-student-lifecycle-connector
+                  className={cn("absolute inset-x-0 top-1/2 h-px", traversed ? "bg-crater/80" : "bg-line")}
+                />
+                <Badge
+                  variant="outline"
+                  data-student-lifecycle-process={table}
+                  data-journey-state={traversed ? "passed" : "future"}
+                  title={t("lifecycleProcess", { table: workspaceT(table) })}
+                  className={cn(
+                    "relative z-10 max-w-full justify-center whitespace-normal break-words rounded-md bg-paper px-1 py-1 text-center text-[11px] font-normal leading-4",
+                    traversed ? "border-crater/70 text-ink" : "border-line text-muted",
+                  )}
+                >
+                  {traversed ? <span aria-hidden="true" className="absolute inset-0 rounded-[inherit] bg-moon/40" /> : null}
+                  <span className="relative min-w-0">{workspaceT(table)}</span>
+                  {traversed ? <span className="sr-only"> · {t("lifecyclePassed")}</span> : null}
+                </Badge>
+                {stage ? (
+                  <span aria-hidden="true" className={cn(
+                    "absolute right-0 top-1/2 z-10 flex size-5 -translate-y-1/2 translate-x-1/2 items-center justify-center rounded-full border-2 bg-paper",
+                    current ? "border-leaf-deep" : previous ? "border-crater" : "border-line",
+                  )}>
+                    {current ? <span className="size-2 rounded-full bg-leaf-deep" /> : null}
+                    {previous ? <span className="absolute inset-0 rounded-full bg-moon/60" /> : null}
+                  </span>
+                ) : (
+                  <ArrowRight aria-hidden="true" data-student-lifecycle-continuation className="absolute -right-0.5 size-3 text-muted" />
+                )}
+              </div>
+              {stage ? (
+                <div
+                  data-student-lifecycle-stage={stage}
+                  data-journey-state={current ? "current" : previous ? "passed" : "future"}
+                  aria-current={current ? "step" : undefined}
+                  className={cn(
+                    "relative left-1/2 min-w-0 break-words px-0.5 text-center text-[11px] leading-4",
+                    current ? "font-medium text-leaf-deep" : previous ? "text-ink" : "text-muted",
+                  )}
+                >
+                  {t(`lifecycle_${stage}`)}
+                  {current ? <span className="sr-only"> · {t("lifecycleCurrent")}</span> : null}
+                  {previous ? <span className="sr-only"> · {t("lifecyclePassed")}</span> : null}
+                </div>
+              ) : <span aria-hidden="true" />}
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
+function Student360TimelineEvent({
+  event,
+  day,
+  dateTime,
+}: {
+  event: Student360Event;
+  day: Intl.DateTimeFormat;
+  dateTime: Intl.DateTimeFormat;
+}) {
+  const t = useTranslations("school.student360");
+  const locale = useLocale();
+  const recordM = businessRecordMessages(locale);
+  const historyM = getStudentBusinessHistoryMessages(locale);
+  const factLabels: Partial<Record<Student360Fact['label'], string>> = {
+    period: historyM.period, amount: historyM.amount, teacher: historyM.teacher,
+    registered_on: historyM.registeredOn, renewal_result: historyM.outcome, activity_result: historyM.result,
+  };
+  const statusKey = event.status ? STATUS_KEYS[event.status] : null;
+  return (
+    <li data-student-360-event={event.id} data-imported={event.imported || undefined} className="relative grid grid-cols-[1.75rem_minmax(0,1fr)] pb-5 last:pb-0">
+      <span className={cn(
+        "relative z-10 mt-1 block rounded-full border-2 border-paper",
+        event.important ? "size-4 bg-leaf-deep" : "ml-1 size-2.5 bg-crater/60",
+      )} />
+      <article className="min-w-0 border-b border-line/80 pb-5 last:border-b-0 last:pb-0">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          {event.occurredAt ? <time className="text-[11px] tabular-nums text-muted" dateTime={event.occurredAt}>
+            <SourceDateText display={event.occurredAt.length === 10 ? event.occurredAt : day.format(new Date(event.occurredAt))} marks={event.dateMarks} locale={locale} />
+          </time> : <SourceDateText className="text-[11px] text-muted" display={event.occurredMonth ?? (event.sourceDateLabel || recordM.dateUnknown)} marks={event.dateMarks} locale={locale} />}
+          <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">{t(`phase_${event.phase}`)}</span>
+          <span className="text-xs font-medium text-ink">{t(`event_${event.kind}`)}</span>
+          {statusKey ? <Badge
+            variant="outline"
+            className={cn(
+              "h-5 px-1.5 text-[10px]",
+              event.status && POSITIVE_STATUSES.has(event.status) && "border-leaf-deep/30 bg-leaf/20 text-leaf-deep",
+              event.status && RISK_STATUSES.has(event.status) && "border-rose/30 bg-rose/5 text-rose",
+            )}
+          >{t(statusKey)}</Badge> : null}
+        </div>
+        {event.title ? <p className="mt-1 text-sm font-medium leading-5 text-ink">{event.title}</p> : null}
+        {event.facts.length ? (
+          <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+            {event.facts.map((item, index) => (
+              <div key={`${item.label}:${index}`} className="flex min-w-0 gap-1">
+                <dt className="shrink-0 text-muted">{factLabels[item.label] ?? t(`fact_${item.label}`)}</dt>
+                <dd className="min-w-0 break-words text-ink">{formatFactValue(item, t, dateTime)}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+        {event.notes.length ? (
+          <div className="mt-3 space-y-2 border-l-2 border-crater/35 pl-3">
+            {event.notes.map((item, index) => (
+              <div key={`${item.label}:${index}`}>
+                <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted">{t(`note_${item.label}`)}</p>
+                <p className="mt-0.5 whitespace-pre-wrap text-sm leading-6 text-ink">{item.content}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <p className="mt-2 text-[10px] text-muted">
+          {event.actorName ? t("recordedBy", { name: event.actorName }) : event.imported ? `${historyM.author}：${recordM.unknown}` : t("systemRecord")}
+        </p>
+      </article>
+    </li>
+  );
+}
+
+function formatFactValue(
+  factItem: Student360Fact,
+  t: ReturnType<typeof useTranslations<"school.student360">>,
+  dateTime: Intl.DateTimeFormat,
+): string {
+  if (factItem.format === "datetime") return dateTime.format(new Date(factItem.value));
+  if (factItem.format === "boolean") return t(factItem.value === "true" ? "yes" : "no");
+  if (factItem.format === "code") {
+    const key = CODE_KEYS[factItem.label]?.[factItem.value];
+    return key ? t(key) : factItem.value;
+  }
+  return factItem.value;
+}
+
+function Student360Loading() {
+  const t = useTranslations("school.student360");
+  return (
+    <div className="px-5 py-6 sm:px-7" aria-busy="true" aria-label={t("loading")}>
+      <div className="flex items-center gap-2 text-xs text-muted"><LoaderCircle className="size-3.5 animate-spin" /><Skeleton className="h-4 w-36" /></div>
+      <div className="mt-5 grid grid-cols-5 grid-rows-[auto_auto] gap-y-2">
+        {STUDENT_LIFECYCLE_ROADMAP.map(({ table, stage }) => (
+          <div key={table} className="row-span-2 grid min-w-0 grid-rows-subgrid">
+            <div className="relative flex items-center justify-center px-3">
+              <Skeleton className="absolute inset-x-0 top-1/2 h-px" />
+              <Skeleton className="relative h-6 w-10 max-w-full rounded-md" />
+              {stage ? <Skeleton className="absolute right-0 size-5 translate-x-1/2 rounded-full" /> : null}
+            </div>
+            {stage ? <Skeleton className="relative left-1/2 h-4 w-12 max-w-full justify-self-center" /> : <span />}
+          </div>
+        ))}
+      </div>
+      <div className="mt-8 space-y-6">
+        {Array.from({ length: 4 }, (_, index) => <div key={index} className="grid grid-cols-[1.5rem_1fr] gap-3"><Skeleton className="size-3 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-44" /><Skeleton className="h-16 w-full" /></div></div>)}
+      </div>
+    </div>
+  );
+}

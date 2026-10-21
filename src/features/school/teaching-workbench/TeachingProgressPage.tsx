@@ -9,7 +9,7 @@ import { ClassRosterWorkspace } from "../ClassRosterWorkspace";
 import { TEACHING_WORKBENCH_PERMISSIONS } from "./teaching-workbench-access";
 import { getTeachingProgressMatrix } from "./teaching-progress-matrix-read";
 import { teachingMatrixMessages } from "./teaching-progress-matrix-contract";
-import { TeachingProgressMatrix } from "./TeachingProgressMatrix";
+import { TeachingProgressMatrix } from "../ClassViewClients";
 
 export default async function TeachingProgressPage({ params, searchParams }: {
   params: Promise<{ locale: string }>; searchParams: Promise<WorkEntryQuery>;

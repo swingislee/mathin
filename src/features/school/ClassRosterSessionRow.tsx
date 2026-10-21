@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { DashboardRowDisclosure } from "./dashboard-page/DashboardRowDisclosure";
 import { FollowupRecordRow } from "./dashboard-page/FollowupRecordRow";
-import { CLASS_SESSION_OBSERVATION_BATCH_SIZE, classSessionMessages, classSessionObservationsSchema, hasClassSessionStarted, type ClassRosterSession } from "./class-roster-session-contract";
+import { CLASS_SESSION_OBSERVATION_BATCH_SIZE, classSessionMessages, hasClassSessionStarted, type ClassRosterSession } from "./class-roster-session-presentation";
 import { readClassSessionResource } from "./class-session-resource";
 import { ClassRosterSessionActions } from "./ClassRosterSessionActions";
 import { usePathname } from "@/i18n/navigation";
@@ -68,7 +68,10 @@ export function ClassRosterSessionRow({ classroomId, classroomName, sessions, lo
         const batch = ids.slice(offset, offset + CLASS_SESSION_OBSERVATION_BATCH_SIZE);
         let values: Record<string, TeachingObservations | null>;
         try {
-          const result = await readClassSessionResource<unknown>(`/${locale}/dashboard/classes/session-observations`, { classroomId, sessionIds: batch }, controller.signal);
+          const [result, { classSessionObservationsSchema }] = await Promise.all([
+            readClassSessionResource<unknown>(`/${locale}/dashboard/classes/session-observations`, { classroomId, sessionIds: batch }, controller.signal),
+            import("./class-roster-session-contract"),
+          ]);
           const parsed = new Map(classSessionObservationsSchema.parse(result).map(row => [row.sessionId, row.observations]));
           values = Object.fromEntries(batch.map(id => [id, parsed.get(id) ?? null]));
         } catch {

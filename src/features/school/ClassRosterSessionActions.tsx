@@ -7,7 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 import { DashboardIntentLink } from "./dashboard-page/DashboardIntentLink";
 import { ClassRosterEntryLink } from "./ClassRosterEntryLink";
 import { classSessionActionPhase, classSessionEntry } from "./class-roster-entry";
-import { classSessionMessages, type ClassRosterSession } from "./class-roster-session-contract";
+import { classSessionMessages, type ClassRosterSession } from "./class-roster-session-presentation";
 import { withReturnTo } from "./object-workspace/return-target";
 
 const AttendanceDrawer = dynamic(() => import("./AttendanceDrawer").then(module => module.AttendanceDrawer));

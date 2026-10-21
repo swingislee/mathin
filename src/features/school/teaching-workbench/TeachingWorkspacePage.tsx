@@ -12,11 +12,11 @@ import { WORK_ITEM_URGENCY_ORDER } from "@/features/school/stage/types";
 import { hasTeachingManagementScope, TEACHING_WORKBENCH_PERMISSIONS } from "@/features/school/teaching-workbench/teaching-workbench-access";
 import { teachingPeriodWindow, teachingWorkItems } from "@/features/school/teaching-workbench/teaching-workbench-contract";
 import { getTeachingWorkbench } from "@/features/school/teaching-workbench/teaching-workbench-read";
-import { TeachingProgressTable } from "@/features/school/teaching-workbench/TeachingProgressTable";
+import { TeachingProgressTable } from "../ClassViewClients";
 import { formatWorkItemReason, listMyWorkItems, resolveWorkItemHref } from "@/features/school/work-items";
 import { getMyPerms, requireAnyPerm } from "@/lib/auth";
 import { teachingTimeGrain, teachingTimeWindow } from "@/features/school/teaching-workbench/teaching-period-contract";
-import { TeachingPeriodPicker } from "@/features/school/teaching-workbench/TeachingPeriodPicker";
+import { TeachingPeriodPicker } from "../ClassViewClients";
 import { listSchoolTerms } from "@/features/school/courses";
 import { calendarDayKey } from "@/features/school/schedule";
 

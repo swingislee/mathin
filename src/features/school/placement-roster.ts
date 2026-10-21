@@ -2,7 +2,7 @@ import {
   placementDestinationError,
   type PlacementClassroom,
   type PlacementStudent,
-} from "./enrollment-workflow-contract";
+} from "./enrollment-workflow-presentation";
 
 /** 保留真实座次；缺号或重复记录按原名单顺序补入空位，仅用于展示。 */
 export function placementRosterSeats(

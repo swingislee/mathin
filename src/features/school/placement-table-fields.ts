@@ -1,5 +1,5 @@
 import type { HistoricalEnrollment } from "./student-business-history-contract";
-import { placementHealth, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-contract";
+import { placementHealth, type EnrollmentPlacementBoard, type PlacementClassroom, type PlacementStudent } from "./enrollment-workflow-presentation";
 import { zonedDateParts } from "./schedule";
 import { followupTableMessages } from "./followup-table-messages";
 import { classRosterMessages } from "./class-roster-presentation-contract";

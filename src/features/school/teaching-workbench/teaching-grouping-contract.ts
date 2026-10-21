@@ -1,7 +1,7 @@
 import { groupTeachingClasses, type TeachingClassOverview } from "./teaching-class-overview-contract";
 
-export type TeachingGrouping = "grade" | "teacher";
-export const teachingGrouping = (value: unknown): TeachingGrouping => value === "teacher" ? "teacher" : "grade";
+import type { TeachingGrouping } from "./teaching-grouping";
+export { teachingGrouping, type TeachingGrouping } from "./teaching-grouping";
 type ClassRow = ReturnType<typeof groupTeachingClasses>[number];
 export type TeachingClassSection = { id: string; name: string | null; grade: number | null; rows: ClassRow[] };
 
