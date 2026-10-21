@@ -130,9 +130,12 @@
         "tests/miniapp-runtime-compatibility.test.ts",
         "apps/parent-wechat/docs/runtime-v1.md"
       ],
-      "sharedPaths": [".ai/registry.json", "src/lib/database.types.ts"],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "src/lib/database.types.ts"
+      ],
       "checkpoint": null,
-      "next": "积分、兑换、抽取与六档学情错题四批已开发可用，小程序 r31；定向权限、幂等、并发余额／库存、保底、学情修订及页面接口检查通过。规则默认关闭，待业务配置和人工验收；无独立题干的记录结合原材料复习，未包含拍照添加。未生产部署或小程序上传。"
+      "next": "完整开发验收数据已按用户要求启用：测试家长两名孩子210/60积分，数字20/实物50，10分奖池90/10及第3次保底（主学员下一抽必得），课堂/作业各4条复习记录。固定主管/老师/家长读回与页面接口通过；模拟器已登录固定家长、选中主学员，积分页210且ready。业务待人工验收；无生产写入、无上传。详细步骤与入口见任务卡。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",
