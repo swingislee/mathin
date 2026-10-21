@@ -56,7 +56,7 @@ function MediaField({ label, value, locale, accept, onChange }: { label: string;
 /** Data a display block can read for the current account and child. Without one, the block shows its own content. */
 const displaySources: Record<string, { value: string; zh: string; en: string }[]> = {
   card: [{ value: "account.participant", zh: "当前孩子（姓名、阶段、下次上课、星星）", en: "Current child" }],
-  metrics: [{ value: "account.summary", zh: "学习概况（星星、本周课次、待完成、出勤）", en: "Learning summary" }],
+  metrics: [{ value: "account.summary", zh: "学习概况（星星、本周课次、待完成、出勤）", en: "Learning summary" }, { value: "rewards.balance", zh: "当前孩子可用积分", en: "Child's available points" }],
   progress: [{ value: "account.checkins", zh: "打卡进度（本周、近 30 天）", en: "Check-ins" }],
 };
 function SourceField({ type, value, locale, onChange }: { type: string; value?: string; locale: Locale; onChange: (value: string | undefined) => void }) {

@@ -12,6 +12,8 @@ const item = (value: Partial<RuntimeItem> & Pick<RuntimeItem, "id" | "title">): 
 
 export function sampleItems(source: RuntimeSource, locale: RuntimeLocale): RuntimeItem[] {
   const zh = locale === "zh";
+  if (source === "rewards.ledger") return [item({ id: "sample-points", title: zh ? "课堂星星（示例）" : "Classroom star (example)", subtitle: "2026.10.21 10:00", status: { label: "+1", tone: "positive" }, meta: [zh ? "变动后余额 12" : "Balance after: 12"] })];
+  if (source === "rewards.rules") return [item({ id: "sample-points-rules", title: zh ? "积分规则（示例）" : "Points rules (example)", summary: zh ? "规则保存后适用于后续奖励。历史流水保留原值。" : "Rules apply to future rewards. History keeps original amounts." })];
   if (source === "account.tasks") return [
     item({ id: "sample-task-1", title: zh ? "第 3 讲 课后练习（示例）" : "Lesson 3 practice (example)", subtitle: zh ? "截止 10.20 20:00" : "Due 10.20 20:00",
       meta: [sampleParticipants[0].name], status: { label: zh ? "待提交" : "To submit", tone: "warning" }, action: { type: "route", route: "records" } }),
@@ -43,6 +45,7 @@ export function sampleWeek(days: RuntimeDay[], locale: RuntimeLocale): { days: R
 export function sampleDisplay(source: string, locale: RuntimeLocale): DisplayData {
   const zh = locale === "zh";
   switch (source) {
+    case "rewards.balance": return { metrics: [{ label: zh ? "可用积分（示例）" : "Available points (example)", value: "12", unit: "", hint: "" }] };
     case "account.participant": return { card: { title: sampleParticipants[0].name, subtitle: zh ? "三年级" : "Grade 3", fields: [
       { label: zh ? "下次上课" : "Next class", value: "10.18 18:30" }, { label: zh ? "星星" : "Stars", value: "36" }] } };
     case "account.summary": return { metrics: [

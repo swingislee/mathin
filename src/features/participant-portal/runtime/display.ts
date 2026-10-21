@@ -1,5 +1,6 @@
 import "server-only";
 import { requireResult } from "@/features/parent-portal/server";
+import { pointsDisplay } from "../rewards/points";
 import type { RuntimeLocale } from "../../../../contracts/participant-api/runtime";
 import { shanghaiDate, type SourceInput } from "./sources";
 
@@ -37,6 +38,7 @@ const dateTime = (value: string) => { const ms = Date.parse(value); return `${sh
 export async function readDisplay(source: string, input: SourceInput): Promise<DisplayData | null> {
   const w = copy(input.locale);
   switch (source) {
+    case "rewards.balance": return pointsDisplay(input);
     case "account.participant": {
       if (!input.identity.signedIn) return null;
       const child = input.identity.participants.find(row => row.id === input.identity.participant);

@@ -148,6 +148,7 @@ const message = (state: "signedOut" | "error", context: Context) => text(state =
 
 function sourceInput(block: RuntimeBlockSpec, context: Context): SourceInput {
   return { identity: context.identity, locale: context.locale, settings: context.published.settings, now: context.now, cursor: context.cursor,
+    limit: block.type === "list" ? block.limit : undefined,
     filters: { ...context.filters[runtimePageFilters], ...context.filters[block.id] },
     params: { ...context.screenParams, ...(block.type === "list" ? block.params : {}) } };
 }

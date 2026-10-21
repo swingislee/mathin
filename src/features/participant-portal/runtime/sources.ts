@@ -8,6 +8,7 @@ import type { MiniappSettings } from "../../../../contracts/participant-api/mini
 import type { ExperienceRequest } from "../../../../contracts/participant-api/experience-runtime";
 import type { RuntimeAccountRole, RuntimeDay, RuntimeFacet, RuntimeItem, RuntimeLocale, RuntimeSource } from "../../../../contracts/participant-api/runtime";
 import type { RegistrationRpc } from "@/features/parent-portal/course-server";
+import { pointsSource } from "../rewards/points";
 
 const hour = 3_600_000, day = 24 * hour, shanghai = 8 * hour;
 export const shanghaiDate = (ms: number) => new Date(ms + shanghai).toISOString().slice(0, 10);
@@ -22,7 +23,7 @@ export type RuntimeIdentity = {
 };
 /** Filters are keyed by facet id; `cursor` continues a list and `params` come from the block. */
 export type SourceInput = { identity: RuntimeIdentity; locale: RuntimeLocale; settings: MiniappSettings; filters: Record<string, string>; now: number;
-  cursor?: string; params?: Record<string, string> };
+  cursor?: string; params?: Record<string, string>; limit?: number };
 export type SourceResult = { items: RuntimeItem[]; facets: RuntimeFacet[]; next?: string };
 
 export const item = (value: Partial<RuntimeItem> & Pick<RuntimeItem, "id" | "title">): RuntimeItem => ({
@@ -129,6 +130,7 @@ export async function readSource(source: RuntimeSource, input: SourceInput): Pro
     case "account.tasks": return tasks(input, db);
     case "account.requests": return requests(input, db);
     case "account.events": return events(input, db);
+    case "rewards.ledger": case "rewards.rules": return pointsSource(source, input);
     default: return reports(input, db);
   }
 }

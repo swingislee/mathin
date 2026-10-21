@@ -34,7 +34,7 @@
       "id": "MINI-RUNTIME-BASELINE-20261021",
       "title": "小程序页面上下文、长期兼容与后台业务流程",
       "agent": "codex",
-      "threadId": "01a14068-4b2b-7f01-964e-23620af410d3",
+      "threadId": "01a15c03-d48b-75a3-9874-800b87d57df2",
       "status": "in_progress",
       "checkout": "local",
       "branch": "main",
@@ -52,13 +52,20 @@
         "apps/parent-wechat/miniprogram/pages/screen/",
         "src/features/participant-portal/runtime/",
         "src/features/school/miniapp-runtime/",
+        "src/features/school/learning-rewards/",
+        "src/features/participant-portal/rewards/",
+        "src/app/[locale]/dashboard/learning-rewards/",
+        "supabase/migrations/20261021100000_learning_rewards_ledger.sql",
+        "supabase/tests/learning_rewards_ledger.sql",
+        "tests/learning-rewards-runtime.test.ts",
+        ".tmp/learning-rewards-20261021/",
         "tests/miniapp-runtime-context.test.ts",
         "tests/miniapp-runtime-compatibility.test.ts",
         "apps/parent-wechat/docs/runtime-v1.md"
       ],
-      "sharedPaths": [".ai/registry.json"],
+      "sharedPaths": [".ai/registry.json", "src/lib/database.types.ts"],
       "checkpoint": null,
-      "next": "页面参数、多孩子同步、兼容机制和角色组合显示规则已在开发端交付；类型、静态与定向检查通过，待人工验收。业务接续从积分账本开始：课堂星星、独立积分、作业奖励，数字与实物奖品，课上/课后六档学情可配置收录；家长拍照添加远期处理。规则与剩余范围已写任务卡，业务域尚未实现，本次未授权生产发布。"
+      "next": "积分账本首批已在开发端：星星换算和原额撤销、作业首次达标奖励、独立发分与冲回、亲子积分页面；权限、幂等、流水及定向检查通过，待人工验收。接续兑换与领取、抽取与保底、六档学情错题；未授权生产发布或小程序上传。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",
