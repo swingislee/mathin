@@ -23,7 +23,15 @@ function tabBar(hidden: boolean | null, slot?: number) {
 
 const subscriptions = new WeakMap<object, () => void>();
 const refreshTimers = new WeakMap<object, ReturnType<typeof setTimeout>>();
+const pendingLoads = new WeakMap<object, { key: string; generation: number }>();
 function stopRefresh(host: object) { const timer = refreshTimers.get(host); if (timer) clearTimeout(timer); refreshTimers.delete(host); }
+const equal = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
+/** Keep unchanged native nodes mounted, including images and forms. */
+function changedData(before: Record<string, unknown>, next: Record<string, unknown>) {
+  const patch: Record<string, unknown> = {};
+  Object.entries(next).forEach(([key, value]) => { if (!equal(before[key], value)) patch[key] = value; });
+  return patch;
+}
 // Hosts one published screen. Tab pages pass their slot; other pages pass the screen id from the link.
 Component({
   options: { styleIsolation: "apply-shared", pureDataPattern: /^_/ },
@@ -32,7 +40,7 @@ Component({
     presentation: currentApp().presentation || "classic", tone: "default", _refreshSeconds: 0, _expandedList: false,
     strings: currentApp().strings, theme: currentApp().theme, locale: currentApp().locale, title: "", navigation: "title" as "brand" | "title", pageClass: "",
     blocks: [] as RuntimeBlockView[], loading: false, error: "", missing: false, sheet: null as Sheet, reveal: null as Reveal | null, back: false, current: "",
-    share: null as RuntimeScreen["share"], _participants: [] as { id: string; name: string }[],
+    share: null as RuntimeScreen["share"], _participants: [] as { id: string; name: string }[], scopes: [0],
     _screen: "", _generation: 0, _sheetGeneration: 0, _session: "", _paramsKey: "", _visible: false,
   },
   observers: { "screenId, screenParams"() { if (this.data._visible) this.show(false); } },
@@ -61,28 +69,43 @@ Component({
       const changed = screen !== this.data._screen || sessionMarker !== this.data._session || paramsKey !== this.data._paramsKey;
       // The original tab pages keep their page-level background and spacing.
       const pageClass = ({ discover: "discover-page", calendar: "calendar-page", account: "account-page" } as Record<string, string>)[screen] || "";
-      this.setData({ strings: app.strings, theme: app.theme, presentation: app.presentation || "classic", locale: app.locale, missing: !screen, pageClass, current: screen, _screen: screen,
-        _session: sessionMarker, _paramsKey: paramsKey, ...(changed ? { blocks: [], title: "", sheet: null, reveal: null, error: "", share: null, _participants: [] } : {}) });
+      const shell = { strings: app.strings, theme: app.theme, presentation: app.presentation || "classic", locale: app.locale, missing: !screen, pageClass, current: screen, _screen: screen,
+        _session: sessionMarker, _paramsKey: paramsKey, ...(changed ? { sheet: null, reveal: null, error: "", _expandedList: false, scopes: [this.data.scopes[0] + 1] } : {}) };
+      const cached = changed && screen ? cachedScreen(screen, this.data.screenParams) : null;
+      // A new context is replaced atomically. Never briefly empty a page before restoring its cache.
+      if (cached) this.apply(cached, shell);
+      else {
+        const patch = changedData(this.data, { ...shell, ...(changed ? { blocks: [], title: "", share: null, _participants: [], _refreshSeconds: 0 } : {}) });
+        if (Object.keys(patch).length) this.setData(patch);
+      }
       if (screen) {
-        const cached = cachedScreen(screen, this.data.screenParams);
-        if (cached) this.apply(cached);
-        else if (changed) this.setData({ blocks: [], title: "" });
-        void this.load();
+        void this.load(true);
       }
       if (refreshShell) void refreshApp();
       // A Mini Program code opened at launch is offered to Mathin once.
       const scene = takeLaunchScene();
       if (scene) resolveCode(scene, "scene").then(effects => this.runEffects(effects, "page"), () => undefined);
     },
-    apply(screen: RuntimeScreen) {
-      this.setData({ tone: screen.tone || "default", _refreshSeconds: screen.refreshSeconds || 0, _expandedList: false });
-      this.setData({ title: screen.title, navigation: screen.navigation, blocks: prepareBlocks(screen.blocks), error: "", share: screen.share ? { ...screen.share, image: runtimeImage(screen.share.image) } : null, _participants: screen.participants || [] });
+    apply(screen: RuntimeScreen, shell: Record<string, unknown> = {}) {
+      const blocks = prepareBlocks(screen.blocks);
+      const patch = changedData(this.data, { ...shell, tone: screen.tone || "default", _refreshSeconds: screen.refreshSeconds || 0,
+        title: screen.title, navigation: screen.navigation, error: "", share: screen.share ? { ...screen.share, image: runtimeImage(screen.share.image) } : null, _participants: screen.participants || [] });
+      // Stable block identities let a changed count or card update without rebinding the whole page.
+      const sameLayout = blocks.length === this.data.blocks.length && blocks.every((block, i) => block.id === this.data.blocks[i].id && block.type === this.data.blocks[i].type);
+      if (sameLayout) blocks.forEach((block, i) => { if (!equal(block, this.data.blocks[i])) patch[`blocks[${i}]`] = block; });
+      else patch.blocks = blocks;
+      if (Object.keys(patch).some(key => key === "blocks" || key.startsWith("blocks["))) patch._expandedList = false;
+      if (Object.keys(patch).length) this.setData(patch);
       if (!this.data.tab) wx.setNavigationBarTitle({ title: screen.title });
       if (screen.share) wx.showShareMenu({ menus: ["shareAppMessage", "shareTimeline"] }); else wx.hideShareMenu({});
     },
-    async load() {
+    async load(passive = false) {
       const id = this.data._screen, generation = this.data._generation + 1;
       if (!id) return;
+      const key = [id, this.data._session, this.data._paramsKey, currentApp().revision].join("|");
+      const pending = pendingLoads.get(this);
+      if (passive && pending?.key === key && pending.generation === this.data._generation) return;
+      pendingLoads.set(this, { key, generation });
       this.setData({ _generation: generation, loading: !this.data.blocks.length });
       try {
         const screen = await loadScreen(id, this.data.screenParams);
@@ -93,6 +116,7 @@ Component({
           else this.setData({ error: this.data.strings.unavailable });
         }
       } finally {
+        if (pendingLoads.get(this)?.generation === generation) pendingLoads.delete(this);
         if (generation === this.data._generation) this.setData({ loading: false });
         this.scheduleRefresh();
       }

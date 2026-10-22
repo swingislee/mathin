@@ -19,7 +19,8 @@ Component({
         if (row.type === "tabs" && tabIndex[row.id] === undefined) tabIndex[row.id] = 0;
         if (row.type === "collapse" && opened[row.id] === undefined) opened[row.id] = row.open === true;
       }
-      this.setData({ tabIndex, opened });
+      if (Object.keys(tabIndex).length !== Object.keys(this.data.tabIndex).length || Object.keys(opened).length !== Object.keys(this.data.opened).length)
+        this.setData({ tabIndex, opened });
     },
   },
   methods: {

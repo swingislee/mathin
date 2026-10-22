@@ -4,7 +4,7 @@
     <view wx:if="{{missing}}" class="runtime-state"><empty-state label="{{strings.unavailable}}" spacious /><button class="text-button" bindtap="firstTab">{{strings.retry}}</button></view>
     <text wx:elif="{{loading && !blocks.length}}" class="loading-line">{{strings.loading}}</text>
     <view wx:elif="{{error && !blocks.length}}" class="notice" role="alert">{{error}}<button class="text-button" bindtap="retry">{{strings.retry}}</button></view>
-    <runtime-blocks blocks="{{blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{tab > 0}}" screen="{{current}}" screen-params="{{screenParams}}" bindaction="action" bindfacet="facet" bindweek="week" bindparticipant="participant" bindaccount="account" bindsheet="sheet" bindsearch="search" bindmore="more" bindrefresh="refresh" bindeffects="effects" />
+    <runtime-blocks wx:for="{{scopes}}" wx:key="*this" blocks="{{blocks}}" strings="{{strings}}" locale="{{locale}}" lifted="{{tab > 0}}" screen="{{current}}" screen-params="{{screenParams}}" bindaction="action" bindfacet="facet" bindweek="week" bindparticipant="participant" bindaccount="account" bindsheet="sheet" bindsearch="search" bindmore="more" bindrefresh="refresh" bindeffects="effects" />
   </view>
   <view wx:if="{{sheet}}" class="sheet-mask" bindtap="close" catchtouchmove="noop"><view class="bottom-sheet {{sheet.kind === 'facet' ? 'catalog-sheet' : ''}} {{sheet.kind === 'screen' ? 'screen-sheet' : ''}}" catchtap="noop">
     <block wx:if="{{sheet.kind === 'facet'}}">

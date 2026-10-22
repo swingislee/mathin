@@ -191,14 +191,15 @@
         "supabase/migrations/20261021150100_miniapp_first_edition.sql",
         ".tmp/miniapp-trial-20261021/",
         "docs/current.md",
-        ".tmp/miniapp-discover-config-20261021/"
+        ".tmp/miniapp-discover-config-20261021/",
+        ".tmp/miniapp-ui-fix-20261022/"
       ],
       "sharedPaths": [
         ".ai/registry.json",
         "src/lib/database.types.ts"
       ],
       "checkpoint": null,
-      "next": "本次后端d4dea84d和六项迁移已获准部署生产；页面r2只改后端配置，将发现恢复为诊断预约/公益活动布局，接口返回3条活动，待手机验收。0.3.0预览可用，上传回执丢失仍待平台核实；新业务规则默认关闭。"
+      "next": "用户已在手机确认只改后台能改变前端。生产配置r3已发布：发现保留测评/公益活动布局，我的以活动预约为主，图标全部兼容0.2.0；切换去重与局部更新已实现并检查，待生成0.3.1手机预览及部署同范围动态文案。"
     },
     {
       "id": "WECHAT-SESSION-RESTORE-20261021",

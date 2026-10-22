@@ -18,10 +18,10 @@ type Summary = { student_id: string; student_name: string; grade: number | null;
   star_total: number | null; week_session_count: number | null; pending_assignment_count: number | null };
 
 const copy = (locale: RuntimeLocale) => locale === "zh"
-  ? { stars: "星星", week: "本周课次", pending: "待完成任务", attendance: "近 30 天出勤", times: "次", items: "项", next: "下次上课", none: "暂无", name: "姓名", stage: "学习阶段",
-    card: "学员卡", checkWeek: "本周打卡", checkTotal: "近 30 天打卡", days: "天" }
-  : { stars: "Stars", week: "This week", pending: "To do", attendance: "Attendance (30 days)", times: "", items: "", next: "Next class", none: "None", name: "Name", stage: "Stage",
-    card: "Student card", checkWeek: "Check-ins this week", checkTotal: "Check-ins (30 days)", days: "days" };
+  ? { stars: "星星", week: "本周活动", pending: "待完成任务", attendance: "近 30 天出勤", times: "次", items: "项", next: "下次参与", none: "暂无", name: "姓名", stage: "阶段",
+    card: "参与人信息", checkWeek: "本周打卡", checkTotal: "近 30 天打卡", days: "天" }
+  : { stars: "Stars", week: "This week", pending: "To do", attendance: "Attendance (30 days)", times: "", items: "", next: "Next activity", none: "None", name: "Name", stage: "Stage",
+    card: "Participant details", checkWeek: "Check-ins this week", checkTotal: "Check-ins (30 days)", days: "days" };
 
 async function summary(input: SourceInput): Promise<Summary | null> {
   const db = input.identity.db;

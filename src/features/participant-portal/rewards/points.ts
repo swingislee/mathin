@@ -25,12 +25,12 @@ export async function pointsSource(source: string, input: SourceInput): Promise<
     const r = data.rules;
     const levels = r.homeworkStatuses.map(s => learningStatusNames[s]?.[input.locale] || s).join(zh ? "、" : ", ");
     return { facets: [], items: [
-      item({ id: "stars", title: zh ? "课堂星星" : "Classroom stars", summary: r.starsEnabled
+      item({ id: "stars", title: zh ? "活动星星" : "Activity stars", summary: r.starsEnabled
         ? (zh ? `每颗星奖励 ${r.pointsPerStar} 积分；撤销星星会冲回原奖励。` : `${r.pointsPerStar} points per star. Revocations reverse the original reward.`)
         : (zh ? "暂未开启星星转换" : "Star rewards are off") }),
-      item({ id: "homework", title: zh ? "作业奖励" : "Homework reward", summary: r.homeworkEnabled
-        ? (zh ? `老师登记的全部题目达到 ${levels} 中的任一档位，每份作业奖励 ${r.homeworkPoints} 积分，只奖励一次。` : `All questions must be teacher-marked at one of: ${levels}. ${r.homeworkPoints} points once per assignment.`)
-        : (zh ? "暂未开启作业奖励" : "Homework rewards are off") }),
+      item({ id: "homework", title: zh ? "任务奖励" : "Task reward", summary: r.homeworkEnabled
+        ? (zh ? `主理人登记的全部题目达到 ${levels} 中的任一档位，每份任务奖励 ${r.homeworkPoints} 积分，只奖励一次。` : `All questions must be host-recorded at one of: ${levels}. ${r.homeworkPoints} points once per task.`)
+        : (zh ? "暂未开启任务奖励" : "Task rewards are off") }),
       item({ id: "history", title: zh ? "积分说明" : "About points", summary: zh ? "规则变更只影响后续奖励。历史流水保留原值，已有星星不自动折算。" : "Rule changes apply to future rewards. History keeps original amounts; existing stars are not converted." }),
     ] };
   }
