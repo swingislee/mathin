@@ -137,6 +137,41 @@
       "next": "开发端已生效：课次摘要先显示、课前不读课后数据、课堂读取并行并复用名单、教室入口按意图预取。静态检查与开发管理员课次的只读响应通过；慢网、旧设备体感待人工验收，未部署生产。"
     },
     {
+      "id": "LESSON-ROW-ACTIONS-20261021",
+      "title": "课次首行直接操作课前与课后",
+      "agent": "codex",
+      "threadId": "01a15a0f-d144-7332-bc04-b18e502c402e",
+      "status": "done",
+      "checkout": "local",
+      "branch": "main",
+      "card": ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md",
+      "writePaths": [
+        "src/features/school/ClassRosterSessionActions.tsx",
+        "src/features/school/ClassRosterSessionRow.tsx",
+        "src/features/school/ClassRosterSessionDetail.tsx",
+        "src/features/school/class-roster-session-contract.ts",
+        "src/features/school/class-roster-session-read.ts",
+        "src/features/school/AttendanceDrawer.tsx",
+        "src/features/school/PostclassLearningEditor.tsx",
+        "src/features/school/SessionStudentPostworkTable.tsx",
+        ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md",
+        "src/features/school/EnrollmentPlacementWorkbench.tsx",
+        "src/features/school/ClassRosterClassSummary.tsx",
+        "src/features/school/ReviewDrawer.tsx",
+        "src/features/school/review-actions.ts",
+        "src/features/school/SessionWorkspaceBody.tsx",
+        "src/features/school/SessionPostworkPanel.tsx",
+        "src/features/school/ClassRosterEntryLink.tsx",
+        "src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx",
+        "src/features/school/class-roster-entry.ts"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
+      "checkpoint": null,
+      "next": "阶段操作已移到课次行右侧并直接打开；支持按学生登记学情和课评面板内保存发布，静态检查通过，待开发端人工验收。独立补课课次与名单流程仍为后续方案，未部署生产。"
+    },
+    {
       "id": "MINI-RUNTIME-BASELINE-20261021",
       "title": "小程序页面上下文、长期兼容与后台业务流程",
       "agent": "codex",
@@ -254,41 +289,6 @@
       "next": "开发库读取迁移与名单摘要已生效；400主体、四阶段名单一致，权限与异步读取检查通过。待报名100行gzip数据49.5→28.4KB，RPC约249→221ms。开发HTTP入口可用，真实慢网手感待验收，未部署生产。"
     },
     {
-      "id": "LESSON-ROW-ACTIONS-20261021",
-      "title": "课次首行直接操作课前与课后",
-      "agent": "codex",
-      "threadId": "01a15a0f-d144-7332-bc04-b18e502c402e",
-      "status": "done",
-      "checkout": "local",
-      "branch": "main",
-      "card": ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md",
-      "writePaths": [
-        "src/features/school/ClassRosterSessionActions.tsx",
-        "src/features/school/ClassRosterSessionRow.tsx",
-        "src/features/school/ClassRosterSessionDetail.tsx",
-        "src/features/school/class-roster-session-contract.ts",
-        "src/features/school/class-roster-session-read.ts",
-        "src/features/school/AttendanceDrawer.tsx",
-        "src/features/school/PostclassLearningEditor.tsx",
-        "src/features/school/SessionStudentPostworkTable.tsx",
-        ".ai/tasks/LESSON-ROW-ACTIONS-20261021.md",
-        "src/features/school/EnrollmentPlacementWorkbench.tsx",
-        "src/features/school/ClassRosterClassSummary.tsx",
-        "src/features/school/ReviewDrawer.tsx",
-        "src/features/school/review-actions.ts",
-        "src/features/school/SessionWorkspaceBody.tsx",
-        "src/features/school/SessionPostworkPanel.tsx",
-        "src/features/school/ClassRosterEntryLink.tsx",
-        "src/app/[locale]/dashboard/sessions/[sessionId]/page.tsx",
-        "src/features/school/class-roster-entry.ts"
-      ],
-      "sharedPaths": [
-        ".ai/registry.json"
-      ],
-      "checkpoint": null,
-      "next": "阶段操作已移到课次行右侧并直接打开；支持按学生登记学情和课评面板内保存发布，静态检查通过，待开发端人工验收。独立补课课次与名单流程仍为后续方案，未部署生产。"
-    },
-    {
       "id": "TEACHER-CLASSROOM-ENTRY-20261016",
       "title": "教师班级课次直接备课与进入课堂",
       "agent": "codex",
@@ -324,8 +324,18 @@
       "checkout": "local",
       "branch": "main",
       "card": ".ai/tasks/RELEASE-V060-20261016.md",
-      "writePaths": [".ai/tasks/RELEASE-V060-20261016.md", "docs/releases/v0.6.0.md", ".tmp/release-20261016/"],
-      "sharedPaths": [".ai/registry.json", "docs/current.md", "CHANGELOG.md", "package.json", "apps/parent-wechat/package.json"],
+      "writePaths": [
+        ".ai/tasks/RELEASE-V060-20261016.md",
+        "docs/releases/v0.6.0.md",
+        ".tmp/release-20261016/"
+      ],
+      "sharedPaths": [
+        ".ai/registry.json",
+        "docs/current.md",
+        "CHANGELOG.md",
+        "package.json",
+        "apps/parent-wechat/package.json"
+      ],
       "checkpoint": "128bb9676499ad64244174091f9f2121e1c14fcf",
       "next": "v0.6.0 已上线，current 20261015-165027（128bb967），网站与任务进程同版，公网与权限检查通过。生产迁移、五阶段校准和 AliDNS 续期完成；小程序 0.2.0 官方回执上传成功（698605 字节）。版本与团队说明已更新，平台与真机验收接续 MINI-REVIEW-SUBMIT-20261009。"
     },
@@ -375,7 +385,9 @@
         "tests/wechat-callback.test.ts",
         "docs/ops/wechat-oauth.md"
       ],
-      "sharedPaths": [".ai/registry.json"],
+      "sharedPaths": [
+        ".ai/registry.json"
+      ],
       "checkpoint": "e1df192e7b3b30cdcfb92756e558eb47cb775df8",
       "next": "已按授权部署生产 20261015-141320，仅更新三个微信登录运行文件；定向鉴权、Linux 构建与生产健康通过，微信配置仍启用。待本人退出旧会话并重新微信登录验收，密码登录仍需 MFA。"
     },
